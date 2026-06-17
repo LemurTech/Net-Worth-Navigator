@@ -67,4 +67,4 @@ Out of scope (V1):
 - Constraint: Must run on the Hermes host (Linux, Python 3.11+)
 - Constraint: Monarch MCP must be authenticated; re-auth via `uv run python login_setup.py` in `/opt/monarch-mcp-server`
 - Assumption: Account classification (taxable/trad/Roth/cash) is set once in config and is stable
-- Assumption: V1 tax modeling is simplified — full brackets are a V2 enhancement
+- Ordinary-income tax brackets and standard deductions are now configured directly in `config.toml [taxes]`

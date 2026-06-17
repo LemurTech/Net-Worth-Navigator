@@ -30,10 +30,12 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Gantt includes survivor-period shading aligned to projection output
 - Gantt row labels increased in size after the density pass while preserving the compressed layout
 - Main chart title suffix is configurable via `[display].projection_title` in `config.toml`
-- First-pass tax modeling now applies effective tax rates to Social Security and positive income events while preserving current job income as net cash
+- First-pass tax modeling now applies the 2025 federal ordinary-income bracket schedule plus standard deduction to taxable Social Security, positive income events, and taxable withdrawals while preserving current job income as net cash
 - Cash Flow tab now exposes positive income events in Income and `Estimated taxes` in Expenses
 - Event-level taxability is configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
-- Withdrawal-source sequencing is now active: deficits are covered from cash → taxable → trad IRA → Roth, and taxable/trad withdrawals feed the simplified tax model
+- Ordinary-income tax brackets and standard deductions are now configurable in `config.toml [taxes]`
+- Regression coverage for progressive tax calculation, bracketed Social Security tax, and bracketed trad-IRA-withdrawal tax now lives in `tests/test_tax_model.py`
+- Withdrawal-source sequencing is now active: deficits are covered from cash → taxable → trad IRA → Roth, and taxable/trad withdrawals feed the bracket-based tax model
 
 ### Changed
 

@@ -42,12 +42,12 @@
 - Monarch auth can expire — always check bridge connectivity before a planning session
 - `output/` is gitignored — generated HTML is not committed
 - Files written to `/srv/web-projects/` must be world-readable (644/755)
-- V1 tax modeling is intentionally simplified — resist full tax modeling until V2
+- V1 tax modeling is no longer flat-rate only: configurable federal ordinary-income brackets and standard deductions now live in `[taxes]`, but Social Security taxability remains simplified and state tax is still out of scope for now
 - Withdrawal behavior is now partly policy-driven via `[withdrawal_policy]`; defaults should be reviewed against real household intent before treating projections as strategic guidance
 
 ## Tooling Practices
 
 - No linter enforced in V1 — add `ruff` in V2
-- Unit tests now cover recurring events, chart KPI behavior, account-cache reclassification, and withdrawal-policy behavior; extend this suite before major V2 model changes
+- Unit tests now cover recurring events, chart KPI behavior, account-cache reclassification, withdrawal-policy behavior, and the first deeper-tax-realism slice under `tests/test_tax_model.py`; extend this suite before major V2 model changes
 - For routine UI/layout tweaks, prefer targeted checks plus a real `python run.py --offline` render; use the full suite for broader model or semantic changes
 - Git commit on every meaningful change to `config.toml` or `src/` — config history is the key value of the repo

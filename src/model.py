@@ -49,6 +49,12 @@ DEFAULT_WITHDRAWAL_ORDER = [
     "cash_below_target",
 ]
 
+DEFAULT_TAX_FILING_STATUS = {
+    "pre_retirement": "married_joint",
+    "retirement": "married_joint",
+    "survivor": "single",
+}
+
 
 def load_config() -> dict:
     with open(CONFIG_PATH, "rb") as f:
@@ -533,9 +539,11 @@ def run_projection(
             one_deceased=one_deceased,
         )
 
-        tax_rate = (
-            assumptions["effective_tax_rate_post_retirement"]
-            if both_retired else assumptions["effective_tax_rate_pre_retirement"]
+        active_tax_system = resolve_tax_system(
+            config,
+            assumptions=assumptions,
+            both_retired=both_retired,
+            one_deceased=one_deceased,
         )
         base_taxable_income = (
             matthew_parts["ss_taxable_income"] +
@@ -560,12 +568,16 @@ def run_projection(
         else:
             grown_portfolio = portfolio.copy()
 
-        annual_taxes = base_taxable_income * tax_rate
+        annual_taxes = estimate_annual_taxes(
+            base_taxable_income=base_taxable_income,
+            withdrawal_taxable_income=0.0,
+            tax_system=active_tax_system,
+        )
         withdrawal_taxable_income = 0.0
         working_portfolio = grown_portfolio.copy()
 
         # Iterate because taxable withdrawals themselves increase taxes.
-        for _ in range(5):
+        for _ in range(12):
             working_portfolio = grown_portfolio.copy()
             post_tax_flow = base_net_flow - annual_taxes
 
@@ -589,8 +601,12 @@ def run_projection(
                         working_portfolio[cat] = 0.0
                     working_portfolio["cash"] = -unmet_deficit
 
-            new_annual_taxes = (base_taxable_income + withdrawal_taxable_income) * tax_rate
-            if abs(new_annual_taxes - annual_taxes) < 1.0:
+            new_annual_taxes = estimate_annual_taxes(
+                base_taxable_income=base_taxable_income,
+                withdrawal_taxable_income=withdrawal_taxable_income,
+                tax_system=active_tax_system,
+            )
+            if abs(new_annual_taxes - annual_taxes) < 0.01:
                 annual_taxes = new_annual_taxes
                 break
             annual_taxes = new_annual_taxes
@@ -702,6 +718,99 @@ def _withdrawal_taxable_fraction(category: str, assumptions: dict) -> float:
     if category == "taxable":
         return assumptions.get("taxable_withdrawal_taxable_fraction", 0.50)
     return 0.0
+
+
+def resolve_tax_system(
+    config: dict,
+    *,
+    assumptions: dict,
+    both_retired: bool,
+    one_deceased: bool,
+) -> dict[str, object]:
+    """Return the active tax system for the current simulation phase."""
+    taxes = config.get("taxes", {})
+    phase = _tax_phase(both_retired=both_retired, one_deceased=one_deceased)
+
+    filing_status = str(
+        taxes.get(f"{phase}_filing_status", DEFAULT_TAX_FILING_STATUS[phase])
+    ).strip().lower()
+    if filing_status not in {"single", "married_joint", "head_of_household"}:
+        filing_status = DEFAULT_TAX_FILING_STATUS[phase]
+
+    standard_deduction = float(
+        taxes.get("standard_deduction", {}).get(filing_status, 0.0)
+    )
+    brackets = list(taxes.get("brackets", {}).get(filing_status, []))
+
+    if taxes.get("enabled") and brackets:
+        return {
+            "mode": "brackets",
+            "filing_status": filing_status,
+            "standard_deduction": standard_deduction,
+            "brackets": brackets,
+        }
+
+    return {
+        "mode": "effective_rate",
+        "rate": float(
+            assumptions["effective_tax_rate_post_retirement"]
+            if both_retired else assumptions["effective_tax_rate_pre_retirement"]
+        ),
+    }
+
+
+def _tax_phase(*, both_retired: bool, one_deceased: bool) -> str:
+    if one_deceased:
+        return "survivor"
+    if both_retired:
+        return "retirement"
+    return "pre_retirement"
+
+
+def calculate_progressive_tax(
+    *,
+    taxable_income: float,
+    standard_deduction: float,
+    brackets: list[dict],
+) -> float:
+    """Calculate tax for ordinary income using a progressive bracket table."""
+    remaining_taxable = max(0.0, float(taxable_income) - max(0.0, float(standard_deduction)))
+    lower_bound = 0.0
+    total_tax = 0.0
+
+    for bracket in brackets:
+        rate = max(0.0, float(bracket.get("rate", 0.0)))
+        upper_bound = bracket.get("up_to")
+
+        if upper_bound is None:
+            total_tax += max(0.0, remaining_taxable - lower_bound) * rate
+            break
+
+        upper_bound = float(upper_bound)
+        taxable_in_bracket = max(0.0, min(remaining_taxable, upper_bound) - lower_bound)
+        total_tax += taxable_in_bracket * rate
+        if remaining_taxable <= upper_bound:
+            break
+        lower_bound = upper_bound
+
+    return total_tax
+
+
+def estimate_annual_taxes(
+    *,
+    base_taxable_income: float,
+    withdrawal_taxable_income: float,
+    tax_system: dict[str, object],
+) -> float:
+    """Estimate annual taxes from taxable income using the active tax system."""
+    taxable_income = max(0.0, base_taxable_income + withdrawal_taxable_income)
+    if tax_system.get("mode") == "brackets":
+        return calculate_progressive_tax(
+            taxable_income=taxable_income,
+            standard_deduction=float(tax_system.get("standard_deduction", 0.0)),
+            brackets=list(tax_system.get("brackets", [])),
+        )
+    return taxable_income * float(tax_system.get("rate", 0.0))
 
 
 def _normalize_withdrawal_order(order) -> list[str]:

@@ -36,6 +36,7 @@ run.py
 - **Events are togglable.** Every event has `enabled = true/false`. Disabling never requires deleting the entry.
 - **Monarch bridge is the live anchor.** Year 0 balances come from Monarch. All prior-year assumptions are overridden by live data on each run.
 - **Withdrawal behavior is phase-aware.** The model uses `[withdrawal_policy]` to select cash reserve targets and withdrawal order separately for accumulation, retirement, and survivor phases.
+- **Tax behavior is phase-aware too.** The model can now choose filing status by lifecycle phase and apply bracket-based federal ordinary-income tax from `[taxes]`, with effective-rate fallback retained for compatibility.
 - **Cash reserves are protected in two stages.** `cash_above_target` spends only dollars above the reserve; `cash_below_target` taps the reserve itself only as a last resort.
 - **Surplus refills cash before investing.** Positive net flow first restores the active cash target, then allocates the remainder across positive non-cash investable buckets.
 - **Output is always regenerated, never cached.** `python run.py` always produces a fresh chart.
@@ -89,7 +90,7 @@ amount = -6000             # negative = cash outflow
 
 - **TOML over JSON:** Readable, commentable, stdlib. Adopted 2026-06-16.
 - **Static HTML over Streamlit:** No server overhead; simpler architecture. Streamlit is V2 option if live-reload is needed. Adopted 2026-06-16.
-- **Simplified tax in V1:** Full tax modeling is a scope trap. V1 uses flat effective rates. Adopted 2026-06-16.
+- **Simplified tax in V1:** Flat effective-rate tax was the original approximation. As of 2026-06-17, the project has started the deeper-tax-realism path with configurable federal ordinary-income brackets and standard deductions; Social Security taxability and state tax still need more work. Adopted/updated 2026-06-17.
 - **Phase-specific withdrawal policy in V1.5:** Reserve targets and withdrawal order live in `[withdrawal_policy]` instead of remaining hardcoded in `model.py`. Adopted 2026-06-17.
 - **No OWL in V1:** OWL is a downstream decumulation tool. NWN must establish the strategic picture first. Adopted 2026-06-16.
 

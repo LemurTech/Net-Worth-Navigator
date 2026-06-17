@@ -10,9 +10,10 @@
 - Chart: http://casalemuria.lan/finances/projection.html
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / living expenses / event outflows / net (yearly columns)
-- First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via effective pre/post-retirement rates
+- First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via the 2025 federal ordinary-income bracket schedule plus standard deduction, with effective-rate fallback retained only for compatibility
+- Ordinary-income tax brackets, standard deductions, and filing status by lifecycle phase now live in `config.toml [taxes]`
 - Event-level taxability is now configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
-- Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the simplified tax model
+- Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the bracket-based ordinary-income tax path
 - Withdrawal policy is now configurable by lifecycle phase via `[withdrawal_policy]` in `config.toml`
 - Phase-specific cash reserve targets are now supported for accumulation, retirement, and survivor periods
 - Surplus cash flow now refills the active cash target first, then allocates the remainder into non-cash investable buckets
@@ -63,7 +64,7 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - survivor cash target = $66,500 (roughly one year of planned survivor spending)
 - Decide whether retirement / survivor withdrawal order should stay `cash_above_target → taxable → trad_ira → roth → cash_below_target` or be tuned further
 - Current build target: deeper tax realism
-  - bracket-based tax model
+  - bracket-based federal ordinary-income tax model is now the active implementation path
   - more nuanced Social Security taxation
   - state tax treatment
   - route taxable withdrawals and Social Security through the richer tax model without changing current net-income semantics for job income
