@@ -1,38 +1,41 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-16 → ongoing
-**Current Status:** Project initialized. Repository scaffolded. Memory Bank created. Awaiting a few household parameters before config.toml can be finalized and the engine built.
+**Current Status:** V1 engine complete and running. Live Monarch balances wired. All core features implemented through End of Plan events.
+
+## Current State
+
+- `python run.py` produces a live chart at http://casalemuria.lan/finances/projection.html
+- Monarch bridge pulls live balances via MCP server subprocess
+- All 46 Monarch accounts classified in config.toml [accounts]
+- Liability amortization running (mortgage + CR-V, auto payoff detection)
+- End of Plan events implemented with SS survivor benefit step-up
+- All event types carry emoji icons; annotation overlap fixed
 
 ## Focus & Next Steps
 
-- [ ] Confirm missing household parameters (see open questions below)
-- [ ] Finalize config.toml with complete household data
-- [ ] Build monarch_bridge.py — query Monarch MCP, classify accounts
-- [ ] Build model.py — year-by-year simulation engine
-- [ ] Build charts.py — Plotly HTML output
-- [ ] Build run.py — orchestration + file deployment
-- [ ] First working chart at http://casalemuria.lan/finances/
+- [ ] Confirm `survivor_annual = 66500` (70% of $95K) feels right to Person 1
+- [ ] Confirm Person 2's SS estimate ($1,200/mo) when SSA.gov is available
+- [ ] Consider V2 enhancements (see below)
+- [ ] Periodic Monarch re-auth reminder: `cd /opt/monarch-mcp-server && uv run python login_setup.py`
 
-## Open Questions (blocking config.toml completion)
+## V2 Candidate Enhancements
 
-1. **Retirement contributions:** Approximate current annual 401k / IRA contribution amounts for Person 1 and Person 2?
-2. **Social Security estimates:** SSA.gov estimated monthly benefit for Person 1 and Person 2 (or a working estimate)?
-3. **SS start age:** Planned start age for each — 62, 67, or 70?
-4. **Target retirement spending:** Approximate target annual household spending in retirement (today's dollars)?
-5. **Mortgage:** Outstanding balance, rate, remaining term? Or is this captured in Monarch already?
-6. **Account classification:** Once Monarch is queried, Person 1 will need to confirm which accounts map to taxable / trad IRA / Roth / cash.
-7. **Person 2's accounts:** Does Person 2 have separate retirement accounts to model, or is the household treated as a single pool?
+- Proper withdrawal sequencing (taxable → trad → Roth) instead of proportional scaling
+- Full federal/state tax bracket modeling
+- Multi-scenario side-by-side chart comparison (toggle events to compare)
+- Streamlit UI for live-reload on config change
+- Mortgage payment integration into BuyHome event type
+- OWL integration for retirement withdrawal optimization
 
-## Known Issues
+## Known Issues / Notes
 
-- None yet — pre-build phase
+- SocialSecurity event labels now appear only in the start year (correct)
+- Survivor period shading label placed in paper-space to avoid collision with vline annotations
+- EndOfPlan vlines use bottom-right position to stay clear of survivor label
+- `output/` is gitignored — generated HTML is not committed
 
 ## Risks / Blockers
 
-- Monarch auth may need refresh before bridge can be tested — check with `uv run python login_setup.py` in `/opt/monarch-mcp-server`
-
-## Notes
-
-- Project root: `/home/lemurtech/Net-Worth-Navigator`
-- Web output target: `/srv/web-projects/finances/`
-- All config changes should be committed — the git history of config.toml is a financial planning record
+- Monarch auth expires periodically — re-auth before planning sessions
+- Home equity projected at inflation only (3%/yr) — no real estate market modeling

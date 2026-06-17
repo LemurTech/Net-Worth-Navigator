@@ -12,7 +12,41 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ---
 
-## [2026-06-16] — Project Initialization
+## [2026-06-17] — V1 Feature Complete
+
+### Added
+
+- Liability amortization: mortgage (3.5%, $2,675/mo total) and CR-V loan (6%, $298/mo)
+  with live Monarch balance anchors and auto payoff detection
+  - CR-V payoff: 2028 (frees $3,576/yr)
+  - Mortgage payoff: 2030 (frees $35,682/yr — 5 yrs before Person 1 retires)
+- End of Plan events: Person 1 2054, Person 2 2063
+- SS survivor benefit: on Person 1's death, Person 2 steps up to $2,691/mo (his higher check)
+- Survivor period: spending switches to survivor_annual ($66,500 = ~70% of $95K)
+- Survivor period shading on chart (gray vrect, paper-space label)
+- Emoji icons for all event types: ⚰️🏖️🏛️💸💰🏠💼⏸️🎓💍🚗
+- Annotation overlap fix: EndOfPlan uses bottom-right; alternating positions for others;
+  survivor label moved to paper-space annotation
+- Chart subtitle: "Values shown are end-of-year estimates, anchored to live Monarch balances"
+- All 46 Monarch accounts classified in config.toml [accounts]
+- Account disable list: vehicles and personal operating accounts excluded
+- Home equity as separate non-liquid band (brown dotted), grows at inflation
+
+### Changed
+
+- simulation end_year extended from 2054 to 2063 (Person 2 life expectancy)
+- monarch_bridge.py: calls MCP server venv via subprocess (version-safe)
+- model.py: home value tracked separately from mortgage balance
+
+### Decisions
+
+- **Emoji in annotations via Unicode** — Plotly renders Unicode emoji natively in annotation text. No special config needed. Adopted 2026-06-17.
+- **Survivor period label in paper-space** — avoids collision with data-space vline annotations at the same x-coordinate. Adopted 2026-06-17.
+- **survivor_annual = 66500** — ~70% of $95K couple target. Standard planning assumption. Adjustable in config.toml. Adopted 2026-06-17.
+
+---
+
+
 
 ### Added
 

@@ -92,3 +92,6 @@ amount = -6000             # negative = cash outflow
 
 - OWL is a decumulation optimizer (withdrawal phase only). NWN is the lifecycle trajectory model. They are complementary, not competing.
 - Monarch does not provide growth rates, SS estimates, or planned events — those are always manual in config.
+- **Emoji in Plotly annotations:** Unicode emoji render natively in annotation text in all modern browsers. No special config required. Put the emoji directly in the label string.
+- **Survivor period vrect label:** do NOT use `annotation_text` on `add_vrect` — Plotly places it top-left in data space and it collides with vline annotations at the same x. Use a separate `add_annotation` with `yref="paper"` instead.
+- **Annotation overlap:** alternate `annotation_position` ("top right" / "top left") by index for consecutive vlines. EndOfPlan events use "bottom right" to stay clear of the survivor label.

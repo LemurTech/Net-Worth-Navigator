@@ -15,6 +15,26 @@ import pandas as pd
 
 CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
 
+# ── Event type → emoji icon ────────────────────────────────────────────────────
+EVENT_ICONS = {
+    "EndOfPlan":      "⚰️",
+    "Retire":         "🏖️",
+    "SocialSecurity": "🏛️",
+    "Expense":        "💸",
+    "Income":         "💰",
+    "BuyHome":        "🏠",
+    "NewJob":         "💼",
+    "CareerBreak":    "⏸️",
+    "Education":      "🎓",
+    "Marriage":       "💍",
+}
+
+LIABILITY_ICONS = {
+    "mortgage": "🏠",
+    "auto":     "🚗",
+    "other":    "✅",
+}
+
 
 def load_config() -> dict:
     with open(CONFIG_PATH, "rb") as f:
@@ -104,7 +124,8 @@ def run_projection(
                 lib["payoff_year"] = year
                 lib["paid_off"] = True
                 short_name = lib["name"].split("(")[0].strip()
-                payoff_labels.append(f"{short_name} paid off")
+                icon = LIABILITY_ICONS.get(lib["type"], "✅")
+                payoff_labels.append(f"{icon} {short_name} paid off")
 
             if lib["paid_off"]:
                 freed_this_year += lib["monthly_total"] * 12
@@ -133,55 +154,63 @@ def run_projection(
 
             if etype == "EndOfPlan":
                 if event["year"] == year:
-                    active_labels.append(f"⚰️ {event['label']}")
+                    icon = EVENT_ICONS["EndOfPlan"]
+                    active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Retire":
                 if event["year"] == year:
-                    active_labels.append(event["label"])
+                    icon = EVENT_ICONS["Retire"]
+                    active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "SocialSecurity":
-                if year >= event["year"]:
-                    person_key = event["person"]
-                    # SS income handled in income calculation below
-                    pass
+                if year == event["year"]:
+                    icon = EVENT_ICONS["SocialSecurity"]
+                    active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Expense":
                 if event["year"] == year:
                     event_cash_flow += event["amount"]
-                    active_labels.append(event["label"])
+                    icon = EVENT_ICONS["Expense"]
+                    active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Income":
                 end = event.get("end_year", event["year"])
                 if event["year"] <= year <= end:
                     event_cash_flow += event["amount"]
                     if event["year"] == year:
-                        active_labels.append(event["label"])
+                        icon = EVENT_ICONS["Income"]
+                        active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "BuyHome":
                 if event["year"] == year:
                     event_cash_flow -= event["down_payment"]
-                    active_labels.append(event["label"])
+                    icon = EVENT_ICONS["BuyHome"]
+                    active_labels.append(f"{icon} {event['label']}")
                 # Mortgage payments handled as ongoing expense — TODO V2
 
             elif etype == "NewJob":
                 if event["year"] == year:
-                    active_labels.append(event["label"])
+                    icon = EVENT_ICONS["NewJob"]
+                    active_labels.append(f"{icon} {event['label']}")
                 # Income update handled in income calculation below
 
             elif etype == "CareerBreak":
                 if event["start_year"] == year:
-                    active_labels.append(event["label"])
+                    icon = EVENT_ICONS["CareerBreak"]
+                    active_labels.append(f"{icon} {event['label']}")
                 # Income zeroed in income calculation below
 
             elif etype == "Education":
                 if event["start_year"] <= year <= event["end_year"]:
                     event_cash_flow -= event["annual_cost"]
                     if event["start_year"] == year:
-                        active_labels.append(event["label"])
+                        icon = EVENT_ICONS["Education"]
+                        active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Marriage":
                 if event["year"] == year:
-                    active_labels.append(event["label"])
+                    icon = EVENT_ICONS["Marriage"]
+                    active_labels.append(f"{icon} {event['label']}")
 
         # ── Income for this year ───────────────────────────────────────────────
         matthew_income = _person_income(matthew, year, events, deceased=matthew_deceased)

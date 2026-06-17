@@ -57,35 +57,73 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     ))
 
     # ── Survivor period shading ────────────────────────────────────────────────
+    # Use add_vrect WITHOUT annotation_text to avoid the built-in label
+    # (which Plotly places in the top-left and clashes with vline annotations).
+    # Instead, add a separate paper-space annotation at the midpoint.
     survivor_years = df[df["survivor"] == True]["year"]
     if len(survivor_years) > 0:
+        x0 = survivor_years.iloc[0] - 0.5
+        x1 = df["year"].iloc[-1] + 0.5
         fig.add_vrect(
-            x0=survivor_years.iloc[0] - 0.5,
-            x1=df["year"].iloc[-1] + 0.5,
+            x0=x0,
+            x1=x1,
             fillcolor="rgba(100,100,100,0.06)",
             line_width=0,
-            annotation_text="Survivor period",
-            annotation_position="top left",
-            annotation_font_size=10,
-            annotation_font_color="rgba(100,100,100,0.7)",
+        )
+        # Standalone annotation placed in paper y-space (above plot area)
+        # so it can never collide with data-space vline annotations
+        fig.add_annotation(
+            x=(survivor_years.iloc[0] + df["year"].iloc[-1]) / 2,
+            y=1.0,
+            xref="x",
+            yref="paper",
+            text="👤 Survivor period",
+            showarrow=False,
+            font=dict(size=10, color="rgba(100,100,100,0.75)"),
+            bgcolor="rgba(255,255,255,0.6)",
+            borderpad=2,
+            yanchor="bottom",
         )
 
     # ── Event annotations ─────────────────────────────────────────────────────
-    events_df = df[df["events_active"] != ""]
-    for _, row in events_df.iterrows():
+    # Alternate top-right / top-left on consecutive annotated years to reduce
+    # horizontal overlap. EndOfPlan events always get bottom-right so they
+    # sit below the survivor-period label rather than competing with it.
+    events_df = df[df["events_active"] != ""].copy()
+    positions = ["top right", "top left"]
+
+    for i, (_, row) in enumerate(events_df.iterrows()):
+        label = row["events_active"]
+        is_eop = "⚰️" in label
+
+        if is_eop:
+            pos = "bottom right"
+            color = "rgba(80,80,80,0.55)"
+            dash = "dash"
+        else:
+            pos = positions[i % 2]
+            color = "rgba(60,100,180,0.55)"
+            dash = "dot"
+
         fig.add_vline(
             x=row["year"],
-            line_dash="dot",
-            line_color="rgba(200,50,50,0.5)",
-            annotation_text=row["events_active"],
-            annotation_position="top right",
+            line_dash=dash,
+            line_color=color,
+            annotation_text=label,
+            annotation_position=pos,
             annotation_font_size=10,
+            annotation_bgcolor="rgba(255,255,255,0.75)",
+            annotation_borderpad=3,
         )
 
     # ── Layout ─────────────────────────────────────────────────────────────────
     fig.update_layout(
         title=dict(
-            text="Net Worth Navigator — Household Projection<br><sup>Values shown are end-of-year estimates, anchored to live Monarch balances</sup>",
+            text=(
+                "Net Worth Navigator — Household Projection"
+                "<br><sup>Values shown are end-of-year estimates, "
+                "anchored to live Monarch balances</sup>"
+            ),
             font=dict(size=20),
         ),
         xaxis=dict(
@@ -103,14 +141,14 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.02,
+            y=1.06,
             xanchor="right",
             x=1,
         ),
         plot_bgcolor="white",
         paper_bgcolor="white",
-        height=600,
-        margin=dict(l=80, r=40, t=80, b=60),
+        height=650,
+        margin=dict(l=80, r=40, t=100, b=60),
     )
 
     # ── Write output ───────────────────────────────────────────────────────────
