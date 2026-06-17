@@ -12,8 +12,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from src.model import run_projection
 from src.charts import build_chart
+from src.model import run_projection
+from src.monarch_bridge import classify_accounts, extract_liability_balances, fetch_raw_accounts
 
 OUTPUT_DIR  = Path("output")
 DEPLOY_DIR  = Path("/srv/web-projects/finances")
@@ -21,17 +22,25 @@ CACHE_FILE  = OUTPUT_DIR / "balances_cache.json"
 OFFLINE     = "--offline" in sys.argv
 
 
-def save_cache(portfolio: dict, extras: dict, liability_balances: dict) -> None:
+def save_cache(
+    portfolio: dict,
+    extras: dict,
+    liability_balances: dict,
+    raw_accounts: list[dict] | None = None,
+) -> None:
     OUTPUT_DIR.mkdir(exist_ok=True)
-    CACHE_FILE.write_text(json.dumps({
-        "timestamp":         datetime.now().isoformat(),
-        "portfolio":         portfolio,
-        "extras":            extras,
+    payload = {
+        "timestamp": datetime.now().isoformat(),
+        "portfolio": portfolio,
+        "extras": extras,
         "liability_balances": liability_balances,
-    }, indent=2))
+    }
+    if raw_accounts is not None:
+        payload["raw_accounts"] = raw_accounts
+    CACHE_FILE.write_text(json.dumps(payload, indent=2))
 
 
-def load_cache() -> tuple[dict, dict, dict]:
+def load_cache() -> dict:
     if not CACHE_FILE.exists():
         raise FileNotFoundError(
             "No cached balances found at output/balances_cache.json.\n"
@@ -40,7 +49,7 @@ def load_cache() -> tuple[dict, dict, dict]:
     data = json.loads(CACHE_FILE.read_text())
     ts   = data.get("timestamp", "unknown")
     print(f"  Using cached balances from {ts}")
-    return data["portfolio"], data["extras"], data["liability_balances"]
+    return data
 
 
 def main():
@@ -51,13 +60,23 @@ def main():
 
     # 1. Balances — live or cached
     if OFFLINE:
-        portfolio, extras, liability_balances = load_cache()
+        cached = load_cache()
+        raw_accounts = cached.get("raw_accounts")
+        if raw_accounts is not None:
+            portfolio, extras = classify_accounts(raw_accounts)
+            liability_balances = extract_liability_balances(raw_accounts)
+            print("  Reclassified cached raw accounts using current config.toml")
+        else:
+            portfolio = cached["portfolio"]
+            extras = cached["extras"]
+            liability_balances = cached["liability_balances"]
+            print("  WARNING: legacy cache lacks raw account data; config-only account changes require one full run")
     else:
         print("→ Fetching account balances from Monarch...")
-        from src.monarch_bridge import get_balances, get_liability_balances
-        portfolio, extras       = get_balances()
-        liability_balances      = get_liability_balances()
-        save_cache(portfolio, extras, liability_balances)
+        raw_accounts = fetch_raw_accounts()
+        portfolio, extras = classify_accounts(raw_accounts)
+        liability_balances = extract_liability_balances(raw_accounts)
+        save_cache(portfolio, extras, liability_balances, raw_accounts=raw_accounts)
 
     home_value        = extras["home_value"]
     total_liabilities = sum(liability_balances.values())

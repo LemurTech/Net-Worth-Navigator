@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from src import charts, model, tables
+import run
+from src import charts, model, monarch_bridge, tables
 
 
 class RecurringEventsTests(unittest.TestCase):
@@ -226,6 +227,93 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Retirement Age", html)
         self.assertIn("Net Worth at End", html)
         self.assertLess(html.index("kpi-strip"), html.index('id="nwn-chart"'))
+
+    def test_classify_accounts_honors_disabled_real_estate(self):
+        config = {
+            "accounts": {
+                "disabled": ["Casa Lemuria"],
+                "Casa Lemuria": "real_estate",
+                "CO: Checking HHold (4412)": "cash",
+                "Mortgage (5156)": "liability",
+            },
+            "liabilities": [{"name": "Mortgage (5156)"}],
+        }
+        raw = [
+            {"name": "Casa Lemuria", "balance": 454500.0, "type": "Real Estate"},
+            {"name": "CO: Checking HHold (4412)", "balance": 12000.0, "type": "Depository"},
+            {"name": "Mortgage (5156)", "balance": -125355.55, "type": "Loan"},
+        ]
+
+        portfolio, extras = monarch_bridge.classify_accounts(raw, config)
+        liabilities = monarch_bridge.extract_liability_balances(raw, config)
+
+        self.assertEqual(portfolio["cash"], 12000.0)
+        self.assertEqual(extras["home_value"], 0.0)
+        self.assertEqual(liabilities, {"Mortgage (5156)": 125355.55})
+
+    def test_offline_cache_with_raw_accounts_reclassifies_using_current_config(self):
+        cached = {
+            "timestamp": "2026-06-17T00:00:00",
+            "portfolio": {"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0},
+            "extras": {"home_value": 454500.0, "vehicles": 0.0, "other": 0.0},
+            "liability_balances": {"Mortgage (5156)": 125355.55},
+            "raw_accounts": [
+                {"name": "Casa Lemuria", "balance": 454500.0, "type": "Real Estate"},
+                {"name": "CO: Checking HHold (4412)", "balance": 12000.0, "type": "Depository"},
+                {"name": "Mortgage (5156)", "balance": -125355.55, "type": "Loan"},
+            ],
+        }
+        config = {
+            "accounts": {
+                "disabled": ["Casa Lemuria"],
+                "Casa Lemuria": "real_estate",
+                "CO: Checking HHold (4412)": "cash",
+                "Mortgage (5156)": "liability",
+            },
+            "liabilities": [{"name": "Mortgage (5156)"}],
+        }
+
+        captured = {}
+
+        def fake_run_projection(balances, home_value=0.0, liability_balances=None):
+            captured["balances"] = balances
+            captured["home_value"] = home_value
+            captured["liability_balances"] = liability_balances
+            return pd.DataFrame([
+                {
+                    "year": 2026,
+                    "home_value": home_value,
+                    "mortgage": liability_balances.get("Mortgage (5156)", 0.0),
+                    "home_equity": home_value - liability_balances.get("Mortgage (5156)", 0.0),
+                    "cash": balances.get("cash", 0.0),
+                    "taxable": balances.get("taxable", 0.0),
+                    "trad_ira": balances.get("trad_ira", 0.0),
+                    "roth": balances.get("roth", 0.0),
+                    "total_net_worth": sum(balances.values()) + home_value - liability_balances.get("Mortgage (5156)", 0.0),
+                    "survivor": False,
+                    "events_active": "",
+                    "matthew_income": 0.0,
+                    "weny_income": 0.0,
+                    "freed_payments": 0.0,
+                    "annual_spend": 0.0,
+                    "annual_taxes": 0.0,
+                    "net_flow": 0.0,
+                    "event_items": [],
+                }
+            ])
+
+        with patch.object(run, "OFFLINE", True):
+            with patch("run.load_cache", return_value=cached):
+                with patch("run.build_chart"):
+                    with patch("run.shutil.copy2"):
+                        with patch("pathlib.Path.chmod"):
+                            with patch("run.run_projection", side_effect=fake_run_projection):
+                                with patch("src.monarch_bridge.load_config", return_value=config):
+                                    run.main()
+
+        self.assertEqual(captured["balances"]["cash"], 12000.0)
+        self.assertEqual(captured["home_value"], 0.0)
+        self.assertEqual(captured["liability_balances"], {"Mortgage (5156)": 125355.55})
 
 
 if __name__ == "__main__":

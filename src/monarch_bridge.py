@@ -78,9 +78,9 @@ def fetch_raw_accounts() -> list[dict]:
     return json.loads(lines[-1])
 
 
-def get_balances() -> tuple[dict[str, float], dict[str, float]]:
+def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict[str, float], dict[str, float]]:
     """
-    Classify accounts per config.toml [accounts] and return totals.
+    Classify raw Monarch accounts per config.toml [accounts] and return totals.
 
     Accounts in [accounts].disabled are excluded regardless of their category.
     Liability accounts are excluded here — they are tracked dynamically via
@@ -90,11 +90,10 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
         portfolio   — investable: {taxable, trad_ira, roth, cash}
         extras      — {home_value (gross), vehicles, other}
     """
-    config = load_config()
+    if config is None:
+        config = load_config()
     classification_map: dict[str, str] = config.get("accounts", {})
     disabled: set[str] = set(classification_map.get("disabled", []))
-
-    raw = fetch_raw_accounts()
 
     portfolio = {"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0}
     extras = {"home_value": 0.0, "vehicles": 0.0, "other": 0.0}
@@ -131,20 +130,24 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
     return portfolio, extras
 
 
-def get_liability_balances() -> dict[str, float]:
+def get_balances() -> tuple[dict[str, float], dict[str, float]]:
+    """Fetch and classify current Monarch balances using the live config."""
+    return classify_accounts(fetch_raw_accounts())
+
+
+def extract_liability_balances(raw: list[dict], config: dict | None = None) -> dict[str, float]:
     """
-    Return current balances for all [[liabilities]] in config.toml,
-    pulled live from Monarch by account name.
+    Return balances for all [[liabilities]] in config.toml from raw account data.
 
     Returns: {liability_name: current_balance (positive float)}
     """
-    config = load_config()
+    if config is None:
+        config = load_config()
     liabilities = config.get("liabilities", [])
     if not liabilities:
         return {}
 
     liability_names = {lib["name"] for lib in liabilities}
-    raw = fetch_raw_accounts()
     balances = {}
 
     for acct in raw:
@@ -158,6 +161,16 @@ def get_liability_balances() -> dict[str, float]:
             print(f"  WARNING: liability '{lib['name']}' not found in Monarch accounts")
 
     return balances
+
+
+def get_liability_balances() -> dict[str, float]:
+    """
+    Return current balances for all [[liabilities]] in config.toml,
+    pulled live from Monarch by account name.
+
+    Returns: {liability_name: current_balance (positive float)}
+    """
+    return extract_liability_balances(fetch_raw_accounts())
 
 
 def get_account_balances() -> dict[str, float]:

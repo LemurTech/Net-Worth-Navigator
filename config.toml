@@ -5,7 +5,7 @@
 
 [simulation]
 start_year = 2026
-end_year    = 2063   # max(matthew life expectancy: 2054, weny life expectancy: 2063)
+end_year   = 2063   # max(matthew life expectancy: 2054, weny life expectancy: 2063)
 
 [display]
 projection_title = "Casa Lemuria"
@@ -110,6 +110,9 @@ disabled = [
     "RO: Person 1 Savings (6500)",
     "RO: Person 1 Ownership (6587)",
     "RO: Person 1 Checking (8809)",
+
+    # Primary home
+    "Casa Lemuria",
 ]
 
 # ── Retirement / Investable ────────────────────────────────────────────────────
