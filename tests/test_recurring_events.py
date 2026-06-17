@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from src import model, tables
+from src import charts, model, tables
 
 
 class RecurringEventsTests(unittest.TestCase):
@@ -163,6 +163,69 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Discretionary event expenses", html)
         self.assertIn("Surgery", html)
         self.assertIn("Vacation", html)
+
+    def test_build_kpi_summary_uses_first_retirement_year_and_compact_values(self):
+        config = {
+            "matthew": {"name": "Person 1", "dob": "1967-04-23"},
+            "weny": {"name": "Person 2", "dob": "1976-10-02"},
+            "events": [
+                {"enabled": True, "type": "Retire", "person": "weny", "year": 2037, "label": "Retirement (W)"},
+                {"enabled": True, "type": "Retire", "person": "matthew", "year": 2035, "label": "Retirement (M)"},
+            ],
+        }
+        df = pd.DataFrame([
+            {"year": 2026, "total_net_worth": 305000.0},
+            {"year": 2035, "total_net_worth": 1040000.0},
+            {"year": 2063, "total_net_worth": 1610000.0},
+        ])
+
+        html = charts._build_kpi_summary(config, df)
+
+        self.assertIn("Net Worth (EOY)", html)
+        self.assertIn("Net Worth at Retirement", html)
+        self.assertIn("Retirement Age", html)
+        self.assertIn("Net Worth at End", html)
+        self.assertIn("$305K", html)
+        self.assertIn("$1.04M", html)
+        self.assertIn(">68<", html)
+        self.assertIn("$1.61M", html)
+
+    def test_build_chart_writes_kpi_strip_above_chart(self):
+        config = {
+            "display": {"projection_title": "Casa Lemuria"},
+            "matthew": {"name": "Person 1", "dob": "1967-04-23"},
+            "weny": {"name": "Person 2", "dob": "1976-10-02"},
+            "events": [
+                {"enabled": True, "type": "Retire", "person": "matthew", "year": 2035, "label": "Retirement (M)"},
+            ],
+            "simulation": {"start_year": 2026, "end_year": 2063},
+        }
+        df = pd.DataFrame([
+            {"year": 2026, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
+             "total_net_worth": 305000.0, "survivor": False, "events_active": "", "matthew_income": 0.0, "weny_income": 0.0,
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
+            {"year": 2035, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
+             "total_net_worth": 1040000.0, "survivor": False, "events_active": "🎉 Retirement (M)", "matthew_income": 0.0, "weny_income": 0.0,
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
+            {"year": 2063, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
+             "total_net_worth": 1610000.0, "survivor": False, "events_active": "", "matthew_income": 0.0, "weny_income": 0.0,
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
+        ])
+
+        with patch("src.charts.load_config", return_value=config):
+            with patch("src.charts.resolve_runtime_config", side_effect=lambda c: c):
+                with patch("src.charts._build_gantt_chart", return_value="<div>gantt</div>"):
+                    from pathlib import Path
+                    out = Path("/tmp/nwn-kpi-test.html")
+                    charts.build_chart(df, out)
+                    html = out.read_text(encoding="utf-8")
+
+        self.assertIn("kpi-strip", html)
+        self.assertIn("Net Worth (EOY)", html)
+        self.assertIn("Net Worth at Retirement", html)
+        self.assertIn("Retirement Age", html)
+        self.assertIn("Net Worth at End", html)
+        self.assertLess(html.index("kpi-strip"), html.index('id="nwn-chart"'))
 
 
 if __name__ == "__main__":

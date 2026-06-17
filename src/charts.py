@@ -25,6 +25,15 @@ _TABS_CSS = """
   .toolbar-link:hover { border-color: #7dd3fc; }
   .chart-wrap { background: #111827; border-radius: 8px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.32); margin-bottom: 16px; }
+  .kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+               border: 1px solid #243142; border-radius: 10px; overflow: hidden;
+               background: #0f1725; margin: 4px 4px 12px; }
+  .kpi-box { padding: 14px 16px 16px; min-width: 0; }
+  .kpi-box + .kpi-box { border-left: 1px solid #243142; }
+  .kpi-label { font-size: 12px; line-height: 1.3; color: #9fb2c8; margin-bottom: 8px;
+               letter-spacing: 0.01em; }
+  .kpi-value { font-size: 29px; line-height: 1.05; font-weight: 700; color: #f8fafc;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid #243142; }
   .tab-btn { padding: 8px 18px; border: none; background: none; cursor: pointer;
              font-size: 14px; color: #93a4ba; border-bottom: 3px solid transparent;
@@ -59,6 +68,10 @@ _TABS_CSS = """
   .gantt-wrap { background: #111827; border-radius: 6px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.28); }
   .gantt-empty { color: #93a4ba; padding: 16px; }
+  @media (max-width: 900px) {
+    .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi-value { font-size: 24px; }
+  }
 </style>
 """
 
@@ -234,6 +247,73 @@ def _person_display(config: dict, person_key: str | None) -> str:
     if not person_key:
         return ""
     return config.get(person_key, {}).get("name", person_key.title())
+
+
+def _format_compact_currency(value: float) -> str:
+    sign = "-" if value < 0 else ""
+    amount = abs(float(value))
+    if amount >= 1_000_000:
+        scaled = f"{amount / 1_000_000:.2f}".rstrip("0").rstrip(".")
+        return f"{sign}${scaled}M"
+    if amount >= 1_000:
+        scaled = f"{amount / 1_000:.0f}"
+        return f"{sign}${scaled}K"
+    return f"{sign}${amount:,.0f}"
+
+
+def _first_retirement_event(config: dict) -> dict | None:
+    events = [
+        e for e in config.get("events", [])
+        if e.get("enabled", False) and e.get("type") == "Retire" and e.get("person")
+    ]
+    if not events:
+        return None
+    return min(events, key=lambda e: int(e["year"]))
+
+
+def _retirement_age(config: dict, event: dict | None) -> int | None:
+    if not event:
+        return None
+    person = config.get(event.get("person"), {})
+    dob = person.get("dob")
+    if not dob:
+        return None
+    try:
+        birth_year = int(str(dob).split("-", 1)[0])
+        return int(event["year"]) - birth_year
+    except (TypeError, ValueError, KeyError):
+        return None
+
+
+def _build_kpi_summary(config: dict, df: pd.DataFrame) -> str:
+    first_row = df.iloc[0]
+    last_row = df.iloc[-1]
+    first_retire = _first_retirement_event(config)
+    retirement_year = int(first_retire["year"]) if first_retire else None
+    retirement_row = None
+    if retirement_year is not None:
+        match = df[df["year"] == retirement_year]
+        if not match.empty:
+            retirement_row = match.iloc[0]
+
+    cards = [
+        ("Net Worth (EOY)", _format_compact_currency(first_row["total_net_worth"])),
+        (
+            "Net Worth at Retirement",
+            _format_compact_currency(retirement_row["total_net_worth"]) if retirement_row is not None else "—",
+        ),
+        (
+            "Retirement Age",
+            str(_retirement_age(config, first_retire)) if _retirement_age(config, first_retire) is not None else "—",
+        ),
+        ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"])),
+    ]
+
+    boxes = "".join(
+        f"<div class='kpi-box'><div class='kpi-label'>{label}</div><div class='kpi-value'>{value}</div></div>"
+        for label, value in cards
+    )
+    return f"<div class='kpi-strip'>{boxes}</div>"
 
 
 def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
@@ -438,6 +518,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
         include_plotlyjs="cdn",
         div_id="nwn-chart",
     )
+    kpi_html = _build_kpi_summary(config, df)
 
     # Build table HTML
     accounts_html  = build_accounts_table(df)
@@ -458,6 +539,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     <a class="toolbar-link" href="/finances/config/">Edit Config</a>
   </div>
   <div class="chart-wrap">
+    {kpi_html}
     {chart_div}
   </div>
 

@@ -28,6 +28,7 @@
 - First-column labels and section bands are frozen via JS `translateX(scrollLeft)` + `requestAnimationFrame`
 - Table navigation now supports grab-and-drag panning and moderated wheel-to-horizontal scrolling
 - Main chart now uses 2-year x-axis ticks with 6px tick-label standoff on both axes
+- Projection page now includes a KPI summary strip above the chart: Net Worth (EOY), Net Worth at Retirement, Retirement Age (first retiree), and Net Worth at End
 - Page chrome, tables, and both Plotly charts now use a cohesive dark theme
 - Main chart subtitle/label after `Net Worth Navigator —` is now configurable via `[display].projection_title` in `config.toml`
 

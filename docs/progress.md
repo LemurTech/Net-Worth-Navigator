@@ -11,6 +11,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Regression coverage for recurring event expansion and yearly application under `tests/test_recurring_events.py`
 - `Expense` events now support `expense_kind = "mandatory" | "discretionary"`, with 🏖️ for discretionary, 💸 for mandatory, and 🎉 for retirement
 - Cash Flow now splits mandatory event expenses from discretionary event expenses
+- KPI summary strip above the chart showing Net Worth (EOY), Net Worth at Retirement, Retirement Age, and Net Worth at End
 - Raw TOML config editor page at `/finances/config/`
 - Validate, Save, and Save + Re-render actions for `config.toml`
 - Automatic timestamped config backups under `output/config-backups/` before each save
