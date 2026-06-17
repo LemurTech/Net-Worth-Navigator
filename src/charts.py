@@ -85,25 +85,38 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             yanchor="bottom",
         )
 
-    # ── Event annotations — diagonal labels ───────────────────────────────────
-    # textangle=-60 reads naturally on a tilt while still avoiding overlap.
-    # -90 (fully vertical) is harder to read; -60 is the legibility sweet spot.
+    # ── Event annotations — diagonal labels radiating from line top ───────────
+    # Vline and annotation are separated so we get full anchor control.
+    # add_vline draws the line; add_annotation places the label with
+    # yanchor="bottom" so the text base sits exactly at the top of the line
+    # and radiates diagonally upward into the margin at -60°.
     events_df = df[df["events_active"] != ""].copy()
 
     for _, row in events_df.iterrows():
         label  = row["events_active"]
         is_eop = "⚰️" in label
 
+        # Draw the line only — no annotation attached
         fig.add_vline(
             x=row["year"],
             line_dash="dash" if is_eop else "dot",
             line_color="rgba(80,80,80,0.55)" if is_eop else "rgba(60,100,180,0.55)",
-            annotation_text=label,
-            annotation_position="top right",
-            annotation_textangle=-60,
-            annotation_font_size=11,
-            annotation_bgcolor="rgba(255,255,255,0.88)",
-            annotation_borderpad=3,
+        )
+
+        # Label anchored to the top of the line, radiating upward
+        fig.add_annotation(
+            x=row["year"],
+            y=1,
+            xref="x",
+            yref="paper",
+            text=label,
+            showarrow=False,
+            textangle=-60,
+            font=dict(size=11),
+            bgcolor="rgba(255,255,255,0.88)",
+            borderpad=3,
+            xanchor="left",
+            yanchor="bottom",
         )
 
     # ── Layout ─────────────────────────────────────────────────────────────────
