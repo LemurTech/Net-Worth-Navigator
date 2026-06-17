@@ -6,9 +6,28 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Gantt tab added to the projection page
+- Gantt supports milestone vs span semantics by event type
+- Gantt includes liability payoff milestones derived from projection output
+- Gantt row labels include event/liability icons
+- Gantt includes survivor-period shading aligned to projection output
+- Main chart title suffix is configurable via `[display].projection_title` in `config.toml`
+- First-pass tax modeling now applies effective tax rates to Social Security and positive income events while preserving current job income as net cash
+- Cash Flow tab now exposes positive income events in Income and `Estimated taxes` in Expenses
+- Event-level taxability is configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
+- Withdrawal-source sequencing is now active: deficits are covered from cash → taxable → trad IRA → Roth, and taxable/trad withdrawals feed the simplified tax model
+
 ### Changed
 
+- Projection page moved to a cohesive dark theme across chrome, tables, and both Plotly charts
+- Main chart x-axis uses 2-year ticks with 6px tick-label standoff on both axes
+- Table horizontal navigation now supports grab-to-pan and moderated wheel scrolling
+- Gantt now resizes correctly when shown from a hidden tab
+
 ### Fixed
+
+- Frozen first-column table labels and section bands now work reliably via JS `translateX(scrollLeft)`
+- Gantt no longer renders condensed from hidden-tab Plotly sizing
 
 ---
 

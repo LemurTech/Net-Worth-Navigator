@@ -116,9 +116,14 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
     if any(v != 0 for v in freed):
         rows.append(_data_row("Freed loan payments",  freed, indent=True))
 
+    for label, amounts in event_label_set.items():
+        if any(a > 0 for a in amounts):
+            rows.append(_data_row(label, amounts, indent=True))
+
     total_income = [
         (subset.loc[y, "matthew_income"] + subset.loc[y, "weny_income"]
-         + subset.loc[y, "freed_payments"])
+         + subset.loc[y, "freed_payments"]
+         + sum(a for _, a in (subset.loc[y, "event_items"] or []) if a > 0))
         if y in subset.index else 0.0
         for y in years
     ]
@@ -131,6 +136,13 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
                            for y in years],
                           indent=True))
 
+    taxes = [
+        -subset.loc[y, "annual_taxes"] if y in subset.index else 0.0
+        for y in years
+    ]
+    if any(v != 0 for v in taxes):
+        rows.append(_data_row("Estimated taxes", taxes, indent=True))
+
     for label, amounts in event_label_set.items():
         if any(a < 0 for a in amounts):
             # Outflow event
@@ -138,7 +150,7 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
         # Income events shown in income section above via event_items totals
 
     total_expenses = [
-        -(subset.loc[y, "annual_spend"] +
+        -(subset.loc[y, "annual_spend"] + subset.loc[y, "annual_taxes"] +
           sum(a for _, a in (subset.loc[y, "event_items"] or []) if a < 0))
         if y in subset.index else 0.0
         for y in years

@@ -7,6 +7,9 @@
 start_year = 2026
 end_year    = 2063   # max(matthew life expectancy: 2054, weny life expectancy: 2063)
 
+[display]
+projection_title = "Casa Lemuria"
+
 
 # ─── Household Members ────────────────────────────────────────────────────────
 
@@ -73,6 +76,10 @@ equity_allocation = 0.70    # portfolio stock/bond split (0.70 = 70% equities)
 # Replace with bracket model in V2
 effective_tax_rate_pre_retirement  = 0.22
 effective_tax_rate_post_retirement = 0.15
+
+# Withdrawal taxability (simplified — first-pass sequencing model)
+taxable_withdrawal_taxable_fraction = 0.50   # rough basis/gains proxy for taxable brokerage withdrawals
+trad_ira_withdrawal_taxable_fraction = 1.00  # pre-tax retirement accounts taxed in full on withdrawal
 
 
 # ─── Account Classification ───────────────────────────────────────────────────
@@ -195,9 +202,9 @@ type          = "auto"
 # Event types and their additional required fields:
 #
 #   Retire          person, year
-#   SocialSecurity  person, year, monthly_benefit
+#   SocialSecurity  person, year, monthly_benefit [, taxable=false] [, taxable_fraction=0.85]
 #   Expense         year, amount (negative = outflow)
-#   Income          year, amount [, end_year]
+#   Income          year, amount [, end_year] [, taxable=false] [, taxable_fraction=0.50]
 #   BuyHome         year, price, down_payment, mortgage_rate, term_years
 #   NewJob          person, year, annual_income
 #   CareerBreak     person, start_year, end_year
@@ -208,51 +215,53 @@ type          = "auto"
 [[events]]
 enabled = true
 type    = "EndOfPlan"
-label   = "Person 1 — End of Plan"
+label   = "End of Plan (M)"
 person  = "matthew"
 year    = 2054                      # 1967 + 87
 
 [[events]]
 enabled = true
 type    = "EndOfPlan"
-label   = "Person 2 — End of Plan"
+label   = "End of Plan (W)"
 person  = "weny"
 year    = 2063                      # 1976 + 87
 
 [[events]]
 enabled = true
 type    = "Retire"
-label   = "Person 1 retires"
+label   = "Retirement (M)"
 person  = "matthew"
 year    = 2035
 
 [[events]]
 enabled = true
 type    = "Retire"
-label   = "Person 2 retires"
+label   = "Retirement (W)"
 person  = "weny"
 year    = 2037
 
 [[events]]
 enabled = true
 type    = "SocialSecurity"
-label   = "Person 1 SS income begins"
+label   = "SS Begins (M)"
 person  = "matthew"
 year    = 2034                      # age 67
 monthly_benefit = 2691              # SSA.gov estimate at full retirement age
+# taxable / taxable_fraction optional — defaults to fully taxable in current model
 
 [[events]]
 enabled = true
 type    = "SocialSecurity"
-label   = "Person 2 SS income begins"
+label   = "SS Begins (W)"
 person  = "weny"
 year    = 2043                      # age 67
 monthly_benefit = 1200              # working estimate — update from SSA.gov
+# taxable / taxable_fraction optional — defaults to fully taxable in current model
 
 [[events]]
 enabled = true
 type    = "Expense"
-label   = "Surgery (Person 2)"
+label   = "Surgery (W)"
 year    = 2026
 amount  = -18000                    # Person 1's $5K contribution + from other accounts
 
@@ -305,6 +314,8 @@ label   = "Side income example"
 year    = 2027
 amount  = 12000
 end_year = 2030                     # optional — omit for one-time income
+taxable = true                      # optional — set false for non-taxable inflows
+# taxable_fraction = 0.50           # optional partial-taxability override
 
 [[events]]
 enabled = false

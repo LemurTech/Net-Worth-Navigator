@@ -148,6 +148,7 @@ def run_projection(
         # ── Apply events for this year ─────────────────────────────────────────
         active_labels = []
         event_cash_flow = 0.0
+        taxable_event_income = 0.0
         event_items: list[tuple[str, float]] = []   # (label, amount) for cash flow table
 
         for event in events:
@@ -180,6 +181,10 @@ def run_projection(
                 if event["year"] <= year <= end:
                     event_cash_flow += event["amount"]
                     event_items.append((event["label"], event["amount"]))
+                    if event["amount"] > 0:
+                        taxable_event_income += (
+                            event["amount"] * _event_taxable_fraction(event, default=1.0)
+                        )
                     if event["year"] == year:
                         icon = EVENT_ICONS["Income"]
                         active_labels.append(f"{icon} {event['label']}")
@@ -217,8 +222,12 @@ def run_projection(
                     active_labels.append(f"{icon} {event['label']}")
 
         # ── Income for this year ───────────────────────────────────────────────
-        matthew_income = _person_income(matthew, year, events, deceased=matthew_deceased)
-        weny_income    = _person_income(weny, year, events, deceased=weny_deceased)
+        matthew_parts = _person_income_components(
+            matthew, year, events, deceased=matthew_deceased
+        )
+        weny_parts = _person_income_components(
+            weny, year, events, deceased=weny_deceased
+        )
 
         # ── SS survivor benefit: survivor keeps the higher of the two checks ───
         # If one person is deceased and both had started SS, the survivor's
@@ -232,8 +241,22 @@ def run_projection(
                 and e.get("person") == "matthew"
                 and year >= e["year"]
             )
+            matthew_ss_taxable = sum(
+                (e.get("monthly_benefit", 0) * 12) * _event_taxable_fraction(e, default=1.0)
+                for e in events
+                if e["type"] == "SocialSecurity"
+                and e.get("person") == "matthew"
+                and year >= e["year"]
+            )
             weny_ss = sum(
                 e.get("monthly_benefit", 0) * 12
+                for e in events
+                if e["type"] == "SocialSecurity"
+                and e.get("person") == "weny"
+                and year >= e["year"]
+            )
+            weny_ss_taxable = sum(
+                (e.get("monthly_benefit", 0) * 12) * _event_taxable_fraction(e, default=1.0)
                 for e in events
                 if e["type"] == "SocialSecurity"
                 and e.get("person") == "weny"
@@ -246,11 +269,17 @@ def run_projection(
                 # Person 2 survives: receives higher of two checks (Person 1's if higher)
                 if matthew_ss > weny_ss:
                     # Step Person 2 up — replace her SS with Person 1's higher amount
-                    weny_income = weny_income - weny_ss + matthew_ss
+                    weny_parts["ss_income"] = matthew_ss
+                    weny_parts["ss_taxable_income"] = matthew_ss_taxable
+                    weny_parts["cash_income"] = (
+                        weny_parts["earned_income"] + weny_parts["ss_income"]
+                    )
             elif weny_deceased and not matthew_deceased and matthew_ss > 0:
                 # Person 1 survives: already on higher check, no change needed
                 pass
 
+        matthew_income = matthew_parts["cash_income"]
+        weny_income    = weny_parts["cash_income"]
         total_income = matthew_income + weny_income
 
         # ── Contributions (pre-retirement only) ────────────────────────────────
@@ -280,32 +309,68 @@ def run_projection(
         else:
             annual_spend = total_income - total_contrib
 
-        # Freed liability payments add to net cash flow
-        net_flow = total_income - annual_spend + event_cash_flow + freed_this_year
+        tax_rate = (
+            assumptions["effective_tax_rate_post_retirement"]
+            if both_retired else assumptions["effective_tax_rate_pre_retirement"]
+        )
+        base_taxable_income = (
+            matthew_parts["ss_taxable_income"] +
+            weny_parts["ss_taxable_income"] +
+            taxable_event_income
+        )
+
+        # Cash flow before any taxes or withdrawal sequencing
+        base_net_flow = total_income - annual_spend + event_cash_flow + freed_this_year
 
         # ── Grow portfolio ─────────────────────────────────────────────────────
         growth_rate = (
             assumptions["stock_return"] * assumptions["equity_allocation"] +
             assumptions["bond_return"] * (1 - assumptions["equity_allocation"])
         )
-        total_portfolio = sum(portfolio.values())
-        total_portfolio = total_portfolio * (1 + growth_rate) + net_flow
-
-        # Simplified: grow each bucket proportionally
-        # V2: model withdrawals with proper sequencing
         current_total = sum(portfolio.values())
-        if current_total > 0 and total_portfolio > 0:
-            for cat in portfolio:
-                portfolio[cat] = (portfolio[cat] / current_total) * total_portfolio
-        elif total_portfolio <= 0:
-            # Portfolio depleted — track as negative cash (debt/shortfall)
-            for cat in portfolio:
-                portfolio[cat] = 0.0
-            portfolio["cash"] = total_portfolio
+        if current_total > 0:
+            grown_portfolio = {
+                cat: balance * (1 + growth_rate)
+                for cat, balance in portfolio.items()
+            }
         else:
-            portfolio["cash"] = total_portfolio
+            grown_portfolio = portfolio.copy()
+
+        annual_taxes = base_taxable_income * tax_rate
+        withdrawal_taxable_income = 0.0
+        working_portfolio = grown_portfolio.copy()
+
+        # Iterate because taxable withdrawals themselves increase taxes.
+        for _ in range(5):
+            working_portfolio = grown_portfolio.copy()
+            post_tax_flow = base_net_flow - annual_taxes
+
+            if post_tax_flow >= 0:
+                _apply_surplus_proportionally(working_portfolio, post_tax_flow)
+                withdrawal_taxable_income = 0.0
+            else:
+                withdrawal_taxable_income, unmet_deficit = _cover_deficit_sequentially(
+                    working_portfolio,
+                    deficit=-post_tax_flow,
+                    assumptions=assumptions,
+                )
+                if unmet_deficit > 0:
+                    for cat in working_portfolio:
+                        working_portfolio[cat] = 0.0
+                    working_portfolio["cash"] = -unmet_deficit
+
+            new_annual_taxes = (base_taxable_income + withdrawal_taxable_income) * tax_rate
+            if abs(new_annual_taxes - annual_taxes) < 1.0:
+                annual_taxes = new_annual_taxes
+                break
+            annual_taxes = new_annual_taxes
+
+        portfolio = working_portfolio
+        taxable_income = base_taxable_income + withdrawal_taxable_income
+        net_flow = base_net_flow - annual_taxes
 
         # ── Grow home value at inflation; compute equity ───────────────────────
+        total_portfolio = sum(portfolio.values())
         current_home_value *= (1 + assumptions["inflation"])
         home_equity = current_home_value - mortgage_balance
 
@@ -321,6 +386,8 @@ def run_projection(
             "total_net_worth": total_portfolio + home_equity,
             "matthew_income": matthew_income,
             "weny_income":    weny_income,
+            "taxable_income": taxable_income,
+            "annual_taxes":   annual_taxes,
             "annual_spend":   annual_spend,
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
@@ -336,41 +403,108 @@ def run_projection(
     return pd.DataFrame(rows)
 
 
-def _person_income(person: dict, year: int, events: list, deceased: bool = False) -> float:
-    """Calculate a person's income for a given year, considering events."""
+def _person_income_components(
+    person: dict, year: int, events: list, deceased: bool = False
+) -> dict[str, float]:
+    """Return earned-net and SS-gross components for a person's annual cash income."""
     if deceased:
-        return 0.0
+        return {
+            "earned_income": 0.0,
+            "ss_income": 0.0,
+            "ss_taxable_income": 0.0,
+            "cash_income": 0.0,
+        }
 
     person_key = person["name"].lower()
-    base_income = person.get("annual_take_home", 0)
+    earned_income = person.get("annual_take_home", 0)
+    ss_income = 0.0
+    ss_taxable_income = 0.0
 
     # Stop income at retirement
     if year >= person["retirement_year"]:
-        base_income = 0
+        earned_income = 0.0
 
     # Add Social Security
     for event in events:
         if event["type"] == "SocialSecurity" and event.get("person") == person_key:
             if year >= event["year"]:
-                base_income += event.get("monthly_benefit", 0) * 12
+                annual_ss = event.get("monthly_benefit", 0) * 12
+                ss_income += annual_ss
+                ss_taxable_income += annual_ss * _event_taxable_fraction(event, default=1.0)
 
     # Career break: zero income for duration
     for event in events:
         if event["type"] == "CareerBreak" and event.get("person") == person_key:
             if event["start_year"] <= year <= event["end_year"]:
-                # Zero earned income (SS preserved if applicable)
-                ss_income = sum(
-                    e.get("monthly_benefit", 0) * 12
-                    for e in events
-                    if e["type"] == "SocialSecurity" and e.get("person") == person_key
-                    and year >= e["year"]
-                )
-                base_income = ss_income
+                # Zero earned income (SS preserved separately)
+                earned_income = 0.0
 
     # New job: replace base income
     for event in events:
         if event["type"] == "NewJob" and event.get("person") == person_key:
             if year >= event["year"] and year < person["retirement_year"]:
-                base_income = event["annual_income"]
+                earned_income = event["annual_income"]
 
-    return base_income
+    return {
+        "earned_income": earned_income,
+        "ss_income": ss_income,
+        "ss_taxable_income": ss_taxable_income,
+        "cash_income": earned_income + ss_income,
+    }
+
+
+def _event_taxable_fraction(event: dict, default: float = 1.0) -> float:
+    """Return event taxability as a fraction in [0,1]."""
+    if "taxable_fraction" in event:
+        try:
+            return max(0.0, min(1.0, float(event["taxable_fraction"])))
+        except (TypeError, ValueError):
+            return default
+    if event.get("taxable") is False:
+        return 0.0
+    return default
+
+
+def _withdrawal_taxable_fraction(category: str, assumptions: dict) -> float:
+    """Return taxable fraction for withdrawals from a portfolio bucket."""
+    if category == "trad_ira":
+        return assumptions.get("trad_ira_withdrawal_taxable_fraction", 1.0)
+    if category == "taxable":
+        return assumptions.get("taxable_withdrawal_taxable_fraction", 0.50)
+    return 0.0
+
+
+def _cover_deficit_sequentially(
+    portfolio: dict[str, float],
+    deficit: float,
+    assumptions: dict,
+) -> tuple[float, float]:
+    """Withdraw from cash → taxable → trad IRA → Roth to cover a deficit."""
+    remaining = max(0.0, deficit)
+    taxable_withdrawals = 0.0
+
+    for category in ["cash", "taxable", "trad_ira", "roth"]:
+        if remaining <= 0:
+            break
+        available = max(0.0, portfolio.get(category, 0.0))
+        take = min(available, remaining)
+        portfolio[category] = portfolio.get(category, 0.0) - take
+        remaining -= take
+        taxable_withdrawals += take * _withdrawal_taxable_fraction(category, assumptions)
+
+    return taxable_withdrawals, remaining
+
+
+def _apply_surplus_proportionally(portfolio: dict[str, float], surplus: float) -> None:
+    """Spread positive flow proportionally across positive buckets, preserving prior semantics."""
+    if surplus <= 0:
+        return
+
+    positive_total = sum(v for v in portfolio.values() if v > 0)
+    if positive_total <= 0:
+        portfolio["cash"] = portfolio.get("cash", 0.0) + surplus
+        return
+
+    for category, balance in list(portfolio.items()):
+        if balance > 0:
+            portfolio[category] += surplus * (balance / positive_total)

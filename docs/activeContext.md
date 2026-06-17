@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-16 → 2026-06-17
-**Current Status:** V1 complete. Chart + tabbed tables live. Session ending — resume via `personal-finance-modeling` skill.
+**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow tables + Gantt timeline live.
 
 ## Current State
 
@@ -10,7 +10,19 @@
 - Chart: http://casalemuria.lan/finances/projection.html
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / living expenses / event outflows / net (yearly columns)
+- First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via effective pre/post-retirement rates
+- Event-level taxability is now configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
+- Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the simplified tax model
+- Cash Flow tab now shows positive income events in Income and an `Estimated taxes` expense row
+- Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
+- Gantt includes liability payoff milestones derived from the projection output and uses a centered legend
+- Gantt row labels now include event/liability icons, and the Gantt includes a survivor-period band aligned to the projection output
 - Both tables scroll horizontally, yearly tick columns
+- First-column labels and section bands are frozen via JS `translateX(scrollLeft)` + `requestAnimationFrame`
+- Table navigation now supports grab-and-drag panning and moderated wheel-to-horizontal scrolling
+- Main chart now uses 2-year x-axis ticks with 6px tick-label standoff on both axes
+- Page chrome, tables, and both Plotly charts now use a cohesive dark theme
+- Main chart subtitle/label after `Net Worth Navigator —` is now configurable via `[display].projection_title` in `config.toml`
 
 ## Cron Jobs
 
@@ -31,7 +43,8 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 
 - Confirm `survivor_annual = 66500` feels right (currently 70% of $95K)
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available
-- Decide on V2 priority: Gantt tab, tax modeling, or withdrawal sequencing
+- Decide next V2 priority: deeper tax realism vs withdrawal sequencing refinements
+- Decide whether taxable brokerage withdrawal taxability should stay at 50% or be customized further
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
 
 ## Known Pitfalls
