@@ -11,7 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from src.tables import build_accounts_table, build_cashflow_table
-from src.model import load_config, EVENT_ICONS, LIABILITY_ICONS
+from src.model import load_config, resolve_runtime_config, EVENT_ICONS, LIABILITY_ICONS
 
 # ── CSS + JS for the tabbed layout ────────────────────────────────────────────
 _TABS_CSS = """
@@ -429,7 +429,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     Generate the Plotly chart figure, build HTML tables, and write
     a single self-contained tabbed HTML page to output_path.
     """
-    config = load_config()
+    config = resolve_runtime_config(load_config())
     fig = _build_figure(df, config)
 
     # Export figure as a standalone div (no full HTML, no duplicate Plotly JS)

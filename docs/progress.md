@@ -6,6 +6,9 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Recurring events via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
+- Runtime event expansion shared by the projection model and Gantt timeline
+- Regression coverage for recurring event expansion and yearly application under `tests/test_recurring_events.py`
 - Raw TOML config editor page at `/finances/config/`
 - Validate, Save, and Save + Re-render actions for `config.toml`
 - Automatic timestamped config backups under `output/config-backups/` before each save

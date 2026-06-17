@@ -199,6 +199,11 @@ type          = "auto"
 #   type     — see list below
 #   label    — human-readable name shown on chart
 #
+# Optional recurrence fields for any event with `year` or `start_year`:
+#   repeat_every_years — recurrence interval in years
+#   repeat_until_year  — last anchor year to include
+#   repeat_count       — total number of occurrences including the first
+#
 # Event types and their additional required fields:
 #
 #   Retire          person, year
@@ -271,6 +276,15 @@ type    = "Expense"
 label   = "Indonesia land purchase"
 year    = 2032
 amount  = -50000                    # PLACEHOLDER — adjust when known
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Big Vacation"
+year    = 2027
+amount  = -10000
+repeat_every_years = 2
+repeat_until_year  = 2045
 
 [[events]]
 enabled = false

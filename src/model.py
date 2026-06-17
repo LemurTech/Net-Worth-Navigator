@@ -8,6 +8,7 @@ Returns a pandas DataFrame with one row per year:
 """
 
 import tomllib
+from copy import deepcopy
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -41,6 +42,92 @@ def load_config() -> dict:
         return tomllib.load(f)
 
 
+def resolve_runtime_config(config: dict) -> dict:
+    """Return a runtime-safe config with recurring events expanded to concrete events."""
+    runtime = deepcopy(config)
+    runtime["events"] = expand_events(
+        runtime.get("events", []),
+        runtime.get("simulation", {}),
+    )
+    return runtime
+
+
+def expand_events(events: list[dict], simulation: dict | None = None) -> list[dict]:
+    """Expand recurring event definitions into concrete event instances."""
+    sim_end = simulation.get("end_year") if simulation else None
+    expanded: list[dict] = []
+
+    for event in events:
+        interval = event.get("repeat_every_years")
+        if interval is None:
+            expanded.append(dict(event))
+            continue
+
+        base_field = _event_anchor_field(event)
+        if base_field is None:
+            raise ValueError(
+                f"Recurring event '{event.get('label', '?')}' must have year or start_year"
+            )
+
+        interval = int(interval)
+        if interval <= 0:
+            raise ValueError(
+                f"Recurring event '{event.get('label', '?')}' must have repeat_every_years > 0"
+            )
+
+        repeat_count = event.get("repeat_count")
+        if repeat_count is not None:
+            repeat_count = int(repeat_count)
+            if repeat_count < 1:
+                raise ValueError(
+                    f"Recurring event '{event.get('label', '?')}' must have repeat_count >= 1"
+                )
+
+        repeat_until_year = event.get("repeat_until_year", sim_end)
+        if repeat_until_year is not None:
+            repeat_until_year = int(repeat_until_year)
+
+        if repeat_count is None and repeat_until_year is None and sim_end is None:
+            raise ValueError(
+                f"Recurring event '{event.get('label', '?')}' needs repeat_count, repeat_until_year, or simulation.end_year"
+            )
+
+        occurrence = 0
+        while True:
+            anchor_year = int(event[base_field]) + (occurrence * interval)
+            if repeat_count is not None and occurrence >= repeat_count:
+                break
+            if repeat_until_year is not None and anchor_year > repeat_until_year:
+                break
+            if sim_end is not None and anchor_year > sim_end:
+                break
+
+            expanded.append(_materialize_recurring_event(event, base_field, anchor_year))
+            occurrence += 1
+
+    return expanded
+
+
+def _event_anchor_field(event: dict) -> str | None:
+    if "year" in event:
+        return "year"
+    if "start_year" in event:
+        return "start_year"
+    return None
+
+
+def _materialize_recurring_event(event: dict, base_field: str, anchor_year: int) -> dict:
+    concrete = dict(event)
+    for field in ("repeat_every_years", "repeat_until_year", "repeat_count"):
+        concrete.pop(field, None)
+
+    year_delta = anchor_year - int(event[base_field])
+    concrete[base_field] = anchor_year
+    if base_field == "start_year" and "end_year" in event:
+        concrete["end_year"] = int(event["end_year"]) + year_delta
+    return concrete
+
+
 def run_projection(
     balances: dict[str, float],
     home_value: float = 0.0,
@@ -52,7 +139,7 @@ def run_projection(
     balances: dict from monarch_bridge — {category: total_balance}
     Returns: DataFrame with projection data
     """
-    config = load_config()
+    config = resolve_runtime_config(load_config())
     sim = config["simulation"]
     assumptions = config["assumptions"]
     events = [e for e in config.get("events", []) if e.get("enabled", False)]

@@ -12,7 +12,7 @@ It is the strategic financial visibility layer. OWL (optimal retirement withdraw
 ## Objectives
 
 - Project household net worth from today to life expectancy for both Person 1 and Person 2
-- Model discrete financial events (retirement, SS income, expenses, home purchase, career changes, etc.)
+- Model discrete and recurring financial events (retirement, SS income, expenses, home purchase, career changes, etc.)
 - Allow easy scenario comparison by toggling events on/off and adjusting assumptions in config.toml
 - Serve results as interactive Plotly HTML on the household LAN
 - Live-anchor to Monarch Money account balances on each run
@@ -37,17 +37,12 @@ Out of scope (V1):
 
 ## Roadmap
 
-### Priority #1 — Recurring events
-- support recurring expenses/income without duplicating many one-off events
-- example: a vacation every X years costing $10,000
-- design recurrence semantics that remain understandable in `config.toml`
-
-### Priority #2 — Deeper withdrawal policy controls
+### Priority #1 — Deeper withdrawal policy controls
 - reserve targets / cash-floor behavior
 - alternate withdrawal ordering rules
 - separate accumulation vs retirement withdrawal behavior
 
-### Priority #3 — Deeper tax realism (after #2)
+### Priority #2 — Deeper tax realism (after #1)
 - bracket-based tax model
 - more nuanced Social Security taxation
 - state tax treatment

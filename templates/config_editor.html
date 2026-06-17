@@ -223,7 +223,7 @@
       {% endif %}
     </div>
 
-    <form class="card" method="post" action="{{ request.url.path }}">
+    <form class="card" method="post" action="">
       <div class="editor-head">Edit the full TOML file below. Comments and formatting are preserved because the saved content is written back exactly as entered after validation.</div>
       <textarea name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
       <div class="actions">
