@@ -85,9 +85,9 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             yanchor="bottom",
         )
 
-    # ── Event annotations — vertical labels ───────────────────────────────────
-    # textangle=-90 rotates all labels to read bottom→top, eliminating
-    # horizontal overlap entirely regardless of how many events cluster.
+    # ── Event annotations — diagonal labels ───────────────────────────────────
+    # textangle=-60 reads naturally on a tilt while still avoiding overlap.
+    # -90 (fully vertical) is harder to read; -60 is the legibility sweet spot.
     events_df = df[df["events_active"] != ""].copy()
 
     for _, row in events_df.iterrows():
@@ -100,9 +100,9 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             line_color="rgba(80,80,80,0.55)" if is_eop else "rgba(60,100,180,0.55)",
             annotation_text=label,
             annotation_position="top right",
-            annotation_textangle=-90,
-            annotation_font_size=10,
-            annotation_bgcolor="rgba(255,255,255,0.80)",
+            annotation_textangle=-60,
+            annotation_font_size=11,
+            annotation_bgcolor="rgba(255,255,255,0.88)",
             annotation_borderpad=3,
         )
 
