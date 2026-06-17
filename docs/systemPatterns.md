@@ -1,6 +1,6 @@
 # System Patterns — Net Worth Navigator
 
-**Last Review:** 2026-06-16
+**Last Review:** 2026-06-17
 
 ## Architectural Overview
 
@@ -35,6 +35,9 @@ run.py
 - **Events are typed.** Each `[[events]]` entry has a `type` field that determines how it impacts the model. Event types have defined property schemas.
 - **Events are togglable.** Every event has `enabled = true/false`. Disabling never requires deleting the entry.
 - **Monarch bridge is the live anchor.** Year 0 balances come from Monarch. All prior-year assumptions are overridden by live data on each run.
+- **Withdrawal behavior is phase-aware.** The model uses `[withdrawal_policy]` to select cash reserve targets and withdrawal order separately for accumulation, retirement, and survivor phases.
+- **Cash reserves are protected in two stages.** `cash_above_target` spends only dollars above the reserve; `cash_below_target` taps the reserve itself only as a last resort.
+- **Surplus refills cash before investing.** Positive net flow first restores the active cash target, then allocates the remainder across positive non-cash investable buckets.
 - **Output is always regenerated, never cached.** `python run.py` always produces a fresh chart.
 
 ## Event System
@@ -86,12 +89,15 @@ amount = -6000             # negative = cash outflow
 - **TOML over JSON:** Readable, commentable, stdlib. Adopted 2026-06-16.
 - **Static HTML over Streamlit:** No server overhead; simpler architecture. Streamlit is V2 option if live-reload is needed. Adopted 2026-06-16.
 - **Simplified tax in V1:** Full tax modeling is a scope trap. V1 uses flat effective rates. Adopted 2026-06-16.
+- **Phase-specific withdrawal policy in V1.5:** Reserve targets and withdrawal order live in `[withdrawal_policy]` instead of remaining hardcoded in `model.py`. Adopted 2026-06-17.
 - **No OWL in V1:** OWL is a downstream decumulation tool. NWN must establish the strategic picture first. Adopted 2026-06-16.
 
 ## Promoted Learnings
 
 - OWL is a decumulation optimizer (withdrawal phase only). NWN is the lifecycle trajectory model. They are complementary, not competing.
 - Monarch does not provide growth rates, SS estimates, or planned events — those are always manual in config.
+- **Phase-aware withdrawals need explicit config.** Once reserve targets mattered, hardcoded sequencing was too rigid; `[withdrawal_policy]` is now the durable control surface.
+- **Cash target semantics are clearer than a generic reserve flag.** Distinguishing `cash_above_target` from `cash_below_target` lets the model preserve liquidity until it truly must break the reserve.
 - **Emoji in Plotly annotations:** Unicode emoji render natively in annotation text in all modern browsers. No special config required. Put the emoji directly in the label string.
 - **Survivor period vrect label:** do NOT use `annotation_text` on `add_vrect` — Plotly places it top-left in data space and it collides with vline annotations at the same x. Use a separate `add_annotation` with `yref="paper"` instead.
 - **Annotation overlap:** alternate `annotation_position` ("top right" / "top left") by index for consecutive vlines. EndOfPlan events use "bottom right" to stay clear of the survivor label.

@@ -13,6 +13,10 @@
 - First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via effective pre/post-retirement rates
 - Event-level taxability is now configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
 - Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the simplified tax model
+- Withdrawal policy is now configurable by lifecycle phase via `[withdrawal_policy]` in `config.toml`
+- Phase-specific cash reserve targets are now supported for accumulation, retirement, and survivor periods
+- Surplus cash flow now refills the active cash target first, then allocates the remainder into non-cash investable buckets
+- Deficit coverage now honors configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` semantics to preserve reserves when possible
 - Cash Flow tab now shows positive income events in Income and an `Estimated taxes` expense row
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
@@ -51,11 +55,12 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 
 - Confirm `survivor_annual = 66500` feels right (currently 70% of $95K)
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available
-- Roadmap priority #1: deeper withdrawal policy controls
-  - reserve targets
-  - alternate withdrawal ordering rules
-  - separate accumulation vs retirement withdrawal behavior
-- Roadmap priority #2 (after #1): deeper tax realism
+- Validate the new `[withdrawal_policy]` defaults against Person 1's intent
+  - accumulation cash target = $64,000 (roughly current liquid reserve)
+  - retirement cash target = $95,000 (roughly one year of planned retirement spending)
+  - survivor cash target = $66,500 (roughly one year of planned survivor spending)
+- Decide whether retirement / survivor withdrawal order should stay `cash_above_target → taxable → trad_ira → roth → cash_below_target` or be tuned further
+- Roadmap priority #2: deeper tax realism
   - bracket-based tax model
   - more nuanced Social Security taxation
   - state tax treatment

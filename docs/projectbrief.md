@@ -1,7 +1,7 @@
 # Project Brief — Net Worth Navigator
 
 **Owner:** Matt
-**Last Review:** 2026-06-16
+**Last Review:** 2026-06-17
 
 ## Summary
 
@@ -25,6 +25,7 @@ In scope:
 - Event system with typed events and enable/disable flags
 - TOML-based configuration (human-readable, easily edited)
 - Monarch MCP integration for live balance anchor
+- Phase-specific withdrawal policy controls (cash reserve targets, refill behavior, configurable withdrawal order)
 - Static Plotly HTML output served via nginx on casalemuria.lan
 - GitHub repository for version-controlled config history
 
@@ -37,15 +38,15 @@ Out of scope (V1):
 
 ## Roadmap
 
-### Priority #1 — Deeper withdrawal policy controls
-- reserve targets / cash-floor behavior
-- alternate withdrawal ordering rules
-- separate accumulation vs retirement withdrawal behavior
-
-### Priority #2 — Deeper tax realism (after #1)
+### Priority #1 — Deeper tax realism
 - bracket-based tax model
 - more nuanced Social Security taxation
 - state tax treatment
+
+### Priority #2 — UI / modeling follow-ups
+- structured editor sections for simple config fields (if raw TOML becomes a usability bottleneck)
+- multi-scenario side-by-side comparison
+- Streamlit-style live reload only if the static-editor loop becomes too limiting
 
 ## Success Criteria
 

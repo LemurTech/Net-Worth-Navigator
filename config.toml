@@ -64,6 +64,25 @@ survivor_annual   = 66500           # ~70% of retirement_annual — single-perso
 # annual_savings_override = 0
 
 
+# ─── Withdrawal Policy ─────────────────────────────────────────────────────────
+
+[withdrawal_policy]
+# Cash reserve targets by phase.
+# - accumulation: roughly today's earmarked liquid pool from live balances
+# - retirement:   roughly one year of planned retirement spending
+# - survivor:     roughly one year of planned survivor spending
+accumulation_cash_target = 64000
+retirement_cash_target   = 95000
+survivor_cash_target     = 66500
+
+# Deficit coverage order.
+# cash_above_target uses only dollars above the reserve.
+# cash_below_target taps the reserve itself only as a last resort.
+accumulation_withdrawal_order = ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"]
+retirement_withdrawal_order   = ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"]
+survivor_withdrawal_order     = ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"]
+
+
 # ─── Market & Economic Assumptions ───────────────────────────────────────────
 
 [assumptions]

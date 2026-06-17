@@ -1,6 +1,6 @@
 # Tech Context — Net Worth Navigator
 
-**Last Review:** 2026-06-16
+**Last Review:** 2026-06-17
 
 ## Stack
 
@@ -43,9 +43,10 @@
 - `output/` is gitignored — generated HTML is not committed
 - Files written to `/srv/web-projects/` must be world-readable (644/755)
 - V1 tax modeling is intentionally simplified — resist full tax modeling until V2
+- Withdrawal behavior is now partly policy-driven via `[withdrawal_policy]`; defaults should be reviewed against real household intent before treating projections as strategic guidance
 
 ## Tooling Practices
 
 - No linter enforced in V1 — add `ruff` in V2
-- No tests in V1 — add basic smoke tests before V2 chart types
+- Unit tests now cover recurring events, chart KPI behavior, account-cache reclassification, and withdrawal-policy behavior; extend this suite before major V2 model changes
 - Git commit on every meaningful change to `config.toml` or `src/` — config history is the key value of the repo

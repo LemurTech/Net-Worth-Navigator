@@ -6,6 +6,10 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Phase-specific withdrawal policy controls via `[withdrawal_policy]` in `config.toml`
+- Cash reserve targets for accumulation, retirement, and survivor periods
+- Configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` steps
+- Regression coverage for reserve-target preservation, phase-specific withdrawal order, and cash-target refill behavior under `tests/test_withdrawal_policy.py`
 - Recurring events via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
 - Runtime event expansion shared by the projection model and Gantt timeline
 - Regression coverage for recurring event expansion and yearly application under `tests/test_recurring_events.py`
@@ -35,6 +39,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Main chart x-axis uses 2-year ticks with 6px tick-label standoff on both axes
 - Table horizontal navigation now supports grab-to-pan and moderated wheel scrolling
 - Gantt now resizes correctly when shown from a hidden tab
+- Surplus cash flow now refills the active phase cash target before the remainder is invested into non-cash buckets
 
 ### Fixed
 

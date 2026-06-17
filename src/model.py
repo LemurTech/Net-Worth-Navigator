@@ -41,6 +41,14 @@ LIABILITY_ICONS = {
     "other":    "✅",
 }
 
+DEFAULT_WITHDRAWAL_ORDER = [
+    "cash_above_target",
+    "taxable",
+    "trad_ira",
+    "roth",
+    "cash_below_target",
+]
+
 
 def load_config() -> dict:
     with open(CONFIG_PATH, "rb") as f:
@@ -159,6 +167,58 @@ def make_event_item(label: str, amount: float, event_type: str,
     return item
 
 
+def resolve_withdrawal_policy(config: dict, balances: dict[str, float]) -> dict[str, object]:
+    """Return phase-specific withdrawal policy with sensible defaults."""
+    section = config.get("withdrawal_policy", {})
+    spending = config.get("spending", {})
+    current_cash = round(float(balances.get("cash", 0.0)), 2)
+    retirement_spend = float(spending.get("retirement_annual", 0.0))
+    survivor_spend = float(
+        spending.get("survivor_annual", round(retirement_spend * 0.70))
+    )
+
+    return {
+        "accumulation_cash_target": max(
+            0.0, float(section.get("accumulation_cash_target", current_cash))
+        ),
+        "retirement_cash_target": max(
+            0.0, float(section.get("retirement_cash_target", retirement_spend))
+        ),
+        "survivor_cash_target": max(
+            0.0, float(section.get("survivor_cash_target", survivor_spend))
+        ),
+        "accumulation_withdrawal_order": _normalize_withdrawal_order(
+            section.get("accumulation_withdrawal_order", DEFAULT_WITHDRAWAL_ORDER)
+        ),
+        "retirement_withdrawal_order": _normalize_withdrawal_order(
+            section.get("retirement_withdrawal_order", DEFAULT_WITHDRAWAL_ORDER)
+        ),
+        "survivor_withdrawal_order": _normalize_withdrawal_order(
+            section.get("survivor_withdrawal_order", DEFAULT_WITHDRAWAL_ORDER)
+        ),
+    }
+
+
+def get_phase_withdrawal_settings(
+    policy: dict[str, object],
+    *,
+    both_retired: bool,
+    one_deceased: bool,
+) -> tuple[float, list[str]]:
+    """Return the active cash target and withdrawal order for the current phase."""
+    if one_deceased:
+        phase = "survivor"
+    elif both_retired:
+        phase = "retirement"
+    else:
+        phase = "accumulation"
+
+    return (
+        float(policy.get(f"{phase}_cash_target", 0.0)),
+        list(policy.get(f"{phase}_withdrawal_order", DEFAULT_WITHDRAWAL_ORDER)),
+    )
+
+
 def run_projection(
     balances: dict[str, float],
     home_value: float = 0.0,
@@ -186,6 +246,7 @@ def run_projection(
         "roth":     balances.get("roth", 0.0),
         "cash":     balances.get("cash", 0.0),
     }
+    withdrawal_policy = resolve_withdrawal_policy(config, balances)
 
     matthew = config["matthew"]
     weny = config["weny"]
@@ -447,6 +508,12 @@ def run_projection(
         else:
             annual_spend = total_income - total_contrib
 
+        cash_target, withdrawal_order = get_phase_withdrawal_settings(
+            withdrawal_policy,
+            both_retired=both_retired,
+            one_deceased=one_deceased,
+        )
+
         tax_rate = (
             assumptions["effective_tax_rate_post_retirement"]
             if both_retired else assumptions["effective_tax_rate_pre_retirement"]
@@ -484,13 +551,19 @@ def run_projection(
             post_tax_flow = base_net_flow - annual_taxes
 
             if post_tax_flow >= 0:
-                _apply_surplus_proportionally(working_portfolio, post_tax_flow)
+                _apply_surplus_with_reserve_target(
+                    working_portfolio,
+                    surplus=post_tax_flow,
+                    cash_target=cash_target,
+                )
                 withdrawal_taxable_income = 0.0
             else:
-                withdrawal_taxable_income, unmet_deficit = _cover_deficit_sequentially(
+                withdrawal_taxable_income, unmet_deficit = _cover_deficit_with_policy(
                     working_portfolio,
                     deficit=-post_tax_flow,
                     assumptions=assumptions,
+                    withdrawal_order=withdrawal_order,
+                    cash_target=cash_target,
                 )
                 if unmet_deficit > 0:
                     for cat in working_portfolio:
@@ -612,37 +685,80 @@ def _withdrawal_taxable_fraction(category: str, assumptions: dict) -> float:
     return 0.0
 
 
-def _cover_deficit_sequentially(
+def _normalize_withdrawal_order(order) -> list[str]:
+    """Return a validated withdrawal order list."""
+    valid_steps = set(DEFAULT_WITHDRAWAL_ORDER)
+    if not isinstance(order, list):
+        return list(DEFAULT_WITHDRAWAL_ORDER)
+
+    normalized: list[str] = []
+    for step in order:
+        step = str(step).strip()
+        if step in valid_steps and step not in normalized:
+            normalized.append(step)
+
+    return normalized or list(DEFAULT_WITHDRAWAL_ORDER)
+
+
+def _cover_deficit_with_policy(
     portfolio: dict[str, float],
     deficit: float,
     assumptions: dict,
+    withdrawal_order: list[str],
+    cash_target: float,
 ) -> tuple[float, float]:
-    """Withdraw from cash → taxable → trad IRA → Roth to cover a deficit."""
+    """Cover a deficit using the configured withdrawal policy."""
     remaining = max(0.0, deficit)
     taxable_withdrawals = 0.0
 
-    for category in ["cash", "taxable", "trad_ira", "roth"]:
+    for step in withdrawal_order:
         if remaining <= 0:
             break
-        available = max(0.0, portfolio.get(category, 0.0))
-        take = min(available, remaining)
-        portfolio[category] = portfolio.get(category, 0.0) - take
+
+        if step == "cash_above_target":
+            available = max(0.0, portfolio.get("cash", 0.0) - cash_target)
+            take = min(available, remaining)
+            portfolio["cash"] = portfolio.get("cash", 0.0) - take
+        elif step == "cash_below_target":
+            available = max(0.0, portfolio.get("cash", 0.0))
+            take = min(available, remaining)
+            portfolio["cash"] = portfolio.get("cash", 0.0) - take
+        else:
+            available = max(0.0, portfolio.get(step, 0.0))
+            take = min(available, remaining)
+            portfolio[step] = portfolio.get(step, 0.0) - take
+            taxable_withdrawals += take * _withdrawal_taxable_fraction(step, assumptions)
+
         remaining -= take
-        taxable_withdrawals += take * _withdrawal_taxable_fraction(category, assumptions)
 
     return taxable_withdrawals, remaining
 
 
-def _apply_surplus_proportionally(portfolio: dict[str, float], surplus: float) -> None:
-    """Spread positive flow proportionally across positive buckets, preserving prior semantics."""
+def _apply_surplus_with_reserve_target(
+    portfolio: dict[str, float],
+    surplus: float,
+    cash_target: float,
+) -> None:
+    """Refill cash to target first, then invest the remaining surplus."""
     if surplus <= 0:
         return
 
-    positive_total = sum(v for v in portfolio.values() if v > 0)
-    if positive_total <= 0:
-        portfolio["cash"] = portfolio.get("cash", 0.0) + surplus
+    current_cash = portfolio.get("cash", 0.0)
+    refill = min(max(0.0, cash_target - current_cash), surplus)
+    portfolio["cash"] = current_cash + refill
+    remaining = surplus - refill
+    if remaining <= 0:
+        return
+
+    positive_non_cash_total = sum(
+        balance
+        for category, balance in portfolio.items()
+        if category != "cash" and balance > 0
+    )
+    if positive_non_cash_total <= 0:
+        portfolio["cash"] = portfolio.get("cash", 0.0) + remaining
         return
 
     for category, balance in list(portfolio.items()):
-        if balance > 0:
-            portfolio[category] += surplus * (balance / positive_total)
+        if category != "cash" and balance > 0:
+            portfolio[category] += remaining * (balance / positive_non_cash_total)
