@@ -128,7 +128,7 @@ disabled = [
 "CO: Retirement Villa (6287)"   = "cash"
 "CO: CD 10,000 (2354)"          = "cash"
 "CO: CD (9286)"                 = "cash"
-"CD 4,000 (4590)"               = "cash"
+"CO: CD 4,000 (4590)"           = "cash"
 "CO: Surgery (7277)"            = "cash"
 "UM: Emergency (9368)"          = "cash"
 "UM: Checking HHold (6365)"     = "cash"
@@ -159,6 +159,27 @@ disabled = [
 "Cash HHold"                    = "ignore"
 "Cash Person 1"                  = "ignore"
 "Cash Person 2"                     = "ignore"
+
+
+# ─── Liabilities ──────────────────────────────────────────────────────────────
+# Each liability is amortized year-by-year in the model.
+# current_balance is pulled live from Monarch by matching the account name.
+# The freed monthly payment is added back to cash flow from the payoff year onward.
+# type = "mortgage" means payoff is also reflected in home equity tracking.
+
+[[liabilities]]
+name          = "Mortgage (5156)"       # must match Monarch account name exactly
+annual_rate   = 0.035
+monthly_base  = 1675.53                 # contractual P&I payment
+monthly_extra = 1000.00                 # voluntary extra principal payment
+type          = "mortgage"
+
+[[liabilities]]
+name          = "2020 Honda CR-V (9628)"
+annual_rate   = 0.06
+monthly_base  = 298.00
+monthly_extra = 0.00
+type          = "auto"
 
 
 # ─── Financial Events ─────────────────────────────────────────────────────────
@@ -218,7 +239,7 @@ enabled = true
 type    = "Expense"
 label   = "Surgery (Person 2)"
 year    = 2026
-amount  = -6000                     # Person 1's $5K contribution + ~$1K already paid
+amount  = -18000                    # Person 1's $5K contribution + from other accounts
 
 [[events]]
 enabled = false

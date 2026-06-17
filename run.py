@@ -26,15 +26,19 @@ def main():
 
     # 1. Pull live balances from Monarch
     print("→ Fetching account balances from Monarch...")
-    from src.monarch_bridge import get_balances
+    from src.monarch_bridge import get_balances, get_liability_balances
     portfolio, extras = get_balances()
-    home_equity = extras["home_equity"] + extras["liabilities"]
-    print(f"  Investable: ${sum(portfolio.values()):>12,.2f}")
-    print(f"  Home equity (net): ${home_equity:>10,.2f}")
+    liability_balances = get_liability_balances()
+    home_value = extras["home_value"]
+    total_liabilities = sum(liability_balances.values())
+    print(f"  Investable:     ${sum(portfolio.values()):>12,.2f}")
+    print(f"  Home value:     ${home_value:>12,.2f}")
+    print(f"  Liabilities:    ${total_liabilities:>12,.2f}")
+    print(f"  Home equity:    ${home_value - total_liabilities:>12,.2f}")
 
     # 2. Run projection
     print("→ Running projection...")
-    df = run_projection(portfolio, home_equity=home_equity)
+    df = run_projection(portfolio, home_value=home_value, liability_balances=liability_balances)
     print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
 
     # 3. Generate chart

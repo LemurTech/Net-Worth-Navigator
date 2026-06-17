@@ -83,10 +83,12 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
     Classify accounts per config.toml [accounts] and return totals.
 
     Accounts in [accounts].disabled are excluded regardless of their category.
+    Liability accounts are excluded here — they are tracked dynamically via
+    [[liabilities]] amortization in model.py.
 
     Returns:
         portfolio   — investable: {taxable, trad_ira, roth, cash}
-        extras      — {home_equity, vehicles, liabilities, other}
+        extras      — {home_value (gross), vehicles, other}
     """
     config = load_config()
     classification_map: dict[str, str] = config.get("accounts", {})
@@ -95,14 +97,13 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
     raw = fetch_raw_accounts()
 
     portfolio = {"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0}
-    extras = {"home_equity": 0.0, "vehicles": 0.0, "liabilities": 0.0, "other": 0.0}
+    extras = {"home_value": 0.0, "vehicles": 0.0, "other": 0.0}
     unclassified = []
 
     for acct in raw:
         name    = acct["name"]
         balance = acct["balance"]
 
-        # Skip disabled accounts before classification
         if name in disabled:
             continue
 
@@ -110,16 +111,15 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
 
         if cat is None:
             unclassified.append((name, balance))
-        elif cat == "ignore":
+        elif cat in ("ignore", "liability"):
+            # liabilities excluded — tracked via [[liabilities]] amortization
             pass
         elif cat in portfolio:
             portfolio[cat] += balance
         elif cat == "real_estate":
-            extras["home_equity"] += balance
+            extras["home_value"] += balance
         elif cat == "vehicle":
             extras["vehicles"] += balance
-        elif cat == "liability":
-            extras["liabilities"] += balance  # Monarch stores as negative
         else:
             extras["other"] += balance
 
@@ -129,6 +129,35 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
             print(f"    \"{name}\"  (balance: ${bal:,.2f})")
 
     return portfolio, extras
+
+
+def get_liability_balances() -> dict[str, float]:
+    """
+    Return current balances for all [[liabilities]] in config.toml,
+    pulled live from Monarch by account name.
+
+    Returns: {liability_name: current_balance (positive float)}
+    """
+    config = load_config()
+    liabilities = config.get("liabilities", [])
+    if not liabilities:
+        return {}
+
+    liability_names = {lib["name"] for lib in liabilities}
+    raw = fetch_raw_accounts()
+    balances = {}
+
+    for acct in raw:
+        name = acct["name"]
+        if name in liability_names:
+            # Monarch stores loans as negative — store as positive balance
+            balances[name] = abs(float(acct["balance"]))
+
+    for lib in liabilities:
+        if lib["name"] not in balances:
+            print(f"  WARNING: liability '{lib['name']}' not found in Monarch accounts")
+
+    return balances
 
 
 def get_account_balances() -> dict[str, float]:

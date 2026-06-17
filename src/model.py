@@ -21,7 +21,11 @@ def load_config() -> dict:
         return tomllib.load(f)
 
 
-def run_projection(balances: dict[str, float], home_equity: float = 0.0) -> pd.DataFrame:
+def run_projection(
+    balances: dict[str, float],
+    home_value: float = 0.0,
+    liability_balances: dict[str, float] | None = None,
+) -> pd.DataFrame:
     """
     Run the year-by-year net worth projection.
 
@@ -48,13 +52,68 @@ def run_projection(balances: dict[str, float], home_equity: float = 0.0) -> pd.D
     matthew = config["matthew"]
     weny = config["weny"]
     spending = config["spending"]
+    liability_configs = config.get("liabilities", [])
 
-    # Home equity grows at inflation (not portfolio rate — non-liquid, no reinvestment)
-    current_home_equity = home_equity
+    if liability_balances is None:
+        liability_balances = {}
+
+    # ── Initialize liability amortization state ────────────────────────────────
+    # Each liability tracks: balance, monthly payment, rate, type, payoff_year
+    lib_state = []
+    for lib in liability_configs:
+        bal = liability_balances.get(lib["name"], 0.0)
+        lib_state.append({
+            "name":          lib["name"],
+            "balance":       bal,
+            "monthly_rate":  lib["annual_rate"] / 12,
+            "monthly_total": lib["monthly_base"] + lib.get("monthly_extra", 0.0),
+            "monthly_freed": 0.0,   # set to monthly_total in payoff year
+            "type":          lib.get("type", "other"),
+            "payoff_year":   None,
+            "paid_off":      bal <= 0,
+        })
+
+    # ── Home tracking ──────────────────────────────────────────────────────────
+    # home_value grows at inflation; mortgage balance is tracked in lib_state
+    current_home_value = home_value
+    # Sum initial mortgage balances for starting home equity
+    mortgage_balance = sum(
+        s["balance"] for s in lib_state if s["type"] == "mortgage"
+    )
 
     rows = []
 
     for year in range(start_year, end_year + 1):
+        # ── Amortize liabilities for this year (12 monthly steps) ─────────────
+        payoff_labels = []
+        freed_this_year = 0.0
+
+        for lib in lib_state:
+            if lib["paid_off"]:
+                freed_this_year += lib["monthly_total"] * 12
+                continue
+
+            for _ in range(12):
+                if lib["balance"] <= 0:
+                    break
+                interest = lib["balance"] * lib["monthly_rate"]
+                principal = lib["monthly_total"] - interest
+                lib["balance"] = max(0.0, lib["balance"] - principal)
+
+            if lib["balance"] <= 0 and lib["payoff_year"] is None:
+                lib["payoff_year"] = year
+                lib["paid_off"] = True
+                short_name = lib["name"].split("(")[0].strip()
+                payoff_labels.append(f"{short_name} paid off")
+
+            if lib["paid_off"]:
+                freed_this_year += lib["monthly_total"] * 12
+
+        # Update running mortgage balance for home equity
+        mortgage_balance = sum(
+            s["balance"] for s in lib_state if s["type"] == "mortgage"
+        )
+
         # ── Apply events for this year ─────────────────────────────────────────
         active_labels = []
         event_cash_flow = 0.0
@@ -132,7 +191,8 @@ def run_projection(balances: dict[str, float], home_equity: float = 0.0) -> pd.D
         # ── Net cash flow for the year ─────────────────────────────────────────
         target_spend = spending.get("retirement_annual", 0)
         annual_spend = target_spend if (matthew_retired and weny_retired) else total_income - total_contrib
-        net_flow = total_income - annual_spend + event_cash_flow
+        # Freed liability payments add to net cash flow
+        net_flow = total_income - annual_spend + event_cash_flow + freed_this_year
 
         # ── Grow portfolio ─────────────────────────────────────────────────────
         growth_rate = (
@@ -156,19 +216,26 @@ def run_projection(balances: dict[str, float], home_equity: float = 0.0) -> pd.D
         else:
             portfolio["cash"] = total_portfolio
 
-        # Grow home equity at inflation rate
-        current_home_equity *= (1 + assumptions["inflation"])
+        # ── Grow home value at inflation; compute equity ───────────────────────
+        current_home_value *= (1 + assumptions["inflation"])
+        home_equity = current_home_value - mortgage_balance
+
+        # Merge all annotation labels for this year
+        all_labels = payoff_labels + active_labels
 
         rows.append({
             "year":           year,
             "net_worth":      total_portfolio,
-            "home_equity":    current_home_equity,
-            "total_net_worth": total_portfolio + current_home_equity,
+            "home_value":     current_home_value,
+            "mortgage":       mortgage_balance,
+            "home_equity":    home_equity,
+            "total_net_worth": total_portfolio + home_equity,
             "matthew_income": matthew_income,
             "weny_income":    weny_income,
             "annual_spend":   annual_spend,
+            "freed_payments": freed_this_year,
             "net_flow":       net_flow,
-            "events_active":  ", ".join(active_labels) if active_labels else "",
+            "events_active":  ", ".join(all_labels) if all_labels else "",
             "taxable":        portfolio["taxable"],
             "trad_ira":       portfolio["trad_ira"],
             "roth":           portfolio["roth"],
