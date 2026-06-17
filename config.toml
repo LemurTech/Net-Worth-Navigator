@@ -221,10 +221,13 @@ type          = "auto"
 #   type     — see list below
 #   label    — human-readable name shown on chart
 #
-# Optional recurrence fields for any event with `year` or `start_year`:
-#   repeat_every_years — recurrence interval in years
-#   repeat_until_year  — last anchor year to include
-#   repeat_count       — total number of occurrences including the first
+# Optional recurrence/display fields for any event with `year` or `start_year`:
+#   repeat_every_years          — recurrence interval in years
+#   repeat_until_year           — last anchor year to include
+#   repeat_count                — total number of occurrences including the first
+#   chart_first_occurrence_only — if true, repeated events still affect the model
+#                                 every time but only the first occurrence is
+#                                 annotated on the main projection chart
 #
 # Event types and their additional required fields:
 #
@@ -238,6 +241,8 @@ type          = "auto"
 #   Education       person, start_year, end_year, annual_cost
 #   Marriage        year
 # ──────────────────────────────────────────────────────────────────────────────
+
+# Default Events
 
 [[events]]
 enabled = true
@@ -285,6 +290,28 @@ year    = 2043                      # age 67
 monthly_benefit = 1200              # working estimate — update from SSA.gov
 # taxable / taxable_fraction optional — defaults to fully taxable in current model
 
+# Income Events
+
+[[events]]
+enabled = false
+type    = "NewJob"
+label   = "New job example"
+person  = "matthew"
+year    = 2028
+annual_income = 90000
+
+[[events]]
+enabled  = false
+type     = "Income"
+label    = "Side income example"
+year     = 2027
+amount   = 12000
+end_year = 2030                     # optional — omit for one-time income
+taxable  = true                      # optional — set false for non-taxable inflows
+# taxable_fraction = 0.50           # optional partial-taxability override
+
+# Mandatory Expenses (non-repeating)
+
 [[events]]
 enabled = true
 type    = "Expense"
@@ -301,15 +328,42 @@ year    = 2032
 amount  = -50000                    # PLACEHOLDER — adjust when known
 expense_kind = "mandatory"
 
+# Mandatory Expenses (repeating)
+
 [[events]]
 enabled = true
 type    = "Expense"
-label   = "Big Vacation"
-year    = 2027
-amount  = -10000
-expense_kind = "discretionary"
-repeat_every_years = 2
-repeat_until_year  = 2045
+label   = "Property Taxes (annual)"
+year    = 2031
+amount  = -4500
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2063
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Health Events"
+year    = 2032
+amount  = -24000
+expense_kind = "mandatory"
+repeat_every_years = 4
+repeat_until_year  = 2054
+chart_first_occurrence_only = false
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Caregiving Expenses"
+year    = 2047
+amount  = -28000
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2063
+chart_first_occurrence_only = true
+
+# Discretionary Expenses (non-repeating)
 
 [[events]]
 enabled = false
@@ -320,6 +374,25 @@ price        = 0                    # PLACEHOLDER
 down_payment = 0                    # PLACEHOLDER
 mortgage_rate = 0.065               # PLACEHOLDER
 term_years   = 30
+
+[[events]]
+enabled = false
+type    = "Marriage"
+label   = "Marriage event placeholder"
+year    = 2026                      # informational in V1
+
+# Discretionary Expenses (repeating)
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Big Vacation"
+year    = 2027
+amount  = -10000
+expense_kind = "discretionary"
+repeat_every_years = 2
+repeat_until_year  = 2054
+chart_first_occurrence_only = false
 
 [[events]]
 enabled = false
@@ -338,26 +411,3 @@ start_year  = 2028
 end_year    = 2030
 annual_cost = 15000
 
-[[events]]
-enabled = false
-type    = "NewJob"
-label   = "New job example"
-person  = "matthew"
-year    = 2028
-annual_income = 90000
-
-[[events]]
-enabled = false
-type    = "Income"
-label   = "Side income example"
-year    = 2027
-amount  = 12000
-end_year = 2030                     # optional — omit for one-time income
-taxable = true                      # optional — set false for non-taxable inflows
-# taxable_fraction = 0.50           # optional partial-taxability override
-
-[[events]]
-enabled = false
-type    = "Marriage"
-label   = "Marriage event placeholder"
-year    = 2026                      # informational in V1

@@ -39,6 +39,7 @@ run.py
 - **Cash reserves are protected in two stages.** `cash_above_target` spends only dollars above the reserve; `cash_below_target` taps the reserve itself only as a last resort.
 - **Surplus refills cash before investing.** Positive net flow first restores the active cash target, then allocates the remainder across positive non-cash investable buckets.
 - **Output is always regenerated, never cached.** `python run.py` always produces a fresh chart.
+- **Recurring chart annotations can be decoupled from model recurrence.** `chart_first_occurrence_only = true` keeps repeated events active in the model and tables while suppressing later main-chart annotations for readability.
 
 ## Event System
 
@@ -101,3 +102,4 @@ amount = -6000             # negative = cash outflow
 - **Emoji in Plotly annotations:** Unicode emoji render natively in annotation text in all modern browsers. No special config required. Put the emoji directly in the label string.
 - **Survivor period vrect label:** do NOT use `annotation_text` on `add_vrect` — Plotly places it top-left in data space and it collides with vline annotations at the same x. Use a separate `add_annotation` with `yref="paper"` instead.
 - **Annotation overlap:** alternate `annotation_position` ("top right" / "top left") by index for consecutive vlines. EndOfPlan events use "bottom right" to stay clear of the survivor label.
+- **Gantt density tuning must move bar width and chart height deliberately.** Slimmer bars alone leave airy rows; reduce the height formula to compress row pitch, then re-check the served page with a real offline render.

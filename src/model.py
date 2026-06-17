@@ -73,7 +73,9 @@ def expand_events(events: list[dict], simulation: dict | None = None) -> list[di
     for event in events:
         interval = event.get("repeat_every_years")
         if interval is None:
-            expanded.append(dict(event))
+            concrete = dict(event)
+            concrete.setdefault("_show_chart_label", True)
+            expanded.append(concrete)
             continue
 
         base_field = _event_anchor_field(event)
@@ -115,7 +117,9 @@ def expand_events(events: list[dict], simulation: dict | None = None) -> list[di
             if sim_end is not None and anchor_year > sim_end:
                 break
 
-            expanded.append(_materialize_recurring_event(event, base_field, anchor_year))
+            expanded.append(
+                _materialize_recurring_event(event, base_field, anchor_year, occurrence)
+            )
             occurrence += 1
 
     return expanded
@@ -129,7 +133,12 @@ def _event_anchor_field(event: dict) -> str | None:
     return None
 
 
-def _materialize_recurring_event(event: dict, base_field: str, anchor_year: int) -> dict:
+def _materialize_recurring_event(
+    event: dict,
+    base_field: str,
+    anchor_year: int,
+    occurrence: int,
+) -> dict:
     concrete = dict(event)
     for field in ("repeat_every_years", "repeat_until_year", "repeat_count"):
         concrete.pop(field, None)
@@ -138,6 +147,9 @@ def _materialize_recurring_event(event: dict, base_field: str, anchor_year: int)
     concrete[base_field] = anchor_year
     if base_field == "start_year" and "end_year" in event:
         concrete["end_year"] = int(event["end_year"]) + year_delta
+
+    chart_first_only = bool(event.get("chart_first_occurrence_only", False))
+    concrete["_show_chart_label"] = (not chart_first_only) or occurrence == 0
     return concrete
 
 
@@ -145,6 +157,11 @@ def normalize_expense_kind(event: dict | None) -> str:
     """Return a normalized expense kind for Expense events."""
     kind = str((event or {}).get("expense_kind", "mandatory")).strip().lower()
     return "discretionary" if kind == "discretionary" else "mandatory"
+
+
+def should_show_chart_label(event: dict) -> bool:
+    """Return whether this event instance should annotate the main projection chart."""
+    return bool(event.get("_show_chart_label", True))
 
 
 def get_event_icon(event: dict) -> str:
@@ -334,17 +351,17 @@ def run_projection(
             etype = event["type"]
 
             if etype == "EndOfPlan":
-                if event["year"] == year:
+                if event["year"] == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["EndOfPlan"]
                     active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Retire":
-                if event["year"] == year:
+                if event["year"] == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["Retire"]
                     active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "SocialSecurity":
-                if year == event["year"]:
+                if year == event["year"] and should_show_chart_label(event):
                     icon = EVENT_ICONS["SocialSecurity"]
                     active_labels.append(f"{icon} {event['label']}")
 
@@ -361,7 +378,8 @@ def run_projection(
                         )
                     )
                     icon = get_event_icon(event)
-                    active_labels.append(f"{icon} {event['label']}")
+                    if should_show_chart_label(event):
+                        active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Income":
                 end = event.get("end_year", event["year"])
@@ -378,7 +396,7 @@ def run_projection(
                         taxable_event_income += (
                             event["amount"] * _event_taxable_fraction(event, default=1.0)
                         )
-                    if event["year"] == year:
+                    if event["year"] == year and should_show_chart_label(event):
                         icon = EVENT_ICONS["Income"]
                         active_labels.append(f"{icon} {event['label']}")
 
@@ -393,17 +411,18 @@ def run_projection(
                         )
                     )
                     icon = EVENT_ICONS["BuyHome"]
-                    active_labels.append(f"{icon} {event['label']}")
+                    if should_show_chart_label(event):
+                        active_labels.append(f"{icon} {event['label']}")
                 # Mortgage payments handled as ongoing expense — TODO V2
 
             elif etype == "NewJob":
-                if event["year"] == year:
+                if event["year"] == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["NewJob"]
                     active_labels.append(f"{icon} {event['label']}")
                 # Income update handled in income calculation below
 
             elif etype == "CareerBreak":
-                if event["start_year"] == year:
+                if event["start_year"] == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["CareerBreak"]
                     active_labels.append(f"{icon} {event['label']}")
                 # Income zeroed in income calculation below
@@ -411,12 +430,12 @@ def run_projection(
             elif etype == "Education":
                 if event["start_year"] <= year <= event["end_year"]:
                     event_cash_flow -= event["annual_cost"]
-                    if event["start_year"] == year:
+                    if event["start_year"] == year and should_show_chart_label(event):
                         icon = EVENT_ICONS["Education"]
                         active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Marriage":
-                if event["year"] == year:
+                if event["year"] == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["Marriage"]
                     active_labels.append(f"{icon} {event['label']}")
 

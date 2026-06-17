@@ -13,6 +13,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Recurring events via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
 - Runtime event expansion shared by the projection model and Gantt timeline
 - Regression coverage for recurring event expansion and yearly application under `tests/test_recurring_events.py`
+- `chart_first_occurrence_only = true` event control for decluttering repeated-event annotations on the main projection chart without changing model or table behavior
 - `Expense` events now support `expense_kind = "mandatory" | "discretionary"`, with 🏖️ for discretionary, 💸 for mandatory, and 🎉 for retirement
 - Cash Flow now splits mandatory event expenses from discretionary event expenses
 - KPI summary strip above the chart showing Net Worth (EOY), Net Worth at Retirement, Retirement Age, and Net Worth at End
@@ -27,6 +28,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Gantt includes liability payoff milestones derived from projection output
 - Gantt row labels include event/liability icons
 - Gantt includes survivor-period shading aligned to projection output
+- Gantt row labels increased in size after the density pass while preserving the compressed layout
 - Main chart title suffix is configurable via `[display].projection_title` in `config.toml`
 - First-pass tax modeling now applies effective tax rates to Social Security and positive income events while preserving current job income as net cash
 - Cash Flow tab now exposes positive income events in Income and `Estimated taxes` in Expenses
@@ -39,6 +41,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Main chart x-axis uses 2-year ticks with 6px tick-label standoff on both axes
 - Table horizontal navigation now supports grab-to-pan and moderated wheel scrolling
 - Gantt now resizes correctly when shown from a hidden tab
+- Gantt density was tuned repeatedly to reduce vertical whitespace while preserving readable event bars
 - Surplus cash flow now refills the active phase cash target before the remainder is invested into non-cash buckets
 
 ### Fixed

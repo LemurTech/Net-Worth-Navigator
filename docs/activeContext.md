@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-16 → 2026-06-17
-**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow tables + Gantt timeline live. Raw TOML config editor is now available on the web, and recurring events are now supported.
+**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow tables + Gantt timeline live. Raw TOML config editor is available on the web, recurring events are supported, and the latest UI pass added recurring-event chart decluttering plus a denser, more legible Gantt.
 
 ## Current State
 
@@ -22,12 +22,14 @@
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
 - Recurring events now expand at runtime for both the model and Gantt via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
+- Recurring event definitions can now set `chart_first_occurrence_only = true` so the event still affects the model and tables on every occurrence while only the first occurrence is annotated on the main projection chart
 - Raw config editor is now available at `http://casalemuria.lan/finances/config/`
 - Editor supports validate, save, and save+offline-rerender actions with timestamped backups under `output/config-backups/`
 - Projection page now includes a bottom-fixed `Edit Config` shortcut
 - The editor backend now runs as a small FastAPI app, proxied behind the static nginx container
 - Gantt includes liability payoff milestones derived from the projection output and uses a centered legend
-- Gantt row labels now include event/liability icons, and the Gantt includes a survivor-period band aligned to the projection output
+- Gantt row labels now include event/liability icons, use larger tick-label text, and the Gantt includes a survivor-period band aligned to the projection output
+- Gantt row pitch and bar geometry were tuned together for a denser layout: slimmer bars, materially less vertical whitespace, and a more compact overall chart height
 - Both tables scroll horizontally, yearly tick columns
 - First-column labels and section bands are frozen via JS `translateX(scrollLeft)` + `requestAnimationFrame`
 - Table navigation now supports grab-and-drag panning and moderated wheel-to-horizontal scrolling
@@ -60,10 +62,11 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - retirement cash target = $95,000 (roughly one year of planned retirement spending)
   - survivor cash target = $66,500 (roughly one year of planned survivor spending)
 - Decide whether retirement / survivor withdrawal order should stay `cash_above_target → taxable → trad_ira → roth → cash_below_target` or be tuned further
-- Roadmap priority #2: deeper tax realism
+- Current build target: deeper tax realism
   - bracket-based tax model
   - more nuanced Social Security taxation
   - state tax treatment
+  - route taxable withdrawals and Social Security through the richer tax model without changing current net-income semantics for job income
 - Decide whether taxable brokerage withdrawal taxability should stay at 50% or be customized further
 - Decide whether V2 should stay with raw TOML editing only or add structured form sections for simple config fields
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
@@ -74,3 +77,4 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - Plotly `add_vrect` annotation_text collides with vline labels — use separate `add_annotation` with `yref="paper"` instead
 - `annotation_textangle=-90` + `annotation_position="top right"` is the correct vertical label approach
 - `output/` is gitignored — do not commit generated HTML or cache
+- For routine NWN UI/layout tweaks, prefer targeted checks plus a real `python run.py --offline` render; reserve the full test suite for broader model or semantic changes

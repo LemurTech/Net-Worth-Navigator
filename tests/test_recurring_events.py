@@ -21,6 +21,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "expense_kind": "discretionary",
                     "repeat_every_years": 2,
                     "repeat_until_year": 2030,
+                    "chart_first_occurrence_only": True,
                 },
                 {
                     "enabled": True,
@@ -45,6 +46,13 @@ class RecurringEventsTests(unittest.TestCase):
             if event["label"] == "Vacation"
         ]
         self.assertEqual(vacation_years, [2026, 2028, 2030])
+
+        vacation_chart_flags = [
+            event.get("_show_chart_label")
+            for event in events
+            if event["label"] == "Vacation"
+        ]
+        self.assertEqual(vacation_chart_flags, [True, False, False])
 
         vacation_kinds = [
             event.get("expense_kind")
@@ -108,6 +116,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "expense_kind": "discretionary",
                     "repeat_every_years": 2,
                     "repeat_until_year": 2028,
+                    "chart_first_occurrence_only": True,
                 }
             ],
             "liabilities": [],
@@ -123,13 +132,14 @@ class RecurringEventsTests(unittest.TestCase):
         by_year = {int(row.year): row for row in df.itertuples()}
         self.assertIn("🎉 Retirement (M)", by_year[2026].events_active)
         self.assertIn("🏖️ Vacation", by_year[2026].events_active)
-        self.assertIn("🏖️ Vacation", by_year[2028].events_active)
+        self.assertNotIn("🏖️ Vacation", by_year[2028].events_active)
 
         item_2026 = by_year[2026].event_items[0]
         self.assertEqual(item_2026["label"], "Vacation")
         self.assertEqual(item_2026["amount"], -10000)
         self.assertEqual(item_2026["expense_kind"], "discretionary")
         self.assertEqual(item_2026["event_type"], "Expense")
+        self.assertEqual(by_year[2028].event_items[0]["label"], "Vacation")
 
     def test_build_cashflow_table_splits_mandatory_and_discretionary_expenses(self):
         df = pd.DataFrame([

@@ -49,4 +49,5 @@
 
 - No linter enforced in V1 — add `ruff` in V2
 - Unit tests now cover recurring events, chart KPI behavior, account-cache reclassification, and withdrawal-policy behavior; extend this suite before major V2 model changes
+- For routine UI/layout tweaks, prefer targeted checks plus a real `python run.py --offline` render; use the full suite for broader model or semantic changes
 - Git commit on every meaningful change to `config.toml` or `src/` — config history is the key value of the repo

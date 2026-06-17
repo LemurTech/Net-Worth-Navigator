@@ -428,7 +428,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
             base=[item["start_x"]],
             y=[item["row"]],
             orientation="h",
-            width=0.62,
+            width=0.23,
             name=legend_name,
             showlegend=legend_name not in shown_types,
             marker=dict(color=EVENT_TYPE_COLORS.get(item["type"], "rgba(120,120,120,0.75)")),
@@ -467,7 +467,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
 
     fig.update_layout(
         font=dict(color=font_color),
-        title=dict(text="Event Timeline", font=dict(size=18)),
+        title=dict(text="Event Timeline", font=dict(size=16)),
         barmode="overlay",
         xaxis=dict(
             title="Year",
@@ -485,15 +485,15 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
             categoryorder="array",
             categoryarray=row_order,
             automargin=True,
-            tickfont=dict(size=11, color=font_color),
+            tickfont=dict(size=12, color=font_color),
         ),
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
         hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
         plot_bgcolor=plot_bg,
         paper_bgcolor=paper_bg,
         hovermode="closest",
-        height=max(380, 38 * len(items) + 120),
-        margin=dict(l=110, r=30, t=85, b=60),
+        height=max(210, 9 * len(items) + 48),
+        margin=dict(l=108, r=24, t=78, b=46),
     )
 
     gantt_div = fig.to_html(
