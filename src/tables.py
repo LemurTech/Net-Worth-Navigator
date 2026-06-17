@@ -11,15 +11,8 @@ import pandas as pd
 # ── Shared helpers ─────────────────────────────────────────────────────────────
 
 def _display_years(df: pd.DataFrame) -> list[int]:
-    """
-    Return the column years to show: every 5 years + all event years.
-    Always includes the first and last year.
-    """
-    all_years = df["year"].tolist()
-    every5    = set(y for y in all_years if y % 5 == 0)
-    event_yrs = set(df[df["events_active"] != ""]["year"].tolist())
-    selected  = sorted(every5 | event_yrs | {all_years[0], all_years[-1]})
-    return selected
+    """Return all years in the projection for yearly-tick column display."""
+    return df["year"].tolist()
 
 
 def _fmt(value: float) -> str:
