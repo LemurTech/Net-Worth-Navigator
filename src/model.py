@@ -148,6 +148,7 @@ def run_projection(
         # ── Apply events for this year ─────────────────────────────────────────
         active_labels = []
         event_cash_flow = 0.0
+        event_items: list[tuple[str, float]] = []   # (label, amount) for cash flow table
 
         for event in events:
             etype = event["type"]
@@ -170,6 +171,7 @@ def run_projection(
             elif etype == "Expense":
                 if event["year"] == year:
                     event_cash_flow += event["amount"]
+                    event_items.append((event["label"], event["amount"]))
                     icon = EVENT_ICONS["Expense"]
                     active_labels.append(f"{icon} {event['label']}")
 
@@ -177,6 +179,7 @@ def run_projection(
                 end = event.get("end_year", event["year"])
                 if event["year"] <= year <= end:
                     event_cash_flow += event["amount"]
+                    event_items.append((event["label"], event["amount"]))
                     if event["year"] == year:
                         icon = EVENT_ICONS["Income"]
                         active_labels.append(f"{icon} {event['label']}")
@@ -184,6 +187,7 @@ def run_projection(
             elif etype == "BuyHome":
                 if event["year"] == year:
                     event_cash_flow -= event["down_payment"]
+                    event_items.append((event["label"], -event["down_payment"]))
                     icon = EVENT_ICONS["BuyHome"]
                     active_labels.append(f"{icon} {event['label']}")
                 # Mortgage payments handled as ongoing expense — TODO V2
@@ -321,6 +325,7 @@ def run_projection(
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
             "survivor":       one_deceased and both_retired,
+            "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",
             "taxable":        portfolio["taxable"],
             "trad_ira":       portfolio["trad_ira"],
