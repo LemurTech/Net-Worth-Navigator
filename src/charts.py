@@ -85,37 +85,25 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             yanchor="bottom",
         )
 
-    # ── Event annotations — vertical labels radiating from line top ───────────
-    # Vline and annotation are separated for full anchor control.
-    # yanchor="bottom" pins the text base to y=1 (paper) so labels radiate
-    # straight up from the top of each line. textangle=-90 for clean verticals.
+    # ── Event annotations — vertical labels to the right of each line ─────────
+    # annotation_textangle=-90 with annotation_position="top right" places the
+    # label vertically to the right of the line, reading upward.
     events_df = df[df["events_active"] != ""].copy()
 
     for _, row in events_df.iterrows():
         label  = row["events_active"]
         is_eop = "⚰️" in label
 
-        # Draw the line only — no annotation attached
         fig.add_vline(
             x=row["year"],
             line_dash="dash" if is_eop else "dot",
             line_color="rgba(80,80,80,0.55)" if is_eop else "rgba(60,100,180,0.55)",
-        )
-
-        # Label anchored to the top of the line, reading straight up
-        fig.add_annotation(
-            x=row["year"],
-            y=1,
-            xref="x",
-            yref="paper",
-            text=label,
-            showarrow=False,
-            textangle=-90,
-            font=dict(size=11),
-            bgcolor="rgba(255,255,255,0.88)",
-            borderpad=3,
-            xanchor="right",
-            yanchor="bottom",
+            annotation_text=label,
+            annotation_position="top right",
+            annotation_textangle=-90,
+            annotation_font_size=11,
+            annotation_bgcolor="rgba(255,255,255,0.88)",
+            annotation_borderpad=3,
         )
 
     # ── Layout ─────────────────────────────────────────────────────────────────
