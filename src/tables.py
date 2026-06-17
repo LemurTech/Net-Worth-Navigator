@@ -4,19 +4,32 @@ tables.py — Build HTML tables for the Accounts and Cash Flow tabs.
 Each function returns a self-contained HTML string ready to embed
 in the tabbed page wrapper produced by charts.py.
 """
-
 import pandas as pd
 
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
+
 
 def _display_years(df: pd.DataFrame) -> list[int]:
     """Return all years in the projection for yearly-tick column display."""
     return df["year"].tolist()
 
 
+def _event_item_parts(item) -> tuple[str, float, str | None, str | None]:
+    """Normalize legacy tuple items and current dict items."""
+    if isinstance(item, dict):
+        return (
+            str(item.get("label", "")),
+            float(item.get("amount", 0.0)),
+            item.get("event_type"),
+            item.get("expense_kind"),
+        )
+    label, amount = item
+    return str(label), float(amount), None, None
+
+
 def _fmt(value: float) -> str:
-    """Format a dollar value: negative in red, positive normal."""
+
     if pd.isna(value) or value == 0:
         return "<td class='zero'>—</td>"
     color = "neg" if value < 0 else ""
@@ -94,15 +107,24 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
         return [subset.loc[y, field] if y in subset.index else 0.0 for y in years]
 
     # Collect all unique event labels that appear across the displayed years
-    event_label_set: dict[str, list[float]] = {}
+    event_map: dict[str, dict] = {}
     for y in years:
         if y not in subset.index:
             continue
-        for label, amount in (subset.loc[y, "event_items"] or []):
-            if label not in event_label_set:
-                event_label_set[label] = [0.0] * len(years)
+        for item in (subset.loc[y, "event_items"] or []):
+            label, amount, event_type, expense_kind = _event_item_parts(item)
+            if label not in event_map:
+                event_map[label] = {
+                    "amounts": [0.0] * len(years),
+                    "event_type": event_type,
+                    "expense_kind": expense_kind,
+                }
             idx = years.index(y)
-            event_label_set[label][idx] += amount
+            event_map[label]["amounts"][idx] += amount
+            if event_map[label].get("event_type") is None:
+                event_map[label]["event_type"] = event_type
+            if event_map[label].get("expense_kind") is None:
+                event_map[label]["expense_kind"] = expense_kind
 
     rows = []
 
@@ -116,14 +138,18 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
     if any(v != 0 for v in freed):
         rows.append(_data_row("Freed loan payments",  freed, indent=True))
 
-    for label, amounts in event_label_set.items():
+    for label, meta in event_map.items():
+        amounts = meta["amounts"]
         if any(a > 0 for a in amounts):
             rows.append(_data_row(label, amounts, indent=True))
 
     total_income = [
-        (subset.loc[y, "matthew_income"] + subset.loc[y, "weny_income"]
-         + subset.loc[y, "freed_payments"]
-         + sum(a for _, a in (subset.loc[y, "event_items"] or []) if a > 0))
+        (
+            subset.loc[y, "matthew_income"]
+            + subset.loc[y, "weny_income"]
+            + subset.loc[y, "freed_payments"]
+            + sum(_event_item_parts(item)[1] for item in (subset.loc[y, "event_items"] or []) if _event_item_parts(item)[1] > 0)
+        )
         if y in subset.index else 0.0
         for y in years
     ]
@@ -143,15 +169,42 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
     if any(v != 0 for v in taxes):
         rows.append(_data_row("Estimated taxes", taxes, indent=True))
 
-    for label, amounts in event_label_set.items():
-        if any(a < 0 for a in amounts):
-            # Outflow event
+    mandatory_expense_events = []
+    discretionary_expense_events = []
+    other_outflow_events = []
+    for label, meta in event_map.items():
+        amounts = meta["amounts"]
+        if not any(a < 0 for a in amounts):
+            continue
+        if meta.get("event_type") == "Expense":
+            if meta.get("expense_kind") == "discretionary":
+                discretionary_expense_events.append((label, amounts))
+            else:
+                mandatory_expense_events.append((label, amounts))
+        else:
+            other_outflow_events.append((label, amounts))
+
+    if mandatory_expense_events:
+        rows.append("<tr class='section'><th colspan='100'>Mandatory event expenses</th></tr>")
+        for label, amounts in mandatory_expense_events:
             rows.append(_data_row(label, amounts, indent=True))
-        # Income events shown in income section above via event_items totals
+
+    if discretionary_expense_events:
+        rows.append("<tr class='section'><th colspan='100'>Discretionary event expenses</th></tr>")
+        for label, amounts in discretionary_expense_events:
+            rows.append(_data_row(label, amounts, indent=True))
+
+    if other_outflow_events:
+        rows.append("<tr class='section'><th colspan='100'>Other event outflows</th></tr>")
+        for label, amounts in other_outflow_events:
+            rows.append(_data_row(label, amounts, indent=True))
 
     total_expenses = [
-        -(subset.loc[y, "annual_spend"] + subset.loc[y, "annual_taxes"] +
-          sum(a for _, a in (subset.loc[y, "event_items"] or []) if a < 0))
+        -(
+            subset.loc[y, "annual_spend"]
+            + subset.loc[y, "annual_taxes"]
+            + sum(_event_item_parts(item)[1] for item in (subset.loc[y, "event_items"] or []) if _event_item_parts(item)[1] < 0)
+        )
         if y in subset.index else 0.0
         for y in years
     ]

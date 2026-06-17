@@ -19,7 +19,7 @@ CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
 # ── Event type → emoji icon ────────────────────────────────────────────────────
 EVENT_ICONS = {
     "EndOfPlan":      "⚰️",
-    "Retire":         "🏖️",
+    "Retire":         "🎉",
     "SocialSecurity": "🏛️",
     "Expense":        "💸",
     "Income":         "💰",
@@ -28,6 +28,11 @@ EVENT_ICONS = {
     "CareerBreak":    "⏸️",
     "Education":      "🎓",
     "Marriage":       "💍",
+}
+
+EXPENSE_KIND_ICONS = {
+    "mandatory": "💸",
+    "discretionary": "🏖️",
 }
 
 LIABILITY_ICONS = {
@@ -126,6 +131,32 @@ def _materialize_recurring_event(event: dict, base_field: str, anchor_year: int)
     if base_field == "start_year" and "end_year" in event:
         concrete["end_year"] = int(event["end_year"]) + year_delta
     return concrete
+
+
+def normalize_expense_kind(event: dict | None) -> str:
+    """Return a normalized expense kind for Expense events."""
+    kind = str((event or {}).get("expense_kind", "mandatory")).strip().lower()
+    return "discretionary" if kind == "discretionary" else "mandatory"
+
+
+def get_event_icon(event: dict) -> str:
+    """Return the display icon for an event, including expense subtypes."""
+    if event.get("type") == "Expense":
+        return EXPENSE_KIND_ICONS[normalize_expense_kind(event)]
+    return EVENT_ICONS.get(event.get("type", ""), "•")
+
+
+def make_event_item(label: str, amount: float, event_type: str,
+                    expense_kind: str | None = None) -> dict[str, object]:
+    """Build normalized event-item metadata for cash-flow tables."""
+    item = {
+        "label": label,
+        "amount": amount,
+        "event_type": event_type,
+    }
+    if expense_kind is not None:
+        item["expense_kind"] = expense_kind
+    return item
 
 
 def run_projection(
@@ -236,7 +267,7 @@ def run_projection(
         active_labels = []
         event_cash_flow = 0.0
         taxable_event_income = 0.0
-        event_items: list[tuple[str, float]] = []   # (label, amount) for cash flow table
+        event_items: list[dict[str, object]] = []   # normalized cash-flow items for tables
 
         for event in events:
             etype = event["type"]
@@ -259,15 +290,29 @@ def run_projection(
             elif etype == "Expense":
                 if event["year"] == year:
                     event_cash_flow += event["amount"]
-                    event_items.append((event["label"], event["amount"]))
-                    icon = EVENT_ICONS["Expense"]
+                    expense_kind = normalize_expense_kind(event)
+                    event_items.append(
+                        make_event_item(
+                            label=event["label"],
+                            amount=event["amount"],
+                            event_type="Expense",
+                            expense_kind=expense_kind,
+                        )
+                    )
+                    icon = get_event_icon(event)
                     active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "Income":
                 end = event.get("end_year", event["year"])
                 if event["year"] <= year <= end:
                     event_cash_flow += event["amount"]
-                    event_items.append((event["label"], event["amount"]))
+                    event_items.append(
+                        make_event_item(
+                            label=event["label"],
+                            amount=event["amount"],
+                            event_type="Income",
+                        )
+                    )
                     if event["amount"] > 0:
                         taxable_event_income += (
                             event["amount"] * _event_taxable_fraction(event, default=1.0)
@@ -279,7 +324,13 @@ def run_projection(
             elif etype == "BuyHome":
                 if event["year"] == year:
                     event_cash_flow -= event["down_payment"]
-                    event_items.append((event["label"], -event["down_payment"]))
+                    event_items.append(
+                        make_event_item(
+                            label=event["label"],
+                            amount=-event["down_payment"],
+                            event_type="BuyHome",
+                        )
+                    )
                     icon = EVENT_ICONS["BuyHome"]
                     active_labels.append(f"{icon} {event['label']}")
                 # Mortgage payments handled as ongoing expense — TODO V2

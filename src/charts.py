@@ -11,7 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from src.tables import build_accounts_table, build_cashflow_table
-from src.model import load_config, resolve_runtime_config, EVENT_ICONS, LIABILITY_ICONS
+from src.model import load_config, resolve_runtime_config, get_event_icon, EVENT_ICONS, LIABILITY_ICONS
 
 # ── CSS + JS for the tabbed layout ────────────────────────────────────────────
 _TABS_CSS = """
@@ -261,7 +261,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
 
     def add_item(event: dict, start_year: int, end_year: int | None = None):
         person_name = _person_display(config, event.get("person"))
-        icon = EVENT_ICONS.get(event["type"], "•")
+        icon = get_event_icon(event)
         row_label = f"{icon} {event['label']}"
         if end_year is None:
             start_x, end_x = _point_span(start_year)

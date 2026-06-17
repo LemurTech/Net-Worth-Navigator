@@ -208,7 +208,7 @@ type          = "auto"
 #
 #   Retire          person, year
 #   SocialSecurity  person, year, monthly_benefit [, taxable=false] [, taxable_fraction=0.85]
-#   Expense         year, amount (negative = outflow)
+#   Expense         year, amount [, expense_kind="mandatory"]  # or "discretionary"
 #   Income          year, amount [, end_year] [, taxable=false] [, taxable_fraction=0.50]
 #   BuyHome         year, price, down_payment, mortgage_rate, term_years
 #   NewJob          person, year, annual_income
@@ -269,6 +269,7 @@ type    = "Expense"
 label   = "Surgery (W)"
 year    = 2026
 amount  = -18000                    # Person 1's $5K contribution + from other accounts
+expense_kind = "mandatory"
 
 [[events]]
 enabled = false
@@ -276,6 +277,7 @@ type    = "Expense"
 label   = "Indonesia land purchase"
 year    = 2032
 amount  = -50000                    # PLACEHOLDER — adjust when known
+expense_kind = "mandatory"
 
 [[events]]
 enabled = true
@@ -283,6 +285,7 @@ type    = "Expense"
 label   = "Big Vacation"
 year    = 2027
 amount  = -10000
+expense_kind = "discretionary"
 repeat_every_years = 2
 repeat_until_year  = 2045
 
