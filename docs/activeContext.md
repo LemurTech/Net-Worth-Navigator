@@ -5,12 +5,20 @@
 
 ## Current State
 
-- `python run.py` produces a live chart at http://casalemuria.lan/finances/projection.html
-- Monarch bridge pulls live balances via MCP server subprocess
-- All 46 Monarch accounts classified in config.toml [accounts]
-- Liability amortization running (mortgage + CR-V, auto payoff detection)
-- End of Plan events implemented with SS survivor benefit step-up
-- All event types carry emoji icons; annotation overlap fixed
+- `python run.py` — full run (live Monarch), deploys chart
+- `python run.py --offline` — offline run (uses cached balances), deploys chart
+- Balances cache: `output/balances_cache.json` — written on every full run
+- Chart live at http://casalemuria.lan/finances/projection.html
+
+## Cron Jobs
+
+| Job | ID | Schedule | Delivery |
+|---|---|---|---|
+| NWN — monthly full run | `43255de12c21` | 1st of month, 6am | Telegram |
+| NWN — offline render | `da16c8dcea42` | Manual trigger only | local |
+
+**Manual trigger:** `hermes cron run <job_id>` — works for both jobs.
+The offline render job is scheduled far in the future (2099) so it never auto-fires; use `hermes cron run da16c8dcea42` to trigger on demand.
 
 ## Focus & Next Steps
 
