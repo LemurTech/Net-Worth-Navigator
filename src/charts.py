@@ -114,7 +114,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             font=dict(size=11),
             bgcolor="rgba(255,255,255,0.88)",
             borderpad=3,
-            xanchor="center",
+            xanchor="left",
             yanchor="bottom",
         )
 
