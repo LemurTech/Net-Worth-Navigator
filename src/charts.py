@@ -18,6 +18,11 @@ _TABS_CSS = """
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
          margin: 0; padding: 0 16px 32px; background: #0b1220; color: #e5edf7; }
+  .page-toolbar { display: flex; justify-content: flex-end; margin: 14px 0 10px; }
+  .toolbar-link { display: inline-block; padding: 8px 12px; border-radius: 8px;
+                  border: 1px solid #243142; background: #111827; color: #e5edf7;
+                  text-decoration: none; font-size: 14px; }
+  .toolbar-link:hover { border-color: #7dd3fc; }
   .chart-wrap { background: #111827; border-radius: 8px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.32); margin-bottom: 16px; }
   .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid #243142; }
@@ -389,6 +394,9 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
   {_TABS_CSS}
 </head>
 <body>
+  <div class="page-toolbar">
+    <a class="toolbar-link" href="/finances/config/">Edit Config</a>
+  </div>
   <div class="chart-wrap">
     {chart_div}
   </div>

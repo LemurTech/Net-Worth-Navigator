@@ -6,6 +6,12 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Raw TOML config editor page at `/finances/config/`
+- Validate, Save, and Save + Re-render actions for `config.toml`
+- Automatic timestamped config backups under `output/config-backups/` before each save
+- Small FastAPI admin backend and template for config editing
+- Projection page toolbar shortcut: `Edit Config`
+- Dockerized config-editor service for nginx proxying within the local Compose stack
 - Gantt tab added to the projection page
 - Gantt supports milestone vs span semantics by event type
 - Gantt includes liability payoff milestones derived from projection output

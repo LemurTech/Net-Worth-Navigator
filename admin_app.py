@@ -1,0 +1,203 @@
+from __future__ import annotations
+
+import html
+import subprocess
+import sys
+import tomllib
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import parse_qs
+
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+
+APP_ROOT = Path(__file__).resolve().parent
+CONFIG_PATH = APP_ROOT / "config.toml"
+OUTPUT_DIR = APP_ROOT / "output"
+BACKUP_DIR = OUTPUT_DIR / "config-backups"
+VENV_PYTHON = APP_ROOT / ".venv" / "bin" / "python"
+PYTHON_BIN = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
+RUN_SCRIPT = APP_ROOT / "run.py"
+PUBLIC_PROJECTION_URL = "http://casalemuria.lan/finances/projection.html"
+PUBLIC_EDITOR_URL = "http://casalemuria.lan/finances/config/"
+
+app = FastAPI(title="Net Worth Navigator Config Editor")
+templates = Jinja2Templates(directory=str(APP_ROOT / "templates"))
+
+
+def _read_config_text() -> str:
+    return CONFIG_PATH.read_text(encoding="utf-8")
+
+
+def _validate_config_text(content: str) -> dict:
+    if not content.strip():
+        raise ValueError("Configuration cannot be empty.")
+    return tomllib.loads(content)
+
+
+def _backup_and_write(content: str) -> Path:
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_path = BACKUP_DIR / f"config-{ts}.toml"
+    backup_path.write_text(_read_config_text(), encoding="utf-8")
+    CONFIG_PATH.write_text(content, encoding="utf-8")
+    return backup_path
+
+
+def _render_projection_offline() -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(PYTHON_BIN), str(RUN_SCRIPT), "--offline"],
+        cwd=str(APP_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+
+
+def _build_context(request: Request, *, content: str, status_kind: str = "info",
+                   status_title: str | None = None, status_message: str | None = None,
+                   details: str | None = None, backup_path: str | None = None) -> dict:
+    last_modified = datetime.fromtimestamp(CONFIG_PATH.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    return {
+        "request": request,
+        "content": content,
+        "status_kind": status_kind,
+        "status_title": status_title,
+        "status_message": status_message,
+        "details": details,
+        "backup_path": backup_path,
+        "config_path": str(CONFIG_PATH),
+        "last_modified": last_modified,
+        "projection_url": PUBLIC_PROJECTION_URL,
+        "editor_url": PUBLIC_EDITOR_URL,
+    }
+
+
+async def _parse_form(request: Request) -> dict[str, str]:
+    body = (await request.body()).decode("utf-8")
+    parsed = parse_qs(body, keep_blank_values=True)
+    return {key: values[-1] if values else "" for key, values in parsed.items()}
+
+
+@app.get("/", response_class=HTMLResponse)
+async def editor_home(request: Request) -> HTMLResponse:
+    content = _read_config_text()
+    context = _build_context(
+        request,
+        content=content,
+        status_kind="info",
+        status_title="Ready",
+        status_message="Load, edit, validate, save, or save and re-render the offline projection.",
+    )
+    return templates.TemplateResponse(request, "config_editor.html", context)
+
+
+@app.post("/", response_class=HTMLResponse)
+async def editor_submit(request: Request) -> HTMLResponse:
+    form = await _parse_form(request)
+    action = form.get("action", "validate")
+    content = form.get("content", "")
+
+    try:
+        parsed = _validate_config_text(content)
+        summary = (
+            f"Valid TOML. Sections: {', '.join(parsed.keys())}."
+            if isinstance(parsed, dict) and parsed
+            else "Valid TOML."
+        )
+
+        if action == "validate":
+            context = _build_context(
+                request,
+                content=content,
+                status_kind="success",
+                status_title="Validation passed",
+                status_message=summary,
+            )
+            return templates.TemplateResponse(request, "config_editor.html", context)
+
+        backup_path = _backup_and_write(content)
+
+        if action == "save":
+            context = _build_context(
+                request,
+                content=content,
+                status_kind="success",
+                status_title="Saved",
+                status_message="Configuration saved successfully.",
+                backup_path=str(backup_path),
+            )
+            return templates.TemplateResponse(request, "config_editor.html", context)
+
+        if action == "save_render":
+            result = _render_projection_offline()
+            if result.returncode == 0:
+                details = (result.stdout or "").strip()
+                context = _build_context(
+                    request,
+                    content=content,
+                    status_kind="success",
+                    status_title="Saved and re-rendered",
+                    status_message="Configuration saved and offline projection rebuilt successfully.",
+                    details=details,
+                    backup_path=str(backup_path),
+                )
+                return templates.TemplateResponse(request, "config_editor.html", context)
+
+            details = "\n".join(part for part in [(result.stdout or "").strip(), (result.stderr or "").strip()] if part).strip()
+            context = _build_context(
+                request,
+                content=content,
+                status_kind="error",
+                status_title="Render failed after save",
+                status_message="The config was saved, but the offline projection rebuild failed.",
+                details=details or "No process output captured.",
+                backup_path=str(backup_path),
+            )
+            return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
+
+        context = _build_context(
+            request,
+            content=content,
+            status_kind="error",
+            status_title="Unknown action",
+            status_message=f"Unsupported action: {html.escape(action)}",
+        )
+        return templates.TemplateResponse(request, "config_editor.html", context, status_code=400)
+
+    except tomllib.TOMLDecodeError as exc:
+        context = _build_context(
+            request,
+            content=content,
+            status_kind="error",
+            status_title="Validation failed",
+            status_message=str(exc),
+        )
+        return templates.TemplateResponse(request, "config_editor.html", context, status_code=400)
+    except Exception as exc:
+        context = _build_context(
+            request,
+            content=content,
+            status_kind="error",
+            status_title="Operation failed",
+            status_message=str(exc),
+        )
+        return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
+
+
+@app.get("/health")
+async def health() -> JSONResponse:
+    return JSONResponse({
+        "ok": True,
+        "config_path": str(CONFIG_PATH),
+        "projection_url": PUBLIC_PROJECTION_URL,
+        "editor_url": PUBLIC_EDITOR_URL,
+    })
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("admin_app:app", host="0.0.0.0", port=8010, reload=False)

@@ -1,2 +1,5 @@
 plotly>=5.18
 pandas>=2.0
+fastapi>=0.137
+uvicorn>=0.49
+jinja2>=3.1

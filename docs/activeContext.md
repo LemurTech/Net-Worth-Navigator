@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-16 → 2026-06-17
-**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow tables + Gantt timeline live.
+**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow tables + Gantt timeline live. Raw TOML config editor is now available on the web.
 
 ## Current State
 
@@ -15,6 +15,10 @@
 - Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the simplified tax model
 - Cash Flow tab now shows positive income events in Income and an `Estimated taxes` expense row
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
+- Raw config editor is now available at `http://casalemuria.lan/finances/config/`
+- Editor supports validate, save, and save+offline-rerender actions with timestamped backups under `output/config-backups/`
+- Projection page now includes an `Edit Config` shortcut in the top toolbar
+- The editor backend now runs as a small FastAPI app, proxied behind the static nginx container
 - Gantt includes liability payoff milestones derived from the projection output and uses a centered legend
 - Gantt row labels now include event/liability icons, and the Gantt includes a survivor-period band aligned to the projection output
 - Both tables scroll horizontally, yearly tick columns
@@ -45,6 +49,7 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available
 - Decide next V2 priority: deeper tax realism vs withdrawal sequencing refinements
 - Decide whether taxable brokerage withdrawal taxability should stay at 50% or be customized further
+- Decide whether V2 should stay with raw TOML editing only or add structured form sections for simple config fields
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
 
 ## Known Pitfalls

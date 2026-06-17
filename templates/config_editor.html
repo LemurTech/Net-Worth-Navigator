@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Net Worth Navigator — Config Editor</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel-2: #0f1725;
+      --text: #e5edf7;
+      --muted: #9fb2c8;
+      --border: #243142;
+      --accent: #7dd3fc;
+      --accent-2: #38bdf8;
+      --success-bg: rgba(34, 197, 94, 0.12);
+      --success-border: rgba(74, 222, 128, 0.45);
+      --error-bg: rgba(239, 68, 68, 0.12);
+      --error-border: rgba(248, 113, 113, 0.45);
+      --info-bg: rgba(56, 189, 248, 0.10);
+      --info-border: rgba(125, 211, 252, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px 18px 32px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .title h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      font-weight: 650;
+    }
+    .title p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 840px;
+    }
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .linkbtn {
+      display: inline-block;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--panel);
+    }
+    .linkbtn:hover { border-color: var(--accent); }
+    .meta,
+    .card,
+    .status {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.24);
+    }
+    .meta {
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px 18px;
+    }
+    .status {
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .status.info {
+      background: linear-gradient(180deg, var(--panel), var(--info-bg));
+      border-color: var(--info-border);
+    }
+    .status.success {
+      background: linear-gradient(180deg, var(--panel), var(--success-bg));
+      border-color: var(--success-border);
+    }
+    .status.error {
+      background: linear-gradient(180deg, var(--panel), var(--error-bg));
+      border-color: var(--error-border);
+    }
+    .status h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .status p {
+      margin: 0 0 8px;
+    }
+    .status code,
+    .meta code {
+      color: #d1e9ff;
+      background: rgba(15, 23, 37, 0.9);
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+    .details {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: #d7e5f4;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+    .card {
+      padding: 0;
+      overflow: hidden;
+    }
+    .editor-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 72vh;
+      resize: vertical;
+      border: none;
+      outline: none;
+      padding: 18px;
+      background: #0d1524;
+      color: #e5edf7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      tab-size: 2;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px 16px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--panel);
+    }
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      background: #162234;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary {
+      background: linear-gradient(180deg, #0ea5e9, #0284c7);
+      border-color: #38bdf8;
+      color: #08111d;
+    }
+    .hint {
+      padding: 0 16px 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 900px) {
+      .header { flex-direction: column; }
+      textarea { min-height: 60vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="title">
+        <h1>Net Worth Navigator — Config Editor</h1>
+        <p>Raw TOML editor for <code>{{ config_path }}</code>. This page validates the file before save and can rebuild the offline projection after saving.</p>
+      </div>
+      <div class="links">
+        <a class="linkbtn" href="{{ projection_url }}" target="_blank" rel="noreferrer">Open projection</a>
+        <a class="linkbtn" href="{{ editor_url }}" target="_blank" rel="noreferrer">Open public editor URL</a>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div class="meta-grid">
+        <div><strong>Last modified:</strong> {{ last_modified }}</div>
+        <div><strong>Projection:</strong> <code>{{ projection_url }}</code></div>
+        <div><strong>Editor:</strong> <code>{{ editor_url }}</code></div>
+      </div>
+    </div>
+
+    <div class="status {{ status_kind }}">
+      <h2>{{ status_title }}</h2>
+      <p>{{ status_message }}</p>
+      {% if backup_path %}
+      <p><strong>Backup:</strong> <code>{{ backup_path }}</code></p>
+      {% endif %}
+      {% if details %}
+      <div class="details">{{ details }}</div>
+      {% endif %}
+    </div>
+
+    <form class="card" method="post" action="{{ request.url.path }}">
+      <div class="editor-head">Edit the full TOML file below. Comments and formatting are preserved because the saved content is written back exactly as entered after validation.</div>
+      <textarea name="content" spellcheck="false">{{ content }}</textarea>
+      <div class="actions">
+        <button type="submit" name="action" value="validate">Validate</button>
+        <button type="submit" name="action" value="save">Save</button>
+        <button type="submit" name="action" value="save_render" class="primary">Save + Re-render</button>
+      </div>
+      <div class="hint">Backups are written to <code>output/config-backups/</code> before each save.</div>
+    </form>
+  </div>
+</body>
+</html>

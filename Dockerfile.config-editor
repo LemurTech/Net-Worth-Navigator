@@ -1,0 +1,8 @@
+FROM python:3.14-slim
+
+WORKDIR /home/lemurtech/Net-Worth-Navigator
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+CMD ["python", "admin_app.py"]
