@@ -12,7 +12,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from src.monarch_bridge import get_account_balances
+from src.monarch_bridge import get_balances
 from src.model import run_projection
 from src.charts import build_chart
 
@@ -26,12 +26,15 @@ def main():
 
     # 1. Pull live balances from Monarch
     print("→ Fetching account balances from Monarch...")
-    balances = get_account_balances()
-    print(f"  Accounts loaded: {list(balances.keys())}")
+    from src.monarch_bridge import get_balances
+    portfolio, extras = get_balances()
+    home_equity = extras["home_equity"] + extras["liabilities"]
+    print(f"  Investable: ${sum(portfolio.values()):>12,.2f}")
+    print(f"  Home equity (net): ${home_equity:>10,.2f}")
 
     # 2. Run projection
     print("→ Running projection...")
-    df = run_projection(balances)
+    df = run_projection(portfolio, home_equity=home_equity)
     print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
 
     # 3. Generate chart

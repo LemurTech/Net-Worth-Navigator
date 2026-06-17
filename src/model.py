@@ -21,7 +21,7 @@ def load_config() -> dict:
         return tomllib.load(f)
 
 
-def run_projection(balances: dict[str, float]) -> pd.DataFrame:
+def run_projection(balances: dict[str, float], home_equity: float = 0.0) -> pd.DataFrame:
     """
     Run the year-by-year net worth projection.
 
@@ -48,6 +48,9 @@ def run_projection(balances: dict[str, float]) -> pd.DataFrame:
     matthew = config["matthew"]
     weny = config["weny"]
     spending = config["spending"]
+
+    # Home equity grows at inflation (not portfolio rate — non-liquid, no reinvestment)
+    current_home_equity = home_equity
 
     rows = []
 
@@ -153,9 +156,14 @@ def run_projection(balances: dict[str, float]) -> pd.DataFrame:
         else:
             portfolio["cash"] = total_portfolio
 
+        # Grow home equity at inflation rate
+        current_home_equity *= (1 + assumptions["inflation"])
+
         rows.append({
             "year":           year,
             "net_worth":      total_portfolio,
+            "home_equity":    current_home_equity,
+            "total_net_worth": total_portfolio + current_home_equity,
             "matthew_income": matthew_income,
             "weny_income":    weny_income,
             "annual_spend":   annual_spend,

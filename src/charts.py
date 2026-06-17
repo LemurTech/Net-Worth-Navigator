@@ -14,34 +14,47 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     """
     fig = go.Figure()
 
-    # ── Main net worth line ────────────────────────────────────────────────────
-    fig.add_trace(go.Scatter(
-        x=df["year"],
-        y=df["net_worth"],
-        mode="lines",
-        name="Net Worth",
-        line=dict(color="#4A90D9", width=3),
-        hovertemplate="<b>%{x}</b><br>Net Worth: $%{y:,.0f}<extra></extra>",
-    ))
+    # ── Home equity band (non-liquid — distinct muted color) ──────────────────
+    if df["home_equity"].sum() > 0:
+        fig.add_trace(go.Scatter(
+            x=df["year"],
+            y=df["home_equity"],
+            mode="lines",
+            name="Home Equity (non-liquid)",
+            fill="tozeroy",
+            fillcolor="rgba(160,120,80,0.20)",
+            line=dict(color="rgba(160,120,80,0.55)", width=1.5, dash="dot"),
+            hovertemplate="<b>%{x}</b><br>Home Equity: $%{y:,.0f}<extra></extra>",
+        ))
 
-    # ── Account breakdown (stacked area) ──────────────────────────────────────
-    for category, color in [
-        ("taxable",  "rgba(74,144,217,0.4)"),
-        ("trad_ira", "rgba(80,180,100,0.4)"),
-        ("roth",     "rgba(255,160,50,0.4)"),
-        ("cash",     "rgba(180,180,180,0.4)"),
+    # ── Investable account breakdown (stacked area) ───────────────────────────
+    for category, color, label in [
+        ("cash",     "rgba(180,180,180,0.45)", "Cash"),
+        ("taxable",  "rgba(74,144,217,0.45)",  "Taxable"),
+        ("trad_ira", "rgba(80,180,100,0.45)",  "Traditional IRA / 401k"),
+        ("roth",     "rgba(255,160,50,0.45)",  "Roth"),
     ]:
         if df[category].sum() > 0:
             fig.add_trace(go.Scatter(
                 x=df["year"],
                 y=df[category],
                 mode="lines",
-                name=category.replace("_", " ").title(),
-                stackgroup="accounts",
+                name=label,
+                stackgroup="investable",
                 fillcolor=color,
                 line=dict(width=0),
-                hovertemplate=f"<b>%{{x}}</b><br>{category}: $%{{y:,.0f}}<extra></extra>",
+                hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
             ))
+
+    # ── Total net worth line (investable + home equity) ───────────────────────
+    fig.add_trace(go.Scatter(
+        x=df["year"],
+        y=df["total_net_worth"],
+        mode="lines",
+        name="Total Net Worth",
+        line=dict(color="#1a1a2e", width=2.5, dash="dash"),
+        hovertemplate="<b>%{x}</b><br>Total Net Worth: $%{y:,.0f}<extra></extra>",
+    ))
 
     # ── Event annotations ─────────────────────────────────────────────────────
     events_df = df[df["events_active"] != ""]

@@ -83,6 +83,26 @@ effective_tax_rate_post_retirement = 0.15
 # Categories: taxable, trad_ira, roth, cash, real_estate, vehicle, liability, ignore
 # "ignore" = excluded entirely (credit cards, zero-balance, redundant trackers)
 # "liability" = negative balance accounts that reduce net worth (loans, mortgage)
+#
+# To temporarily exclude any account from the model without removing its
+# classification, add its exact Monarch name to the disabled list below.
+# The category entry stays in place — just toggle the name in/out of this list.
+disabled = [
+    # Vehicles — depreciate to zero; not useful in forward projection
+    "2020 Honda CR-V EX-L",
+    "2012 Scion xD",
+    "2008 Honda VT750 Shadow Aero",
+    "1997 Lexus ES 300",
+    "2020 Honda CR-V (9628)",        # vehicle loan — excluded with vehicle asset
+
+    # Personal operating accounts — not part of the financial plan
+    "CO: Checking Person 1 (0690)",
+    "CO: Savings Person 1 (1398)",
+    "CO: Checking Person 2 (4312)",
+    "RO: Person 1 Savings (6500)",
+    "RO: Person 1 Ownership (6587)",
+    "RO: Person 1 Checking (8809)",
+]
 
 # ── Retirement / Investable ────────────────────────────────────────────────────
 "401k Person 1 (6-01)"           = "trad_ira"
@@ -109,7 +129,7 @@ effective_tax_rate_post_retirement = 0.15
 "CO: CD 10,000 (2354)"          = "cash"
 "CO: CD (9286)"                 = "cash"
 "CD 4,000 (4590)"               = "cash"
-"Surgery (7277)"                = "cash"
+"CO: Surgery (7277)"            = "cash"
 "UM: Emergency (9368)"          = "cash"
 "UM: Checking HHold (6365)"     = "cash"
 "RO: Checking HHold (2142)"     = "cash"

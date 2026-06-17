@@ -82,12 +82,15 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
     """
     Classify accounts per config.toml [accounts] and return totals.
 
+    Accounts in [accounts].disabled are excluded regardless of their category.
+
     Returns:
         portfolio   — investable: {taxable, trad_ira, roth, cash}
         extras      — {home_equity, vehicles, liabilities, other}
     """
     config = load_config()
     classification_map: dict[str, str] = config.get("accounts", {})
+    disabled: set[str] = set(classification_map.get("disabled", []))
 
     raw = fetch_raw_accounts()
 
@@ -98,7 +101,12 @@ def get_balances() -> tuple[dict[str, float], dict[str, float]]:
     for acct in raw:
         name    = acct["name"]
         balance = acct["balance"]
-        cat     = classification_map.get(name)
+
+        # Skip disabled accounts before classification
+        if name in disabled:
+            continue
+
+        cat = classification_map.get(name)
 
         if cat is None:
             unclassified.append((name, balance))
@@ -130,19 +138,24 @@ def get_account_balances() -> dict[str, float]:
 
 
 def list_accounts():
-    """Print all accounts with current classification status."""
-    raw   = fetch_raw_accounts()
+    """Print all accounts with current classification and disabled status."""
+    raw    = fetch_raw_accounts()
     config = load_config()
     classified = config.get("accounts", {})
+    disabled   = set(classified.get("disabled", []))
 
-    print(f"\n{'Account Name':<45} {'Type':<15} {'Balance':>14}   {'Classified As'}")
+    print(f"\n{'Account Name':<45} {'Type':<15} {'Balance':>14}   {'Status'}")
     print("─" * 100)
     for acct in raw:
         name  = acct["name"]
         bal   = acct["balance"]
         atype = acct["type"]
         cat   = classified.get(name, "⚠ UNCLASSIFIED")
-        print(f"  {name:<43} {atype:<15} ${bal:>12,.2f}   {cat}")
+        if name in disabled:
+            status = f"[disabled] ({cat})"
+        else:
+            status = cat
+        print(f"  {name:<43} {atype:<15} ${bal:>12,.2f}   {status}")
 
 
 if __name__ == "__main__":
