@@ -1,0 +1,207 @@
+# Net Worth Navigator — Configuration
+# Edit this file to change assumptions, then run: python run.py
+# All monetary values are in today's USD unless noted.
+# Events can be toggled on/off with enabled = true/false without deleting them.
+
+[simulation]
+start_year = 2026
+end_year    = 2054   # max(matthew life expectancy: 2054, weny life expectancy: 2063)
+
+
+# ─── Household Members ────────────────────────────────────────────────────────
+
+[matthew]
+name              = "Person 1"
+dob               = "1967-04-23"
+life_expectancy   = 87              # → year 2054
+retirement_year   = 2035
+annual_take_home  = 74958           # current net (after tax) income
+
+# Social Security
+# TODO: Enter estimated monthly benefit from SSA.gov
+ss_monthly_benefit = 0              # PLACEHOLDER — update from SSA.gov estimate
+ss_start_age       = 67             # 62 / 67 / 70 — your choice
+ss_start_year      = 2034           # auto-derived: 1967 + 67 = 2034 — confirm
+
+# Retirement contributions
+# TODO: Enter current annual contributions
+annual_401k_contribution = 0        # PLACEHOLDER — e.g. 23000
+annual_ira_contribution  = 0        # PLACEHOLDER — e.g. 7000
+
+
+[weny]
+name              = "Person 2"
+dob               = "1976-10-02"
+life_expectancy   = 87              # → year 2063
+retirement_year   = 2037
+annual_take_home  = 28512           # current net (after tax) income
+
+# Social Security
+# TODO: Enter estimated monthly benefit from SSA.gov
+ss_monthly_benefit = 0              # PLACEHOLDER — update from SSA.gov estimate
+ss_start_age       = 67             # 62 / 67 / 70 — your choice
+ss_start_year      = 2043           # auto-derived: 1976 + 67 = 2043 — confirm
+
+# Retirement contributions
+# TODO: Enter current annual contributions
+annual_401k_contribution = 0        # PLACEHOLDER
+annual_ira_contribution  = 0        # PLACEHOLDER
+
+
+# ─── Spending ─────────────────────────────────────────────────────────────────
+
+[spending]
+# Target annual household spending in retirement (today's dollars)
+# TODO: Confirm this figure — current take-home combined is $103,470
+retirement_annual = 0               # PLACEHOLDER — e.g. 80000
+
+# Pre-retirement spending is implied by income minus contributions
+# Optionally override here if you want to model explicit savings rate
+# annual_savings_override = 0
+
+
+# ─── Market & Economic Assumptions ───────────────────────────────────────────
+
+[assumptions]
+stock_return     = 0.07     # nominal annual return, equities
+bond_return      = 0.04     # nominal annual return, fixed income
+inflation        = 0.03     # annual CPI inflation rate
+equity_allocation = 0.70    # portfolio stock/bond split (0.70 = 70% equities)
+
+# Effective income tax rate (simplified — V1 approximation)
+# Replace with bracket model in V2
+effective_tax_rate_pre_retirement  = 0.22
+effective_tax_rate_post_retirement = 0.15
+
+
+# ─── Account Classification ───────────────────────────────────────────────────
+# Maps Monarch account names to model categories.
+# Run `python src/monarch_bridge.py --list` to see all account names.
+# TODO: Populate after first Monarch query.
+
+[accounts]
+# Format: "Monarch Account Name" = "category"
+# Categories: taxable, trad_ira, roth, cash, ignore
+#
+# Examples (replace with your actual Monarch account names):
+# "Fidelity Brokerage" = "taxable"
+# "Person 1 401k" = "trad_ira"
+# "Person 1 Roth IRA" = "roth"
+# "Checking Account" = "cash"
+# "Mortgage" = "ignore"   # liabilities tracked by Monarch; NWN uses net worth directly
+
+
+# ─── Financial Events ─────────────────────────────────────────────────────────
+# Each [[events]] block is one event. Set enabled = false to exclude it from
+# the projection without deleting it.
+#
+# Required fields for all events:
+#   enabled  — true/false
+#   type     — see list below
+#   label    — human-readable name shown on chart
+#
+# Event types and their additional required fields:
+#
+#   Retire          person, year
+#   SocialSecurity  person, year, monthly_benefit
+#   Expense         year, amount (negative = outflow)
+#   Income          year, amount [, end_year]
+#   BuyHome         year, price, down_payment, mortgage_rate, term_years
+#   NewJob          person, year, annual_income
+#   CareerBreak     person, start_year, end_year
+#   Education       person, start_year, end_year, annual_cost
+#   Marriage        year
+# ──────────────────────────────────────────────────────────────────────────────
+
+[[events]]
+enabled = true
+type    = "Retire"
+label   = "Person 1 retires"
+person  = "matthew"
+year    = 2035
+
+[[events]]
+enabled = true
+type    = "Retire"
+label   = "Person 2 retires"
+person  = "weny"
+year    = 2037
+
+[[events]]
+enabled = true
+type    = "SocialSecurity"
+label   = "Person 1 SS income begins"
+person  = "matthew"
+year    = 2034                      # adjust to match ss_start_year above
+monthly_benefit = 0                 # PLACEHOLDER — match matthew.ss_monthly_benefit
+
+[[events]]
+enabled = true
+type    = "SocialSecurity"
+label   = "Person 2 SS income begins"
+person  = "weny"
+year    = 2043                      # adjust to match ss_start_year above
+monthly_benefit = 0                 # PLACEHOLDER — match weny.ss_monthly_benefit
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Surgery (Person 2)"
+year    = 2026
+amount  = -6000                     # Person 1's $5K contribution + ~$1K already paid
+
+[[events]]
+enabled = false
+type    = "Expense"
+label   = "Indonesia land purchase"
+year    = 2032
+amount  = -50000                    # PLACEHOLDER — adjust when known
+
+[[events]]
+enabled = false
+type    = "BuyHome"
+label   = "Home purchase / refinance"
+year    = 2027
+price        = 0                    # PLACEHOLDER
+down_payment = 0                    # PLACEHOLDER
+mortgage_rate = 0.065               # PLACEHOLDER
+term_years   = 30
+
+[[events]]
+enabled = false
+type    = "CareerBreak"
+label   = "Career break example"
+person  = "matthew"
+start_year = 2030
+end_year   = 2031
+
+[[events]]
+enabled = false
+type    = "Education"
+label   = "Education example"
+person  = "weny"
+start_year  = 2028
+end_year    = 2030
+annual_cost = 15000
+
+[[events]]
+enabled = false
+type    = "NewJob"
+label   = "New job example"
+person  = "matthew"
+year    = 2028
+annual_income = 90000
+
+[[events]]
+enabled = false
+type    = "Income"
+label   = "Side income example"
+year    = 2027
+amount  = 12000
+end_year = 2030                     # optional — omit for one-time income
+
+[[events]]
+enabled = false
+type    = "Marriage"
+label   = "Marriage event placeholder"
+year    = 2026                      # informational in V1
