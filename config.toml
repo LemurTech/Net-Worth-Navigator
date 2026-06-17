@@ -18,15 +18,16 @@ retirement_year   = 2035
 annual_take_home  = 74958           # current net (after tax) income
 
 # Social Security
-# TODO: Enter estimated monthly benefit from SSA.gov
-ss_monthly_benefit = 0              # PLACEHOLDER — update from SSA.gov estimate
-ss_start_age       = 67             # 62 / 67 / 70 — your choice
-ss_start_year      = 2034           # auto-derived: 1967 + 67 = 2034 — confirm
+# Social Security benefit options (from SSA.gov estimate):
+#   Age 62 → $1,553/mo  |  Age 65 → $2,164/mo
+#   Age 67 → $2,691/mo  |  Age 70 → $3,698/mo
+ss_monthly_benefit = 2691           # at age 67 (full retirement age)
+ss_start_age       = 67             # change to 62/65/70 to model other strategies
+ss_start_year      = 2034           # 1967 + 67 = 2034
 
-# Retirement contributions
-# TODO: Enter current annual contributions
-annual_401k_contribution = 0        # PLACEHOLDER — e.g. 23000
-annual_ira_contribution  = 0        # PLACEHOLDER — e.g. 7000
+# Retirement contributions (2025 actuals)
+annual_401k_contribution = 12225    # 401k + Roth combined
+annual_ira_contribution  = 0
 
 
 [weny]
@@ -37,15 +38,14 @@ retirement_year   = 2037
 annual_take_home  = 28512           # current net (after tax) income
 
 # Social Security
-# TODO: Enter estimated monthly benefit from SSA.gov
-ss_monthly_benefit = 0              # PLACEHOLDER — update from SSA.gov estimate
+# TODO: Confirm with SSA.gov when estimate is available
+ss_monthly_benefit = 1200           # working estimate — update from SSA.gov
 ss_start_age       = 67             # 62 / 67 / 70 — your choice
-ss_start_year      = 2043           # auto-derived: 1976 + 67 = 2043 — confirm
+ss_start_year      = 2043           # 1976 + 67 = 2043
 
-# Retirement contributions
-# TODO: Enter current annual contributions
-annual_401k_contribution = 0        # PLACEHOLDER
-annual_ira_contribution  = 0        # PLACEHOLDER
+# Retirement contributions (2025 actuals)
+annual_401k_contribution = 0
+annual_ira_contribution  = 3600     # Roth IRA
 
 
 # ─── Spending ─────────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ annual_ira_contribution  = 0        # PLACEHOLDER
 [spending]
 # Target annual household spending in retirement (today's dollars)
 # TODO: Confirm this figure — current take-home combined is $103,470
-retirement_annual = 0               # PLACEHOLDER — e.g. 80000
+retirement_annual = 95000           # slightly above current ~$87,645 spending
 
 # Pre-retirement spending is implied by income minus contributions
 # Optionally override here if you want to model explicit savings rate
@@ -132,16 +132,16 @@ enabled = true
 type    = "SocialSecurity"
 label   = "Person 1 SS income begins"
 person  = "matthew"
-year    = 2034                      # adjust to match ss_start_year above
-monthly_benefit = 0                 # PLACEHOLDER — match matthew.ss_monthly_benefit
+year    = 2034                      # age 67
+monthly_benefit = 2691              # SSA.gov estimate at full retirement age
 
 [[events]]
 enabled = true
 type    = "SocialSecurity"
 label   = "Person 2 SS income begins"
 person  = "weny"
-year    = 2043                      # adjust to match ss_start_year above
-monthly_benefit = 0                 # PLACEHOLDER — match weny.ss_monthly_benefit
+year    = 2043                      # age 67
+monthly_benefit = 1200              # working estimate — update from SSA.gov
 
 [[events]]
 enabled = true
