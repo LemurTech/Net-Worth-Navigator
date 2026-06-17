@@ -141,11 +141,17 @@ def run_projection(balances: dict[str, float]) -> pd.DataFrame:
 
         # Simplified: grow each bucket proportionally
         # V2: model withdrawals with proper sequencing
-        if sum(portfolio.values()) > 0:
+        current_total = sum(portfolio.values())
+        if current_total > 0 and total_portfolio > 0:
             for cat in portfolio:
-                portfolio[cat] = portfolio[cat] / sum(portfolio.values()) * total_portfolio if total_portfolio > 0 else 0
+                portfolio[cat] = (portfolio[cat] / current_total) * total_portfolio
+        elif total_portfolio <= 0:
+            # Portfolio depleted — track as negative cash (debt/shortfall)
+            for cat in portfolio:
+                portfolio[cat] = 0.0
+            portfolio["cash"] = total_portfolio
         else:
-            portfolio["cash"] = max(0, total_portfolio)
+            portfolio["cash"] = total_portfolio
 
         rows.append({
             "year":           year,
