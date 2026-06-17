@@ -42,7 +42,8 @@
 - Monarch auth can expire — always check bridge connectivity before a planning session
 - `output/` is gitignored — generated HTML is not committed
 - Files written to `/srv/web-projects/` must be world-readable (644/755)
-- V1 tax modeling is no longer flat-rate only: configurable federal ordinary-income brackets and standard deductions now live in `[taxes]`, but Social Security taxability remains simplified and state tax is still out of scope for now
+- V1 tax modeling is no longer flat-rate only: configurable federal ordinary-income brackets and standard deductions now live in `[taxes]`, simplified Social Security treatment uses provisional-income bands, and Oregon state tax treatment is now modeled from official 2025 OR-40 tables/charts
+- Employment income remains net cash by design; gross-income migration is optional future work only if the project later needs full household tax-return realism
 - Withdrawal behavior is now partly policy-driven via `[withdrawal_policy]`; defaults should be reviewed against real household intent before treating projections as strategic guidance
 
 ## Tooling Practices

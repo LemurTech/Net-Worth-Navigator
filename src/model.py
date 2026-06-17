@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
+from src.oregon_tax_2025 import OREGON_2025_TAX_TABLE, OREGON_2025_RATE_CHARTS
+
 CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
 
 # ── Event type → emoji icon ────────────────────────────────────────────────────
@@ -54,6 +56,8 @@ DEFAULT_TAX_FILING_STATUS = {
     "retirement": "married_joint",
     "survivor": "single",
 }
+
+VALID_FILING_STATUSES = {"single", "married_joint", "head_of_household"}
 
 
 def load_config() -> dict:
@@ -545,10 +549,16 @@ def run_projection(
             both_retired=both_retired,
             one_deceased=one_deceased,
         )
-        base_taxable_income = (
-            matthew_parts["ss_taxable_income"] +
-            weny_parts["ss_taxable_income"] +
-            taxable_event_income
+        active_state_tax_system = resolve_state_tax_system(
+            config,
+            filing_status=str(active_tax_system.get("filing_status", "married_joint")),
+        )
+        base_non_ss_taxable_income = taxable_event_income
+        total_social_security_income = (
+            matthew_parts["ss_income"] + weny_parts["ss_income"]
+        )
+        legacy_ss_taxable_income = (
+            matthew_parts["ss_taxable_income"] + weny_parts["ss_taxable_income"]
         )
 
         # Cash flow before any taxes or withdrawal sequencing
@@ -568,10 +578,13 @@ def run_projection(
         else:
             grown_portfolio = portfolio.copy()
 
-        annual_taxes = estimate_annual_taxes(
-            base_taxable_income=base_taxable_income,
+        annual_taxes, taxable_income, federal_taxes, state_taxes = estimate_annual_taxes(
+            non_ss_taxable_income=base_non_ss_taxable_income,
+            social_security_income=total_social_security_income,
             withdrawal_taxable_income=0.0,
             tax_system=active_tax_system,
+            state_tax_system=active_state_tax_system,
+            legacy_ss_taxable_income=legacy_ss_taxable_income,
         )
         withdrawal_taxable_income = 0.0
         working_portfolio = grown_portfolio.copy()
@@ -601,10 +614,13 @@ def run_projection(
                         working_portfolio[cat] = 0.0
                     working_portfolio["cash"] = -unmet_deficit
 
-            new_annual_taxes = estimate_annual_taxes(
-                base_taxable_income=base_taxable_income,
+            new_annual_taxes, taxable_income, federal_taxes, state_taxes = estimate_annual_taxes(
+                non_ss_taxable_income=base_non_ss_taxable_income,
+                social_security_income=total_social_security_income,
                 withdrawal_taxable_income=withdrawal_taxable_income,
                 tax_system=active_tax_system,
+                state_tax_system=active_state_tax_system,
+                legacy_ss_taxable_income=legacy_ss_taxable_income,
             )
             if abs(new_annual_taxes - annual_taxes) < 0.01:
                 annual_taxes = new_annual_taxes
@@ -612,7 +628,6 @@ def run_projection(
             annual_taxes = new_annual_taxes
 
         portfolio = working_portfolio
-        taxable_income = base_taxable_income + withdrawal_taxable_income
         net_flow = base_net_flow - annual_taxes
 
         # ── Grow home value at inflation; compute equity ───────────────────────
@@ -634,6 +649,8 @@ def run_projection(
             "weny_income":    weny_income,
             "taxable_income": taxable_income,
             "annual_taxes":   annual_taxes,
+            "annual_federal_taxes": federal_taxes,
+            "annual_state_taxes": state_taxes,
             "annual_spend":   annual_spend,
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
@@ -734,7 +751,7 @@ def resolve_tax_system(
     filing_status = str(
         taxes.get(f"{phase}_filing_status", DEFAULT_TAX_FILING_STATUS[phase])
     ).strip().lower()
-    if filing_status not in {"single", "married_joint", "head_of_household"}:
+    if filing_status not in VALID_FILING_STATUSES:
         filing_status = DEFAULT_TAX_FILING_STATUS[phase]
 
     standard_deduction = float(
@@ -748,6 +765,7 @@ def resolve_tax_system(
             "filing_status": filing_status,
             "standard_deduction": standard_deduction,
             "brackets": brackets,
+            "social_security": dict(taxes.get("social_security", {})),
         }
 
     return {
@@ -757,6 +775,31 @@ def resolve_tax_system(
             if both_retired else assumptions["effective_tax_rate_pre_retirement"]
         ),
     }
+
+
+def resolve_state_tax_system(
+    config: dict,
+    *,
+    filing_status: str,
+) -> dict[str, object]:
+    """Return the active state tax system, if any."""
+    state = config.get("taxes", {}).get("state", {})
+    if not state.get("enabled"):
+        return {"enabled": False}
+
+    state_name = str(state.get("name", "")).strip().lower()
+    filing_status = filing_status if filing_status in VALID_FILING_STATUSES else "married_joint"
+
+    if state_name == "oregon":
+        return {
+            "enabled": True,
+            "name": "oregon",
+            "filing_status": filing_status,
+            "standard_deduction": float(state.get("standard_deduction", {}).get(filing_status, 0.0)),
+            "tax_social_security": bool(state.get("tax_social_security", False)),
+        }
+
+    return {"enabled": False}
 
 
 def _tax_phase(*, both_retired: bool, one_deceased: bool) -> str:
@@ -798,19 +841,109 @@ def calculate_progressive_tax(
 
 def estimate_annual_taxes(
     *,
-    base_taxable_income: float,
+    non_ss_taxable_income: float,
+    social_security_income: float,
     withdrawal_taxable_income: float,
     tax_system: dict[str, object],
-) -> float:
-    """Estimate annual taxes from taxable income using the active tax system."""
-    taxable_income = max(0.0, base_taxable_income + withdrawal_taxable_income)
+    state_tax_system: dict[str, object],
+    legacy_ss_taxable_income: float = 0.0,
+) -> tuple[float, float, float, float]:
+    """Estimate annual federal+state taxes and total modeled taxable income."""
+    other_taxable_income = max(0.0, non_ss_taxable_income + withdrawal_taxable_income)
+    taxable_ss_income = 0.0
     if tax_system.get("mode") == "brackets":
-        return calculate_progressive_tax(
+        taxable_ss_income = calculate_social_security_taxable_income(
+            social_security_income=max(0.0, social_security_income),
+            other_taxable_income=other_taxable_income,
+            filing_status=str(tax_system.get("filing_status", "married_joint")),
+            social_security_config=dict(tax_system.get("social_security", {})),
+        )
+        taxable_income = other_taxable_income + taxable_ss_income
+        federal_taxes = calculate_progressive_tax(
             taxable_income=taxable_income,
             standard_deduction=float(tax_system.get("standard_deduction", 0.0)),
             brackets=list(tax_system.get("brackets", [])),
         )
-    return taxable_income * float(tax_system.get("rate", 0.0))
+    else:
+        taxable_income = max(0.0, other_taxable_income + legacy_ss_taxable_income)
+        federal_taxes = taxable_income * float(tax_system.get("rate", 0.0))
+        taxable_ss_income = legacy_ss_taxable_income
+
+    state_taxes = estimate_state_taxes(
+        non_ss_taxable_income=other_taxable_income,
+        social_security_taxable_income=taxable_ss_income,
+        state_tax_system=state_tax_system,
+    )
+    total_taxes = federal_taxes + state_taxes
+    return total_taxes, taxable_income, federal_taxes, state_taxes
+
+
+def estimate_state_taxes(
+    *,
+    non_ss_taxable_income: float,
+    social_security_taxable_income: float,
+    state_tax_system: dict[str, object],
+) -> float:
+    """Estimate state tax from modeled taxable inflows."""
+    if not state_tax_system.get("enabled"):
+        return 0.0
+    if state_tax_system.get("name") != "oregon":
+        return 0.0
+
+    filing_status = str(state_tax_system.get("filing_status", "married_joint"))
+    state_taxable_income = max(0.0, non_ss_taxable_income)
+    if state_tax_system.get("tax_social_security", False):
+        state_taxable_income += max(0.0, social_security_taxable_income)
+    state_taxable_income = max(0.0, state_taxable_income - float(state_tax_system.get("standard_deduction", 0.0)))
+    return calculate_oregon_state_tax(
+        taxable_income=state_taxable_income,
+        filing_status=filing_status,
+    )
+
+
+def calculate_oregon_state_tax(*, taxable_income: float, filing_status: str) -> float:
+    """Calculate 2025 Oregon personal income tax from official OR-40 tables/charts."""
+    taxable_income = max(0.0, float(taxable_income))
+    chart = OREGON_2025_RATE_CHARTS.get(filing_status, OREGON_2025_RATE_CHARTS["married_joint"])
+
+    if taxable_income < chart["base_threshold"]:
+        column_index = 2 if chart["table_column"] == "S" else 3
+        for lower, upper, s_tax, j_tax in OREGON_2025_TAX_TABLE:
+            if lower <= taxable_income < upper:
+                return float(s_tax if column_index == 2 else j_tax)
+        return float(OREGON_2025_TAX_TABLE[-1][2 if column_index == 2 else 3])
+
+    if taxable_income <= chart["upper_threshold"]:
+        return float(round(chart["base_tax"] + ((taxable_income - chart["base_threshold"]) * chart["middle_rate"])))
+    return float(round(chart["top_base_tax"] + ((taxable_income - chart["upper_threshold"]) * chart["top_rate"])))
+
+
+def calculate_social_security_taxable_income(
+    *,
+    social_security_income: float,
+    other_taxable_income: float,
+    filing_status: str,
+    social_security_config: dict,
+) -> float:
+    """Return modeled taxable Social Security income using provisional-income bands."""
+    if social_security_income <= 0:
+        return 0.0
+    if not social_security_config.get("use_provisional_income", True):
+        return social_security_income * float(social_security_config.get("default_taxable_fraction", 0.85))
+
+    thresholds = social_security_config.get("thresholds", {})
+    status_thresholds = thresholds.get(filing_status, thresholds.get("single", {}))
+    base = float(status_thresholds.get("base", 25_000.0))
+    adjusted = float(status_thresholds.get("adjusted", 34_000.0))
+    provisional_income = max(0.0, other_taxable_income) + (social_security_income * 0.5)
+
+    if provisional_income <= base:
+        fraction = 0.0
+    elif provisional_income <= adjusted:
+        fraction = 0.50
+    else:
+        fraction = 0.85
+    return social_security_income * fraction
 
 
 def _normalize_withdrawal_order(order) -> list[str]:

@@ -31,10 +31,16 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Gantt row labels increased in size after the density pass while preserving the compressed layout
 - Main chart title suffix is configurable via `[display].projection_title` in `config.toml`
 - First-pass tax modeling now applies the 2025 federal ordinary-income bracket schedule plus standard deduction to taxable Social Security, positive income events, and taxable withdrawals while preserving current job income as net cash
-- Cash Flow tab now exposes positive income events in Income and `Estimated taxes` in Expenses
+- Projection page now includes an explicit tax-modeling note clarifying that employment income is still net cash and the displayed taxes cover modeled taxable retirement/event inflows rather than a full household tax return
+- Cash Flow now labels the tax row generically as modeled tax on retirement/event inflows so it remains correct once state tax is included
+- Gross-income wage migration is no longer treated as a required next step; it is optional future work only if NWN ever moves from Monarch-style net-income cash-flow modeling to a true full household tax-return model
+- Cash Flow tab now exposes positive income events in Income and the modeled-tax row in Expenses
 - Event-level taxability is configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
 - Ordinary-income tax brackets and standard deductions are now configurable in `config.toml [taxes]`
+- Simplified Social Security provisional-income thresholds are now configurable in `config.toml [taxes.social_security]`
+- Oregon state tax treatment is now configurable in `config.toml [taxes.state]`
 - Regression coverage for progressive tax calculation, bracketed Social Security tax, and bracketed trad-IRA-withdrawal tax now lives in `tests/test_tax_model.py`
+- Oregon state tax regression coverage (tax table under $50k and chart formulas above $50k) now lives in `tests/test_tax_model.py`
 - Withdrawal-source sequencing is now active: deficits are covered from cash → taxable → trad IRA → Roth, and taxable/trad withdrawals feed the bracket-based tax model
 
 ### Changed

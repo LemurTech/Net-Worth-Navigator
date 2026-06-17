@@ -1,7 +1,9 @@
 import unittest
 from unittest.mock import patch
 
-from src import model
+import pandas as pd
+
+from src import model, charts, tables
 
 
 class TaxModelTests(unittest.TestCase):
@@ -41,6 +43,23 @@ class TaxModelTests(unittest.TestCase):
                         {"up_to": 10.0, "rate": 0.10},
                         {"rate": 0.20},
                     ],
+                },
+                "social_security": {
+                    "use_provisional_income": True,
+                    "thresholds": {
+                        "single": {"base": 25_000.0, "adjusted": 34_000.0},
+                        "married_joint": {"base": 32_000.0, "adjusted": 44_000.0},
+                        "head_of_household": {"base": 25_000.0, "adjusted": 34_000.0},
+                    },
+                },
+                "state": {
+                    "enabled": False,
+                    "name": "oregon",
+                    "standard_deduction": {
+                        "single": 2_835.0,
+                        "married_joint": 5_670.0,
+                        "head_of_household": 4_560.0,
+                    },
                 },
             },
             "matthew": {
@@ -101,7 +120,6 @@ class TaxModelTests(unittest.TestCase):
                 "person": "matthew",
                 "year": 2026,
                 "monthly_benefit": 2.0,
-                "taxable_fraction": 0.50,
             }
         ]
 
@@ -113,8 +131,8 @@ class TaxModelTests(unittest.TestCase):
             )
 
         row = df.iloc[0]
-        self.assertAlmostEqual(row["taxable_income"], 12.0, places=2)
-        self.assertAlmostEqual(row["annual_taxes"], 1.4, places=2)
+        self.assertAlmostEqual(row["taxable_income"], 0.0, places=2)
+        self.assertAlmostEqual(row["annual_taxes"], 0.0, places=2)
 
     def test_run_projection_uses_bracket_tax_for_trad_ira_withdrawals(self):
         config = self._base_config()
@@ -131,6 +149,136 @@ class TaxModelTests(unittest.TestCase):
         self.assertAlmostEqual(row["taxable_income"], 36.25, delta=0.02)
         self.assertAlmostEqual(row["annual_taxes"], 6.25, delta=0.02)
         self.assertAlmostEqual(row["trad_ira"], 63.75, delta=0.02)
+
+    def test_social_security_uses_provisional_income_thresholds(self):
+        config = self._base_config()
+        config["events"] = [
+            {
+                "enabled": True,
+                "type": "SocialSecurity",
+                "label": "SS Begins (M)",
+                "person": "matthew",
+                "year": 2026,
+                "monthly_benefit": 2_000.0,
+            },
+            {
+                "enabled": True,
+                "type": "Income",
+                "label": "Taxable side income",
+                "year": 2026,
+                "amount": 25_000.0,
+                "taxable": True,
+            },
+        ]
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(row["taxable_income"], 37_000.0, places=2)
+        self.assertAlmostEqual(row["annual_taxes"], 7_399.0, places=2)
+
+    def test_cashflow_table_relabels_modeled_tax_scope(self):
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "matthew_income": 0.0,
+                "weny_income": 0.0,
+                "freed_payments": 0.0,
+                "annual_spend": 0.0,
+                "annual_taxes": 1250.0,
+                "net_flow": -1250.0,
+                "event_items": [],
+            }
+        ])
+        html = tables.build_cashflow_table(df)
+        self.assertIn("Modeled tax on retirement/event inflows", html)
+        self.assertNotIn(">Estimated taxes<", html)
+
+    def test_oregon_state_tax_uses_table_under_50k(self):
+        config = self._base_config()
+        config["assumptions"]["effective_tax_rate_pre_retirement"] = 0.0
+        config["assumptions"]["effective_tax_rate_post_retirement"] = 0.0
+        config["taxes"]["enabled"] = False
+        config["taxes"]["state"]["enabled"] = True
+        config["events"] = [
+            {
+                "enabled": True,
+                "type": "Income",
+                "label": "Taxable side income",
+                "year": 2026,
+                "amount": 10_000.0,
+                "taxable": True,
+            }
+        ]
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(row["taxable_income"], 10_000.0, places=2)
+        self.assertAlmostEqual(row["annual_taxes"], 207.0, places=2)
+
+    def test_oregon_state_tax_uses_chart_over_50k(self):
+        config = self._base_config()
+        config["assumptions"]["effective_tax_rate_pre_retirement"] = 0.0
+        config["assumptions"]["effective_tax_rate_post_retirement"] = 0.0
+        config["taxes"]["enabled"] = False
+        config["taxes"]["state"]["enabled"] = True
+        config["events"] = [
+            {
+                "enabled": True,
+                "type": "Income",
+                "label": "Taxable side income",
+                "year": 2026,
+                "amount": 65_670.0,
+                "taxable": True,
+            }
+        ]
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(row["taxable_income"], 65_670.0, places=2)
+        self.assertAlmostEqual(row["annual_taxes"], 4_631.0, places=2)
+
+    def test_build_chart_includes_tax_semantics_note(self):
+        config = {
+            "display": {"projection_title": "Casa Lemuria"},
+            "matthew": {"name": "Person 1", "dob": "1967-04-23"},
+            "weny": {"name": "Person 2", "dob": "1976-10-02"},
+            "events": [],
+            "simulation": {"start_year": 2026, "end_year": 2026},
+        }
+        df = pd.DataFrame([
+            {"year": 2026, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0,
+             "total_net_worth": 100.0, "survivor": False, "events_active": "", "matthew_income": 0.0, "weny_income": 0.0,
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": [], "taxable_income": 0.0},
+        ])
+
+        with patch("src.charts.load_config", return_value=config):
+            with patch("src.charts.resolve_runtime_config", side_effect=lambda c: c):
+                with patch("src.charts._build_gantt_chart", return_value="<div>gantt</div>"):
+                    from pathlib import Path
+                    out = Path("/tmp/nwn-tax-note-test.html")
+                    charts.build_chart(df, out)
+                    html = out.read_text(encoding="utf-8")
+
+        self.assertIn("Employment income is currently modeled as net cash", html)
+        self.assertIn("taxes shown here cover modeled taxable retirement/event inflows", html)
 
 
 if __name__ == "__main__":

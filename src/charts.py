@@ -25,6 +25,10 @@ _TABS_CSS = """
   .toolbar-link:hover { border-color: #7dd3fc; }
   .chart-wrap { background: #111827; border-radius: 8px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.32); margin-bottom: 16px; }
+  .modeling-note { margin: 10px 6px 4px; padding: 10px 12px; border-radius: 8px;
+                   border: 1px solid #243142; background: #0f1725; color: #cbd5e1;
+                   font-size: 12px; line-height: 1.45; }
+  .modeling-note strong { color: #f8fafc; }
   .kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
                border: 1px solid #243142; border-radius: 10px; overflow: hidden;
                background: #0f1725; margin: 4px 4px 12px; }
@@ -504,6 +508,16 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
     return f"<div class='gantt-wrap'>{gantt_div}</div>"
 
 
+def _build_tax_semantics_note() -> str:
+    return (
+        "<div class='modeling-note'><strong>Tax modeling note:</strong> "
+        "Employment income is currently modeled as net cash. "
+        "The taxes shown here cover modeled taxable retirement/event inflows "
+        "(for example Social Security, taxable income events, and taxable withdrawals), "
+        "not a full household tax return.</div>"
+    )
+
+
 def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     """
     Generate the Plotly chart figure, build HTML tables, and write
@@ -519,6 +533,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
         div_id="nwn-chart",
     )
     kpi_html = _build_kpi_summary(config, df)
+    tax_note_html = _build_tax_semantics_note()
 
     # Build table HTML
     accounts_html  = build_accounts_table(df)
@@ -541,6 +556,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
   <div class="chart-wrap">
     {kpi_html}
     {chart_div}
+    {tax_note_html}
   </div>
 
   <div class="tabs">

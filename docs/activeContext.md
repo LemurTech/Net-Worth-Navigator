@@ -11,14 +11,15 @@
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / living expenses / event outflows / net (yearly columns)
 - First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via the 2025 federal ordinary-income bracket schedule plus standard deduction, with effective-rate fallback retained only for compatibility
-- Ordinary-income tax brackets, standard deductions, and filing status by lifecycle phase now live in `config.toml [taxes]`
+- Ordinary-income tax brackets, standard deductions, filing status by lifecycle phase, and simplified Social Security provisional-income thresholds now live in `config.toml [taxes]`
+- Oregon state tax treatment is now active via `config.toml [taxes.state]`, using the official 2025 OR-40 tax table under $50,000 taxable income and the official rate-chart formulas above that
 - Event-level taxability is now configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
 - Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the bracket-based ordinary-income tax path
 - Withdrawal policy is now configurable by lifecycle phase via `[withdrawal_policy]` in `config.toml`
 - Phase-specific cash reserve targets are now supported for accumulation, retirement, and survivor periods
 - Surplus cash flow now refills the active cash target first, then allocates the remainder into non-cash investable buckets
 - Deficit coverage now honors configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` semantics to preserve reserves when possible
-- Cash Flow tab now shows positive income events in Income and an `Estimated taxes` expense row
+- Cash Flow tab now shows positive income events in Income and a `Modeled tax on retirement/event inflows` expense row
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
@@ -65,10 +66,13 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - Decide whether retirement / survivor withdrawal order should stay `cash_above_target → taxable → trad_ira → roth → cash_below_target` or be tuned further
 - Current build target: deeper tax realism
   - bracket-based federal ordinary-income tax model is now the active implementation path
-  - more nuanced Social Security taxation
-  - state tax treatment
+  - simplified Social Security provisional-income banding is now active, but wages still do not enter the provisional-income test because employment income remains net cash in the model
+  - Oregon state tax treatment is now active; next state-tax work is refinement/validation rather than first implementation
+    - official-source confirmation of Oregon Social Security treatment can be saved for a later pass
+    - breaking Cash Flow taxes into separate federal/state rows can also wait for a later pass
+  - Gross-income migration for wages is optional, not required, unless the project later aims to model a true full household tax return instead of Monarch-style net-income cash flow
   - route taxable withdrawals and Social Security through the richer tax model without changing current net-income semantics for job income
-- Decide whether taxable brokerage withdrawal taxability should stay at 50% or be customized further
+
 - Decide whether V2 should stay with raw TOML editing only or add structured form sections for simple config fields
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
 

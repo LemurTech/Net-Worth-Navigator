@@ -167,7 +167,7 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
         for y in years
     ]
     if any(v != 0 for v in taxes):
-        rows.append(_data_row("Estimated taxes", taxes, indent=True))
+        rows.append(_data_row("Modeled tax on retirement/event inflows", taxes, indent=True))
 
     mandatory_expense_events = []
     discretionary_expense_events = []

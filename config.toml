@@ -116,6 +116,39 @@ single = 15000
 married_joint = 30000
 head_of_household = 22500
 
+[taxes.social_security]
+use_provisional_income = true
+# Provisional income = modeled non-wage taxable inflows + 1/2 Social Security.
+# Because employment income is still modeled as net cash, wages do not currently enter this test.
+# Simplified banding for now: 0% taxable below base, 50% taxable between base and adjusted,
+# 85% taxable above adjusted.
+
+[taxes.social_security.thresholds.single]
+base = 25000
+adjusted = 34000
+
+[taxes.social_security.thresholds.married_joint]
+base = 32000
+adjusted = 44000
+
+[taxes.social_security.thresholds.head_of_household]
+base = 25000
+adjusted = 34000
+
+[taxes.state]
+enabled = true
+name = "oregon"
+# Source: 2025 Oregon Form OR-40 instructions.
+# Under $50,000 Oregon taxable income, the model uses the official OR-40 tax table.
+# At $50,000 and above, it uses the official Chart S / Chart J formulas.
+# Oregon Social Security treatment is modeled as not taxable at the state level.
+tax_social_security = false
+
+[taxes.state.standard_deduction]
+single = 2835
+married_joint = 5670
+head_of_household = 4560
+
 [[taxes.brackets.single]]
 up_to = 11925
 rate = 0.10
