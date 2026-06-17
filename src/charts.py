@@ -76,30 +76,57 @@ function resizePlotlyInPanel(panelId) {
 
 function applyResponsiveChartLayout() {
   if (typeof Plotly === 'undefined') return;
-  var chart = document.getElementById('nwn-chart');
-  if (!chart) return;
   var compact = window.innerWidth <= 900;
-  Plotly.relayout(chart, compact ? {
-    'legend.orientation': 'h',
-    'legend.x': 0.5,
-    'legend.xanchor': 'center',
-    'legend.y': -0.24,
-    'legend.yanchor': 'top',
-    'legend.font.size': 11,
-    'title.font.size': 17,
-    'margin.t': 132,
-    'margin.b': 124
-  } : {
-    'legend.orientation': 'h',
-    'legend.x': 1,
-    'legend.xanchor': 'right',
-    'legend.y': 1.06,
-    'legend.yanchor': 'bottom',
-    'legend.font.size': 12,
-    'title.font.size': 20,
-    'margin.t': 140,
-    'margin.b': 60
-  });
+
+  var chart = document.getElementById('nwn-chart');
+  if (chart) {
+    Plotly.relayout(chart, compact ? {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': -0.24,
+      'legend.yanchor': 'top',
+      'legend.font.size': 11,
+      'title.font.size': 17,
+      'margin.t': 132,
+      'margin.b': 124
+    } : {
+      'legend.orientation': 'h',
+      'legend.x': 1,
+      'legend.xanchor': 'right',
+      'legend.y': 1.06,
+      'legend.yanchor': 'bottom',
+      'legend.font.size': 12,
+      'title.font.size': 20,
+      'margin.t': 140,
+      'margin.b': 60
+    });
+  }
+
+  var gantt = document.getElementById('nwn-gantt');
+  if (gantt) {
+    Plotly.relayout(gantt, compact ? {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': -0.20,
+      'legend.yanchor': 'top',
+      'legend.font.size': 10,
+      'title.font.size': 16,
+      'margin.t': 78,
+      'margin.b': 118
+    } : {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': 1.01,
+      'legend.yanchor': 'bottom',
+      'legend.font.size': 12,
+      'title.font.size': 18,
+      'margin.t': 85,
+      'margin.b': 60
+    });
+  }
 }
 
 function switchTab(id) {
