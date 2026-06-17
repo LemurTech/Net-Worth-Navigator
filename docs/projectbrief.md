@@ -35,6 +35,23 @@ Out of scope (V1):
 - Streamlit UI (add later if live-reload is needed)
 - Multi-scenario side-by-side chart comparison (V2)
 
+## Roadmap
+
+### Priority #1 — Recurring events
+- support recurring expenses/income without duplicating many one-off events
+- example: a vacation every X years costing $10,000
+- design recurrence semantics that remain understandable in `config.toml`
+
+### Priority #2 — Deeper withdrawal policy controls
+- reserve targets / cash-floor behavior
+- alternate withdrawal ordering rules
+- separate accumulation vs retirement withdrawal behavior
+
+### Priority #3 — Deeper tax realism (after #2)
+- bracket-based tax model
+- more nuanced Social Security taxation
+- state tax treatment
+
 ## Success Criteria
 
 - `python run.py` produces a viewable, accurate chart in under 5 seconds

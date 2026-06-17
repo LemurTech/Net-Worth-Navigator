@@ -47,7 +47,17 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 
 - Confirm `survivor_annual = 66500` feels right (currently 70% of $95K)
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available
-- Decide next V2 priority: deeper tax realism vs withdrawal sequencing refinements
+- Roadmap priority #1: add recurring events
+  - example: a vacation every X years costing $10,000
+  - recurring expenses/income should be expressible without duplicating many one-off events
+- Roadmap priority #2: deeper withdrawal policy controls
+  - reserve targets
+  - alternate withdrawal ordering rules
+  - separate accumulation vs retirement withdrawal behavior
+- Roadmap priority #3 (after #2): deeper tax realism
+  - bracket-based tax model
+  - more nuanced Social Security taxation
+  - state tax treatment
 - Decide whether taxable brokerage withdrawal taxability should stay at 50% or be customized further
 - Decide whether V2 should stay with raw TOML editing only or add structured form sections for simple config fields
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct

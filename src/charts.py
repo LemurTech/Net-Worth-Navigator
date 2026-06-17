@@ -17,11 +17,11 @@ from src.model import load_config, EVENT_ICONS, LIABILITY_ICONS
 _TABS_CSS = """
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         margin: 0; padding: 0 16px 32px; background: #0b1220; color: #e5edf7; }
-  .page-toolbar { display: flex; justify-content: flex-end; margin: 14px 0 10px; }
-  .toolbar-link { display: inline-block; padding: 8px 12px; border-radius: 8px;
-                  border: 1px solid #243142; background: #111827; color: #e5edf7;
-                  text-decoration: none; font-size: 14px; }
+         margin: 0; padding: 0 16px 92px; background: #0b1220; color: #e5edf7; }
+  .page-toolbar { position: fixed; right: 18px; bottom: 18px; z-index: 40; }
+  .toolbar-link { display: inline-block; padding: 10px 14px; border-radius: 999px;
+                  border: 1px solid #243142; background: rgba(17,24,39,0.94); color: #e5edf7;
+                  text-decoration: none; font-size: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.35); }
   .toolbar-link:hover { border-color: #7dd3fc; }
   .chart-wrap { background: #111827; border-radius: 8px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.32); margin-bottom: 16px; }
@@ -74,6 +74,34 @@ function resizePlotlyInPanel(panelId) {
   });
 }
 
+function applyResponsiveChartLayout() {
+  if (typeof Plotly === 'undefined') return;
+  var chart = document.getElementById('nwn-chart');
+  if (!chart) return;
+  var compact = window.innerWidth <= 900;
+  Plotly.relayout(chart, compact ? {
+    'legend.orientation': 'h',
+    'legend.x': 0.5,
+    'legend.xanchor': 'center',
+    'legend.y': -0.24,
+    'legend.yanchor': 'top',
+    'legend.font.size': 11,
+    'title.font.size': 17,
+    'margin.t': 132,
+    'margin.b': 124
+  } : {
+    'legend.orientation': 'h',
+    'legend.x': 1,
+    'legend.xanchor': 'right',
+    'legend.y': 1.06,
+    'legend.yanchor': 'bottom',
+    'legend.font.size': 12,
+    'title.font.size': 20,
+    'margin.t': 140,
+    'margin.b': 60
+  });
+}
+
 function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -89,7 +117,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (activeBtn) {
       resizePlotlyInPanel(activeBtn.id.replace('btn-', ''));
     }
+    applyResponsiveChartLayout();
   }, 0);
+
+  window.addEventListener('resize', function() {
+    applyResponsiveChartLayout();
+  });
 
   document.querySelectorAll('.table-panel').forEach(function(panel) {
     var ticking = false;

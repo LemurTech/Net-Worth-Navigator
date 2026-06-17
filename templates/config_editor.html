@@ -152,6 +152,9 @@
       font-size: 14px;
       line-height: 1.5;
       tab-size: 2;
+      white-space: pre;
+      overflow-wrap: normal;
+      overflow-x: auto;
     }
     .actions {
       display: flex;
@@ -198,7 +201,6 @@
       </div>
       <div class="links">
         <a class="linkbtn" href="{{ projection_url }}" target="_blank" rel="noreferrer">Open projection</a>
-        <a class="linkbtn" href="{{ editor_url }}" target="_blank" rel="noreferrer">Open public editor URL</a>
       </div>
     </div>
 
@@ -206,7 +208,7 @@
       <div class="meta-grid">
         <div><strong>Last modified:</strong> {{ last_modified }}</div>
         <div><strong>Projection:</strong> <code>{{ projection_url }}</code></div>
-        <div><strong>Editor:</strong> <code>{{ editor_url }}</code></div>
+        <div><strong>Editor URL:</strong> <code>{{ editor_url }}</code> <span style="color:#9fb2c8;">(bookmark/share this address)</span></div>
       </div>
     </div>
 
@@ -223,7 +225,7 @@
 
     <form class="card" method="post" action="{{ request.url.path }}">
       <div class="editor-head">Edit the full TOML file below. Comments and formatting are preserved because the saved content is written back exactly as entered after validation.</div>
-      <textarea name="content" spellcheck="false">{{ content }}</textarea>
+      <textarea name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
       <div class="actions">
         <button type="submit" name="action" value="validate">Validate</button>
         <button type="submit" name="action" value="save">Save</button>
