@@ -114,6 +114,16 @@ def run_projection(
             s["balance"] for s in lib_state if s["type"] == "mortgage"
         )
 
+        # ── Determine survivor state ───────────────────────────────────────────
+        matthew_deceased = year > matthew["retirement_year"] and any(
+            e["type"] == "EndOfPlan" and e.get("person") == "matthew" and year > e["year"]
+            for e in events
+        )
+        weny_deceased = year > weny["retirement_year"] and any(
+            e["type"] == "EndOfPlan" and e.get("person") == "weny" and year > e["year"]
+            for e in events
+        )
+
         # ── Apply events for this year ─────────────────────────────────────────
         active_labels = []
         event_cash_flow = 0.0
@@ -121,7 +131,11 @@ def run_projection(
         for event in events:
             etype = event["type"]
 
-            if etype == "Retire":
+            if etype == "EndOfPlan":
+                if event["year"] == year:
+                    active_labels.append(f"⚰️ {event['label']}")
+
+            elif etype == "Retire":
                 if event["year"] == year:
                     active_labels.append(event["label"])
 
@@ -170,8 +184,40 @@ def run_projection(
                     active_labels.append(event["label"])
 
         # ── Income for this year ───────────────────────────────────────────────
-        matthew_income = _person_income(matthew, year, events)
-        weny_income = _person_income(weny, year, events)
+        matthew_income = _person_income(matthew, year, events, deceased=matthew_deceased)
+        weny_income    = _person_income(weny, year, events, deceased=weny_deceased)
+
+        # ── SS survivor benefit: survivor keeps the higher of the two checks ───
+        # If one person is deceased and both had started SS, the survivor's
+        # own benefit is already captured in _person_income. But if the deceased
+        # had the higher benefit, the survivor steps up — recalculate here.
+        if matthew_deceased or weny_deceased:
+            matthew_ss = sum(
+                e.get("monthly_benefit", 0) * 12
+                for e in events
+                if e["type"] == "SocialSecurity"
+                and e.get("person") == "matthew"
+                and year >= e["year"]
+            )
+            weny_ss = sum(
+                e.get("monthly_benefit", 0) * 12
+                for e in events
+                if e["type"] == "SocialSecurity"
+                and e.get("person") == "weny"
+                and year >= e["year"]
+            )
+            higher_ss = max(matthew_ss, weny_ss)
+            lower_ss  = min(matthew_ss, weny_ss)
+
+            if matthew_deceased and not weny_deceased and weny_ss > 0:
+                # Person 2 survives: receives higher of two checks (Person 1's if higher)
+                if matthew_ss > weny_ss:
+                    # Step Person 2 up — replace her SS with Person 1's higher amount
+                    weny_income = weny_income - weny_ss + matthew_ss
+            elif weny_deceased and not matthew_deceased and matthew_ss > 0:
+                # Person 1 survives: already on higher check, no change needed
+                pass
+
         total_income = matthew_income + weny_income
 
         # ── Contributions (pre-retirement only) ────────────────────────────────
@@ -189,8 +235,18 @@ def run_projection(
         total_contrib = matthew_contrib + weny_contrib
 
         # ── Net cash flow for the year ─────────────────────────────────────────
-        target_spend = spending.get("retirement_annual", 0)
-        annual_spend = target_spend if (matthew_retired and weny_retired) else total_income - total_contrib
+        target_spend   = spending.get("retirement_annual", 0)
+        survivor_spend = spending.get("survivor_annual", round(target_spend * 0.70))
+        both_retired   = matthew_retired and weny_retired
+        one_deceased   = matthew_deceased or weny_deceased
+
+        if both_retired and one_deceased:
+            annual_spend = survivor_spend
+        elif both_retired:
+            annual_spend = target_spend
+        else:
+            annual_spend = total_income - total_contrib
+
         # Freed liability payments add to net cash flow
         net_flow = total_income - annual_spend + event_cash_flow + freed_this_year
 
@@ -235,6 +291,7 @@ def run_projection(
             "annual_spend":   annual_spend,
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
+            "survivor":       one_deceased and both_retired,
             "events_active":  ", ".join(all_labels) if all_labels else "",
             "taxable":        portfolio["taxable"],
             "trad_ira":       portfolio["trad_ira"],
@@ -245,8 +302,11 @@ def run_projection(
     return pd.DataFrame(rows)
 
 
-def _person_income(person: dict, year: int, events: list) -> float:
+def _person_income(person: dict, year: int, events: list, deceased: bool = False) -> float:
     """Calculate a person's income for a given year, considering events."""
+    if deceased:
+        return 0.0
+
     person_key = person["name"].lower()
     base_income = person.get("annual_take_home", 0)
 

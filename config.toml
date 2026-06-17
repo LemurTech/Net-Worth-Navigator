@@ -5,7 +5,7 @@
 
 [simulation]
 start_year = 2026
-end_year    = 2054   # max(matthew life expectancy: 2054, weny life expectancy: 2063)
+end_year    = 2063   # max(matthew life expectancy: 2054, weny life expectancy: 2063)
 
 
 # ─── Household Members ────────────────────────────────────────────────────────
@@ -54,6 +54,7 @@ annual_ira_contribution  = 3600     # Roth IRA
 # Target annual household spending in retirement (today's dollars)
 # TODO: Confirm this figure — current take-home combined is $103,470
 retirement_annual = 95000           # slightly above current ~$87,645 spending
+survivor_annual   = 66500           # ~70% of retirement_annual — single-person household
 
 # Pre-retirement spending is implied by income minus contributions
 # Optionally override here if you want to model explicit savings rate
@@ -203,6 +204,20 @@ type          = "auto"
 #   Education       person, start_year, end_year, annual_cost
 #   Marriage        year
 # ──────────────────────────────────────────────────────────────────────────────
+
+[[events]]
+enabled = true
+type    = "EndOfPlan"
+label   = "Person 1 — End of Plan"
+person  = "matthew"
+year    = 2054                      # 1967 + 87
+
+[[events]]
+enabled = true
+type    = "EndOfPlan"
+label   = "Person 2 — End of Plan"
+person  = "weny"
+year    = 2063                      # 1976 + 87
 
 [[events]]
 enabled = true

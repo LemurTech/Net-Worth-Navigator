@@ -56,6 +56,20 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
         hovertemplate="<b>%{x}</b><br>Total Net Worth: $%{y:,.0f}<extra></extra>",
     ))
 
+    # ── Survivor period shading ────────────────────────────────────────────────
+    survivor_years = df[df["survivor"] == True]["year"]
+    if len(survivor_years) > 0:
+        fig.add_vrect(
+            x0=survivor_years.iloc[0] - 0.5,
+            x1=df["year"].iloc[-1] + 0.5,
+            fillcolor="rgba(100,100,100,0.06)",
+            line_width=0,
+            annotation_text="Survivor period",
+            annotation_position="top left",
+            annotation_font_size=10,
+            annotation_font_color="rgba(100,100,100,0.7)",
+        )
+
     # ── Event annotations ─────────────────────────────────────────────────────
     events_df = df[df["events_active"] != ""]
     for _, row in events_df.iterrows():
@@ -71,7 +85,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     # ── Layout ─────────────────────────────────────────────────────────────────
     fig.update_layout(
         title=dict(
-            text="Net Worth Navigator — Household Projection",
+            text="Net Worth Navigator — Household Projection<br><sup>Values shown are end-of-year estimates, anchored to live Monarch balances</sup>",
             font=dict(size=20),
         ),
         xaxis=dict(
