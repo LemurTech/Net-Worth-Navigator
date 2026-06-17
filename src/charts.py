@@ -85,34 +85,24 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             yanchor="bottom",
         )
 
-    # ── Event annotations ─────────────────────────────────────────────────────
-    # Alternate top-right / top-left on consecutive annotated years to reduce
-    # horizontal overlap. EndOfPlan events always get bottom-right so they
-    # sit below the survivor-period label rather than competing with it.
+    # ── Event annotations — vertical labels ───────────────────────────────────
+    # textangle=-90 rotates all labels to read bottom→top, eliminating
+    # horizontal overlap entirely regardless of how many events cluster.
     events_df = df[df["events_active"] != ""].copy()
-    positions = ["top right", "top left"]
 
-    for i, (_, row) in enumerate(events_df.iterrows()):
-        label = row["events_active"]
+    for _, row in events_df.iterrows():
+        label  = row["events_active"]
         is_eop = "⚰️" in label
-
-        if is_eop:
-            pos = "bottom right"
-            color = "rgba(80,80,80,0.55)"
-            dash = "dash"
-        else:
-            pos = positions[i % 2]
-            color = "rgba(60,100,180,0.55)"
-            dash = "dot"
 
         fig.add_vline(
             x=row["year"],
-            line_dash=dash,
-            line_color=color,
+            line_dash="dash" if is_eop else "dot",
+            line_color="rgba(80,80,80,0.55)" if is_eop else "rgba(60,100,180,0.55)",
             annotation_text=label,
-            annotation_position=pos,
+            annotation_position="top right",
+            annotation_textangle=-90,
             annotation_font_size=10,
-            annotation_bgcolor="rgba(255,255,255,0.75)",
+            annotation_bgcolor="rgba(255,255,255,0.80)",
             annotation_borderpad=3,
         )
 
@@ -147,8 +137,8 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
         ),
         plot_bgcolor="white",
         paper_bgcolor="white",
-        height=650,
-        margin=dict(l=80, r=40, t=100, b=60),
+        height=680,
+        margin=dict(l=80, r=40, t=140, b=60),
     )
 
     # ── Write output ───────────────────────────────────────────────────────────
