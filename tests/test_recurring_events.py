@@ -158,6 +158,33 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(years["matthew"], 2057)
         self.assertEqual(years["weny"], 2066)
 
+    def test_resolve_runtime_config_syncs_social_security_from_person_settings(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {
+                "dob": "1967-04-23",
+                "ss_start_age": 70,
+                "ss_monthly_benefit": 3698,
+            },
+            "weny": {
+                "dob": "1976-10-02",
+                "ss_start_age": 67,
+                "ss_monthly_benefit": 1000,
+            },
+            "events": [
+                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (M)", "person": "matthew", "year": 2034, "monthly_benefit": 2691},
+                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (W)", "person": "weny", "year": 2040, "monthly_benefit": 1200},
+            ],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        ss_events = {event["person"]: event for event in resolved["events"]}
+
+        self.assertEqual(ss_events["matthew"]["year"], 2037)
+        self.assertEqual(ss_events["matthew"]["monthly_benefit"], 3698.0)
+        self.assertEqual(ss_events["weny"]["year"], 2043)
+        self.assertEqual(ss_events["weny"]["monthly_benefit"], 1000.0)
+
     def test_home_value_uses_real_estate_appreciation_when_present(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2026},

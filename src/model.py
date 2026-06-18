@@ -74,6 +74,7 @@ def resolve_runtime_config(config: dict) -> dict:
         runtime.get("simulation", {}),
     )
     runtime["events"] = _sync_end_of_plan_years(runtime)
+    runtime["events"] = _sync_social_security_events(runtime)
     return runtime
 
 
@@ -90,6 +91,31 @@ def _sync_end_of_plan_years(config: dict) -> list[dict]:
                 try:
                     birth_year = int(str(dob).split("-", 1)[0])
                     updated["year"] = birth_year + int(life_expectancy)
+                except (TypeError, ValueError):
+                    pass
+        synced.append(updated)
+    return synced
+
+
+def _sync_social_security_events(config: dict) -> list[dict]:
+    """Sync SocialSecurity event timing/benefit to person-level SS settings."""
+    synced: list[dict] = []
+    for event in config.get("events", []):
+        updated = dict(event)
+        if updated.get("type") == "SocialSecurity" and updated.get("person"):
+            person = config.get(str(updated["person"]), {})
+            dob = person.get("dob")
+            ss_start_age = person.get("ss_start_age")
+            ss_monthly_benefit = person.get("ss_monthly_benefit")
+            if dob and ss_start_age is not None:
+                try:
+                    birth_year = int(str(dob).split("-", 1)[0])
+                    updated["year"] = birth_year + int(ss_start_age)
+                except (TypeError, ValueError):
+                    pass
+            if ss_monthly_benefit is not None:
+                try:
+                    updated["monthly_benefit"] = float(ss_monthly_benefit)
                 except (TypeError, ValueError):
                     pass
         synced.append(updated)

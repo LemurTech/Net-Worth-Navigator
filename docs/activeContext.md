@@ -25,6 +25,7 @@
 - `SellHome` proceeds are now preserved in cash in the sale year rather than being auto-invested into existing non-cash buckets
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
+- Social Security event timing and monthly benefit are now synced at runtime from each person's `ss_start_age` + `ss_monthly_benefit`; `ss_start_year` has been removed from the person-level config surface
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type

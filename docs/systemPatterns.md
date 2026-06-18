@@ -44,6 +44,7 @@ run.py
 - **Surplus refills cash before investing.** Positive net flow first restores the active cash target, then allocates the remainder across positive non-cash investable buckets.
 - **Output is always regenerated, never cached.** `python run.py` always produces a fresh chart.
 - **Recurring chart annotations can be decoupled from model recurrence.** `chart_first_occurrence_only = true` keeps repeated events active in the model and tables while suppressing later main-chart annotations for readability.
+- **Social Security person settings are the source of truth.** Runtime config now derives `SocialSecurity` event year and benefit from each person's `ss_start_age` + `ss_monthly_benefit`; `ss_start_year` is not part of the intended person-level control surface.
 
 ## Event System
 

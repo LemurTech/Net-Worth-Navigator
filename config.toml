@@ -17,16 +17,15 @@ projection_title = "Casa Lemuria"
 name              = "Person 1"
 dob               = "1967-04-23"
 life_expectancy   = 90              # → year 2057
-retirement_year   = 2035
+retirement_year   = 2034
 annual_take_home  = 74958           # current net (after tax) income
 
 # Social Security
 # Social Security benefit options (from SSA.gov estimate):
 #   Age 62 → $1,553/mo  |  Age 65 → $2,164/mo
 #   Age 67 → $2,691/mo  |  Age 70 → $3,698/mo
-ss_monthly_benefit = 3698           # at age 67 (full retirement age)
-ss_start_age       = 70             # change to 62/65/70 to model other strategies
-ss_start_year      = 2037           # 1967 + 67 = 2034
+ss_monthly_benefit = 3698           # monthly benefit at the chosen start age
+ss_start_age       = 70             # source of truth for SS start timing
 
 # Retirement contributions (2025 actuals)
 annual_401k_contribution = 12225    # 401k + Roth combined
@@ -42,9 +41,8 @@ annual_take_home  = 28512           # current net (after tax) income
 
 # Social Security
 # TODO: Confirm with SSA.gov when estimate is available
-ss_monthly_benefit = 1000           # working estimate — update from SSA.gov
-ss_start_age       = 67             # 62 / 67 / 70 — your choice
-ss_start_year      = 2043           # 1976 + 67 = 2043
+ss_monthly_benefit = 1000           # monthly benefit at the chosen start age
+ss_start_age       = 67             # source of truth for SS start timing
 
 # Retirement contributions (2025 actuals)
 annual_401k_contribution = 0
@@ -396,7 +394,18 @@ enabled = true
 type    = "Retire"
 label   = "Retirement (M)"
 person  = "matthew"
+year    = 2035                      # Age 68
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Health Expenses (60s)"
 year    = 2035
+amount  = -12000
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2036
+chart_first_occurrence_only = true
 
 [[events]]
 enabled = true
@@ -410,8 +419,8 @@ enabled = true
 type    = "SocialSecurity"
 label   = "SS Begins (M)"
 person  = "matthew"
-year    = 2034                      # age 67
-monthly_benefit = 2691              # SSA.gov estimate at full retirement age
+year    = 2037                      # runtime syncs from matthew.ss_start_age
+monthly_benefit = 3698              # runtime syncs from matthew.ss_monthly_benefit
 # taxable / taxable_fraction optional — defaults to fully taxable in current model
 
 [[events]]
@@ -419,8 +428,8 @@ enabled = true
 type    = "SocialSecurity"
 label   = "SS Begins (W)"
 person  = "weny"
-year    = 2043                      # age 67
-monthly_benefit = 1200              # working estimate — update from SSA.gov
+year    = 2043                      # runtime syncs from weny.ss_start_age
+monthly_benefit = 1000              # runtime syncs from weny.ss_monthly_benefit
 # taxable / taxable_fraction optional — defaults to fully taxable in current model
 
 # Income Events
@@ -467,18 +476,18 @@ expense_kind = "mandatory"
 enabled = true
 type    = "Expense"
 label   = "Property Taxes (annual)"
-year    = 2031
+year    = 2030
 amount  = -4500
 expense_kind = "mandatory"
 repeat_every_years = 1
-repeat_until_year  = 2063
+repeat_until_year  = 2050
 chart_first_occurrence_only = true
 
 [[events]]
 enabled = true
 type    = "Expense"
 label   = "Rent (annual)"
-year    = 2049
+year    = 2050
 amount  = -48000
 expense_kind = "mandatory"
 repeat_every_years = 1
@@ -499,7 +508,7 @@ chart_first_occurrence_only = false
 enabled = true
 type    = "Expense"
 label   = "Caregiving Expenses"
-year    = 2047
+year    = 2052
 amount  = -36000
 expense_kind = "mandatory"
 repeat_every_years = 1
@@ -509,7 +518,7 @@ chart_first_occurrence_only = true
 enabled = true
 type    = "Expense"
 label   = "Health Expenses (70s)"
-year    = 2035
+year    = 2037
 amount  = -15000
 expense_kind = "mandatory"
 repeat_every_years = 1
@@ -540,25 +549,25 @@ chart_first_occurrence_only = true
 # Discretionary Expenses (non-repeating)
 
 [[events]]
-enabled = false
+enabled = true
 type    = "BuyHome"
-label   = "Home purchase / refinance"
-year    = 2027
-price        = 0                    # PLACEHOLDER
-down_payment = 0                    # PLACEHOLDER
-mortgage_rate = 0.065               # PLACEHOLDER
+label   = "Condo Purchase"
+year    = 2050
+price        = 200000
+down_payment = 200000
+mortgage_rate = 0.065
 term_years   = 30
 
 [[events]]
 enabled = true
 type    = "SellHome"
 label   = "Sell Casa Lemuria"
-year    = 2049
+year    = 2050
 property = "Casa Lemuria"
 liability_names = ["Mortgage (5156)"]     # optional when only one active mortgaged property exists
 # sale_fee_rate = 0.06              # optional override; defaults to [assumptions].real_estate_sale_fee_rate
 reinvest_to = "taxable"          # optional — move sale proceeds into taxable brokerage instead of leaving them in cash
-reinvest_fraction = 0.8           # optional — defaults to all positive net proceeds when reinvest_to is set
+reinvest_fraction = 0.6           # optional — defaults to all positive net proceeds when reinvest_to is set
 
 [[events]]
 enabled = false
