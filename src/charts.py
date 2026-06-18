@@ -97,6 +97,19 @@ function applyResponsiveChartLayout() {
 
   var chart = document.getElementById('nwn-chart');
   if (chart) {
+    var fullTickvals = (chart._halFullTickvals || (chart.layout && chart.layout.xaxis && chart.layout.xaxis.tickvals) || []).slice();
+    var fullTicktext = (chart._halFullTicktext || (chart.layout && chart.layout.xaxis && chart.layout.xaxis.ticktext) || []).slice();
+    if (!chart._halFullTickvals) {
+      chart._halFullTickvals = fullTickvals.slice();
+    }
+    if (!chart._halFullTicktext) {
+      chart._halFullTicktext = fullTicktext.slice();
+    }
+    var compactTicktext = chart._halCompactTicktext || fullTicktext.map(function(label) {
+      return String(label).split('<br>')[0];
+    });
+    chart._halCompactTicktext = compactTicktext.slice();
+
     Plotly.relayout(chart, compact ? {
       'legend.orientation': 'h',
       'legend.x': 0.5,
@@ -106,7 +119,9 @@ function applyResponsiveChartLayout() {
       'legend.font.size': 11,
       'title.font.size': 17,
       'margin.t': 132,
-      'margin.b': 124
+      'margin.b': 92,
+      'xaxis.tickvals': chart._halFullTickvals,
+      'xaxis.ticktext': chart._halCompactTicktext
     } : {
       'legend.orientation': 'h',
       'legend.x': 1,
@@ -116,7 +131,34 @@ function applyResponsiveChartLayout() {
       'legend.font.size': 12,
       'title.font.size': 20,
       'margin.t': 140,
-      'margin.b': 60
+      'margin.b': 88,
+      'xaxis.tickvals': chart._halFullTickvals,
+      'xaxis.ticktext': chart._halFullTicktext
+    });
+  }
+
+  var portfolio = document.getElementById('nwn-portfolio');
+  if (portfolio) {
+    Plotly.relayout(portfolio, compact ? {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': -0.20,
+      'legend.yanchor': 'top',
+      'legend.font.size': 10,
+      'title.font.size': 15,
+      'margin.t': 72,
+      'margin.b': 104
+    } : {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': 1.01,
+      'legend.yanchor': 'bottom',
+      'legend.font.size': 12,
+      'title.font.size': 16,
+      'margin.t': 78,
+      'margin.b': 48
     });
   }
 
@@ -239,6 +281,13 @@ EVENT_TYPE_COLORS = {
     "LiabilityPayoff": "rgba(90,160,120,0.82)",
 }
 
+INVESTABLE_SERIES = [
+    ("cash",     "rgba(191,219,254,0.42)", "Cash"),
+    ("taxable",  "rgba(96,165,250,0.42)",  "Taxable"),
+    ("trad_ira", "rgba(74,222,128,0.36)",  "Traditional IRA / 401k"),
+    ("roth",     "rgba(251,191,36,0.38)",  "Roth"),
+]
+
 
 def _point_span(year: int) -> tuple[float, float]:
     return year - 0.4, year + 0.4
@@ -355,6 +404,68 @@ def _build_kpi_summary(config: dict, df: pd.DataFrame) -> str:
     return f"<div class='kpi-strip'>{boxes}</div>"
 
 
+def _build_portfolio_chart(df: pd.DataFrame) -> str:
+    paper_bg = "#111827"
+    plot_bg = "#0f1725"
+    grid = "rgba(148,163,184,0.14)"
+    font_color = "#e5edf7"
+
+    fig = go.Figure()
+    for category, color, label in INVESTABLE_SERIES:
+        if (df[category] != 0).any():
+            fig.add_trace(go.Scatter(
+                x=df["year"], y=df[category],
+                mode="lines", name=label,
+                stackgroup="portfolio", fillcolor=color, line=dict(width=0),
+                hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
+            ))
+
+    portfolio_total = df[["cash", "taxable", "trad_ira", "roth"]].sum(axis=1)
+    fig.add_trace(go.Scatter(
+        x=df["year"], y=portfolio_total,
+        mode="lines", name="Total Investable Portfolio",
+        line=dict(color="#f8fafc", width=2.2, dash="dash"),
+        hovertemplate="<b>%{x}</b><br>Total Investable Portfolio: $%{y:,.0f}<extra></extra>",
+    ))
+
+    fig.update_layout(
+        font=dict(color=font_color),
+        title=dict(text="Projected Investment Portfolio", font=dict(size=16)),
+        xaxis=dict(
+            title="Year",
+            tickmode="linear",
+            dtick=2,
+            ticklabelstandoff=6,
+            gridcolor=grid,
+            zerolinecolor=grid,
+            color=font_color,
+        ),
+        yaxis=dict(
+            title="Portfolio Value (USD)",
+            tickformat="$,.0f",
+            ticklabelstandoff=6,
+            automargin=True,
+            gridcolor=grid,
+            zerolinecolor=grid,
+            color=font_color,
+        ),
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
+        hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
+        plot_bgcolor=plot_bg,
+        paper_bgcolor=paper_bg,
+        height=420,
+        margin=dict(l=76, r=24, t=78, b=48),
+    )
+
+    portfolio_div = fig.to_html(
+        full_html=False,
+        include_plotlyjs=False,
+        div_id="nwn-portfolio",
+    )
+    return f"<div class='gantt-wrap'>{portfolio_div}</div>"
+
+
 def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
     sim = config["simulation"]
     paper_bg = "#111827"
@@ -467,7 +578,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
             base=[item["start_x"]],
             y=[item["row"]],
             orientation="h",
-            width=0.23,
+            width=0.21,
             name=legend_name,
             showlegend=legend_name not in shown_types,
             marker=dict(color=EVENT_TYPE_COLORS.get(item["type"], "rgba(120,120,120,0.75)")),
@@ -528,11 +639,12 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         ),
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
         hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
+        barcornerradius=4,
         plot_bgcolor=plot_bg,
         paper_bgcolor=paper_bg,
         hovermode="closest",
-        height=max(210, 9 * len(items) + 48),
-        margin=dict(l=108, r=24, t=78, b=46),
+        height=max(180, 6 * len(items) + 36),
+        margin=dict(l=104, r=20, t=70, b=36),
     )
 
     gantt_div = fig.to_html(
@@ -573,6 +685,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     # Build table HTML
     accounts_html  = build_accounts_table(df)
     cashflow_html  = build_cashflow_table(df)
+    portfolio_html = _build_portfolio_chart(df)
     gantt_html     = _build_gantt_chart(config, df)
 
     # Assemble full page
@@ -599,6 +712,8 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             onclick="switchTab('accounts')">Accounts</button>
     <button class="tab-btn" id="btn-cashflow"
             onclick="switchTab('cashflow')">Cash Flow</button>
+    <button class="tab-btn" id="btn-portfolio"
+            onclick="switchTab('portfolio')">Portfolio</button>
     <button class="tab-btn" id="btn-gantt"
             onclick="switchTab('gantt')">Gantt</button>
   </div>
@@ -608,6 +723,9 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
   </div>
   <div class="tab-panel table-panel" id="panel-cashflow">
     {cashflow_html}
+  </div>
+  <div class="tab-panel gantt-panel" id="panel-portfolio">
+    {portfolio_html}
   </div>
   <div class="tab-panel gantt-panel" id="panel-gantt">
     {gantt_html}

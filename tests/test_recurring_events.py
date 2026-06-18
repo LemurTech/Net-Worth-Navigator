@@ -357,6 +357,8 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Net Worth at Retirement", html)
         self.assertIn("Retirement Age", html)
         self.assertIn("Net Worth at End", html)
+        self.assertIn(">Portfolio<", html)
+        self.assertIn('id="nwn-portfolio"', html)
         self.assertLess(html.index("kpi-strip"), html.index('id="nwn-chart"'))
 
     def test_classify_accounts_honors_disabled_real_estate(self):

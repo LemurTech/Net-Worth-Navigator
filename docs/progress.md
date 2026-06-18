@@ -13,6 +13,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Social Security timing and monthly benefit are now synced from each person's `ss_start_age` + `ss_monthly_benefit`, and `ss_start_year` has been removed from the person-level config surface
 - Regression coverage for `SellHome` equity-to-cash behavior under `tests/test_withdrawal_policy.py`
 - Main-chart x-axis can now show ages below the year ticks using household DOBs from config
+- Small-screen responsive layout now suppresses the parenthetical age labels on the main chart x-axis so the year ticks remain legible on narrow viewports
 - Regression coverage for age tick-label generation under `tests/test_recurring_events.py`
 - Phase-specific withdrawal policy controls via `[withdrawal_policy]` in `config.toml`
 - Cash reserve targets for accumulation, retirement, and survivor periods

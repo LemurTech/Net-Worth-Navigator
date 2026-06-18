@@ -11,6 +11,7 @@
 - Analysis sidecars now emit on each run under `output/`: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, and `accounts_snapshot.json`
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / living expenses / event outflows / net (yearly columns)
+- Portfolio tab: dedicated projected investment portfolio chart for cash / taxable / traditional IRA / 401k / Roth, separate from home equity and the main net worth view
 - First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via the 2025 federal ordinary-income bracket schedule plus standard deduction, with effective-rate fallback retained only for compatibility
 - Ordinary-income tax brackets, standard deductions, filing status by lifecycle phase, and simplified Social Security provisional-income thresholds now live in `config.toml [taxes]`
 - Oregon state tax treatment is now active via `config.toml [taxes.state]`, using the official 2025 OR-40 tax table under $50,000 taxable income and the official rate-chart formulas above that
