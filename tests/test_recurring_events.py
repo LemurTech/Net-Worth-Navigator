@@ -141,6 +141,100 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(item_2026["event_type"], "Expense")
         self.assertEqual(by_year[2028].event_items[0]["label"], "Vacation")
 
+    def test_resolve_runtime_config_syncs_end_of_plan_years_to_life_expectancy(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {"dob": "1967-04-23", "life_expectancy": 90},
+            "weny": {"dob": "1976-10-02", "life_expectancy": 90},
+            "events": [
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "matthew", "year": 2054},
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "weny", "year": 2063},
+            ],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        years = {event["person"]: event["year"] for event in resolved["events"]}
+
+        self.assertEqual(years["matthew"], 2057)
+        self.assertEqual(years["weny"], 2066)
+
+    def test_home_value_uses_real_estate_appreciation_when_present(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2026},
+            "assumptions": {
+                "stock_return": 0.0,
+                "bond_return": 0.0,
+                "inflation": 0.03,
+                "real_estate_appreciation": 0.05,
+                "equity_allocation": 0.0,
+                "effective_tax_rate_pre_retirement": 0.0,
+                "effective_tax_rate_post_retirement": 0.0,
+                "taxable_withdrawal_taxable_fraction": 0.0,
+                "trad_ira_withdrawal_taxable_fraction": 0.0,
+            },
+            "matthew": {"name": "Person 1", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "weny": {"name": "Person 2", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "spending": {"retirement_annual": 0, "survivor_annual": 0},
+            "withdrawal_policy": {
+                "accumulation_cash_target": 0.0,
+                "retirement_cash_target": 0.0,
+                "survivor_cash_target": 0.0,
+                "accumulation_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "retirement_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "survivor_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+            },
+            "events": [],
+            "liabilities": [],
+        }
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0},
+                home_value=100.0,
+                liability_balances={},
+                property_values={"Casa Lemuria": 100.0},
+            )
+
+        self.assertAlmostEqual(float(df.iloc[0]["home_value"]), 105.0, places=6)
+
+    def test_home_value_falls_back_to_inflation_when_real_estate_appreciation_missing(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2026},
+            "assumptions": {
+                "stock_return": 0.0,
+                "bond_return": 0.0,
+                "inflation": 0.03,
+                "equity_allocation": 0.0,
+                "effective_tax_rate_pre_retirement": 0.0,
+                "effective_tax_rate_post_retirement": 0.0,
+                "taxable_withdrawal_taxable_fraction": 0.0,
+                "trad_ira_withdrawal_taxable_fraction": 0.0,
+            },
+            "matthew": {"name": "Person 1", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "weny": {"name": "Person 2", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "spending": {"retirement_annual": 0, "survivor_annual": 0},
+            "withdrawal_policy": {
+                "accumulation_cash_target": 0.0,
+                "retirement_cash_target": 0.0,
+                "survivor_cash_target": 0.0,
+                "accumulation_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "retirement_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "survivor_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+            },
+            "events": [],
+            "liabilities": [],
+        }
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0},
+                home_value=100.0,
+                liability_balances={},
+                property_values={"Casa Lemuria": 100.0},
+            )
+
+        self.assertAlmostEqual(float(df.iloc[0]["home_value"]), 103.0, places=6)
+
     def test_build_cashflow_table_splits_mandatory_and_discretionary_expenses(self):
         df = pd.DataFrame([
             {
@@ -285,10 +379,16 @@ class RecurringEventsTests(unittest.TestCase):
 
         captured = {}
 
-        def fake_run_projection(balances, home_value=0.0, liability_balances=None):
+        def fake_run_projection(
+            balances,
+            home_value=0.0,
+            liability_balances=None,
+            property_values=None,
+        ):
             captured["balances"] = balances
             captured["home_value"] = home_value
             captured["liability_balances"] = liability_balances
+            captured["property_values"] = property_values
             return pd.DataFrame([
                 {
                     "year": 2026,
@@ -324,6 +424,55 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(captured["balances"]["cash"], 12000.0)
         self.assertEqual(captured["home_value"], 0.0)
         self.assertEqual(captured["liability_balances"], {"Mortgage (5156)": 125355.55})
+        self.assertEqual(captured["property_values"], {})
+
+    def test_xaxis_tick_spec_includes_age_labels(self):
+        config = {
+            "matthew": {"dob": "1967-04-23"},
+            "weny": {"dob": "1976-10-02"},
+        }
+
+        tickvals, ticktext = charts._xaxis_tick_spec(config, [2026, 2027, 2028, 2029])
+
+        self.assertEqual(tickvals, [2026, 2028])
+        self.assertEqual(ticktext, ["2026<br>(59/50)", "2028<br>(61/52)"])
+
+    def test_build_figure_keeps_negative_cash_trace_visible(self):
+        config = {
+            "display": {"projection_title": "Negative Cash Test"},
+            "matthew": {"dob": "1967-04-23"},
+            "weny": {"dob": "1976-10-02"},
+        }
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "home_equity": 0.0,
+                "cash": -50.0,
+                "taxable": 0.0,
+                "trad_ira": 0.0,
+                "roth": 0.0,
+                "total_net_worth": -50.0,
+                "survivor": False,
+                "events_active": "",
+            },
+            {
+                "year": 2027,
+                "home_equity": 0.0,
+                "cash": -25.0,
+                "taxable": 0.0,
+                "trad_ira": 0.0,
+                "roth": 0.0,
+                "total_net_worth": -25.0,
+                "survivor": False,
+                "events_active": "",
+            },
+        ])
+
+        fig = charts._build_figure(df, config)
+        trace_names = [trace.name for trace in fig.data]
+
+        self.assertIn("Cash", trace_names)
+        self.assertEqual(list(fig.layout.xaxis.ticktext), ["2026<br>(59/50)"])
 
 
 if __name__ == "__main__":

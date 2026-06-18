@@ -231,6 +231,7 @@ EVENT_TYPE_COLORS = {
     "Expense": "rgba(214,77,77,0.80)",
     "Income": "rgba(79,164,98,0.78)",
     "BuyHome": "rgba(160,120,80,0.78)",
+    "SellHome": "rgba(107,142,95,0.82)",
     "NewJob": "rgba(52,152,219,0.78)",
     "CareerBreak": "rgba(243,156,18,0.78)",
     "Education": "rgba(155,89,182,0.78)",
@@ -287,6 +288,40 @@ def _retirement_age(config: dict, event: dict | None) -> int | None:
         return int(event["year"]) - birth_year
     except (TypeError, ValueError, KeyError):
         return None
+
+
+def _age_label_for_year(config: dict, year: int) -> str:
+    ages = []
+    for person_key in ("matthew", "weny"):
+        dob = config.get(person_key, {}).get("dob")
+        if not dob:
+            continue
+        try:
+            birth_year = int(str(dob).split("-", 1)[0])
+        except (TypeError, ValueError):
+            continue
+        ages.append(str(int(year) - birth_year))
+
+    if not ages:
+        return ""
+    if len(ages) == 1:
+        return f"({ages[0]})"
+    return f"({'/'.join(ages)})"
+
+
+def _xaxis_tick_spec(config: dict, years: list[int]) -> tuple[list[int], list[str]]:
+    if not years:
+        return [], []
+
+    tickvals = list(range(int(years[0]), int(years[-1]) + 1, 2))
+    if len(years) == 1:
+        tickvals = [int(years[0])]
+
+    ticktext = []
+    for year in tickvals:
+        age_label = _age_label_for_year(config, year)
+        ticktext.append(f"{year}<br>{age_label}" if age_label else str(year))
+    return tickvals, ticktext
 
 
 def _build_kpi_summary(config: dict, df: pd.DataFrame) -> str:
@@ -369,7 +404,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         etype = event["type"]
         person = event.get("person")
 
-        if etype in {"EndOfPlan", "Expense", "BuyHome", "Marriage"}:
+        if etype in {"EndOfPlan", "Expense", "BuyHome", "SellHome", "Marriage"}:
             add_item(event, event["year"])
         elif etype in {"CareerBreak", "Education"}:
             add_item(event, event["start_year"], event["end_year"])
@@ -595,9 +630,10 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
     plot_bg = "#0f1725"
     grid = "rgba(148,163,184,0.14)"
     font_color = "#e5edf7"
+    tickvals, ticktext = _xaxis_tick_spec(config, df["year"].astype(int).tolist())
 
     # ── Home equity band (non-liquid) ──────────────────────────────────────────
-    if df["home_equity"].sum() > 0:
+    if (df["home_equity"] != 0).any():
         fig.add_trace(go.Scatter(
             x=df["year"], y=df["home_equity"],
             mode="lines", name="Home Equity (non-liquid)",
@@ -613,7 +649,7 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
         ("trad_ira", "rgba(74,222,128,0.36)",  "Traditional IRA / 401k"),
         ("roth",     "rgba(251,191,36,0.38)",  "Roth"),
     ]:
-        if df[category].sum() > 0:
+        if (df[category] != 0).any():
             fig.add_trace(go.Scatter(
                 x=df["year"], y=df[category],
                 mode="lines", name=label,
@@ -673,7 +709,7 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
             ),
             font=dict(size=20),
         ),
-        xaxis=dict(title="Year", tickmode="linear", dtick=2,
+        xaxis=dict(title="Year", tickmode="array", tickvals=tickvals, ticktext=ticktext,
                    ticklabelstandoff=6,
                    gridcolor=grid,
                    zerolinecolor=grid,
@@ -689,7 +725,7 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
         hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
         plot_bgcolor=plot_bg, paper_bgcolor=paper_bg,
         height=680,
-        margin=dict(l=80, r=40, t=140, b=60),
+        margin=dict(l=80, r=40, t=140, b=88),
     )
 
     return fig

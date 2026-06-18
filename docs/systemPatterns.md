@@ -67,6 +67,7 @@ amount = -6000             # negative = cash outflow
 | `Expense` | Singular | `year`, `amount` — one-time cash outflow |
 | `Income` | Singular or bounded | `year`, `amount`, `end_year` (optional) |
 | `BuyHome` | Singular (down payment) + ongoing (mortgage) | `year`, `down_payment`, `price`, `mortgage_rate`, `term_years` |
+| `SellHome` | Singular | `year`, `property`, optional `liability_names`, optional `sale_fee_rate`, optional `reinvest_to`, optional `reinvest_fraction` |
 | `NewJob` | Permanent start | `person`, `year`, `annual_income` — replaces income |
 | `CareerBreak` | Bounded | `person`, `start_year`, `end_year` — zeroes earned income |
 | `Education` | Bounded | `person`, `start_year`, `end_year`, `annual_cost` |
@@ -78,7 +79,8 @@ amount = -6000             # negative = cash outflow
 - `SocialSecurity`: adds `monthly_benefit * 12` to income from `year` onward
 - `Expense`: subtracts `amount` from liquid assets in `year`
 - `Income`: adds `amount` per year within `[year, end_year]` (or just `year` if no `end_year`)
-- `BuyHome`: subtracts `down_payment` in `year`, adds mortgage payment as annual expense, increases net worth via home equity (simplified: home value grows at inflation)
+- `BuyHome`: subtracts `down_payment` in `year`, adds mortgage payment as annual expense, increases net worth via home equity (property growth now follows `real_estate_appreciation`, with inflation as fallback)
+- `SellHome`: converts the named property value into cash proceeds net of sale fees and linked mortgage payoff, then removes that property from future home-value growth
 - `NewJob`: replaces `person.income` from `year` onward
 - `CareerBreak`: zeroes `person.income` for `[start_year, end_year]`
 - `Education`: subtracts `annual_cost` per year for `[start_year, end_year]`

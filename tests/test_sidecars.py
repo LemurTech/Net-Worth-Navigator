@@ -1,0 +1,104 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+import pandas as pd
+
+from src.sidecars import write_sidecars
+
+
+class SidecarTests(unittest.TestCase):
+    def test_write_sidecars_outputs_normalized_bundle(self):
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "net_worth": 100.0,
+                "home_value": 500.0,
+                "mortgage": 300.0,
+                "home_equity": 200.0,
+                "total_net_worth": 300.0,
+                "matthew_income": 10.0,
+                "weny_income": 20.0,
+                "taxable_income": 5.0,
+                "annual_taxes": 1.0,
+                "annual_federal_taxes": 1.0,
+                "annual_state_taxes": 0.0,
+                "annual_spend": 15.0,
+                "freed_payments": 0.0,
+                "net_flow": 14.0,
+                "survivor": False,
+                "event_items": [
+                    {
+                        "label": "Sell Casa Lemuria",
+                        "amount": 170000.0,
+                        "event_type": "SellHome",
+                    },
+                    {
+                        "label": "Vacation",
+                        "amount": -5000.0,
+                        "event_type": "Expense",
+                        "expense_kind": "discretionary",
+                    },
+                ],
+                "events_active": "🏡 Sell Casa Lemuria, 🏖️ Vacation",
+                "taxable": 170000.0,
+                "trad_ira": 100.0,
+                "roth": 0.0,
+                "cash": 0.0,
+            }
+        ])
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {"name": "Person 1", "dob": "1967-04-23", "life_expectancy": 90, "retirement_year": 2035, "annual_take_home": 0.0},
+            "weny": {"name": "Person 2", "dob": "1976-10-02", "life_expectancy": 90, "retirement_year": 2035, "annual_take_home": 0.0},
+            "assumptions": {"real_estate_sale_fee_rate": 0.06},
+            "withdrawal_policy": {},
+            "events": [
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "matthew", "year": 2054},
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "weny", "year": 2063},
+                {"enabled": True, "type": "SellHome", "label": "Sell Casa Lemuria", "year": 2049, "property": "Casa Lemuria", "reinvest_to": "taxable"},
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = write_sidecars(
+                output_dir=Path(tmp),
+                df=df,
+                config=config,
+                mode="offline",
+                cache_timestamp="2026-06-18T00:00:00",
+                portfolio={"taxable": 0.0, "trad_ira": 100.0, "roth": 0.0, "cash": 0.0},
+                extras={"home_value": 500.0, "vehicles": 0.0, "other": 0.0},
+                liability_balances={"Mortgage": 300.0},
+                property_values={"Casa Lemuria": 500.0},
+                raw_accounts=[{"name": "Casa Lemuria", "balance": 500.0, "type": "real_estate"}],
+            )
+
+            for path in paths.values():
+                self.assertTrue(path.exists())
+
+            projection_csv = Path(tmp) / "projection_yearly.csv"
+            projection_df = pd.read_csv(projection_csv)
+            self.assertNotIn("event_items", projection_df.columns)
+            self.assertIn("events_active", projection_df.columns)
+            self.assertEqual(float(projection_df.iloc[0]["taxable"]), 170000.0)
+
+            event_flows_csv = Path(tmp) / "event_flows.csv"
+            event_flows_df = pd.read_csv(event_flows_csv)
+            self.assertEqual(len(event_flows_df), 2)
+            self.assertEqual(set(event_flows_df["label"].tolist()), {"Sell Casa Lemuria", "Vacation"})
+
+            manifest = json.loads((Path(tmp) / "scenario_manifest.json").read_text())
+            self.assertEqual(manifest["mode"], "offline")
+            self.assertEqual(manifest["resolved_end_of_plan_years"]["matthew"], 2057)
+            self.assertEqual(manifest["resolved_end_of_plan_years"]["weny"], 2066)
+            self.assertEqual(manifest["projection_summary"]["row_count"], 1)
+
+            accounts = json.loads((Path(tmp) / "accounts_snapshot.json").read_text())
+            self.assertEqual(accounts["property_values"]["Casa Lemuria"], 500.0)
+            self.assertEqual(accounts["liability_balances"]["Mortgage"], 300.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

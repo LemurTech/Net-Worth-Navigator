@@ -8,6 +8,7 @@
 - `python run.py` — full run (live Monarch), deploys chart
 - `python run.py --offline` — offline run (cached), fast re-render
 - Chart: http://casalemuria.lan/finances/projection.html
+- Analysis sidecars now emit on each run under `output/`: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, and `accounts_snapshot.json`
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / living expenses / event outflows / net (yearly columns)
 - First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via the 2025 federal ordinary-income bracket schedule plus standard deduction, with effective-rate fallback retained only for compatibility
@@ -20,6 +21,10 @@
 - Surplus cash flow now refills the active cash target first, then allocates the remainder into non-cash investable buckets
 - Deficit coverage now honors configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` semantics to preserve reserves when possible
 - Cash Flow tab now shows positive income events in Income and a `Modeled tax on retirement/event inflows` expense row
+- End-of-plan timing is now synced from each person's `dob` + `life_expectancy` at runtime so stale hardcoded event years do not skew the chart
+- `SellHome` proceeds are now preserved in cash in the sale year rather than being auto-invested into existing non-cash buckets
+- `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
+- Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
@@ -35,7 +40,9 @@
 - Both tables scroll horizontally, yearly tick columns
 - First-column labels and section bands are frozen via JS `translateX(scrollLeft)` + `requestAnimationFrame`
 - Table navigation now supports grab-and-drag panning and moderated wheel-to-horizontal scrolling
-- Main chart now uses 2-year x-axis ticks with 6px tick-label standoff on both axes
+- Main chart now uses 2-year x-axis ticks with ages shown below each year for Person 1/Person 2 in `(M/W)` form
+- Negative-only liquid series now remain visible on the main chart instead of disappearing when their summed values are below zero
+- Projection model now supports `SellHome` events keyed to named real-estate accounts, with configurable/default sale-fee rates and optional mortgage payoff linkage
 - Projection page now includes a KPI summary strip above the chart: Net Worth (EOY), Net Worth at Retirement, Retirement Age (first retiree), and Net Worth at End
 - Page chrome, tables, and both Plotly charts now use a cohesive dark theme
 - Main chart subtitle/label after `Net Worth Navigator —` is now configurable via `[display].projection_title` in `config.toml`

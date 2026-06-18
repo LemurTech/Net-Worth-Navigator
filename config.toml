@@ -5,7 +5,7 @@
 
 [simulation]
 start_year = 2026
-end_year   = 2063   # max(matthew life expectancy: 2054, weny life expectancy: 2063)
+end_year   = 2066   # max(matthew life expectancy: 2057, weny life expectancy: 2066)
 
 [display]
 projection_title = "Casa Lemuria"
@@ -16,7 +16,7 @@ projection_title = "Casa Lemuria"
 [matthew]
 name              = "Person 1"
 dob               = "1967-04-23"
-life_expectancy   = 87              # → year 2054
+life_expectancy   = 90              # → year 2057
 retirement_year   = 2035
 annual_take_home  = 74958           # current net (after tax) income
 
@@ -24,9 +24,9 @@ annual_take_home  = 74958           # current net (after tax) income
 # Social Security benefit options (from SSA.gov estimate):
 #   Age 62 → $1,553/mo  |  Age 65 → $2,164/mo
 #   Age 67 → $2,691/mo  |  Age 70 → $3,698/mo
-ss_monthly_benefit = 2691           # at age 67 (full retirement age)
-ss_start_age       = 67             # change to 62/65/70 to model other strategies
-ss_start_year      = 2034           # 1967 + 67 = 2034
+ss_monthly_benefit = 3698           # at age 67 (full retirement age)
+ss_start_age       = 70             # change to 62/65/70 to model other strategies
+ss_start_year      = 2037           # 1967 + 67 = 2034
 
 # Retirement contributions (2025 actuals)
 annual_401k_contribution = 12225    # 401k + Roth combined
@@ -36,13 +36,13 @@ annual_ira_contribution  = 0
 [weny]
 name              = "Person 2"
 dob               = "1976-10-02"
-life_expectancy   = 87              # → year 2063
-retirement_year   = 2037
+life_expectancy   = 90              # → year 2066
+retirement_year   = 2040
 annual_take_home  = 28512           # current net (after tax) income
 
 # Social Security
 # TODO: Confirm with SSA.gov when estimate is available
-ss_monthly_benefit = 1200           # working estimate — update from SSA.gov
+ss_monthly_benefit = 1000           # working estimate — update from SSA.gov
 ss_start_age       = 67             # 62 / 67 / 70 — your choice
 ss_start_year      = 2043           # 1976 + 67 = 2043
 
@@ -56,8 +56,8 @@ annual_ira_contribution  = 3600     # Roth IRA
 [spending]
 # Target annual household spending in retirement (today's dollars)
 # TODO: Confirm this figure — current take-home combined is $103,470
-retirement_annual = 95000           # slightly above current ~$87,645 spending
-survivor_annual   = 66500           # ~70% of retirement_annual — single-person household
+retirement_annual = 100000          # slightly above current ~$87,645 spending
+survivor_annual   = 70000           # ~70% of retirement_annual — single-person household
 
 # Pre-retirement spending is implied by income minus contributions
 # Optionally override here if you want to model explicit savings rate
@@ -78,9 +78,9 @@ survivor_cash_target     = 66500
 # Deficit coverage order.
 # cash_above_target uses only dollars above the reserve.
 # cash_below_target taps the reserve itself only as a last resort.
-accumulation_withdrawal_order = ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"]
-retirement_withdrawal_order   = ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"]
-survivor_withdrawal_order     = ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"]
+accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
+retirement_withdrawal_order   = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
+survivor_withdrawal_order     = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
 
 
 # ─── Market & Economic Assumptions ───────────────────────────────────────────
@@ -89,7 +89,9 @@ survivor_withdrawal_order     = ["cash_above_target", "taxable", "trad_ira", "ro
 stock_return     = 0.07     # nominal annual return, equities
 bond_return      = 0.04     # nominal annual return, fixed income
 inflation        = 0.03     # annual CPI inflation rate
+real_estate_appreciation = 0.03   # annual home/property appreciation; separate from CPI if desired
 equity_allocation = 0.70    # portfolio stock/bond split (0.70 = 70% equities)
+real_estate_sale_fee_rate = 0.06   # default broker/closing-cost rate for SellHome events
 
 # Legacy fallback rates used only if `[taxes]` is disabled or incomplete.
 # Current deeper-tax-realism path uses the bracket tables below.
@@ -261,7 +263,7 @@ disabled = [
     "RO: Person 1 Checking (8809)",
 
     # Primary home
-    "Casa Lemuria",
+    # "Casa Lemuria Off",
 ]
 
 # ── Retirement / Investable ────────────────────────────────────────────────────
@@ -366,6 +368,7 @@ type          = "auto"
 #   Expense         year, amount [, expense_kind="mandatory"]  # or "discretionary"
 #   Income          year, amount [, end_year] [, taxable=false] [, taxable_fraction=0.50]
 #   BuyHome         year, price, down_payment, mortgage_rate, term_years
+#   SellHome        year, property [, liability_names=[...]] [, sale_fee_rate=0.06] [, reinvest_to="taxable"] [, reinvest_fraction=1.0]
 #   NewJob          person, year, annual_income
 #   CareerBreak     person, start_year, end_year
 #   Education       person, start_year, end_year, annual_cost
@@ -379,14 +382,14 @@ enabled = true
 type    = "EndOfPlan"
 label   = "End of Plan (M)"
 person  = "matthew"
-year    = 2054                      # 1967 + 87
+year    = 2057                      # 1967 + 90
 
 [[events]]
 enabled = true
 type    = "EndOfPlan"
 label   = "End of Plan (W)"
 person  = "weny"
-year    = 2063                      # 1976 + 87
+year    = 2066                      # 1976 + 90
 
 [[events]]
 enabled = true
@@ -474,6 +477,16 @@ chart_first_occurrence_only = true
 [[events]]
 enabled = true
 type    = "Expense"
+label   = "Rent (annual)"
+year    = 2049
+amount  = -48000
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = false
+type    = "Expense"
 label   = "Health Events"
 year    = 2032
 amount  = -24000
@@ -487,10 +500,41 @@ enabled = true
 type    = "Expense"
 label   = "Caregiving Expenses"
 year    = 2047
-amount  = -28000
+amount  = -36000
 expense_kind = "mandatory"
 repeat_every_years = 1
-repeat_until_year  = 2063
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Health Expenses (70s)"
+year    = 2035
+amount  = -15000
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2047
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Health Expenses (80s)"
+year    = 2047
+amount  = -25000
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2056
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Health Expenses (90s)"
+year    = 2057
+amount  = -35000
+expense_kind = "mandatory"
+repeat_every_years = 1
 chart_first_occurrence_only = true
 
 # Discretionary Expenses (non-repeating)
@@ -504,6 +548,17 @@ price        = 0                    # PLACEHOLDER
 down_payment = 0                    # PLACEHOLDER
 mortgage_rate = 0.065               # PLACEHOLDER
 term_years   = 30
+
+[[events]]
+enabled = true
+type    = "SellHome"
+label   = "Sell Casa Lemuria"
+year    = 2049
+property = "Casa Lemuria"
+liability_names = ["Mortgage (5156)"]     # optional when only one active mortgaged property exists
+# sale_fee_rate = 0.06              # optional override; defaults to [assumptions].real_estate_sale_fee_rate
+reinvest_to = "taxable"          # optional — move sale proceeds into taxable brokerage instead of leaving them in cash
+reinvest_fraction = 0.8           # optional — defaults to all positive net proceeds when reinvest_to is set
 
 [[events]]
 enabled = false

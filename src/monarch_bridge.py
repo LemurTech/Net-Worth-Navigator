@@ -130,6 +130,23 @@ def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict
     return portfolio, extras
 
 
+def extract_real_estate_accounts(raw: list[dict], config: dict | None = None) -> dict[str, float]:
+    """Return named real-estate accounts from raw Monarch data."""
+    if config is None:
+        config = load_config()
+    classification_map: dict[str, str] = config.get("accounts", {})
+    disabled: set[str] = set(classification_map.get("disabled", []))
+
+    properties: dict[str, float] = {}
+    for acct in raw:
+        name = acct["name"]
+        if name in disabled:
+            continue
+        if classification_map.get(name) == "real_estate":
+            properties[str(name)] = float(acct["balance"])
+    return properties
+
+
 def get_balances() -> tuple[dict[str, float], dict[str, float]]:
     """Fetch and classify current Monarch balances using the live config."""
     return classify_accounts(fetch_raw_accounts())

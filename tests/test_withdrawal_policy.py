@@ -117,6 +117,153 @@ class WithdrawalPolicyTests(unittest.TestCase):
         self.assertEqual(row["cash"], 50.0)
         self.assertEqual(row["taxable"], 90.0)
 
+    def test_sell_home_event_converts_equity_to_cash_and_clears_mortgage(self):
+        config = self._base_config()
+        config["liabilities"] = [
+            {
+                "name": "Mortgage",
+                "annual_rate": 0.0,
+                "monthly_base": 0.0,
+                "monthly_extra": 0.0,
+                "type": "mortgage",
+            }
+        ]
+        config["events"].append(
+            {
+                "enabled": True,
+                "type": "SellHome",
+                "label": "Sell Casa Lemuria",
+                "year": 2026,
+                "property": "Casa Lemuria",
+                "liability_names": ["Mortgage"],
+            }
+        )
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=500_000.0,
+                liability_balances={"Mortgage": 300_000.0},
+                property_values={"Casa Lemuria": 500_000.0},
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["cash"], 170_000.0)
+        self.assertEqual(row["mortgage"], 0.0)
+        self.assertEqual(row["home_value"], 0.0)
+        self.assertEqual(row["home_equity"], 0.0)
+        self.assertEqual(row["total_net_worth"], 170_000.0)
+        self.assertEqual(row["event_items"][0]["event_type"], "SellHome")
+        self.assertEqual(row["event_items"][0]["amount"], 170_000.0)
+        self.assertIn("🏡 Sell Casa Lemuria", row["events_active"])
+
+    def test_sell_home_proceeds_stay_in_cash_instead_of_auto_investing(self):
+        config = self._base_config()
+        config["liabilities"] = [
+            {
+                "name": "Mortgage",
+                "annual_rate": 0.0,
+                "monthly_base": 0.0,
+                "monthly_extra": 0.0,
+                "type": "mortgage",
+            }
+        ]
+        config["events"].append(
+            {
+                "enabled": True,
+                "type": "SellHome",
+                "label": "Sell Casa Lemuria",
+                "year": 2026,
+                "property": "Casa Lemuria",
+                "liability_names": ["Mortgage"],
+            }
+        )
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 100.0, "roth": 0.0},
+                home_value=500_000.0,
+                liability_balances={"Mortgage": 300_000.0},
+                property_values={"Casa Lemuria": 500_000.0},
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["cash"], 170_000.0)
+        self.assertEqual(row["trad_ira"], 100.0)
+
+    def test_sell_home_can_reinvest_all_proceeds_into_taxable(self):
+        config = self._base_config()
+        config["liabilities"] = [
+            {
+                "name": "Mortgage",
+                "annual_rate": 0.0,
+                "monthly_base": 0.0,
+                "monthly_extra": 0.0,
+                "type": "mortgage",
+            }
+        ]
+        config["events"].append(
+            {
+                "enabled": True,
+                "type": "SellHome",
+                "label": "Sell Casa Lemuria",
+                "year": 2026,
+                "property": "Casa Lemuria",
+                "liability_names": ["Mortgage"],
+                "reinvest_to": "taxable",
+            }
+        )
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 100.0, "roth": 0.0},
+                home_value=500_000.0,
+                liability_balances={"Mortgage": 300_000.0},
+                property_values={"Casa Lemuria": 500_000.0},
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["cash"], 0.0)
+        self.assertEqual(row["taxable"], 170_000.0)
+        self.assertEqual(row["trad_ira"], 100.0)
+
+    def test_sell_home_can_reinvest_partial_proceeds_into_taxable(self):
+        config = self._base_config()
+        config["liabilities"] = [
+            {
+                "name": "Mortgage",
+                "annual_rate": 0.0,
+                "monthly_base": 0.0,
+                "monthly_extra": 0.0,
+                "type": "mortgage",
+            }
+        ]
+        config["events"].append(
+            {
+                "enabled": True,
+                "type": "SellHome",
+                "label": "Sell Casa Lemuria",
+                "year": 2026,
+                "property": "Casa Lemuria",
+                "liability_names": ["Mortgage"],
+                "reinvest_to": "taxable",
+                "reinvest_fraction": 0.25,
+            }
+        )
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 100.0, "roth": 0.0},
+                home_value=500_000.0,
+                liability_balances={"Mortgage": 300_000.0},
+                property_values={"Casa Lemuria": 500_000.0},
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["cash"], 127_500.0)
+        self.assertEqual(row["taxable"], 42_500.0)
+        self.assertEqual(row["trad_ira"], 100.0)
+
 
 if __name__ == "__main__":
     unittest.main()

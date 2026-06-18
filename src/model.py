@@ -26,6 +26,7 @@ EVENT_ICONS = {
     "Expense":        "💸",
     "Income":         "💰",
     "BuyHome":        "🏠",
+    "SellHome":       "🏡",
     "NewJob":         "💼",
     "CareerBreak":    "⏸️",
     "Education":      "🎓",
@@ -72,7 +73,27 @@ def resolve_runtime_config(config: dict) -> dict:
         runtime.get("events", []),
         runtime.get("simulation", {}),
     )
+    runtime["events"] = _sync_end_of_plan_years(runtime)
     return runtime
+
+
+def _sync_end_of_plan_years(config: dict) -> list[dict]:
+    """Sync EndOfPlan event years to the household dob/life_expectancy settings."""
+    synced: list[dict] = []
+    for event in config.get("events", []):
+        updated = dict(event)
+        if updated.get("type") == "EndOfPlan" and updated.get("person"):
+            person = config.get(str(updated["person"]), {})
+            dob = person.get("dob")
+            life_expectancy = person.get("life_expectancy")
+            if dob and life_expectancy is not None:
+                try:
+                    birth_year = int(str(dob).split("-", 1)[0])
+                    updated["year"] = birth_year + int(life_expectancy)
+                except (TypeError, ValueError):
+                    pass
+        synced.append(updated)
+    return synced
 
 
 def expand_events(events: list[dict], simulation: dict | None = None) -> list[dict]:
@@ -194,6 +215,107 @@ def make_event_item(label: str, amount: float, event_type: str,
     return item
 
 
+def _initial_property_state(
+    *,
+    home_value: float,
+    property_values: dict[str, float] | None,
+) -> dict[str, float]:
+    """Return the tracked property-value state for the simulation."""
+    if property_values:
+        return {str(name): float(value) for name, value in property_values.items()}
+    if home_value != 0:
+        return {"Primary Residence": float(home_value)}
+    return {}
+
+
+def _sell_home_property_name(event: dict) -> str:
+    """Return the property/account name referenced by a SellHome event."""
+    property_name = event.get("property") or event.get("account")
+    if not property_name:
+        raise ValueError(
+            f"SellHome event '{event.get('label', '?')}' must define property or account"
+        )
+    return str(property_name)
+
+
+def _sell_home_fee_rate(event: dict, assumptions: dict) -> float:
+    """Return the sale-fee rate for a SellHome event."""
+    raw_rate = event.get(
+        "sale_fee_rate",
+        assumptions.get("real_estate_sale_fee_rate", 0.06),
+    )
+    try:
+        rate = float(raw_rate)
+    except (TypeError, ValueError):
+        rate = 0.06
+    return max(0.0, min(1.0, rate))
+
+
+def _sell_home_reinvest_target(event: dict) -> str | None:
+    """Return the optional destination bucket for post-sale reinvestment."""
+    raw_target = event.get("reinvest_to")
+    if raw_target is None:
+        return None
+    target = str(raw_target).strip().lower()
+    if target in {"", "cash", "none"}:
+        return None
+    if target != "taxable":
+        raise ValueError(
+            f"SellHome event '{event.get('label', '?')}' has unsupported reinvest_to '{raw_target}'. "
+            "Use 'taxable' or omit it to keep proceeds in cash."
+        )
+    return target
+
+
+def _sell_home_reinvest_fraction(event: dict) -> float:
+    """Return the optional fraction of net proceeds to reinvest after a sale."""
+    raw_fraction = event.get("reinvest_fraction", 1.0)
+    try:
+        fraction = float(raw_fraction)
+    except (TypeError, ValueError):
+        fraction = 1.0
+    return max(0.0, min(1.0, fraction))
+
+
+def _resolve_sell_home_liabilities(
+    event: dict,
+    lib_state: list[dict],
+    property_state: dict[str, float],
+) -> list[dict]:
+    """Return mortgage liabilities that should be cleared by a home sale."""
+    requested = event.get("liability_names")
+    if requested is None and event.get("liability_name"):
+        requested = [event["liability_name"]]
+
+    liabilities_by_name = {str(lib["name"]): lib for lib in lib_state}
+
+    if requested is not None:
+        if isinstance(requested, str):
+            requested_names = [requested]
+        else:
+            requested_names = [str(name) for name in requested]
+        missing = [name for name in requested_names if name not in liabilities_by_name]
+        if missing:
+            raise ValueError(
+                f"SellHome event '{event.get('label', '?')}' references unknown liabilities: {', '.join(missing)}"
+            )
+        return [liabilities_by_name[name] for name in requested_names]
+
+    active_properties = [
+        name for name, value in property_state.items()
+        if float(value) > 0
+    ]
+    if len(active_properties) <= 1:
+        return [
+            lib for lib in lib_state
+            if lib.get("type") == "mortgage" and float(lib.get("balance", 0.0)) > 0
+        ]
+
+    raise ValueError(
+        f"SellHome event '{event.get('label', '?')}' must specify liability_names when multiple active properties exist"
+    )
+
+
 def resolve_withdrawal_policy(config: dict, balances: dict[str, float]) -> dict[str, object]:
     """Return phase-specific withdrawal policy with sensible defaults."""
     section = config.get("withdrawal_policy", {})
@@ -250,6 +372,7 @@ def run_projection(
     balances: dict[str, float],
     home_value: float = 0.0,
     liability_balances: dict[str, float] | None = None,
+    property_values: dict[str, float] | None = None,
 ) -> pd.DataFrame:
     """
     Run the year-by-year net worth projection.
@@ -300,8 +423,11 @@ def run_projection(
         })
 
     # ── Home tracking ──────────────────────────────────────────────────────────
-    # home_value grows at inflation; mortgage balance is tracked in lib_state
-    current_home_value = home_value
+    # property values grow at inflation; mortgage balance is tracked in lib_state
+    property_state = _initial_property_state(
+        home_value=home_value,
+        property_values=property_values,
+    )
     # Sum initial mortgage balances for starting home equity
     mortgage_balance = sum(
         s["balance"] for s in lib_state if s["type"] == "mortgage"
@@ -354,6 +480,8 @@ def run_projection(
         # ── Apply events for this year ─────────────────────────────────────────
         active_labels = []
         event_cash_flow = 0.0
+        cash_preserve_flow = 0.0
+        pending_reinvestments: list[tuple[str, float]] = []
         taxable_event_income = 0.0
         event_items: list[dict[str, object]] = []   # normalized cash-flow items for tables
 
@@ -425,6 +553,60 @@ def run_projection(
                         active_labels.append(f"{icon} {event['label']}")
                 # Mortgage payments handled as ongoing expense — TODO V2
 
+            elif etype == "SellHome":
+                if event["year"] == year:
+                    property_name = _sell_home_property_name(event)
+                    if property_name not in property_state:
+                        raise ValueError(
+                            f"SellHome event '{event.get('label', '?')}' references unknown property '{property_name}'"
+                        )
+
+                    property_value = float(property_state[property_name])
+                    sale_fee_rate = _sell_home_fee_rate(event, assumptions)
+                    sale_liabilities = _resolve_sell_home_liabilities(
+                        event,
+                        lib_state,
+                        property_state,
+                    )
+                    mortgage_payoff = sum(
+                        float(lib.get("balance", 0.0)) for lib in sale_liabilities
+                    )
+                    sale_fees = property_value * sale_fee_rate
+                    net_proceeds = property_value - sale_fees - mortgage_payoff
+
+                    event_cash_flow += net_proceeds
+                    cash_preserve_flow += max(0.0, net_proceeds)
+                    reinvest_target = _sell_home_reinvest_target(event)
+                    if reinvest_target and net_proceeds > 0:
+                        reinvest_amount = net_proceeds * _sell_home_reinvest_fraction(event)
+                        if reinvest_amount > 0:
+                            pending_reinvestments.append((reinvest_target, reinvest_amount))
+                    event_items.append(
+                        make_event_item(
+                            label=event["label"],
+                            amount=net_proceeds,
+                            event_type="SellHome",
+                        )
+                    )
+                    property_state[property_name] = 0.0
+
+                    for lib in sale_liabilities:
+                        prior_balance = float(lib.get("balance", 0.0))
+                        if prior_balance <= 0:
+                            continue
+                        lib["balance"] = 0.0
+                        lib["paid_off"] = True
+                        if lib.get("payoff_year") is None:
+                            lib["payoff_year"] = year
+                        short_name = lib["name"].split("(")[0].strip()
+                        icon = LIABILITY_ICONS.get(lib.get("type", "other"), "✅")
+                        payoff_labels.append(f"{icon} {short_name} paid off")
+                        freed_this_year += float(lib.get("monthly_total", 0.0)) * 12
+
+                    icon = EVENT_ICONS["SellHome"]
+                    if should_show_chart_label(event):
+                        active_labels.append(f"{icon} {event['label']}")
+
             elif etype == "NewJob":
                 if event["year"] == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["NewJob"]
@@ -448,6 +630,10 @@ def run_projection(
                 if event["year"] == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["Marriage"]
                     active_labels.append(f"{icon} {event['label']}")
+
+        mortgage_balance = sum(
+            s["balance"] for s in lib_state if s["type"] == "mortgage"
+        )
 
         # ── Income for this year ───────────────────────────────────────────────
         matthew_parts = _person_income_components(
@@ -595,9 +781,12 @@ def run_projection(
             post_tax_flow = base_net_flow - annual_taxes
 
             if post_tax_flow >= 0:
+                preserved_cash = min(post_tax_flow, cash_preserve_flow)
+                if preserved_cash > 0:
+                    working_portfolio["cash"] = working_portfolio.get("cash", 0.0) + preserved_cash
                 _apply_surplus_with_reserve_target(
                     working_portfolio,
-                    surplus=post_tax_flow,
+                    surplus=post_tax_flow - preserved_cash,
                     cash_target=cash_target,
                 )
                 withdrawal_taxable_income = 0.0
@@ -628,11 +817,25 @@ def run_projection(
             annual_taxes = new_annual_taxes
 
         portfolio = working_portfolio
+        for reinvest_target, requested_amount in pending_reinvestments:
+            move_amount = min(
+                max(0.0, portfolio.get("cash", 0.0)),
+                max(0.0, requested_amount),
+            )
+            if move_amount <= 0:
+                continue
+            portfolio["cash"] = portfolio.get("cash", 0.0) - move_amount
+            portfolio[reinvest_target] = portfolio.get(reinvest_target, 0.0) + move_amount
         net_flow = base_net_flow - annual_taxes
 
-        # ── Grow home value at inflation; compute equity ───────────────────────
+        # ── Grow home value at configured real-estate appreciation; compute equity ──
         total_portfolio = sum(portfolio.values())
-        current_home_value *= (1 + assumptions["inflation"])
+        real_estate_growth = float(
+            assumptions.get("real_estate_appreciation", assumptions["inflation"])
+        )
+        for property_name in list(property_state):
+            property_state[property_name] *= (1 + real_estate_growth)
+        current_home_value = sum(property_state.values())
         home_equity = current_home_value - mortgage_balance
 
         # Merge all annotation labels for this year

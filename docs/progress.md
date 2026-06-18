@@ -6,6 +6,13 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- `SellHome` event type for converting a named real-estate account into cash proceeds, with default/override sale-fee rates and optional mortgage payoff linkage
+- `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
+- Analysis sidecar bundle now emits on each run: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, and `accounts_snapshot.json`
+- Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`
+- Regression coverage for `SellHome` equity-to-cash behavior under `tests/test_withdrawal_policy.py`
+- Main-chart x-axis can now show ages below the year ticks using household DOBs from config
+- Regression coverage for age tick-label generation under `tests/test_recurring_events.py`
 - Phase-specific withdrawal policy controls via `[withdrawal_policy]` in `config.toml`
 - Cash reserve targets for accumulation, retirement, and survivor periods
 - Configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` steps
@@ -45,6 +52,9 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Changed
 
+- Negative-only liquid series now remain visible on the main chart instead of being suppressed when the series sum is below zero
+- Offline/full projection runs now pass named real-estate accounts into the model so `SellHome` can target a specific property
+- Projection config schema and sample config now include `real_estate_sale_fee_rate` plus `SellHome` event examples
 - Projection page moved to a cohesive dark theme across chrome, tables, and both Plotly charts
 - Main chart x-axis uses 2-year ticks with 6px tick-label standoff on both axes
 - Table horizontal navigation now supports grab-to-pan and moderated wheel scrolling
