@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.tables import build_accounts_table, build_cashflow_table
+from src.tables import build_accounts_table, build_cashflow_table, build_assumptions_summary
 from src.model import load_config, resolve_runtime_config, get_event_icon, EVENT_ICONS, LIABILITY_ICONS
 
 # ── CSS + JS for the tabbed layout ────────────────────────────────────────────
@@ -72,9 +72,28 @@ _TABS_CSS = """
   .gantt-wrap { background: #111827; border-radius: 6px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.28); }
   .gantt-empty { color: #93a4ba; padding: 16px; }
+  .assumptions-wrap { background: #111827; border-radius: 6px; padding: 12px;
+                      box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+  .assumptions-note { margin: 2px 2px 12px; color: #9fb2c8; font-size: 12px; }
+  .assumptions-note code { color: #e5edf7; background: #0b1220; padding: 1px 5px; border-radius: 4px; }
+  .assumptions-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .assumption-card { background: #0f1725; border: 1px solid #243142; border-radius: 10px; overflow: hidden; }
+  .assumption-card-wide { grid-column: 1 / -1; }
+  .assumption-card h3 { margin: 0; padding: 12px 14px; border-bottom: 1px solid #243142;
+                        font-size: 14px; color: #f8fafc; }
+  .assumption-subtitle { margin: 0; padding: 10px 14px 0; color: #9fb2c8; font-size: 12px; }
+  table.assumptions-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  table.assumptions-table th, table.assumptions-table td { padding: 9px 14px; border-bottom: 1px solid #1f2a3a; }
+  table.assumptions-table thead th { text-align: left; color: #f8fafc; background: #182233; font-weight: 600; }
+  table.assumptions-table tbody th { text-align: left; color: #cbd5e1; width: 52%; font-weight: 500; }
+  table.assumptions-table tbody td { text-align: left; color: #f8fafc; }
+  table.assumptions-table tbody tr:last-child th,
+  table.assumptions-table tbody tr:last-child td { border-bottom: none; }
+  table.assumptions-people tbody td:first-child { font-weight: 600; }
   @media (max-width: 900px) {
     .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi-value { font-size: 24px; }
+    .assumptions-grid { grid-template-columns: 1fr; }
   }
 </style>
 """
@@ -686,6 +705,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
     cashflow_html  = build_cashflow_table(df)
     portfolio_html = _build_portfolio_chart(df)
     gantt_html     = _build_gantt_chart(config, df)
+    assumptions_html = build_assumptions_summary(config)
 
     # Assemble full page
     html = f"""<!DOCTYPE html>
@@ -715,6 +735,8 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
             onclick="switchTab('portfolio')">Portfolio</button>
     <button class="tab-btn" id="btn-gantt"
             onclick="switchTab('gantt')">Gantt</button>
+    <button class="tab-btn" id="btn-assumptions"
+            onclick="switchTab('assumptions')">Assumptions</button>
   </div>
 
   <div class="tab-panel table-panel active" id="panel-accounts">
@@ -728,6 +750,9 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
   </div>
   <div class="tab-panel gantt-panel" id="panel-gantt">
     {gantt_html}
+  </div>
+  <div class="tab-panel assumptions-panel" id="panel-assumptions">
+    {assumptions_html}
   </div>
 
   {_TABS_JS}

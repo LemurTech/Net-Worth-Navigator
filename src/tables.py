@@ -1,9 +1,11 @@
 """
-tables.py — Build HTML tables for the Accounts and Cash Flow tabs.
+tables.py — Build HTML tables and summary panels for Net Worth Navigator.
 
 Each function returns a self-contained HTML string ready to embed
 in the tabbed page wrapper produced by charts.py.
 """
+from html import escape
+
 import pandas as pd
 
 
@@ -34,6 +36,175 @@ def _fmt(value: float) -> str:
         return "<td class='zero'>—</td>"
     color = "neg" if value < 0 else ""
     return f"<td class='{color}'>${value:>12,.0f}</td>"
+
+
+def _fmt_currency(value) -> str:
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return "—"
+    sign = "-" if amount < 0 else ""
+    return f"{sign}${abs(amount):,.0f}"
+
+
+def _fmt_percent(value) -> str:
+    try:
+        pct = float(value) * 100.0
+    except (TypeError, ValueError):
+        return "—"
+    text = f"{pct:.1f}".rstrip("0").rstrip(".")
+    return f"{text}%"
+
+
+def _birth_year(dob: str | None) -> int | None:
+    if not dob:
+        return None
+    try:
+        return int(str(dob).split("-", 1)[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def _age_from_year(dob: str | None, target_year) -> int | None:
+    birth_year = _birth_year(dob)
+    if birth_year is None:
+        return None
+    try:
+        return int(target_year) - birth_year
+    except (TypeError, ValueError):
+        return None
+
+
+def _fmt_age_year(age, year) -> str:
+    if age is None and year in (None, ""):
+        return "—"
+    if age is None:
+        return str(year)
+    if year in (None, ""):
+        return str(age)
+    return f"{age} (→ {year})"
+
+
+def _person_keys(config: dict) -> list[str]:
+    preferred = [
+        key for key in ("matthew", "weny")
+        if isinstance(config.get(key), dict)
+        and any(field in config[key] for field in ("dob", "life_expectancy", "retirement_year", "ss_start_age"))
+    ]
+    extras = [
+        key for key, value in config.items()
+        if key not in preferred
+        and isinstance(value, dict)
+        and any(field in value for field in ("dob", "life_expectancy", "retirement_year", "ss_start_age"))
+    ]
+    return preferred + extras
+
+
+def _kv_table(rows: list[tuple[str, str]]) -> str:
+    body = "".join(
+        f"<tr><th>{escape(label)}</th><td>{value}</td></tr>"
+        for label, value in rows
+    )
+    return f"<table class='assumptions-table assumptions-kv'><tbody>{body}</tbody></table>"
+
+
+def build_assumptions_summary(config: dict) -> str:
+    """Return a formatted HTML summary of the current modeling assumptions."""
+    people_rows = []
+    for person_key in _person_keys(config):
+        person = config.get(person_key, {})
+        name = person.get("name") or person_key.replace("_", " ").title()
+        dob = person.get("dob") or "—"
+
+        life_expectancy = person.get("life_expectancy")
+        birth_year = _birth_year(person.get("dob"))
+        end_year = None
+        if birth_year is not None and life_expectancy not in (None, ""):
+            try:
+                end_year = birth_year + int(life_expectancy)
+            except (TypeError, ValueError):
+                end_year = None
+
+        retirement_year = person.get("retirement_year")
+        retirement_age = _age_from_year(person.get("dob"), retirement_year)
+
+        ss_start_age = person.get("ss_start_age")
+        ss_start_year = None
+        if birth_year is not None and ss_start_age not in (None, ""):
+            try:
+                ss_start_year = birth_year + int(ss_start_age)
+            except (TypeError, ValueError):
+                ss_start_year = None
+
+        people_rows.append(
+            "<tr>"
+            f"<td>{escape(str(name))}</td>"
+            f"<td>{escape(str(dob))}</td>"
+            f"<td>{escape(_fmt_age_year(life_expectancy, end_year))}</td>"
+            f"<td>{escape(_fmt_age_year(retirement_age, retirement_year))}</td>"
+            f"<td>{escape(_fmt_age_year(ss_start_age, ss_start_year))}</td>"
+            "</tr>"
+        )
+
+    people_body = "".join(people_rows) if people_rows else "<tr><td colspan='5'>No people configured.</td></tr>"
+    people_html = (
+        "<table class='assumptions-table assumptions-people'>"
+        "<thead><tr>"
+        "<th>Person</th><th>Birthdate</th><th>Projected lifespan</th>"
+        "<th>Retirement age</th><th>Social Security start age</th>"
+        "</tr></thead>"
+        f"<tbody>{people_body}</tbody>"
+        "</table>"
+    )
+
+    assumptions = config.get("assumptions", {})
+    market_rows = [
+        ("Stock return", _fmt_percent(assumptions.get("stock_return"))),
+        ("Bond return", _fmt_percent(assumptions.get("bond_return"))),
+        ("Inflation", _fmt_percent(assumptions.get("inflation"))),
+        ("Real estate appreciation", _fmt_percent(assumptions.get("real_estate_appreciation"))),
+        ("Equity allocation", _fmt_percent(assumptions.get("equity_allocation"))),
+        ("Real estate sale fee rate", _fmt_percent(assumptions.get("real_estate_sale_fee_rate"))),
+    ]
+
+    spending = config.get("spending", {})
+    spending_rows = [
+        ("Retirement annual", _fmt_currency(spending.get("retirement_annual"))),
+        ("Survivor annual", _fmt_currency(spending.get("survivor_annual"))),
+    ]
+
+    withdrawal_policy = config.get("withdrawal_policy", {})
+    withdrawal_rows = [
+        ("Accumulation cash target", _fmt_currency(withdrawal_policy.get("accumulation_cash_target"))),
+        ("Retirement cash target", _fmt_currency(withdrawal_policy.get("retirement_cash_target"))),
+        ("Survivor cash target", _fmt_currency(withdrawal_policy.get("survivor_cash_target"))),
+    ]
+
+    return (
+        "<div class='assumptions-wrap'>"
+        "<div class='assumptions-note'>Current planning assumptions from <code>config.toml</code>.</div>"
+        "<div class='assumptions-grid'>"
+        "<section class='assumption-card assumption-card-wide'>"
+        "<h3>Persons</h3>"
+        f"{people_html}"
+        "</section>"
+        "<section class='assumption-card'>"
+        "<h3>Market assumptions</h3>"
+        f"{_kv_table(market_rows)}"
+        "</section>"
+        "<section class='assumption-card'>"
+        "<h3>Spending</h3>"
+        "<p class='assumption-subtitle'>Annual values in today's dollars.</p>"
+        f"{_kv_table(spending_rows)}"
+        "</section>"
+        "<section class='assumption-card'>"
+        "<h3>Withdrawal policy</h3>"
+        "<p class='assumption-subtitle'>Configured cash reserve targets by phase.</p>"
+        f"{_kv_table(withdrawal_rows)}"
+        "</section>"
+        "</div>"
+        "</div>"
+    )
 
 
 def _header_row(years: list[int]) -> str:

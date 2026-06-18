@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-16 → 2026-06-17
-**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow tables + Gantt timeline live. Raw TOML config editor is available on the web, recurring events are supported, and the latest UI pass added recurring-event chart decluttering plus a denser, more legible Gantt.
+**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow/Portfolio/Gantt/Assumptions views are live. Raw TOML config editor is available on the web, recurring events are supported, and the latest UI pass added an Assumptions summary sourced from `config.toml` plus a denser, more legible Gantt.
 
 ## Current State
 
@@ -38,6 +38,7 @@
 - The editor backend now runs as a small FastAPI app, proxied behind the static nginx container
 - Gantt includes liability payoff milestones derived from the projection output and uses a centered legend
 - Gantt row labels now include event/liability icons, use larger tick-label text, and the Gantt includes a survivor-period band aligned to the projection output
+- Assumptions tab now summarizes the current config inputs for people, market assumptions, spending, and withdrawal-policy cash targets
 - Gantt row pitch and bar geometry were tuned together for a denser layout: slimmer bars, materially less vertical whitespace, and a more compact overall chart height
 - Both tables scroll horizontally, yearly tick columns
 - First-column labels and section bands are frozen via JS `translateX(scrollLeft)` + `requestAnimationFrame`

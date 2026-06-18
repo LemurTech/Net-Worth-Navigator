@@ -34,6 +34,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Projection page toolbar shortcut: `Edit Config`
 - Dockerized config-editor service for nginx proxying within the local Compose stack
 - Gantt tab added to the projection page
+- Assumptions tab added after Gantt, summarizing current person assumptions, market assumptions, spending, and withdrawal-policy cash targets from `config.toml`
 - Gantt supports milestone vs span semantics by event type
 - Gantt includes liability payoff milestones derived from projection output
 - Gantt row labels include event/liability icons
