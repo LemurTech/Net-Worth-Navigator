@@ -104,7 +104,10 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
     subset = df[df["year"].isin(years)].set_index("year")
 
     def col(field: str) -> list[float]:
-        return [subset.loc[y, field] if y in subset.index else 0.0 for y in years]
+        return [
+            subset.loc[y, field] if (y in subset.index and field in subset.columns) else 0.0
+            for y in years
+        ]
 
     # Collect all unique event labels that appear across the displayed years
     event_map: dict[str, dict] = {}
@@ -154,6 +157,34 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
         for y in years
     ]
     rows.append(_data_row("Total Income", total_income, bold=True))
+
+    # ── Portfolio funding / withdrawals ───────────────────────────────────────
+    portfolio_funding_rows = [
+        ("Cash reserve drawdown", col("withdrawal_cash")),
+        ("Taxable withdrawals", col("withdrawal_taxable")),
+        ("Traditional IRA / 401k withdrawals", col("withdrawal_trad_ira")),
+        ("Roth withdrawals", col("withdrawal_roth")),
+    ]
+    shown_portfolio_rows = [
+        (label, amounts)
+        for label, amounts in portfolio_funding_rows
+        if any(v != 0 for v in amounts)
+    ]
+    if shown_portfolio_rows:
+        rows.append("<tr class='section sep'><th colspan='100'>Portfolio Funding / Withdrawals</th></tr>")
+        for label, amounts in shown_portfolio_rows:
+            rows.append(_data_row(label, amounts, indent=True))
+        total_portfolio_funding = [
+            (
+                subset.loc[y, "withdrawal_cash"]
+                + subset.loc[y, "withdrawal_taxable"]
+                + subset.loc[y, "withdrawal_trad_ira"]
+                + subset.loc[y, "withdrawal_roth"]
+            )
+            if y in subset.index else 0.0
+            for y in years
+        ]
+        rows.append(_data_row("Total Portfolio Funding", total_portfolio_funding, bold=True))
 
     # ── Expenses ──────────────────────────────────────────────────────────────
     rows.append("<tr class='section sep'><th colspan='100'>Expenses</th></tr>")

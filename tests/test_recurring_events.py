@@ -296,6 +296,32 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Surgery", html)
         self.assertIn("Vacation", html)
 
+    def test_build_cashflow_table_shows_portfolio_funding_withdrawals(self):
+        df = pd.DataFrame([
+            {
+                "year": 2035,
+                "matthew_income": 0.0,
+                "weny_income": 0.0,
+                "freed_payments": 0.0,
+                "annual_spend": 95000.0,
+                "annual_taxes": 5000.0,
+                "net_flow": -100000.0,
+                "withdrawal_cash": 20000.0,
+                "withdrawal_taxable": 15000.0,
+                "withdrawal_trad_ira": 65000.0,
+                "withdrawal_roth": 0.0,
+                "event_items": [],
+            }
+        ])
+
+        html = tables.build_cashflow_table(df)
+
+        self.assertIn("Portfolio Funding / Withdrawals", html)
+        self.assertIn("Cash reserve drawdown", html)
+        self.assertIn("Taxable withdrawals", html)
+        self.assertIn("Traditional IRA / 401k withdrawals", html)
+        self.assertIn("Total Portfolio Funding", html)
+
     def test_build_kpi_summary_uses_first_retirement_year_and_compact_values(self):
         config = {
             "matthew": {"name": "Person 1", "dob": "1967-04-23"},

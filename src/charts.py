@@ -282,7 +282,6 @@ EVENT_TYPE_COLORS = {
 }
 
 INVESTABLE_SERIES = [
-    ("cash",     "rgba(191,219,254,0.42)", "Cash"),
     ("taxable",  "rgba(96,165,250,0.42)",  "Taxable"),
     ("trad_ira", "rgba(74,222,128,0.36)",  "Traditional IRA / 401k"),
     ("roth",     "rgba(251,191,36,0.38)",  "Roth"),
@@ -420,7 +419,7 @@ def _build_portfolio_chart(df: pd.DataFrame) -> str:
                 hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
             ))
 
-    portfolio_total = df[["cash", "taxable", "trad_ira", "roth"]].sum(axis=1)
+    portfolio_total = df[["taxable", "trad_ira", "roth"]].sum(axis=1)
     fig.add_trace(go.Scatter(
         x=df["year"], y=portfolio_total,
         mode="lines", name="Total Investable Portfolio",

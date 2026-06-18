@@ -59,6 +59,11 @@ DEFAULT_TAX_FILING_STATUS = {
 }
 
 VALID_FILING_STATUSES = {"single", "married_joint", "head_of_household"}
+WITHDRAWAL_BUCKETS = ("cash", "taxable", "trad_ira", "roth")
+
+
+def _empty_withdrawal_breakdown() -> dict[str, float]:
+    return {bucket: 0.0 for bucket in WITHDRAWAL_BUCKETS}
 
 
 def load_config() -> dict:
@@ -799,6 +804,7 @@ def run_projection(
             legacy_ss_taxable_income=legacy_ss_taxable_income,
         )
         withdrawal_taxable_income = 0.0
+        withdrawal_breakdown = _empty_withdrawal_breakdown()
         working_portfolio = grown_portfolio.copy()
 
         # Iterate because taxable withdrawals themselves increase taxes.
@@ -816,8 +822,9 @@ def run_projection(
                     cash_target=cash_target,
                 )
                 withdrawal_taxable_income = 0.0
+                withdrawal_breakdown = _empty_withdrawal_breakdown()
             else:
-                withdrawal_taxable_income, unmet_deficit = _cover_deficit_with_policy(
+                withdrawal_taxable_income, unmet_deficit, withdrawal_breakdown = _cover_deficit_with_policy(
                     working_portfolio,
                     deficit=-post_tax_flow,
                     assumptions=assumptions,
@@ -883,6 +890,10 @@ def run_projection(
             "annual_spend":   annual_spend,
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
+            "withdrawal_cash": withdrawal_breakdown["cash"],
+            "withdrawal_taxable": withdrawal_breakdown["taxable"],
+            "withdrawal_trad_ira": withdrawal_breakdown["trad_ira"],
+            "withdrawal_roth": withdrawal_breakdown["roth"],
             "survivor":       one_deceased and both_retired,
             "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",
@@ -1196,10 +1207,11 @@ def _cover_deficit_with_policy(
     assumptions: dict,
     withdrawal_order: list[str],
     cash_target: float,
-) -> tuple[float, float]:
+) -> tuple[float, float, dict[str, float]]:
     """Cover a deficit using the configured withdrawal policy."""
     remaining = max(0.0, deficit)
     taxable_withdrawals = 0.0
+    breakdown = _empty_withdrawal_breakdown()
 
     for step in withdrawal_order:
         if remaining <= 0:
@@ -1209,19 +1221,22 @@ def _cover_deficit_with_policy(
             available = max(0.0, portfolio.get("cash", 0.0) - cash_target)
             take = min(available, remaining)
             portfolio["cash"] = portfolio.get("cash", 0.0) - take
+            breakdown["cash"] += take
         elif step == "cash_below_target":
             available = max(0.0, portfolio.get("cash", 0.0))
             take = min(available, remaining)
             portfolio["cash"] = portfolio.get("cash", 0.0) - take
+            breakdown["cash"] += take
         else:
             available = max(0.0, portfolio.get(step, 0.0))
             take = min(available, remaining)
             portfolio[step] = portfolio.get(step, 0.0) - take
+            breakdown[step] += take
             taxable_withdrawals += take * _withdrawal_taxable_fraction(step, assumptions)
 
         remaining -= take
 
-    return taxable_withdrawals, remaining
+    return taxable_withdrawals, remaining, breakdown
 
 
 def _apply_surplus_with_reserve_target(

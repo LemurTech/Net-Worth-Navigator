@@ -91,6 +91,9 @@ class WithdrawalPolicyTests(unittest.TestCase):
         self.assertEqual(row["trad_ira"], 0.0)
         self.assertEqual(row["taxable"], 40.0)
         self.assertEqual(row["roth"], 50.0)
+        self.assertEqual(row["withdrawal_trad_ira"], 50.0)
+        self.assertEqual(row["withdrawal_taxable"], 10.0)
+        self.assertEqual(row["withdrawal_cash"], 0.0)
 
     def test_surplus_refills_cash_target_before_investing_remainder(self):
         config = self._base_config()
