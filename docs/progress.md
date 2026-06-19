@@ -12,6 +12,9 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Scenario discovery/registry helpers in `src/scenarios.py`, including a generated `output/scenarios/index.json` manifest for the future shell page
 - Per-scenario output layout now begins under `output/scenarios/<slug>/`, with the legacy top-level `output/projection.html` retained as a compatibility copy
 - Config-editor backups are now written per scenario under `output/config-backups/<slug>/`
+- Scenario output now stores analysis sidecars under `output/scenarios/<slug>/sidecars/`
+- Config-editor backups now auto-prune to the newest 10 files per scenario
+- Local scenario/config Git ignore rules now exclude `config.toml` and `scenarios/*.toml`, while `scenarios/.gitkeep` preserves the directory
 - Real scenario file introduced at `scenarios/default.toml`, and the editor now supports selecting the active scenario from the discovered scenario list
 - The config editor now supports cloning the current scenario into a new `scenarios/<slug>.toml` file and can batch re-render all discovered scenarios
 - Public `projection.html` now acts as a scenario shell page that reads `output/scenarios/index.json` and switches between pre-rendered scenario pages without triggering a new render

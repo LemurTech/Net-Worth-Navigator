@@ -34,7 +34,7 @@ def write_sidecars(
     raw_accounts: list[dict[str, Any]] | None,
 ) -> dict[str, Path]:
     """Write a normalized sidecar bundle for independent analysis."""
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     generated_at = datetime.now().isoformat()
     runtime_config = resolve_runtime_config(config)
 

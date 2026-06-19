@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -57,3 +58,28 @@ class EditorScenarioTests(unittest.TestCase):
 
         self.assertEqual(calls, ["default", "alt"])
         self.assertEqual(len(results), 2)
+
+    def test_prune_backups_keeps_newest_ten_per_scenario(self):
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            backup_dir = Path(tmp) / "config-backups" / "default"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            base_time = datetime(2026, 6, 19, 12, 0, 0)
+
+            created_paths = []
+            for index in range(12):
+                path = backup_dir / f"config-20260619-1200{index:02d}.toml"
+                path.write_text(f"backup {index}", encoding="utf-8")
+                timestamp = (base_time + timedelta(seconds=index)).timestamp()
+                created_paths.append(path)
+                path.touch()
+                import os
+                os.utime(path, (timestamp, timestamp))
+
+            admin_app._prune_backups(backup_dir)
+
+            remaining = sorted(path.name for path in backup_dir.glob("config-*.toml"))
+            self.assertEqual(len(remaining), 10)
+            self.assertNotIn(created_paths[0].name, remaining)
+            self.assertNotIn(created_paths[1].name, remaining)

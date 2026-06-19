@@ -131,12 +131,13 @@ def main():
     # 3. Generate chart and sidecars
     OUTPUT_DIR.mkdir(exist_ok=True)
     scenario_dir.mkdir(parents=True, exist_ok=True)
+    sidecar_dir = scenario_dir / "sidecars"
     output_path = scenario_dir / "projection.html"
     print(f"→ Generating chart → {output_path}")
     build_chart(df, output_path, config=config)
-    print("→ Writing sidecar analysis files...")
+    print(f"→ Writing sidecar analysis files → {sidecar_dir}")
     sidecars = write_sidecars(
-        output_dir=scenario_dir,
+        output_dir=sidecar_dir,
         df=df,
         config=config,
         scenario=scenario,

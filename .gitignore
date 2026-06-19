@@ -1,6 +1,11 @@
 # Generated output — not source
 output/
 
+# Local scenario and config data
+config.toml
+scenarios/*.toml
+!scenarios/.gitkeep
+
 # Python
 __pycache__/
 *.pyc

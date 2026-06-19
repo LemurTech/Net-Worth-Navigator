@@ -43,6 +43,16 @@ def _read_config_text(scenario_slug: str | None = None) -> str:
     return _config_path(scenario_slug).read_text(encoding="utf-8")
 
 
+def _prune_backups(backup_dir: Path, keep: int = 10) -> None:
+    backups = sorted(
+        backup_dir.glob("config-*.toml"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for old_backup in backups[keep:]:
+        old_backup.unlink(missing_ok=True)
+
+
 def _validate_config_text(content: str) -> dict:
     if not content.strip():
         raise ValueError("Configuration cannot be empty.")
@@ -57,6 +67,7 @@ def _backup_and_write(content: str, scenario_slug: str | None = None) -> Path:
     backup_path = backup_dir / f"config-{ts}.toml"
     backup_path.write_text(_read_config_text(scenario_slug), encoding="utf-8")
     _config_path(scenario_slug).write_text(content, encoding="utf-8")
+    _prune_backups(backup_dir)
     return backup_path
 
 

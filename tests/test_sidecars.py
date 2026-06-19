@@ -63,6 +63,7 @@ class SidecarTests(unittest.TestCase):
         }
 
         with tempfile.TemporaryDirectory() as tmp:
+            sidecar_dir = Path(tmp) / "sidecars"
             scenario = ScenarioRef(
                 slug="default",
                 name="Default Plan",
@@ -71,7 +72,7 @@ class SidecarTests(unittest.TestCase):
                 is_default=True,
             )
             paths = write_sidecars(
-                output_dir=Path(tmp),
+                output_dir=sidecar_dir,
                 df=df,
                 config=config,
                 scenario=scenario,
@@ -87,25 +88,25 @@ class SidecarTests(unittest.TestCase):
             for path in paths.values():
                 self.assertTrue(path.exists())
 
-            projection_csv = Path(tmp) / "projection_yearly.csv"
+            projection_csv = sidecar_dir / "projection_yearly.csv"
             projection_df = pd.read_csv(projection_csv)
             self.assertNotIn("event_items", projection_df.columns)
             self.assertIn("events_active", projection_df.columns)
             self.assertEqual(float(projection_df.iloc[0]["taxable"]), 170000.0)
 
-            event_flows_csv = Path(tmp) / "event_flows.csv"
+            event_flows_csv = sidecar_dir / "event_flows.csv"
             event_flows_df = pd.read_csv(event_flows_csv)
             self.assertEqual(len(event_flows_df), 2)
             self.assertEqual(set(event_flows_df["label"].tolist()), {"Sell Casa Lemuria", "Vacation"})
 
-            manifest = json.loads((Path(tmp) / "scenario_manifest.json").read_text())
+            manifest = json.loads((sidecar_dir / "scenario_manifest.json").read_text())
             self.assertEqual(manifest["mode"], "offline")
             self.assertEqual(manifest["scenario"]["slug"], "default")
             self.assertEqual(manifest["resolved_end_of_plan_years"]["matthew"], 2057)
             self.assertEqual(manifest["resolved_end_of_plan_years"]["weny"], 2066)
             self.assertEqual(manifest["projection_summary"]["row_count"], 1)
 
-            accounts = json.loads((Path(tmp) / "accounts_snapshot.json").read_text())
+            accounts = json.loads((sidecar_dir / "accounts_snapshot.json").read_text())
             self.assertEqual(accounts["property_values"]["Casa Lemuria"], 500.0)
             self.assertEqual(accounts["liability_balances"]["Mortgage"], 300.0)
 
