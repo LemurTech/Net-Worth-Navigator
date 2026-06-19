@@ -81,8 +81,11 @@ def build_scenario_shell(
       border-radius: 14px;
       border: 1px solid rgba(125, 211, 252, 0.18);
       background: linear-gradient(180deg, #101a2a, #0f1725);
-      color: var(--text);
+      color: #f8fafc;
       font-size: 15px;
+      font-weight: 600;
+      opacity: 1;
+      -webkit-text-fill-color: #f8fafc;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }}
     .scenario-summary {{

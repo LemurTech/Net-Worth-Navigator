@@ -186,13 +186,36 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 slug=clone_slug,
                 description=clone_description,
             )
+            clone_render = _render_projection_offline(created.slug)
+            if clone_render.returncode != 0:
+                details = "\n".join(
+                    part for part in [
+                        (clone_render.stdout or "").strip(),
+                        (clone_render.stderr or "").strip(),
+                    ] if part
+                ).strip()
+                context = _build_context(
+                    request,
+                    content=content,
+                    status_kind="error",
+                    status_title="Scenario cloned but render failed",
+                    status_message=f"Created scenario '{created.name}' ({created.slug}), but its initial render failed.",
+                    details=details or "No process output captured.",
+                    scenario_slug=created.slug,
+                    clone_name="",
+                    clone_slug="",
+                    clone_description="",
+                )
+                return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
+
             cloned_content = _read_config_text(created.slug)
             context = _build_context(
                 request,
                 content=cloned_content,
                 status_kind="success",
                 status_title="Scenario cloned",
-                status_message=f"Created scenario '{created.name}' ({created.slug}).",
+                status_message=f"Created and rendered scenario '{created.name}' ({created.slug}).",
+                details=(clone_render.stdout or "").strip() or None,
                 scenario_slug=created.slug,
                 clone_name="",
                 clone_slug="",
