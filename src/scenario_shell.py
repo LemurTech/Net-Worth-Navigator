@@ -24,13 +24,14 @@ def build_scenario_shell(
   <style>
     :root {{
       --bg: #08111d;
-      --panel: #0f1725;
+      --panel: rgba(15, 23, 37, 0.9);
       --panel-2: #111827;
       --text: #e5edf7;
       --muted: #9fb2c8;
       --border: #243142;
       --accent: #7dd3fc;
-      --shadow: 0 18px 40px rgba(0,0,0,.30);
+      --accent-strong: #0ea5e9;
+      --shadow: 0 18px 40px rgba(0,0,0,.24);
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -44,44 +45,44 @@ def build_scenario_shell(
     }}
     .page {{
       width: 100%;
-      padding: 6px 6px 10px;
-    }}
-    .topbar, .frame-card {{
-      background: rgba(15, 23, 37, 0.92);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: 0 14px 30px rgba(0,0,0,.24);
-      backdrop-filter: blur(12px);
+      padding: 10px 10px 14px;
     }}
     .topbar {{
+      background:
+        linear-gradient(180deg, rgba(15, 23, 37, 0.96), rgba(15, 23, 37, 0.88)),
+        radial-gradient(circle at top right, rgba(14,165,233,.14), transparent 26%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 18px 42px rgba(0,0,0,.22);
+      backdrop-filter: blur(12px);
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 420px) auto;
-      gap: 10px;
-      align-items: center;
-      padding: 9px 12px;
-      margin-bottom: 6px;
+      grid-template-columns: minmax(0, 1fr) minmax(420px, 680px);
+      gap: 18px;
+      align-items: start;
+      padding: 16px 18px 14px;
+      margin-bottom: 8px;
     }}
     .brand {{
       min-width: 0;
     }}
     .brand h1 {{
-      margin: 0 0 2px;
-      font-size: clamp(20px, 2vw, 28px);
+      margin: 0 0 4px;
+      font-size: clamp(21px, 2vw, 30px);
       line-height: 1.02;
       letter-spacing: -0.03em;
     }}
     .brand p {{
       margin: 0;
       color: var(--muted);
-      font-size: 12px;
-      line-height: 1.25;
-      max-width: 620px;
+      font-size: 13px;
+      line-height: 1.35;
+      max-width: 720px;
     }}
     .topbar-meta {{
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 6px;
+      margin-top: 10px;
     }}
     .meta-pill {{
       display: inline-flex;
@@ -96,7 +97,22 @@ def build_scenario_shell(
     }}
     .selector-card {{
       display: grid;
-      gap: 8px;
+      gap: 12px;
+      min-width: 0;
+    }}
+    .selector-surface {{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(125, 211, 252, 0.14);
+      background:
+        linear-gradient(180deg, rgba(17,24,39,0.96), rgba(17,24,39,0.84));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }}
+    .selector-main {{
       min-width: 0;
     }}
     .control-label {{
@@ -104,61 +120,80 @@ def build_scenario_shell(
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: .08em;
+      margin-bottom: 6px;
     }}
     select {{
       width: 100%;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #111827;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(125, 211, 252, 0.18);
+      background: linear-gradient(180deg, #101a2a, #0f1725);
       color: var(--text);
-      font-size: 14px;
+      font-size: 15px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }}
+    .scenario-summary {{
+      min-width: 0;
+      padding-right: 4px;
     }}
     .scenario-name {{
-      font-size: 15px;
+      font-size: 20px;
       font-weight: 700;
-      line-height: 1.1;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
     }}
     .scenario-desc {{
       color: var(--muted);
-      font-size: 11px;
-      line-height: 1.2;
-      min-height: 0;
+      font-size: 13px;
+      line-height: 1.42;
+      max-width: 60ch;
     }}
     .control-actions {{
       display: flex;
-      gap: 8px;
+      gap: 10px;
       flex-wrap: wrap;
       justify-content: flex-end;
+      align-items: center;
     }}
     .linkbtn {{
-      display: inline-block;
-      padding: 8px 11px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 15px;
+      border: 1px solid rgba(125, 211, 252, 0.12);
+      border-radius: 12px;
       color: var(--text);
       text-decoration: none;
-      background: #162234;
-      font-size: 12px;
+      background: linear-gradient(180deg, rgba(22,34,52,0.96), rgba(20,31,48,0.86));
+      font-size: 13px;
       font-weight: 600;
       white-space: nowrap;
+      transition: transform .14s ease, border-color .14s ease, background .14s ease;
     }}
     .linkbtn:hover {{
       border-color: var(--accent);
+      transform: translateY(-1px);
     }}
     .linkbtn.primary {{
-      background: linear-gradient(180deg, #0ea5e9, #0284c7);
-      border-color: #38bdf8;
-      color: #08111d;
+      background: linear-gradient(180deg, #1fb6ff, #0b8fd0);
+      border-color: rgba(125, 211, 252, 0.8);
+      color: #06111d;
+      box-shadow: 0 10px 24px rgba(14,165,233,.24);
     }}
     .frame-card {{
-      padding: 4px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
     }}
     .frame-wrap {{
-      border-radius: 12px;
+      border-radius: 0;
       overflow: hidden;
-      border: 1px solid #1f2a3a;
-      background: #0a1220;
+      border: none;
+      background: transparent;
       min-height: 200vh;
     }}
     iframe {{
@@ -166,7 +201,7 @@ def build_scenario_shell(
       width: 100%;
       height: 200vh;
       border: none;
-      background: #0a1220;
+      background: transparent;
     }}
     .empty-state {{
       display: none;
@@ -186,9 +221,15 @@ def build_scenario_shell(
       color: var(--muted);
       font-size: 11px;
       text-align: right;
+      padding-right: 2px;
     }}
     @media (max-width: 980px) {{
       .topbar {{
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 14px;
+      }}
+      .selector-surface {{
         grid-template-columns: 1fr;
       }}
       .frame-wrap, iframe {{
@@ -211,14 +252,20 @@ def build_scenario_shell(
         </div>
       </div>
       <div class="selector-card">
-          <div class="control-label">Scenario</div>
-          <select id="scenario-select" aria-label="Select scenario"></select>
+        <div class="selector-surface">
+          <div class="selector-main">
+            <div class="control-label">Scenario</div>
+            <select id="scenario-select" aria-label="Select scenario"></select>
+          </div>
+          <div class="control-actions">
+            <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
+            <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
+          </div>
+        </div>
+        <div class="scenario-summary">
           <div class="scenario-name" id="scenario-name">Loading…</div>
           <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
-      </div>
-      <div class="control-actions">
-        <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
-        <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
+        </div>
       </div>
     </section>
 
