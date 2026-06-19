@@ -1,6 +1,6 @@
 # System Patterns — Net Worth Navigator
 
-**Last Review:** 2026-06-17
+**Last Review:** 2026-06-19
 
 ## Architectural Overview
 
@@ -38,8 +38,10 @@ run.py
 - **Withdrawal behavior is phase-aware.** The model uses `[withdrawal_policy]` to select cash reserve targets and withdrawal order separately for accumulation, retirement, and survivor phases.
 - **Tax behavior is phase-aware too.** The model can now choose filing status by lifecycle phase and apply bracket-based federal ordinary-income tax from `[taxes]`, with effective-rate fallback retained for compatibility.
 - **State tax treatment is Oregon-specific for now.** The model uses the official 2025 OR-40 tax table for Oregon taxable income under $50,000 and the official rate-chart formulas above that.
-- **Employment income and retirement tax semantics are intentionally split for now.** Wages still enter the model as net cash, while modeled taxes apply only to taxable retirement/event inflows and withdrawals. The UI should say this explicitly.
-- **Pre-retirement income growth is modeled as an approximation on net pay.** `annual_take_home` can grow each year from inflation plus `annual_take_home_real_raise`, and 401(k) contributions can grow from that same income path plus `annual_401k_contribution_extra_increase`, without introducing a full gross-payroll model.
+- **Wage tax treatment is explicit and configurable.** `taxes.wage_tax_treatment` controls whether `annual_take_home` stays cashflow-only (`net_cash`) or enters ordinary-income taxation (`taxable_wages`). Default scenario currently uses `net_cash` to match Monarch semantics.
+- **Pre-retirement income growth is modeled as an approximation on wage inputs.** `annual_take_home` can grow each year from inflation plus `annual_take_home_real_raise`, and 401(k) contributions can grow from that same path plus `annual_401k_contribution_extra_increase`.
+- **Pre-retirement spending has explicit precedence controls.** The model resolves spending as: `pre_retirement_spending` → `annual_savings_override` → implied `income - contributions`, with inflation indexing when `spending_basis = "real"`.
+- **Retirement contributions route to explicit buckets before surplus allocation.** 401(k)/IRA contributions are deposited into `trad_ira`/`roth` (default routing with optional per-person overrides) before generic non-cash surplus distribution.
 - **Gross-income wage migration is optional.** Unless NWN is explicitly re-scoped into a true household tax-return model, Monarch-style net-income wage inputs are acceptable and do not require forced gross-up migration.
 - **Cash reserves are protected in two stages.** `cash_above_target` spends only dollars above the reserve; `cash_below_target` taps the reserve itself only as a last resort.
 - **Surplus refills cash before investing.** Positive net flow first restores the active cash target, then allocates the remainder across positive non-cash investable buckets.

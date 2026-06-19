@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-19 → 2026-06-19
-**Current Status:** V1 is stable, and the next planned architecture shift is a move from one root config to a scenario-based model. The immediate design direction is shared tax-table extraction plus one-scenario-per-file with editor-driven rendering and a manifest-backed shell projections page.
+**Current Status:** V1 is stable, and the next planned architecture shift is a move from one root config to a scenario-based model. The immediate design direction is shared tax-table extraction plus one-scenario-per-file with editor-driven rendering and a manifest-backed shell projections page. The 2026-06-19 model-accuracy audit delivered the core fixes: separate cash return, inflation-consistent spending basis, explicit contribution bucket routing, explicit pre-retirement spending controls, and configurable wage tax treatment (defaulting to `net_cash` for Monarch semantics).
 
 ## Current State
 
@@ -72,7 +72,18 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 
 ## Open Items for Next Session
 
-- Execute the next scenario-transition slice in [scenario-transition-plan.md](D:/Dev/Net-Worth-Navigator/docs/scenario-transition-plan.md)
+### Model Accuracy Findings (2026-06-19, ordered by impact)
+
+1. **Cash bucket currently overstates growth** when modeled with blended invested return. Started fix: cash now has a dedicated `assumptions.cash_return` path (fallback to inflation) instead of inheriting the stock/bond blend.
+2. **Wage tax treatment is now configurable and set to net-cash in default scenario.** `taxes.wage_tax_treatment` supports `net_cash` (current default) and `taxable_wages`; with `net_cash`, wages remain cashflow-only and do not enter ordinary-income tax or Social Security provisional-income calculations.
+3. **Retirement/survivor spending was flat nominal despite “today’s dollars” comments.** Started fix: `[spending].spending_basis = "real"` now inflates retirement/survivor targets by CPI; `nominal` remains available as an explicit mode.
+4. **401(k)/IRA contributions now route to explicit destination buckets** (`trad_ira` / `roth`) before generic surplus allocation, with optional per-person bucket overrides (`annual_401k_contribution_bucket`, `annual_ira_contribution_bucket`). IRS caps/employer match logic is still pending.
+5. **Pre-retirement spending control is now implemented with explicit precedence.** The model now applies: `pre_retirement_spending` (highest) → `annual_savings_override` → implied `total_income - total_contrib`, with real-dollar inflation handling when `spending_basis = "real"`.
+
+### Next implementation slices after current in-progress fixes
+
+
+- Execute the next scenario-transition slice in [scenario-transition-plan.md](scenario-transition-plan.md)
   - retire the root `config.toml` fallback once the scenario workflow is fully in place
   - decide whether to add scenario deletion/rename management or keep clone-plus-manual-edit as the supported workflow
 - Design the scenario manifest and default-scenario source of truth before wiring the shell projections page

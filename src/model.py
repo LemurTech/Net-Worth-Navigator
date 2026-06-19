@@ -450,6 +450,76 @@ def _person_401k_growth_rate(person: dict, assumptions: dict) -> float:
     )
 
 
+def resolve_spending_basis(spending: dict) -> str:
+    """Return configured spending basis: real (inflation-indexed) or nominal."""
+    basis = str(spending.get("spending_basis", "real")).strip().lower()
+    return "nominal" if basis == "nominal" else "real"
+
+
+def resolve_cash_growth_rate(assumptions: dict) -> float:
+    """Return annual nominal growth for cash buckets.
+
+    Defaults to inflation when cash_return is not provided.
+    """
+    try:
+        return float(assumptions.get("cash_return", assumptions.get("inflation", 0.0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def resolve_pre_retirement_spending(
+    spending: dict,
+    *,
+    total_income: float,
+    total_contrib: float,
+    assumptions: dict,
+    year: int,
+    simulation_start_year: int,
+) -> float:
+    """Return pre-retirement annual spending with explicit override precedence.
+
+    Precedence:
+    1) spending.pre_retirement_spending
+    2) spending.annual_savings_override
+    3) implied spending = total_income - total_contrib
+    """
+    implied_spend = max(0.0, float(total_income) - float(total_contrib))
+
+    if "pre_retirement_spending" in spending:
+        try:
+            configured = float(spending.get("pre_retirement_spending", implied_spend))
+        except (TypeError, ValueError):
+            return implied_spend
+        if resolve_spending_basis(spending) == "real":
+            configured = _grow_annual_amount(
+                configured,
+                assumptions.get("inflation", 0.0),
+                year - simulation_start_year,
+            )
+        return max(0.0, configured)
+
+    if "annual_savings_override" in spending:
+        try:
+            savings_override = float(spending.get("annual_savings_override", 0.0))
+        except (TypeError, ValueError):
+            return implied_spend
+        return max(0.0, float(total_income) - savings_override)
+
+    return implied_spend
+
+
+def resolve_wage_tax_treatment(config: dict) -> str:
+    """Return wage tax treatment mode for pre-retirement earned income.
+
+    Modes:
+    - net_cash (default): wages are cashflow-only, excluded from taxable base
+    - taxable_wages: wages are included in taxable ordinary income
+    """
+    taxes = config.get("taxes", {}) if isinstance(config, dict) else {}
+    mode = str(taxes.get("wage_tax_treatment", "net_cash")).strip().lower()
+    return "taxable_wages" if mode == "taxable_wages" else "net_cash"
+
+
 def _project_person_take_home(
     person: dict,
     *,
@@ -486,14 +556,25 @@ def _project_person_401k_contribution(
     )
 
 
-def _person_retirement_contributions(
+def _normalize_contribution_bucket(raw_bucket: object, *, default: str) -> str:
+    """Return a valid portfolio bucket for contribution routing."""
+    bucket = str(raw_bucket or default).strip().lower()
+    return bucket if bucket in {"trad_ira", "roth"} else default
+
+
+def _person_retirement_contribution_breakdown(
     person: dict,
     *,
     year: int,
     simulation_start_year: int,
     assumptions: dict,
-) -> float:
-    """Return current-year retirement contributions for a person."""
+) -> dict[str, float]:
+    """Return current-year retirement contributions by destination bucket.
+
+    Defaults:
+    - 401(k) -> trad_ira
+    - IRA -> roth
+    """
     annual_401k = _project_person_401k_contribution(
         person,
         year=year,
@@ -504,7 +585,20 @@ def _person_retirement_contributions(
         annual_ira = float(person.get("annual_ira_contribution", 0.0))
     except (TypeError, ValueError):
         annual_ira = 0.0
-    return annual_401k + annual_ira
+
+    bucket_401k = _normalize_contribution_bucket(
+        person.get("annual_401k_contribution_bucket"),
+        default="trad_ira",
+    )
+    bucket_ira = _normalize_contribution_bucket(
+        person.get("annual_ira_contribution_bucket"),
+        default="roth",
+    )
+
+    breakdown = {"trad_ira": 0.0, "roth": 0.0}
+    breakdown[bucket_401k] += max(0.0, annual_401k)
+    breakdown[bucket_ira] += max(0.0, annual_ira)
+    return breakdown
 
 
 def get_phase_withdrawal_settings(
@@ -796,6 +890,7 @@ def run_projection(
         )
 
         # ── Income for this year ───────────────────────────────────────────────
+        include_taxable_wages = resolve_wage_tax_treatment(config) == "taxable_wages"
         matthew_parts = _person_income_components(
             matthew,
             year,
@@ -803,6 +898,7 @@ def run_projection(
             assumptions=assumptions,
             simulation_start_year=start_year,
             deceased=matthew_deceased,
+            include_taxable_wages=include_taxable_wages,
         )
         weny_parts = _person_income_components(
             weny,
@@ -811,6 +907,7 @@ def run_projection(
             assumptions=assumptions,
             simulation_start_year=start_year,
             deceased=weny_deceased,
+            include_taxable_wages=include_taxable_wages,
         )
 
         # ── SS survivor benefit: survivor keeps the higher of the two checks ───
@@ -870,18 +967,32 @@ def run_projection(
         matthew_retired = year >= matthew["retirement_year"]
         weny_retired = year >= weny["retirement_year"]
 
-        matthew_contrib = 0.0 if matthew_retired else _person_retirement_contributions(
-            matthew,
-            year=year,
-            simulation_start_year=start_year,
-            assumptions=assumptions,
+        matthew_contrib_buckets = (
+            {"trad_ira": 0.0, "roth": 0.0}
+            if matthew_retired
+            else _person_retirement_contribution_breakdown(
+                matthew,
+                year=year,
+                simulation_start_year=start_year,
+                assumptions=assumptions,
+            )
         )
-        weny_contrib = 0.0 if weny_retired else _person_retirement_contributions(
-            weny,
-            year=year,
-            simulation_start_year=start_year,
-            assumptions=assumptions,
+        weny_contrib_buckets = (
+            {"trad_ira": 0.0, "roth": 0.0}
+            if weny_retired
+            else _person_retirement_contribution_breakdown(
+                weny,
+                year=year,
+                simulation_start_year=start_year,
+                assumptions=assumptions,
+            )
         )
+        contrib_buckets = {
+            "trad_ira": matthew_contrib_buckets["trad_ira"] + weny_contrib_buckets["trad_ira"],
+            "roth": matthew_contrib_buckets["roth"] + weny_contrib_buckets["roth"],
+        }
+        matthew_contrib = sum(matthew_contrib_buckets.values())
+        weny_contrib = sum(weny_contrib_buckets.values())
         total_contrib = matthew_contrib + weny_contrib
 
         # ── Net cash flow for the year ─────────────────────────────────────────
@@ -890,12 +1001,24 @@ def run_projection(
         both_retired   = matthew_retired and weny_retired
         one_deceased   = matthew_deceased or weny_deceased
 
-        if both_retired and one_deceased:
-            annual_spend = survivor_spend
-        elif both_retired:
-            annual_spend = target_spend
+        if both_retired:
+            base_spend = survivor_spend if one_deceased else target_spend
+            annual_spend = base_spend
+            if resolve_spending_basis(spending) == "real":
+                annual_spend = _grow_annual_amount(
+                    base_spend,
+                    assumptions.get("inflation", 0.0),
+                    year - start_year,
+                )
         else:
-            annual_spend = total_income - total_contrib
+            annual_spend = resolve_pre_retirement_spending(
+                spending,
+                total_income=total_income,
+                total_contrib=total_contrib,
+                assumptions=assumptions,
+                year=year,
+                simulation_start_year=start_year,
+            )
 
         cash_target, withdrawal_order = get_phase_withdrawal_settings(
             withdrawal_policy,
@@ -913,7 +1036,10 @@ def run_projection(
             config,
             filing_status=str(active_tax_system.get("filing_status", "married_joint")),
         )
-        base_non_ss_taxable_income = taxable_event_income
+        taxable_wage_income = (
+            matthew_parts["taxable_wage_income"] + weny_parts["taxable_wage_income"]
+        )
+        base_non_ss_taxable_income = taxable_event_income + taxable_wage_income
         total_social_security_income = (
             matthew_parts["ss_income"] + weny_parts["ss_income"]
         )
@@ -925,14 +1051,17 @@ def run_projection(
         base_net_flow = total_income - annual_spend + event_cash_flow + freed_this_year
 
         # ── Grow portfolio ─────────────────────────────────────────────────────
-        growth_rate = (
+        invested_growth_rate = (
             assumptions["stock_return"] * assumptions["equity_allocation"] +
             assumptions["bond_return"] * (1 - assumptions["equity_allocation"])
         )
+        cash_growth_rate = resolve_cash_growth_rate(assumptions)
         current_total = sum(portfolio.values())
         if current_total > 0:
             grown_portfolio = {
-                cat: balance * (1 + growth_rate)
+                cat: balance * (
+                    1 + (cash_growth_rate if cat == "cash" else invested_growth_rate)
+                )
                 for cat, balance in portfolio.items()
             }
         else:
@@ -948,6 +1077,7 @@ def run_projection(
         )
         withdrawal_taxable_income = 0.0
         withdrawal_breakdown = _empty_withdrawal_breakdown()
+        contribution_breakdown = {"trad_ira": 0.0, "roth": 0.0}
         working_portfolio = grown_portfolio.copy()
 
         # Iterate because taxable withdrawals themselves increase taxes.
@@ -959,9 +1089,22 @@ def run_projection(
                 preserved_cash = min(post_tax_flow, cash_preserve_flow)
                 if preserved_cash > 0:
                     working_portfolio["cash"] = working_portfolio.get("cash", 0.0) + preserved_cash
+
+                available_for_contrib = max(0.0, post_tax_flow - preserved_cash)
+                trad_contrib = min(contrib_buckets["trad_ira"], available_for_contrib)
+                available_for_contrib -= trad_contrib
+                roth_contrib = min(contrib_buckets["roth"], available_for_contrib)
+                available_for_contrib -= roth_contrib
+                if trad_contrib > 0:
+                    working_portfolio["trad_ira"] = working_portfolio.get("trad_ira", 0.0) + trad_contrib
+                if roth_contrib > 0:
+                    working_portfolio["roth"] = working_portfolio.get("roth", 0.0) + roth_contrib
+                contribution_breakdown["trad_ira"] = trad_contrib
+                contribution_breakdown["roth"] = roth_contrib
+
                 _apply_surplus_with_reserve_target(
                     working_portfolio,
-                    surplus=post_tax_flow - preserved_cash,
+                    surplus=available_for_contrib,
                     cash_target=cash_target,
                 )
                 withdrawal_taxable_income = 0.0
@@ -974,6 +1117,7 @@ def run_projection(
                     withdrawal_order=withdrawal_order,
                     cash_target=cash_target,
                 )
+                contribution_breakdown = {"trad_ira": 0.0, "roth": 0.0}
                 if unmet_deficit > 0:
                     for cat in working_portfolio:
                         working_portfolio[cat] = 0.0
@@ -1027,6 +1171,7 @@ def run_projection(
             "matthew_income": matthew_income,
             "weny_income":    weny_income,
             "taxable_income": taxable_income,
+            "taxable_wage_income": taxable_wage_income,
             "annual_taxes":   annual_taxes,
             "annual_federal_taxes": federal_taxes,
             "annual_state_taxes": state_taxes,
@@ -1037,6 +1182,9 @@ def run_projection(
             "withdrawal_taxable": withdrawal_breakdown["taxable"],
             "withdrawal_trad_ira": withdrawal_breakdown["trad_ira"],
             "withdrawal_roth": withdrawal_breakdown["roth"],
+            "contribution_trad_ira": contribution_breakdown["trad_ira"],
+            "contribution_roth": contribution_breakdown["roth"],
+            "contribution_total": contribution_breakdown["trad_ira"] + contribution_breakdown["roth"],
             "survivor":       one_deceased and both_retired,
             "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",
@@ -1057,11 +1205,13 @@ def _person_income_components(
     assumptions: dict,
     simulation_start_year: int,
     deceased: bool = False,
+    include_taxable_wages: bool = False,
 ) -> dict[str, float]:
     """Return earned-net and SS-gross components for a person's annual cash income."""
     if deceased:
         return {
             "earned_income": 0.0,
+            "taxable_wage_income": 0.0,
             "ss_income": 0.0,
             "ss_taxable_income": 0.0,
             "cash_income": 0.0,
@@ -1109,8 +1259,10 @@ def _person_income_components(
                     anchor_year=int(event["year"]),
                 )
 
+    taxable_wage_income = earned_income if include_taxable_wages else 0.0
     return {
         "earned_income": earned_income,
+        "taxable_wage_income": taxable_wage_income,
         "ss_income": ss_income,
         "ss_taxable_income": ss_taxable_income,
         "cash_income": earned_income + ss_income,

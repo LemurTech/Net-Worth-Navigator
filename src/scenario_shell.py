@@ -163,12 +163,12 @@ def build_scenario_shell(
       overflow: hidden;
       border: none;
       background: transparent;
-      min-height: 156vh;
+      min-height: 195vh;
     }}
     iframe {{
       display: block;
       width: 100%;
-      height: 156vh;
+      height: 195vh;
       border: none;
       background: transparent;
     }}
@@ -214,8 +214,8 @@ def build_scenario_shell(
         flex: 0 0 auto;
       }}
       .frame-wrap, iframe {{
-        min-height: 140vh;
-        height: 140vh;
+        min-height: 175vh;
+        height: 175vh;
       }}
     }}
     @media (max-width: 720px) {{
@@ -241,8 +241,8 @@ def build_scenario_shell(
         grid-template-columns: 1fr;
       }}
       .frame-wrap, iframe {{
-        min-height: 120vh;
-        height: 120vh;
+        min-height: 150vh;
+        height: 150vh;
       }}
     }}
   </style>

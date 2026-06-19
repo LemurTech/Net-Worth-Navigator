@@ -6,6 +6,12 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Per-bucket cash/investment growth behavior in `model.py`: `cash_return` now applies to `cash`, while non-cash investable buckets keep blended stock/bond growth
+- Spending-basis control in `model.py`/scenario config via `spending_basis = "real" | "nominal"`, with inflation indexing for retirement/survivor spending when real mode is selected
+- Explicit pre-retirement spending precedence in `model.py`: `pre_retirement_spending` → `annual_savings_override` → implied `income - contributions`
+- Explicit retirement contribution routing in `model.py`: contributions deposit to `trad_ira`/`roth` before generic surplus allocation, with optional per-person bucket overrides
+- Configurable wage tax treatment in `model.py` via `taxes.wage_tax_treatment = "net_cash" | "taxable_wages"`, including a tracked `taxable_wage_income` output column
+- Scenario shell iframe height increased by 25% across desktop/mobile breakpoints in `src/scenario_shell.py`
 - Shared config loader in `src/config_loader.py` for merged runtime config resolution across model, bridge, and editor
 - Shared tax reference file at `config/tax_tables/2025_us_federal_oregon.toml`
 - Regression coverage for merged tax-table loading in `tests/test_config_loader.py`
