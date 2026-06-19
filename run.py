@@ -26,6 +26,7 @@ from src.scenarios import (
     scenario_output_dir,
     write_scenarios_index,
 )
+from src.scenario_shell import build_scenario_shell
 from src.sidecars import write_sidecars
 
 OUTPUT_DIR  = Path("output")
@@ -133,9 +134,6 @@ def main():
     output_path = scenario_dir / "projection.html"
     print(f"→ Generating chart → {output_path}")
     build_chart(df, output_path, config=config)
-    legacy_output_path = OUTPUT_DIR / "projection.html"
-    shutil.copy2(output_path, legacy_output_path)
-
     print("→ Writing sidecar analysis files...")
     sidecars = write_sidecars(
         output_dir=scenario_dir,
@@ -154,6 +152,15 @@ def main():
         print(f"  {label}: {path}")
     index_path = write_scenarios_index(output_root=SCENARIO_OUTPUT_ROOT)
     print(f"  scenarios_index_json: {index_path}")
+    shell_manifest = json.loads(index_path.read_text(encoding="utf-8"))
+    shell_output_path = OUTPUT_DIR / "projection.html"
+    build_scenario_shell(
+        manifest=shell_manifest,
+        output_path=shell_output_path,
+        manifest_relpath="scenarios/index.json",
+        editor_url="/finances/config/",
+    )
+    print(f"  scenario_shell_html: {shell_output_path}")
 
     # 4. Deploy to web server
     DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
@@ -163,7 +170,7 @@ def main():
     deploy_index_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(index_path, deploy_index_path)
     deploy_path = DEPLOY_DIR / "projection.html"
-    shutil.copy2(legacy_output_path, deploy_path)
+    shutil.copy2(shell_output_path, deploy_path)
     deploy_path.chmod(0o644)
     print(f"→ Deployed → {deploy_path}")
     print(f"  View at: http://casalemuria.lan/finances/projection.html")
