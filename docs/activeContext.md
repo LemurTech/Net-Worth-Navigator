@@ -34,6 +34,7 @@
 - Raw config editor is now available at `http://casalemuria.lan/finances/config/`
 - Editor supports validate, save, and save+offline-rerender actions with timestamped backups under per-scenario paths in `output/config-backups/<slug>/`
 - The active default scenario now lives in `scenarios/default.toml`; root `config.toml` is a migration fallback only
+- The config editor now supports scenario selection, clone/create inputs, and a `Save + Render All` control for batch output refresh
 - Projection page now includes a bottom-fixed `Edit Config` shortcut
 - The editor backend now runs as a small FastAPI app, proxied behind the static nginx container
 - Gantt includes liability payoff milestones derived from the projection output and uses a centered legend
@@ -68,7 +69,6 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 ## Open Items for Next Session
 
 - Execute the next scenario-transition slice in [scenario-transition-plan.md](D:/Dev/Net-Worth-Navigator/docs/scenario-transition-plan.md)
-  - add scenario clone/create flows on top of the new scenario registry and editor selector
   - build the shell projections page against `output/scenarios/index.json`
   - retire the root `config.toml` fallback once the scenario workflow is fully in place
 - Design the scenario manifest and default-scenario source of truth before wiring the shell projections page

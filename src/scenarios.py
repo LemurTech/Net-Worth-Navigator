@@ -108,6 +108,81 @@ def scenario_projection_relpath(slug: str) -> str:
     return f"scenarios/{slug}/projection.html"
 
 
+def scenario_path_for_slug(slug: str) -> Path:
+    normalized = _slugify(slug, "scenario")
+    return SCENARIOS_DIR / f"{normalized}.toml"
+
+
+def _scenario_metadata_block(*, name: str, slug: str, description: str, is_default: bool = False) -> str:
+    description = description.replace('"', '\\"')
+    name = name.replace('"', '\\"')
+    lines = [
+        "[scenario]",
+        f'name = "{name}"',
+        f'slug = "{slug}"',
+        f'description = "{description}"',
+    ]
+    if is_default:
+        lines.append("is_default = true")
+    return "\n".join(lines)
+
+
+def materialize_scenario_content(
+    source_content: str,
+    *,
+    name: str,
+    slug: str,
+    description: str,
+    is_default: bool = False,
+) -> str:
+    normalized_slug = _slugify(slug, "scenario")
+    metadata = _scenario_metadata_block(
+        name=name,
+        slug=normalized_slug,
+        description=description,
+        is_default=is_default,
+    )
+    stripped = re.sub(
+        r"(?ms)^\[scenario\]\s*\n.*?(?=^\[[^\]]+\]|\Z)",
+        "",
+        source_content,
+        count=1,
+    ).lstrip()
+    return f"{metadata}\n\n{stripped}"
+
+
+def create_scenario_from_content(
+    source_content: str,
+    *,
+    name: str,
+    slug: str,
+    description: str,
+) -> ScenarioRef:
+    normalized_slug = _slugify(slug, "scenario")
+    if not name.strip():
+        raise ValueError("Scenario name is required.")
+    target_path = scenario_path_for_slug(normalized_slug)
+    if target_path.exists():
+        raise ValueError(f"Scenario '{normalized_slug}' already exists.")
+
+    SCENARIOS_DIR.mkdir(parents=True, exist_ok=True)
+    target_content = materialize_scenario_content(
+        source_content,
+        name=name.strip(),
+        slug=normalized_slug,
+        description=description.strip(),
+        is_default=False,
+    )
+    target_path.write_text(target_content, encoding="utf-8")
+    return ScenarioRef(
+        slug=normalized_slug,
+        name=name.strip(),
+        description=description.strip(),
+        config_path=target_path,
+        is_default=False,
+    )
+
+
 def _display_config_path(path: Path) -> str:
     try:
         return str(path.relative_to(PROJECT_ROOT))

@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
-from src.scenarios import discover_scenarios, get_scenario
+from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario
 
 APP_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_ROOT / "output"
@@ -73,10 +73,20 @@ def _render_projection_offline(scenario_slug: str | None = None) -> subprocess.C
     )
 
 
+def _render_all_scenarios() -> list[tuple[str, subprocess.CompletedProcess[str]]]:
+    results = []
+    for scenario in discover_scenarios():
+        results.append((scenario.slug, _render_projection_offline(scenario.slug)))
+    return results
+
+
 def _build_context(request: Request, *, content: str, status_kind: str = "info",
                    status_title: str | None = None, status_message: str | None = None,
                    details: str | None = None, backup_path: str | None = None,
-                   scenario_slug: str | None = None) -> dict:
+                   scenario_slug: str | None = None,
+                   clone_name: str = "",
+                   clone_slug: str = "",
+                   clone_description: str = "") -> dict:
     scenario = _current_scenario(scenario_slug)
     config_path = _config_path(scenario_slug)
     last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
@@ -93,6 +103,9 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "scenario_name": scenario.name,
         "scenario_slug": scenario.slug,
         "scenario_options": discover_scenarios(),
+        "clone_name": clone_name,
+        "clone_slug": clone_slug,
+        "clone_description": clone_description,
         "last_modified": last_modified,
         "projection_url": PUBLIC_PROJECTION_URL,
         "editor_url": PUBLIC_EDITOR_URL,
@@ -116,6 +129,9 @@ async def editor_home(request: Request) -> HTMLResponse:
         status_title="Ready",
         status_message="Load, edit, validate, save, or save and re-render the offline projection.",
         scenario_slug=scenario_slug,
+        clone_name="",
+        clone_slug="",
+        clone_description="",
     )
     return templates.TemplateResponse(request, "config_editor.html", context)
 
@@ -126,6 +142,9 @@ async def editor_submit(request: Request) -> HTMLResponse:
     action = form.get("action", "validate")
     content = form.get("content", "")
     scenario_slug = form.get("scenario_slug") or None
+    clone_name = form.get("clone_name", "")
+    clone_slug = form.get("clone_slug", "")
+    clone_description = form.get("clone_description", "")
 
     try:
         parsed = _validate_config_text(content)
@@ -143,6 +162,30 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 status_title="Validation passed",
                 status_message=summary,
                 scenario_slug=scenario_slug,
+                clone_name=clone_name,
+                clone_slug=clone_slug,
+                clone_description=clone_description,
+            )
+            return templates.TemplateResponse(request, "config_editor.html", context)
+
+        if action == "clone":
+            created = create_scenario_from_content(
+                content,
+                name=clone_name,
+                slug=clone_slug,
+                description=clone_description,
+            )
+            cloned_content = _read_config_text(created.slug)
+            context = _build_context(
+                request,
+                content=cloned_content,
+                status_kind="success",
+                status_title="Scenario cloned",
+                status_message=f"Created scenario '{created.name}' ({created.slug}).",
+                scenario_slug=created.slug,
+                clone_name="",
+                clone_slug="",
+                clone_description="",
             )
             return templates.TemplateResponse(request, "config_editor.html", context)
 
@@ -157,6 +200,9 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 status_message="Configuration saved successfully.",
                 backup_path=str(backup_path),
                 scenario_slug=scenario_slug,
+                clone_name=clone_name,
+                clone_slug=clone_slug,
+                clone_description=clone_description,
             )
             return templates.TemplateResponse(request, "config_editor.html", context)
 
@@ -173,6 +219,9 @@ async def editor_submit(request: Request) -> HTMLResponse:
                     details=details,
                     backup_path=str(backup_path),
                     scenario_slug=scenario_slug,
+                    clone_name=clone_name,
+                    clone_slug=clone_slug,
+                    clone_description=clone_description,
                 )
                 return templates.TemplateResponse(request, "config_editor.html", context)
 
@@ -186,8 +235,49 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 details=details or "No process output captured.",
                 backup_path=str(backup_path),
                 scenario_slug=scenario_slug,
+                clone_name=clone_name,
+                clone_slug=clone_slug,
+                clone_description=clone_description,
             )
             return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
+
+        if action == "save_render_all":
+            results = _render_all_scenarios()
+            failures = [
+                (slug, result) for slug, result in results if result.returncode != 0
+            ]
+            details_lines = []
+            for slug, result in results:
+                details_lines.append(f"[{slug}] exit={result.returncode}")
+                stdout = (result.stdout or "").strip()
+                stderr = (result.stderr or "").strip()
+                if stdout:
+                    details_lines.append(stdout)
+                if stderr:
+                    details_lines.append(stderr)
+            context = _build_context(
+                request,
+                content=content,
+                status_kind="error" if failures else "success",
+                status_title="Render all complete" if not failures else "Render all completed with errors",
+                status_message=(
+                    f"Saved current scenario and rendered {len(results)} scenario(s) successfully."
+                    if not failures
+                    else f"Saved current scenario and rendered {len(results)} scenario(s), with {len(failures)} failure(s)."
+                ),
+                details="\n\n".join(details_lines),
+                backup_path=str(backup_path),
+                scenario_slug=scenario_slug,
+                clone_name=clone_name,
+                clone_slug=clone_slug,
+                clone_description=clone_description,
+            )
+            return templates.TemplateResponse(
+                request,
+                "config_editor.html",
+                context,
+                status_code=500 if failures else 200,
+            )
 
         context = _build_context(
             request,
@@ -196,6 +286,9 @@ async def editor_submit(request: Request) -> HTMLResponse:
             status_title="Unknown action",
             status_message=f"Unsupported action: {html.escape(action)}",
             scenario_slug=scenario_slug,
+            clone_name=clone_name,
+            clone_slug=clone_slug,
+            clone_description=clone_description,
         )
         return templates.TemplateResponse(request, "config_editor.html", context, status_code=400)
 
@@ -207,6 +300,9 @@ async def editor_submit(request: Request) -> HTMLResponse:
             status_title="Validation failed",
             status_message=str(exc),
             scenario_slug=scenario_slug,
+            clone_name=clone_name,
+            clone_slug=clone_slug,
+            clone_description=clone_description,
         )
         return templates.TemplateResponse(request, "config_editor.html", context, status_code=400)
     except Exception as exc:
@@ -217,6 +313,9 @@ async def editor_submit(request: Request) -> HTMLResponse:
             status_title="Operation failed",
             status_message=str(exc),
             scenario_slug=scenario_slug,
+            clone_name=clone_name,
+            clone_slug=clone_slug,
+            clone_description=clone_description,
         )
         return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
 

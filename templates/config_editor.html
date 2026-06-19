@@ -186,9 +186,32 @@
       color: var(--muted);
       font-size: 13px;
     }
+    .scenario-tools {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #0f1725;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .scenario-tools label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .scenario-tools input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #111827;
+      color: var(--text);
+    }
     @media (max-width: 900px) {
       .header { flex-direction: column; }
       textarea { min-height: 60vh; }
+      .scenario-tools { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -236,11 +259,27 @@
     <form class="card" method="post" action="">
       <input type="hidden" name="scenario_slug" value="{{ scenario_slug }}">
       <div class="editor-head">Edit the current scenario TOML below. Comments and formatting are preserved because the saved content is written back exactly as entered after validation.</div>
+      <div class="scenario-tools">
+        <div>
+          <label for="clone_name">Clone As Name</label>
+          <input id="clone_name" name="clone_name" value="{{ clone_name }}" placeholder="Optimistic Plan">
+        </div>
+        <div>
+          <label for="clone_slug">Clone As Slug</label>
+          <input id="clone_slug" name="clone_slug" value="{{ clone_slug }}" placeholder="optimistic">
+        </div>
+        <div>
+          <label for="clone_description">Clone Description</label>
+          <input id="clone_description" name="clone_description" value="{{ clone_description }}" placeholder="Higher returns, later home sale.">
+        </div>
+      </div>
       <textarea name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
       <div class="actions">
         <button type="submit" name="action" value="validate">Validate</button>
         <button type="submit" name="action" value="save">Save</button>
         <button type="submit" name="action" value="save_render" class="primary">Save + Re-render</button>
+        <button type="submit" name="action" value="save_render_all">Save + Render All</button>
+        <button type="submit" name="action" value="clone">Clone Scenario</button>
       </div>
       <div class="hint">Backups are written to <code>{{ backup_dir }}</code> before each save.</div>
     </form>

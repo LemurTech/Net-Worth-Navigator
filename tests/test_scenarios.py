@@ -4,7 +4,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.scenarios import ScenarioRef, discover_scenarios, write_scenarios_index
+from src.scenarios import (
+    ScenarioRef,
+    create_scenario_from_content,
+    discover_scenarios,
+    materialize_scenario_content,
+    write_scenarios_index,
+)
 
 
 class ScenarioTests(unittest.TestCase):
@@ -47,3 +53,31 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(payload["default_slug"], "default")
         self.assertEqual(payload["scenarios"][0]["projection_path"], "scenarios/default/projection.html")
         self.assertEqual(payload["scenarios"][0]["name"], "Default Plan")
+
+    def test_materialize_scenario_content_replaces_metadata_block(self):
+        content = "[scenario]\nname = \"Old\"\nslug = \"old\"\n\n[simulation]\nstart_year = 2026\n"
+        rendered = materialize_scenario_content(
+            content,
+            name="New Plan",
+            slug="new-plan",
+            description="Fresh clone",
+        )
+        self.assertIn('name = "New Plan"', rendered)
+        self.assertIn('slug = "new-plan"', rendered)
+        self.assertEqual(rendered.count("[scenario]"), 1)
+
+    def test_create_scenario_from_content_writes_new_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scenarios_dir = root / "scenarios"
+            source = "[scenario]\nname = \"Default\"\nslug = \"default\"\n\n[simulation]\nstart_year = 2026\n"
+            with patch("src.scenarios.SCENARIOS_DIR", scenarios_dir):
+                created = create_scenario_from_content(
+                    source,
+                    name="Optimistic",
+                    slug="optimistic",
+                    description="Higher-return case",
+                )
+
+            self.assertEqual(created.slug, "optimistic")
+            self.assertTrue((scenarios_dir / "optimistic.toml").exists())
