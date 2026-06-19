@@ -31,14 +31,13 @@
       line-height: 1.45;
     }
     .page {
-      max-width: 1400px;
+      max-width: 1480px;
       margin: 0 auto;
       padding: 20px 18px 32px;
     }
     .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 16px;
       margin-bottom: 16px;
     }
@@ -50,12 +49,32 @@
     .title p {
       margin: 0;
       color: var(--muted);
-      max-width: 840px;
+      max-width: 980px;
     }
     .links {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      align-items: flex-start;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    .scenario-picker {
+      min-width: 260px;
+    }
+    .scenario-picker label {
+      display:block;
+      color:#9fb2c8;
+      font-size:13px;
+      margin-bottom:6px;
+    }
+    .scenario-picker select {
+      width: 100%;
+      min-width: 260px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #111827;
+      color: #e5edf7;
     }
     .linkbtn {
       display: inline-block;
@@ -83,8 +102,28 @@
     }
     .meta-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 10px 18px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px 18px;
+    }
+    .meta-item {
+      min-width: 0;
+    }
+    .meta-label {
+      display: block;
+      color: #d5e2f1;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .meta-value {
+      min-width: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .meta-value code {
+      display: inline-block;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      white-space: normal;
     }
     .status {
       padding: 14px 16px;
@@ -209,9 +248,12 @@
       color: var(--text);
     }
     @media (max-width: 900px) {
-      .header { flex-direction: column; }
+      .header { grid-template-columns: 1fr; }
+      .links { justify-content: flex-start; }
       textarea { min-height: 60vh; }
       .scenario-tools { grid-template-columns: 1fr; }
+      .scenario-picker,
+      .scenario-picker select { min-width: 100%; }
     }
   </style>
 </head>
@@ -223,9 +265,9 @@
         <p>Raw TOML editor for <code>{{ config_path }}</code>. This page validates the file before save and can rebuild the offline projection after saving.</p>
       </div>
       <div class="links">
-        <form method="get" action="">
-          <label for="scenario" style="display:block;color:#9fb2c8;font-size:13px;margin-bottom:6px;">Scenario</label>
-          <select id="scenario" name="scenario" onchange="this.form.submit()" style="min-width:220px;padding:9px 12px;border-radius:8px;border:1px solid #243142;background:#111827;color:#e5edf7;">
+        <form method="get" action="" class="scenario-picker">
+          <label for="scenario">Scenario</label>
+          <select id="scenario" name="scenario" onchange="this.form.submit()">
             {% for scenario in scenario_options %}
             <option value="{{ scenario.slug }}" {% if scenario.slug == scenario_slug %}selected{% endif %}>{{ scenario.name }}</option>
             {% endfor %}
@@ -237,11 +279,26 @@
 
     <div class="meta">
       <div class="meta-grid">
-        <div><strong>Last modified:</strong> {{ last_modified }}</div>
-        <div><strong>Scenario:</strong> {{ scenario_name }} <code>{{ scenario_slug }}</code></div>
-        <div><strong>Projection:</strong> <code>{{ projection_url }}</code></div>
-        <div><strong>Editor URL:</strong> <code>{{ editor_url }}</code> <span style="color:#9fb2c8;">(bookmark/share this address)</span></div>
-        <div><strong>Backups:</strong> <code>{{ backup_dir }}</code></div>
+        <div class="meta-item">
+          <span class="meta-label">Last modified</span>
+          <div class="meta-value">{{ last_modified }}</div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Scenario</span>
+          <div class="meta-value">{{ scenario_name }} <code>{{ scenario_slug }}</code></div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Projection</span>
+          <div class="meta-value"><code>{{ projection_url }}</code></div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Editor URL</span>
+          <div class="meta-value"><code>{{ editor_url }}</code></div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Backups</span>
+          <div class="meta-value"><code>{{ backup_dir }}</code></div>
+        </div>
       </div>
     </div>
 

@@ -89,6 +89,15 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
                    clone_description: str = "") -> dict:
     scenario = _current_scenario(scenario_slug)
     config_path = _config_path(scenario_slug)
+    scenario_options = [
+        {
+            "slug": option.slug,
+            "name": option.name,
+            "description": option.description,
+            "is_default": option.is_default,
+        }
+        for option in discover_scenarios()
+    ]
     last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
     return {
         "request": request,
@@ -102,7 +111,7 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "config_path": str(config_path),
         "scenario_name": scenario.name,
         "scenario_slug": scenario.slug,
-        "scenario_options": discover_scenarios(),
+        "scenario_options": scenario_options,
         "clone_name": clone_name,
         "clone_slug": clone_slug,
         "clone_description": clone_description,

@@ -43,109 +43,105 @@ def build_scenario_shell(
         linear-gradient(180deg, #08111d, #0b1220 46%, #08111d);
     }}
     .page {{
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 22px 18px 26px;
+      width: 100%;
+      padding: 10px 10px 16px;
     }}
-    .hero {{
-      display: grid;
-      grid-template-columns: minmax(0, 1.5fr) minmax(320px, .9fr);
-      gap: 16px;
-      align-items: stretch;
-      margin-bottom: 16px;
-    }}
-    .hero-card, .control-card, .frame-card {{
+    .topbar, .frame-card {{
       background: rgba(15, 23, 37, 0.92);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
+      border-radius: 14px;
+      box-shadow: 0 14px 30px rgba(0,0,0,.24);
       backdrop-filter: blur(12px);
     }}
-    .hero-card {{
-      padding: 22px 22px 20px;
+    .topbar {{
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 420px) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 14px;
+      margin-bottom: 10px;
     }}
-    .hero-card h1 {{
-      margin: 0 0 10px;
-      font-size: clamp(28px, 3vw, 40px);
+    .brand {{
+      min-width: 0;
+    }}
+    .brand h1 {{
+      margin: 0 0 4px;
+      font-size: clamp(22px, 2.2vw, 30px);
       line-height: 1.02;
       letter-spacing: -0.03em;
     }}
-    .hero-card p {{
+    .brand p {{
       margin: 0;
-      max-width: 760px;
       color: var(--muted);
-      font-size: 15px;
-      line-height: 1.55;
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 760px;
     }}
-    .hero-meta {{
-      margin-top: 16px;
+    .topbar-meta {{
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
+      margin-top: 8px;
     }}
-    .hero-pill {{
+    .meta-pill {{
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: 6px;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid var(--border);
       background: rgba(17,24,39,.78);
       color: #d4e6f7;
-      font-size: 13px;
+      font-size: 12px;
     }}
-    .control-card {{
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      justify-content: space-between;
-    }}
-    .control-top {{
+    .selector-card {{
       display: grid;
-      gap: 12px;
+      gap: 8px;
+      min-width: 0;
     }}
     .control-label {{
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: .08em;
     }}
     select {{
       width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
       border: 1px solid var(--border);
       background: #111827;
       color: var(--text);
-      font-size: 15px;
+      font-size: 14px;
     }}
     .scenario-name {{
-      font-size: 22px;
+      font-size: 17px;
       font-weight: 700;
       line-height: 1.1;
     }}
     .scenario-desc {{
       color: var(--muted);
-      font-size: 14px;
-      line-height: 1.5;
-      min-height: 42px;
+      font-size: 12px;
+      line-height: 1.35;
+      min-height: 0;
     }}
     .control-actions {{
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+      justify-content: flex-end;
     }}
     .linkbtn {{
       display: inline-block;
-      padding: 10px 14px;
+      padding: 9px 12px;
       border: 1px solid var(--border);
       border-radius: 10px;
       color: var(--text);
       text-decoration: none;
       background: #162234;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
+      white-space: nowrap;
     }}
     .linkbtn:hover {{
       border-color: var(--accent);
@@ -156,19 +152,19 @@ def build_scenario_shell(
       color: #08111d;
     }}
     .frame-card {{
-      padding: 12px;
+      padding: 8px;
     }}
     .frame-wrap {{
-      border-radius: 14px;
+      border-radius: 12px;
       overflow: hidden;
       border: 1px solid #1f2a3a;
       background: #0a1220;
-      min-height: 78vh;
+      min-height: 156vh;
     }}
     iframe {{
       display: block;
       width: 100%;
-      min-height: 78vh;
+      height: 156vh;
       border: none;
       background: #0a1220;
     }}
@@ -186,44 +182,43 @@ def build_scenario_shell(
       display: none;
     }}
     .frame-note {{
-      margin-top: 10px;
+      margin-top: 8px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       text-align: right;
     }}
     @media (max-width: 980px) {{
-      .hero {{
+      .topbar {{
         grid-template-columns: 1fr;
       }}
       .frame-wrap, iframe {{
-        min-height: 68vh;
+        min-height: 112vh;
+        height: 112vh;
       }}
+      .control-actions {{ justify-content: flex-start; }}
     }}
   </style>
 </head>
 <body>
   <div class="page">
-    <section class="hero">
-      <div class="hero-card">
+    <section class="topbar">
+      <div class="brand">
         <h1>Net Worth Navigator</h1>
-        <p>Switch between pre-rendered planning scenarios without waiting on a fresh model run. The active projection below loads from the scenario output bundle that the editor renders ahead of time.</p>
-        <div class="hero-meta">
-          <div class="hero-pill">Scenario Shell</div>
-          <div class="hero-pill" id="manifest-generated-at">Manifest pending</div>
-          <div class="hero-pill" id="scenario-count-pill">0 scenarios</div>
+        <p>Switch between pre-rendered scenarios without waiting on a fresh run.</p>
+        <div class="topbar-meta">
+          <div class="meta-pill" id="manifest-generated-at">Manifest pending</div>
+          <div class="meta-pill" id="scenario-count-pill">0 scenarios</div>
         </div>
       </div>
-      <div class="control-card">
-        <div class="control-top">
+      <div class="selector-card">
           <div class="control-label">Scenario</div>
           <select id="scenario-select" aria-label="Select scenario"></select>
           <div class="scenario-name" id="scenario-name">Loading…</div>
           <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
-        </div>
-        <div class="control-actions">
-          <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
-          <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
-        </div>
+      </div>
+      <div class="control-actions">
+        <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
+        <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
       </div>
     </section>
 

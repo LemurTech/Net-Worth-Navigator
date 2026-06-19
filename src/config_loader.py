@@ -7,7 +7,7 @@ from pathlib import Path
 import tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = PROJECT_ROOT / "config.toml"
+CONFIG_PATH = PROJECT_ROOT / "scenarios" / "default.toml"
 TAX_TABLES_DIR = PROJECT_ROOT / "config" / "tax_tables"
 
 

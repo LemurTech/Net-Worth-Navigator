@@ -1,7 +1,8 @@
-# Net Worth Navigator — Legacy Compatibility Config
-# Active scenario editing has moved to scenarios/default.toml and the web editor
-# now targets the scenario files directly. This root file remains as a fallback
-# during the migration but is no longer the primary scenario source.
+# Net Worth Navigator — Retired Root Config
+# This file is no longer used by the app runtime.
+# Active scenario editing and rendering now use scenarios/default.toml and
+# additional scenarios/*.toml files. This file is retained only as a short-lived
+# migration marker and can be removed once downstream references are cleaned up.
 
 [simulation]
 start_year = 2026

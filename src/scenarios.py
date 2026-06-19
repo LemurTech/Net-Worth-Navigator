@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import tomllib
 
-from src.config_loader import CONFIG_PATH, PROJECT_ROOT
+from src.config_loader import PROJECT_ROOT
 
 SCENARIOS_DIR = PROJECT_ROOT / "scenarios"
 SCENARIO_OUTPUT_ROOT = PROJECT_ROOT / "output" / "scenarios"
@@ -39,15 +39,7 @@ def _load_metadata(path: Path) -> dict:
 def discover_scenarios() -> list[ScenarioRef]:
     scenario_files = sorted(SCENARIOS_DIR.glob("*.toml")) if SCENARIOS_DIR.exists() else []
     if not scenario_files:
-        return [
-            ScenarioRef(
-                slug="default",
-                name="Default Plan",
-                description="Legacy root config scenario.",
-                config_path=CONFIG_PATH,
-                is_default=True,
-            )
-        ]
+        return []
 
     scenarios: list[ScenarioRef] = []
     for path in scenario_files:
@@ -83,6 +75,10 @@ def discover_scenarios() -> list[ScenarioRef]:
 
 def get_default_scenario() -> ScenarioRef:
     scenarios = discover_scenarios()
+    if not scenarios:
+        raise FileNotFoundError(
+            f"No scenario configs were found in {SCENARIOS_DIR}."
+        )
     for scenario in scenarios:
         if scenario.is_default:
             return scenario
@@ -91,6 +87,10 @@ def get_default_scenario() -> ScenarioRef:
 
 def get_scenario(slug: str | None = None) -> ScenarioRef:
     scenarios = discover_scenarios()
+    if not scenarios:
+        raise FileNotFoundError(
+            f"No scenario configs were found in {SCENARIOS_DIR}."
+        )
     if not slug:
         return get_default_scenario()
     normalized = _slugify(slug, "default")
