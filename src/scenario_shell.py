@@ -72,21 +72,39 @@ def build_scenario_shell(
     }}
     .selector-main {{
       min-width: 0;
-      flex: 0 0 320px;
+      flex: 0 1 320px;
     }}
     select {{
+      appearance: none;
       width: 100%;
       height: 42px;
-      padding: 10px 14px;
+      padding: 9px 40px 9px 14px;
       border-radius: 14px;
       border: 1px solid rgba(125, 211, 252, 0.18);
       background: linear-gradient(180deg, #101a2a, #0f1725);
       color: #f8fafc;
       font-size: 15px;
       font-weight: 600;
+      line-height: 1.2;
       opacity: 1;
       -webkit-text-fill-color: #f8fafc;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      text-shadow: none;
+      background-image:
+        linear-gradient(180deg, #101a2a, #0f1725),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M3 5.25 7 9l4-3.75' fill='none' stroke='%23f8fafc' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat, no-repeat;
+      background-position: 0 0, right 14px center;
+      background-size: auto, 14px 14px;
+    }}
+    select:focus {{
+      outline: none;
+      border-color: rgba(125, 211, 252, 0.6);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 3px rgba(14,165,233,0.16);
+    }}
+    select option {{
+      color: #f8fafc;
+      background: #101a2a;
     }}
     .scenario-summary {{
       min-width: 0;
@@ -176,13 +194,55 @@ def build_scenario_shell(
     }}
     @media (max-width: 980px) {{
       .topbar-title {{ font-size: 24px; }}
-      .control-row {{ align-items: stretch; }}
-      .selector-main {{ flex-basis: 100%; }}
-      .scenario-summary {{ align-items: flex-start; }}
-      .control-actions {{ flex-wrap: wrap; }}
+      .control-row {{
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        align-items: stretch;
+      }}
+      .selector-main {{ flex-basis: auto; }}
+      .scenario-summary {{
+        align-items: flex-start;
+        order: 3;
+      }}
+      .control-actions {{
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-start;
+      }}
+      .linkbtn {{
+        flex: 0 0 auto;
+      }}
       .frame-wrap, iframe {{
         min-height: 140vh;
         height: 140vh;
+      }}
+    }}
+    @media (max-width: 720px) {{
+      .page {{
+        padding: 8px 8px 12px;
+      }}
+      .topbar-title {{
+        font-size: 22px;
+      }}
+      .scenario-desc {{
+        font-size: 12px;
+      }}
+      .control-actions {{
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }}
+      .linkbtn {{
+        width: 100%;
+      }}
+    }}
+    @media (max-width: 520px) {{
+      .control-actions {{
+        grid-template-columns: 1fr;
+      }}
+      .frame-wrap, iframe {{
+        min-height: 120vh;
+        height: 120vh;
       }}
     }}
   </style>
