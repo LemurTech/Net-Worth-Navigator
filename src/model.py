@@ -413,6 +413,100 @@ def resolve_survivor_spending(spending: dict) -> float:
     return float(spending.get("survivor_annual", round(retirement_spend * 0.70)))
 
 
+def _combined_annual_growth_rate(*rates) -> float:
+    """Return the compounded annual growth rate produced by multiple components."""
+    factor = 1.0
+    for raw_rate in rates:
+        try:
+            factor *= 1.0 + float(raw_rate)
+        except (TypeError, ValueError):
+            continue
+    return factor - 1.0
+
+
+def _grow_annual_amount(base_amount, annual_rate: float, years_elapsed: int) -> float:
+    """Return a base annual amount grown by a compounded annual rate."""
+    try:
+        amount = float(base_amount)
+    except (TypeError, ValueError):
+        return 0.0
+    years_elapsed = max(0, int(years_elapsed))
+    return amount * ((1.0 + float(annual_rate)) ** years_elapsed)
+
+
+def _person_income_growth_rate(person: dict, assumptions: dict) -> float:
+    """Return annual take-home growth from inflation plus real raise."""
+    return _combined_annual_growth_rate(
+        assumptions.get("inflation", 0.0),
+        person.get("annual_take_home_real_raise", 0.0),
+    )
+
+
+def _person_401k_growth_rate(person: dict, assumptions: dict) -> float:
+    """Return annual 401(k) growth from income growth plus elective step-up."""
+    return _combined_annual_growth_rate(
+        _person_income_growth_rate(person, assumptions),
+        person.get("annual_401k_contribution_extra_increase", 0.0),
+    )
+
+
+def _project_person_take_home(
+    person: dict,
+    *,
+    year: int,
+    simulation_start_year: int,
+    assumptions: dict,
+    base_amount=None,
+    anchor_year: int | None = None,
+) -> float:
+    """Return grown annual take-home income for the active pre-retirement baseline."""
+    if anchor_year is None:
+        anchor_year = simulation_start_year
+    if base_amount is None:
+        base_amount = person.get("annual_take_home", 0.0)
+    return _grow_annual_amount(
+        base_amount,
+        _person_income_growth_rate(person, assumptions),
+        year - anchor_year,
+    )
+
+
+def _project_person_401k_contribution(
+    person: dict,
+    *,
+    year: int,
+    simulation_start_year: int,
+    assumptions: dict,
+) -> float:
+    """Return grown annual 401(k) contribution for the current pre-retirement year."""
+    return _grow_annual_amount(
+        person.get("annual_401k_contribution", 0.0),
+        _person_401k_growth_rate(person, assumptions),
+        year - simulation_start_year,
+    )
+
+
+def _person_retirement_contributions(
+    person: dict,
+    *,
+    year: int,
+    simulation_start_year: int,
+    assumptions: dict,
+) -> float:
+    """Return current-year retirement contributions for a person."""
+    annual_401k = _project_person_401k_contribution(
+        person,
+        year=year,
+        simulation_start_year=simulation_start_year,
+        assumptions=assumptions,
+    )
+    try:
+        annual_ira = float(person.get("annual_ira_contribution", 0.0))
+    except (TypeError, ValueError):
+        annual_ira = 0.0
+    return annual_401k + annual_ira
+
+
 def get_phase_withdrawal_settings(
     policy: dict[str, object],
     *,
@@ -703,10 +797,20 @@ def run_projection(
 
         # ── Income for this year ───────────────────────────────────────────────
         matthew_parts = _person_income_components(
-            matthew, year, events, deceased=matthew_deceased
+            matthew,
+            year,
+            events,
+            assumptions=assumptions,
+            simulation_start_year=start_year,
+            deceased=matthew_deceased,
         )
         weny_parts = _person_income_components(
-            weny, year, events, deceased=weny_deceased
+            weny,
+            year,
+            events,
+            assumptions=assumptions,
+            simulation_start_year=start_year,
+            deceased=weny_deceased,
         )
 
         # ── SS survivor benefit: survivor keeps the higher of the two checks ───
@@ -766,13 +870,17 @@ def run_projection(
         matthew_retired = year >= matthew["retirement_year"]
         weny_retired = year >= weny["retirement_year"]
 
-        matthew_contrib = 0.0 if matthew_retired else (
-            matthew.get("annual_401k_contribution", 0) +
-            matthew.get("annual_ira_contribution", 0)
+        matthew_contrib = 0.0 if matthew_retired else _person_retirement_contributions(
+            matthew,
+            year=year,
+            simulation_start_year=start_year,
+            assumptions=assumptions,
         )
-        weny_contrib = 0.0 if weny_retired else (
-            weny.get("annual_401k_contribution", 0) +
-            weny.get("annual_ira_contribution", 0)
+        weny_contrib = 0.0 if weny_retired else _person_retirement_contributions(
+            weny,
+            year=year,
+            simulation_start_year=start_year,
+            assumptions=assumptions,
         )
         total_contrib = matthew_contrib + weny_contrib
 
@@ -942,7 +1050,13 @@ def run_projection(
 
 
 def _person_income_components(
-    person: dict, year: int, events: list, deceased: bool = False
+    person: dict,
+    year: int,
+    events: list,
+    *,
+    assumptions: dict,
+    simulation_start_year: int,
+    deceased: bool = False,
 ) -> dict[str, float]:
     """Return earned-net and SS-gross components for a person's annual cash income."""
     if deceased:
@@ -954,7 +1068,12 @@ def _person_income_components(
         }
 
     person_key = person["name"].lower()
-    earned_income = person.get("annual_take_home", 0)
+    earned_income = _project_person_take_home(
+        person,
+        year=year,
+        simulation_start_year=simulation_start_year,
+        assumptions=assumptions,
+    )
     ss_income = 0.0
     ss_taxable_income = 0.0
 
@@ -981,7 +1100,14 @@ def _person_income_components(
     for event in events:
         if event["type"] == "NewJob" and event.get("person") == person_key:
             if year >= event["year"] and year < person["retirement_year"]:
-                earned_income = event["annual_income"]
+                earned_income = _project_person_take_home(
+                    person,
+                    year=year,
+                    simulation_start_year=simulation_start_year,
+                    assumptions=assumptions,
+                    base_amount=event.get("annual_income", 0.0),
+                    anchor_year=int(event["year"]),
+                )
 
     return {
         "earned_income": earned_income,

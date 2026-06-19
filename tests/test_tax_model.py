@@ -68,14 +68,18 @@ class TaxModelTests(unittest.TestCase):
                 "name": "Person 1",
                 "retirement_year": 2026,
                 "annual_take_home": 0.0,
+                "annual_take_home_real_raise": 0.0,
                 "annual_401k_contribution": 0.0,
+                "annual_401k_contribution_extra_increase": 0.0,
                 "annual_ira_contribution": 0.0,
             },
             "weny": {
                 "name": "Person 2",
                 "retirement_year": 2026,
                 "annual_take_home": 0.0,
+                "annual_take_home_real_raise": 0.0,
                 "annual_401k_contribution": 0.0,
+                "annual_401k_contribution_extra_increase": 0.0,
                 "annual_ira_contribution": 0.0,
             },
             "spending": {

@@ -22,14 +22,18 @@ class WithdrawalPolicyTests(unittest.TestCase):
                 "name": "Person 1",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
+                "annual_take_home_real_raise": 0.0,
                 "annual_401k_contribution": 0,
+                "annual_401k_contribution_extra_increase": 0.0,
                 "annual_ira_contribution": 0,
             },
             "weny": {
                 "name": "Person 2",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
+                "annual_take_home_real_raise": 0.0,
                 "annual_401k_contribution": 0,
+                "annual_401k_contribution_extra_increase": 0.0,
                 "annual_ira_contribution": 0,
             },
             "spending": {
@@ -129,6 +133,34 @@ class WithdrawalPolicyTests(unittest.TestCase):
         policy = model.resolve_withdrawal_policy(config, {"cash": 1000.0})
 
         self.assertEqual(policy["survivor_cash_target"], 65000.0)
+
+    def test_take_home_growth_compounds_inflation_and_real_raise(self):
+        rate = model._person_income_growth_rate(
+            {"annual_take_home_real_raise": 0.02},
+            {"inflation": 0.03},
+        )
+        self.assertAlmostEqual(rate, 0.0506, places=6)
+
+        income = model._project_person_take_home(
+            {"annual_take_home": 1000.0, "annual_take_home_real_raise": 0.02},
+            year=2028,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.03},
+        )
+        self.assertAlmostEqual(income, 1103.76036, places=5)
+
+    def test_401k_growth_compounds_income_growth_and_extra_increase(self):
+        contribution = model._project_person_401k_contribution(
+            {
+                "annual_401k_contribution": 100.0,
+                "annual_take_home_real_raise": 0.02,
+                "annual_401k_contribution_extra_increase": 0.02,
+            },
+            year=2028,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.03},
+        )
+        self.assertAlmostEqual(contribution, 114.8352278544, places=5)
 
     def test_sell_home_event_converts_equity_to_cash_and_clears_mortgage(self):
         config = self._base_config()

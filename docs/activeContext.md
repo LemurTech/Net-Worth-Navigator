@@ -27,6 +27,7 @@
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
 - Social Security event timing and monthly benefit are now synced at runtime from each person's `ss_start_age` plus the matching `social_security_benefits` bracket, with legacy `ss_monthly_benefit` retained as a compatibility fallback; `ss_start_year` has been removed from the person-level config surface
 - Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a compatibility fallback
+- Pre-retirement take-home income can now grow annually from inflation plus person-level `annual_take_home_real_raise`, and 401(k) contributions can now grow from that same income path plus person-level `annual_401k_contribution_extra_increase`
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
