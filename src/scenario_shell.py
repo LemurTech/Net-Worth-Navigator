@@ -49,26 +49,15 @@ def build_scenario_shell(
     }}
     .topbar {{
       display: grid;
-      gap: 8px;
-      padding: 4px 2px 6px;
+      gap: 10px;
+      padding: 2px 2px 6px;
       margin-bottom: 6px;
     }}
-    .topbar-meta {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 2px;
-    }}
-    .meta-pill {{
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(17,24,39,.78);
-      color: #d4e6f7;
-      font-size: 12px;
+    .topbar-title {{
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.02;
+      letter-spacing: -0.03em;
     }}
     .selector-card {{
       display: grid;
@@ -79,15 +68,15 @@ def build_scenario_shell(
       display: flex;
       gap: 10px;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }}
     .selector-main {{
       min-width: 0;
-      flex: 1 1 360px;
+      flex: 0 0 320px;
     }}
     select {{
       width: 100%;
-      min-height: 44px;
+      height: 42px;
       padding: 10px 14px;
       border-radius: 14px;
       border: 1px solid rgba(125, 211, 252, 0.18);
@@ -98,25 +87,29 @@ def build_scenario_shell(
     }}
     .scenario-summary {{
       min-width: 0;
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
     }}
     .scenario-desc {{
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.42;
-      max-width: 60ch;
+      line-height: 1.35;
+      max-width: none;
     }}
     .control-actions {{
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
+      flex: 0 0 auto;
     }}
     .linkbtn {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 44px;
-      padding: 0 15px;
+      height: 42px;
+      padding: 0 14px;
       border: 1px solid rgba(125, 211, 252, 0.16);
       border-radius: 12px;
       color: var(--text);
@@ -179,8 +172,11 @@ def build_scenario_shell(
       padding-right: 2px;
     }}
     @media (max-width: 980px) {{
+      .topbar-title {{ font-size: 24px; }}
       .control-row {{ align-items: stretch; }}
       .selector-main {{ flex-basis: 100%; }}
+      .scenario-summary {{ align-items: flex-start; }}
+      .control-actions {{ flex-wrap: wrap; }}
       .frame-wrap, iframe {{
         min-height: 140vh;
         height: 140vh;
@@ -191,22 +187,19 @@ def build_scenario_shell(
 <body>
   <div class="page">
     <section class="topbar">
-      <div class="topbar-meta">
-        <div class="meta-pill" id="manifest-generated-at">Manifest pending</div>
-        <div class="meta-pill" id="scenario-count-pill">0 scenarios</div>
-      </div>
+      <div class="topbar-title">Net Worth Navigator</div>
       <div class="selector-card">
         <div class="control-row">
           <div class="selector-main">
             <select id="scenario-select" aria-label="Select scenario"></select>
           </div>
+          <div class="scenario-summary">
+            <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
+          </div>
           <div class="control-actions">
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
             <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
           </div>
-        </div>
-        <div class="scenario-summary">
-          <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
         </div>
       </div>
     </section>
@@ -238,18 +231,13 @@ def build_scenario_shell(
 
     function populateShell(manifest) {{
       const select = document.getElementById("scenario-select");
-      const name = document.getElementById("scenario-name");
       const description = document.getElementById("scenario-description");
       const frame = document.getElementById("scenario-frame");
       const openLink = document.getElementById("open-scenario-link");
-      const generatedAt = document.getElementById("manifest-generated-at");
-      const countPill = document.getElementById("scenario-count-pill");
       const frameWrap = document.getElementById("frame-wrap");
       const emptyState = document.getElementById("empty-state");
 
       const scenarios = Array.isArray(manifest.scenarios) ? manifest.scenarios : [];
-      generatedAt.textContent = manifest.generated_at ? "Manifest " + manifest.generated_at.replace("T", " ").slice(0, 19) : "Manifest ready";
-      countPill.textContent = scenarios.length + (scenarios.length === 1 ? " scenario" : " scenarios");
 
       select.innerHTML = "";
       scenarios.forEach((scenario) => {{
@@ -264,7 +252,6 @@ def build_scenario_shell(
         if (!selected) {{
           frameWrap.classList.add("empty");
           emptyState.classList.add("active");
-          name.textContent = "No scenarios found";
           description.textContent = "Render a scenario from the editor to populate the public selector.";
           frame.removeAttribute("src");
           openLink.setAttribute("href", "#");

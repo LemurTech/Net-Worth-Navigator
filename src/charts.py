@@ -18,9 +18,12 @@ _TABS_CSS = """
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
          margin: 0; padding: 0 16px 92px; background: #0b1220; color: #e5edf7; }
-  body.embedded { padding: 0; background: transparent; }
+  body.embedded { padding: 0 0 40px; background: transparent; }
   body.embedded .page-toolbar { display: none; }
-  body.embedded .chart-wrap { background: transparent; box-shadow: none; padding: 0; margin-bottom: 8px; }
+  body.embedded .chart-wrap { background: #111827; box-shadow: none; padding: 0; margin: 0 0 8px; border-radius: 10px; overflow: hidden; }
+  body.embedded .chart-wrap > div[id^="nwn-chart"] { padding: 0 8px 8px; }
+  body.embedded .kpi-strip { margin: 0; border-radius: 0; border-left: none; border-right: none; border-top: none; }
+  body.embedded .modeling-note { margin: 0 8px 8px; border-radius: 0 0 8px 8px; }
   body.embedded .tabs { margin-top: 8px; }
   body.embedded .gantt-wrap,
   body.embedded .assumptions-wrap,
