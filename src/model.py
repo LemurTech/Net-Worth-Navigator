@@ -66,8 +66,8 @@ def _empty_withdrawal_breakdown() -> dict[str, float]:
     return {bucket: 0.0 for bucket in WITHDRAWAL_BUCKETS}
 
 
-def load_config() -> dict:
-    return shared_load_config(CONFIG_PATH)
+def load_config(config_path: Path | None = None) -> dict:
+    return shared_load_config(config_path or CONFIG_PATH)
 
 
 def resolve_runtime_config(config: dict) -> dict:
@@ -403,6 +403,7 @@ def run_projection(
     home_value: float = 0.0,
     liability_balances: dict[str, float] | None = None,
     property_values: dict[str, float] | None = None,
+    config: dict | None = None,
 ) -> pd.DataFrame:
     """
     Run the year-by-year net worth projection.
@@ -410,7 +411,7 @@ def run_projection(
     balances: dict from monarch_bridge — {category: total_balance}
     Returns: DataFrame with projection data
     """
-    config = resolve_runtime_config(load_config())
+    config = resolve_runtime_config(config or load_config())
     sim = config["simulation"]
     assumptions = config["assumptions"]
     events = [e for e in config.get("events", []) if e.get("enabled", False)]

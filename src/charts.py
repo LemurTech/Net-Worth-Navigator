@@ -683,12 +683,12 @@ def _build_tax_semantics_note() -> str:
     )
 
 
-def build_chart(df: pd.DataFrame, output_path: Path) -> None:
+def build_chart(df: pd.DataFrame, output_path: Path, config: dict | None = None) -> None:
     """
     Generate the Plotly chart figure, build HTML tables, and write
     a single self-contained tabbed HTML page to output_path.
     """
-    config = resolve_runtime_config(load_config())
+    config = resolve_runtime_config(config or load_config())
     fig = _build_figure(df, config)
 
     # Export figure as a standalone div (no full HTML, no duplicate Plotly JS)

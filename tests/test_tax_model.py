@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import patch
+import tempfile
+from pathlib import Path
 
 import pandas as pd
 
@@ -272,10 +274,10 @@ class TaxModelTests(unittest.TestCase):
         with patch("src.charts.load_config", return_value=config):
             with patch("src.charts.resolve_runtime_config", side_effect=lambda c: c):
                 with patch("src.charts._build_gantt_chart", return_value="<div>gantt</div>"):
-                    from pathlib import Path
-                    out = Path("/tmp/nwn-tax-note-test.html")
-                    charts.build_chart(df, out)
-                    html = out.read_text(encoding="utf-8")
+                    with tempfile.TemporaryDirectory() as tmp:
+                        out = Path(tmp) / "nwn-tax-note-test.html"
+                        charts.build_chart(df, out)
+                        html = out.read_text(encoding="utf-8")
 
         self.assertIn("Employment income is currently modeled as net cash", html)
         self.assertIn("taxes shown here cover modeled taxable retirement/event inflows", html)

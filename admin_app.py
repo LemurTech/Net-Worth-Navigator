@@ -13,11 +13,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
+from src.scenarios import get_default_scenario
 
 APP_ROOT = Path(__file__).resolve().parent
-CONFIG_PATH = APP_ROOT / "config.toml"
 OUTPUT_DIR = APP_ROOT / "output"
-BACKUP_DIR = OUTPUT_DIR / "config-backups"
 VENV_PYTHON = APP_ROOT / ".venv" / "bin" / "python"
 PYTHON_BIN = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
 RUN_SCRIPT = APP_ROOT / "run.py"
@@ -28,8 +27,20 @@ app = FastAPI(title="Net Worth Navigator Config Editor")
 templates = Jinja2Templates(directory=str(APP_ROOT / "templates"))
 
 
+def _current_scenario():
+    return get_default_scenario()
+
+
+def _config_path() -> Path:
+    return _current_scenario().config_path
+
+
+def _backup_dir() -> Path:
+    return OUTPUT_DIR / "config-backups" / _current_scenario().slug
+
+
 def _read_config_text() -> str:
-    return CONFIG_PATH.read_text(encoding="utf-8")
+    return _config_path().read_text(encoding="utf-8")
 
 
 def _validate_config_text(content: str) -> dict:
@@ -40,11 +51,12 @@ def _validate_config_text(content: str) -> dict:
 
 def _backup_and_write(content: str) -> Path:
     OUTPUT_DIR.mkdir(exist_ok=True)
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup_dir = _backup_dir()
+    backup_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_path = BACKUP_DIR / f"config-{ts}.toml"
+    backup_path = backup_dir / f"config-{ts}.toml"
     backup_path.write_text(_read_config_text(), encoding="utf-8")
-    CONFIG_PATH.write_text(content, encoding="utf-8")
+    _config_path().write_text(content, encoding="utf-8")
     return backup_path
 
 
@@ -61,7 +73,9 @@ def _render_projection_offline() -> subprocess.CompletedProcess[str]:
 def _build_context(request: Request, *, content: str, status_kind: str = "info",
                    status_title: str | None = None, status_message: str | None = None,
                    details: str | None = None, backup_path: str | None = None) -> dict:
-    last_modified = datetime.fromtimestamp(CONFIG_PATH.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    scenario = _current_scenario()
+    config_path = _config_path()
+    last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
     return {
         "request": request,
         "content": content,
@@ -70,7 +84,10 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "status_message": status_message,
         "details": details,
         "backup_path": backup_path,
-        "config_path": str(CONFIG_PATH),
+        "backup_dir": str(_backup_dir()),
+        "config_path": str(config_path),
+        "scenario_name": scenario.name,
+        "scenario_slug": scenario.slug,
         "last_modified": last_modified,
         "projection_url": PUBLIC_PROJECTION_URL,
         "editor_url": PUBLIC_EDITOR_URL,
@@ -193,7 +210,8 @@ async def editor_submit(request: Request) -> HTMLResponse:
 async def health() -> JSONResponse:
     return JSONResponse({
         "ok": True,
-        "config_path": str(CONFIG_PATH),
+        "config_path": str(_config_path()),
+        "scenario_slug": _current_scenario().slug,
         "projection_url": PUBLIC_PROJECTION_URL,
         "editor_url": PUBLIC_EDITOR_URL,
     })

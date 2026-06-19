@@ -32,7 +32,7 @@
 - Recurring events now expand at runtime for both the model and Gantt via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
 - Recurring event definitions can now set `chart_first_occurrence_only = true` so the event still affects the model and tables on every occurrence while only the first occurrence is annotated on the main projection chart
 - Raw config editor is now available at `http://casalemuria.lan/finances/config/`
-- Editor supports validate, save, and save+offline-rerender actions with timestamped backups under `output/config-backups/`
+- Editor supports validate, save, and save+offline-rerender actions with timestamped backups under per-scenario paths in `output/config-backups/<slug>/`
 - Projection page now includes a bottom-fixed `Edit Config` shortcut
 - The editor backend now runs as a small FastAPI app, proxied behind the static nginx container
 - Gantt includes liability payoff milestones derived from the projection output and uses a centered legend
@@ -67,9 +67,9 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 ## Open Items for Next Session
 
 - Execute the next scenario-transition slice in [scenario-transition-plan.md](D:/Dev/Net-Worth-Navigator/docs/scenario-transition-plan.md)
-  - introduce `scenarios/` and migrate the current root config into the first scenario file
-  - design and generate the scenario manifest used by the future shell projections page
-  - keep editor-driven rendering as the control plane while projection-page selection stays static
+  - introduce real `scenarios/*.toml` files and switch the default scenario off the legacy root-config fallback
+  - add editor scenario selection and clone/create flows on top of the new scenario registry
+  - build the shell projections page against `output/scenarios/index.json`
 - Design the scenario manifest and default-scenario source of truth before wiring the shell projections page
 - Decide whether root `config.toml` gets a short compatibility window or a one-cut migration into `scenarios/default.toml`
 - Confirm `survivor_annual = 66500` feels right (currently 70% of $95K)

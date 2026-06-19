@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 
 from src.model import resolve_runtime_config
+from src.scenarios import ScenarioRef
 
 
 PROJECTION_CSV = "projection_yearly.csv"
@@ -23,6 +24,7 @@ def write_sidecars(
     output_dir: Path,
     df: pd.DataFrame,
     config: dict,
+    scenario: ScenarioRef | None,
     mode: str,
     cache_timestamp: str | None,
     portfolio: dict[str, float],
@@ -51,6 +53,7 @@ def write_sidecars(
         generated_at=generated_at,
         mode=mode,
         cache_timestamp=cache_timestamp,
+        scenario=scenario,
         config=config,
         runtime_config=runtime_config,
         df=df,
@@ -118,6 +121,7 @@ def _scenario_manifest(
     generated_at: str,
     mode: str,
     cache_timestamp: str | None,
+    scenario: ScenarioRef | None,
     config: dict,
     runtime_config: dict,
     df: pd.DataFrame,
@@ -136,6 +140,12 @@ def _scenario_manifest(
         "generated_at": generated_at,
         "mode": mode,
         "cache_timestamp": cache_timestamp,
+        "scenario": {
+            "slug": scenario.slug if scenario else "default",
+            "name": scenario.name if scenario else "Default Plan",
+            "description": scenario.description if scenario else "",
+            "config_path": str(scenario.config_path) if scenario else None,
+        },
         "sidecars": {
             "projection_yearly_csv": PROJECTION_CSV,
             "event_flows_csv": EVENT_FLOWS_CSV,

@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.sidecars import write_sidecars
+from src.scenarios import ScenarioRef
 
 
 class SidecarTests(unittest.TestCase):
@@ -62,10 +63,18 @@ class SidecarTests(unittest.TestCase):
         }
 
         with tempfile.TemporaryDirectory() as tmp:
+            scenario = ScenarioRef(
+                slug="default",
+                name="Default Plan",
+                description="Baseline scenario",
+                config_path=Path(tmp) / "config.toml",
+                is_default=True,
+            )
             paths = write_sidecars(
                 output_dir=Path(tmp),
                 df=df,
                 config=config,
+                scenario=scenario,
                 mode="offline",
                 cache_timestamp="2026-06-18T00:00:00",
                 portfolio={"taxable": 0.0, "trad_ira": 100.0, "roth": 0.0, "cash": 0.0},
@@ -91,6 +100,7 @@ class SidecarTests(unittest.TestCase):
 
             manifest = json.loads((Path(tmp) / "scenario_manifest.json").read_text())
             self.assertEqual(manifest["mode"], "offline")
+            self.assertEqual(manifest["scenario"]["slug"], "default")
             self.assertEqual(manifest["resolved_end_of_plan_years"]["matthew"], 2057)
             self.assertEqual(manifest["resolved_end_of_plan_years"]["weny"], 2066)
             self.assertEqual(manifest["projection_summary"]["row_count"], 1)

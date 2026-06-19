@@ -20,12 +20,27 @@ from src.monarch_bridge import (
     extract_real_estate_accounts,
     fetch_raw_accounts,
 )
+from src.scenarios import (
+    SCENARIO_OUTPUT_ROOT,
+    get_scenario,
+    scenario_output_dir,
+    write_scenarios_index,
+)
 from src.sidecars import write_sidecars
 
 OUTPUT_DIR  = Path("output")
 DEPLOY_DIR  = Path("/srv/web-projects/finances")
 CACHE_FILE  = OUTPUT_DIR / "balances_cache.json"
 OFFLINE     = "--offline" in sys.argv
+
+
+def selected_scenario_slug(argv: list[str]) -> str | None:
+    for i, arg in enumerate(argv):
+        if arg == "--scenario" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--scenario="):
+            return arg.split("=", 1)[1]
+    return None
 
 
 def save_cache(
@@ -59,8 +74,13 @@ def load_cache() -> dict:
 
 
 def main():
+    scenario = get_scenario(selected_scenario_slug(sys.argv))
+    config = load_config(scenario.config_path)
+    scenario_dir = scenario_output_dir(scenario.slug)
+
     print("Net Worth Navigator")
     print("=" * 40)
+    print(f"Scenario: {scenario.name} ({scenario.slug})")
     mode = "offline" if OFFLINE else "full"
     print(f"Mode: {'OFFLINE (cached)' if OFFLINE else 'FULL (live Monarch)'}")
 
@@ -71,10 +91,10 @@ def main():
         cache_timestamp = cached.get("timestamp")
         raw_accounts = cached.get("raw_accounts")
         if raw_accounts is not None:
-            portfolio, extras = classify_accounts(raw_accounts)
-            liability_balances = extract_liability_balances(raw_accounts)
-            property_values = extract_real_estate_accounts(raw_accounts)
-            print("  Reclassified cached raw accounts using current config.toml")
+            portfolio, extras = classify_accounts(raw_accounts, config=config)
+            liability_balances = extract_liability_balances(raw_accounts, config=config)
+            property_values = extract_real_estate_accounts(raw_accounts, config=config)
+            print(f"  Reclassified cached raw accounts using {scenario.config_path.name}")
         else:
             portfolio = cached["portfolio"]
             extras = cached["extras"]
@@ -84,9 +104,9 @@ def main():
     else:
         print("→ Fetching account balances from Monarch...")
         raw_accounts = fetch_raw_accounts()
-        portfolio, extras = classify_accounts(raw_accounts)
-        liability_balances = extract_liability_balances(raw_accounts)
-        property_values = extract_real_estate_accounts(raw_accounts)
+        portfolio, extras = classify_accounts(raw_accounts, config=config)
+        liability_balances = extract_liability_balances(raw_accounts, config=config)
+        property_values = extract_real_estate_accounts(raw_accounts, config=config)
         save_cache(portfolio, extras, liability_balances, raw_accounts=raw_accounts)
 
     home_value        = extras["home_value"]
@@ -103,21 +123,25 @@ def main():
         home_value=home_value,
         liability_balances=liability_balances,
         property_values=property_values,
+        config=config,
     )
     print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
 
     # 3. Generate chart and sidecars
     OUTPUT_DIR.mkdir(exist_ok=True)
-    config = load_config()
-    output_path = OUTPUT_DIR / "projection.html"
+    scenario_dir.mkdir(parents=True, exist_ok=True)
+    output_path = scenario_dir / "projection.html"
     print(f"→ Generating chart → {output_path}")
-    build_chart(df, output_path)
+    build_chart(df, output_path, config=config)
+    legacy_output_path = OUTPUT_DIR / "projection.html"
+    shutil.copy2(output_path, legacy_output_path)
 
     print("→ Writing sidecar analysis files...")
     sidecars = write_sidecars(
-        output_dir=OUTPUT_DIR,
+        output_dir=scenario_dir,
         df=df,
         config=config,
+        scenario=scenario,
         mode=mode,
         cache_timestamp=cache_timestamp,
         portfolio=portfolio,
@@ -128,11 +152,18 @@ def main():
     )
     for label, path in sidecars.items():
         print(f"  {label}: {path}")
+    index_path = write_scenarios_index(output_root=SCENARIO_OUTPUT_ROOT)
+    print(f"  scenarios_index_json: {index_path}")
 
     # 4. Deploy to web server
     DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
+    deploy_scenario_dir = DEPLOY_DIR / "scenarios" / scenario.slug
+    shutil.copytree(scenario_dir, deploy_scenario_dir, dirs_exist_ok=True)
+    deploy_index_path = DEPLOY_DIR / "scenarios" / "index.json"
+    deploy_index_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(index_path, deploy_index_path)
     deploy_path = DEPLOY_DIR / "projection.html"
-    shutil.copy2(output_path, deploy_path)
+    shutil.copy2(legacy_output_path, deploy_path)
     deploy_path.chmod(0o644)
     print(f"→ Deployed → {deploy_path}")
     print(f"  View at: http://casalemuria.lan/finances/projection.html")
