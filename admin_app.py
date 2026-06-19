@@ -88,7 +88,8 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
                    clone_slug: str = "",
                    clone_description: str = "") -> dict:
     scenario = _current_scenario(scenario_slug)
-    config_path = _config_path(scenario_slug)
+    resolved_slug = scenario.slug
+    config_path = _config_path(resolved_slug)
     scenario_options = [
         {
             "slug": option.slug,
@@ -107,10 +108,11 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "status_message": status_message,
         "details": details,
         "backup_path": backup_path,
-        "backup_dir": str(_backup_dir(scenario.slug)),
+        "backup_dir": str(_backup_dir(resolved_slug)),
         "config_path": str(config_path),
         "scenario_name": scenario.name,
-        "scenario_slug": scenario.slug,
+        "scenario_slug": resolved_slug,
+        "scenario_description": scenario.description,
         "scenario_options": scenario_options,
         "clone_name": clone_name,
         "clone_slug": clone_slug,

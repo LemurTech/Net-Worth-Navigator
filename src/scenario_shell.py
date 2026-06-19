@@ -44,7 +44,7 @@ def build_scenario_shell(
     }}
     .page {{
       width: 100%;
-      padding: 10px 10px 16px;
+      padding: 6px 6px 10px;
     }}
     .topbar, .frame-card {{
       background: rgba(15, 23, 37, 0.92);
@@ -56,32 +56,32 @@ def build_scenario_shell(
     .topbar {{
       display: grid;
       grid-template-columns: minmax(0, 1.2fr) minmax(300px, 420px) auto;
-      gap: 14px;
+      gap: 10px;
       align-items: center;
-      padding: 12px 14px;
-      margin-bottom: 10px;
+      padding: 9px 12px;
+      margin-bottom: 6px;
     }}
     .brand {{
       min-width: 0;
     }}
     .brand h1 {{
-      margin: 0 0 4px;
-      font-size: clamp(22px, 2.2vw, 30px);
+      margin: 0 0 2px;
+      font-size: clamp(20px, 2vw, 28px);
       line-height: 1.02;
       letter-spacing: -0.03em;
     }}
     .brand p {{
       margin: 0;
       color: var(--muted);
-      font-size: 13px;
-      line-height: 1.4;
-      max-width: 760px;
+      font-size: 12px;
+      line-height: 1.25;
+      max-width: 620px;
     }}
     .topbar-meta {{
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 8px;
+      margin-top: 6px;
     }}
     .meta-pill {{
       display: inline-flex;
@@ -107,7 +107,7 @@ def build_scenario_shell(
     }}
     select {{
       width: 100%;
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: #111827;
@@ -115,31 +115,31 @@ def build_scenario_shell(
       font-size: 14px;
     }}
     .scenario-name {{
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 700;
       line-height: 1.1;
     }}
     .scenario-desc {{
       color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
+      font-size: 11px;
+      line-height: 1.2;
       min-height: 0;
     }}
     .control-actions {{
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
       justify-content: flex-end;
     }}
     .linkbtn {{
       display: inline-block;
-      padding: 9px 12px;
+      padding: 8px 11px;
       border: 1px solid var(--border);
       border-radius: 10px;
       color: var(--text);
       text-decoration: none;
       background: #162234;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       white-space: nowrap;
     }}
@@ -152,19 +152,19 @@ def build_scenario_shell(
       color: #08111d;
     }}
     .frame-card {{
-      padding: 8px;
+      padding: 4px;
     }}
     .frame-wrap {{
       border-radius: 12px;
       overflow: hidden;
       border: 1px solid #1f2a3a;
       background: #0a1220;
-      min-height: 156vh;
+      min-height: 200vh;
     }}
     iframe {{
       display: block;
       width: 100%;
-      height: 156vh;
+      height: 200vh;
       border: none;
       background: #0a1220;
     }}
@@ -192,8 +192,8 @@ def build_scenario_shell(
         grid-template-columns: 1fr;
       }}
       .frame-wrap, iframe {{
-        min-height: 112vh;
-        height: 112vh;
+        min-height: 140vh;
+        height: 140vh;
       }}
       .control-actions {{ justify-content: flex-start; }}
     }}

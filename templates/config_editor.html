@@ -49,7 +49,7 @@
     .title p {
       margin: 0;
       color: var(--muted);
-      max-width: 980px;
+      max-width: 760px;
     }
     .links {
       display: flex;
@@ -61,20 +61,16 @@
     .scenario-picker {
       min-width: 260px;
     }
-    .scenario-picker label {
-      display:block;
-      color:#9fb2c8;
-      font-size:13px;
-      margin-bottom:6px;
-    }
     .scenario-picker select {
       width: 100%;
       min-width: 260px;
-      padding: 10px 12px;
+      padding: 9px 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: #111827;
       color: #e5edf7;
+      font-size: 14px;
+      line-height: 1.2;
     }
     .linkbtn {
       display: inline-block;
@@ -102,8 +98,8 @@
     }
     .meta-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 28px;
     }
     .meta-item {
       min-width: 0;
@@ -119,11 +115,19 @@
       color: var(--muted);
       line-height: 1.45;
     }
+    .meta-value a {
+      color: #d1e9ff;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .meta-value a:hover {
+      text-decoration: underline;
+    }
     .meta-value code {
-      display: inline-block;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-      white-space: normal;
+      color: #d1e9ff;
+      background: rgba(15, 23, 37, 0.9);
+      padding: 1px 5px;
+      border-radius: 5px;
     }
     .status {
       padding: 14px 16px;
@@ -250,6 +254,7 @@
     @media (max-width: 900px) {
       .header { grid-template-columns: 1fr; }
       .links { justify-content: flex-start; }
+      .meta-grid { grid-template-columns: 1fr; }
       textarea { min-height: 60vh; }
       .scenario-tools { grid-template-columns: 1fr; }
       .scenario-picker,
@@ -262,38 +267,41 @@
     <div class="header">
       <div class="title">
         <h1>Net Worth Navigator — Config Editor</h1>
-        <p>Raw TOML editor for <code>{{ config_path }}</code>. This page validates the file before save and can rebuild the offline projection after saving.</p>
+        <p>Supports multiple scenarios. Files validated before save.</p>
       </div>
       <div class="links">
         <form method="get" action="" class="scenario-picker">
-          <label for="scenario">Scenario</label>
           <select id="scenario" name="scenario" onchange="this.form.submit()">
             {% for scenario in scenario_options %}
             <option value="{{ scenario.slug }}" {% if scenario.slug == scenario_slug %}selected{% endif %}>{{ scenario.name }}</option>
             {% endfor %}
           </select>
         </form>
-        <a class="linkbtn" href="{{ projection_url }}" target="_blank" rel="noreferrer">Open projection</a>
+        <a class="linkbtn" href="{{ projection_url }}">Open projection</a>
       </div>
     </div>
 
     <div class="meta">
       <div class="meta-grid">
         <div class="meta-item">
-          <span class="meta-label">Last modified</span>
-          <div class="meta-value">{{ last_modified }}</div>
-        </div>
-        <div class="meta-item">
           <span class="meta-label">Scenario</span>
-          <div class="meta-value">{{ scenario_name }} <code>{{ scenario_slug }}</code></div>
+          <div class="meta-value">{{ scenario_name }}</div>
         </div>
         <div class="meta-item">
           <span class="meta-label">Projection</span>
-          <div class="meta-value"><code>{{ projection_url }}</code></div>
+          <div class="meta-value"><a href="{{ projection_url }}">{{ projection_url }}</a></div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Description</span>
+          <div class="meta-value">{{ scenario_description or "No description provided." }}</div>
         </div>
         <div class="meta-item">
           <span class="meta-label">Editor URL</span>
-          <div class="meta-value"><code>{{ editor_url }}</code></div>
+          <div class="meta-value"><a href="{{ editor_url }}">{{ editor_url }}</a></div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Last Modified</span>
+          <div class="meta-value">{{ last_modified }}</div>
         </div>
         <div class="meta-item">
           <span class="meta-label">Backups</span>
