@@ -54,7 +54,7 @@
     .links {
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-start;
+      align-items: center;
       justify-content: flex-end;
       gap: 12px;
     }
@@ -71,6 +71,7 @@
       color: #e5edf7;
       font-size: 14px;
       line-height: 1.2;
+      height: 40px;
     }
     .linkbtn {
       display: inline-block;
@@ -80,6 +81,9 @@
       text-decoration: none;
       color: var(--text);
       background: var(--panel);
+      height: 40px;
+      line-height: 20px;
+      white-space: nowrap;
     }
     .linkbtn:hover { border-color: var(--accent); }
     .meta,
@@ -124,6 +128,11 @@
       text-decoration: underline;
     }
     .meta-value code {
+      display: inline-block;
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
       color: #d1e9ff;
       background: rgba(15, 23, 37, 0.9);
       padding: 1px 5px;
