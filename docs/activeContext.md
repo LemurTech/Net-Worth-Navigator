@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Iteration Window:** 2026-06-16 → 2026-06-17
-**Current Status:** V1 complete and extended. Projection chart + tabbed Accounts/Cash Flow/Portfolio/Gantt/Assumptions views are live. Raw TOML config editor is available on the web, recurring events are supported, and the latest UI pass added an Assumptions summary sourced from `config.toml` plus a denser, more legible Gantt.
+**Iteration Window:** 2026-06-19 → 2026-06-19
+**Current Status:** V1 is stable, and the next planned architecture shift is a move from one root config to a scenario-based model. The immediate design direction is shared tax-table extraction plus one-scenario-per-file with editor-driven rendering and a manifest-backed shell projections page.
 
 ## Current State
 
@@ -67,6 +67,12 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 
 ## Open Items for Next Session
 
+- Execute the scenario-transition plan in [scenario-transition-plan.md](D:/Dev/Net-Worth-Navigator/docs/scenario-transition-plan.md)
+  - start with a shared config loader used by model, bridge, runner, and editor
+  - extract the current 2025 federal/Oregon tax reference tables into `config/tax_tables/`
+  - keep the first implementation slice compatible with the current single-scenario workflow until the new `scenarios/` layout lands
+- Design the scenario manifest and default-scenario source of truth before wiring the shell projections page
+- Decide whether root `config.toml` gets a short compatibility window or a one-cut migration into `scenarios/default.toml`
 - Confirm `survivor_annual = 66500` feels right (currently 70% of $95K)
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available
 - Validate the new `[withdrawal_policy]` defaults against Person 1's intent
@@ -84,6 +90,7 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - route taxable withdrawals and Social Security through the richer tax model without changing current net-income semantics for job income
 
 - Decide whether V2 should stay with raw TOML editing only or add structured form sections for simple config fields
+- Extend the config editor toward scenario management only after per-scenario output paths and manifest generation are in place
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
 
 ## Known Pitfalls
