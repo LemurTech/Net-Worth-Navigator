@@ -48,41 +48,16 @@ def build_scenario_shell(
       padding: 10px 10px 14px;
     }}
     .topbar {{
-      background:
-        linear-gradient(180deg, rgba(15, 23, 37, 0.96), rgba(15, 23, 37, 0.88)),
-        radial-gradient(circle at top right, rgba(14,165,233,.14), transparent 26%);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: 0 18px 42px rgba(0,0,0,.22);
-      backdrop-filter: blur(12px);
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(420px, 680px);
-      gap: 18px;
-      align-items: start;
-      padding: 16px 18px 14px;
-      margin-bottom: 8px;
-    }}
-    .brand {{
-      min-width: 0;
-    }}
-    .brand h1 {{
-      margin: 0 0 4px;
-      font-size: clamp(21px, 2vw, 30px);
-      line-height: 1.02;
-      letter-spacing: -0.03em;
-    }}
-    .brand p {{
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-      max-width: 720px;
+      gap: 8px;
+      padding: 4px 2px 6px;
+      margin-bottom: 6px;
     }}
     .topbar-meta {{
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 10px;
+      margin-bottom: 2px;
     }}
     .meta-pill {{
       display: inline-flex;
@@ -97,34 +72,23 @@ def build_scenario_shell(
     }}
     .selector-card {{
       display: grid;
-      gap: 12px;
+      gap: 6px;
       min-width: 0;
     }}
-    .selector-surface {{
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+    .control-row {{
+      display: flex;
       gap: 10px;
       align-items: center;
-      padding: 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(125, 211, 252, 0.14);
-      background:
-        linear-gradient(180deg, rgba(17,24,39,0.96), rgba(17,24,39,0.84));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      flex-wrap: wrap;
     }}
     .selector-main {{
       min-width: 0;
-    }}
-    .control-label {{
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      margin-bottom: 6px;
+      flex: 1 1 360px;
     }}
     select {{
       width: 100%;
-      padding: 12px 14px;
+      min-height: 44px;
+      padding: 10px 14px;
       border-radius: 14px;
       border: 1px solid rgba(125, 211, 252, 0.18);
       background: linear-gradient(180deg, #101a2a, #0f1725);
@@ -134,14 +98,6 @@ def build_scenario_shell(
     }}
     .scenario-summary {{
       min-width: 0;
-      padding-right: 4px;
-    }}
-    .scenario-name {{
-      font-size: 20px;
-      font-weight: 700;
-      line-height: 1.08;
-      letter-spacing: -0.02em;
-      margin-bottom: 4px;
     }}
     .scenario-desc {{
       color: var(--muted);
@@ -153,7 +109,6 @@ def build_scenario_shell(
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      justify-content: flex-end;
       align-items: center;
     }}
     .linkbtn {{
@@ -162,7 +117,7 @@ def build_scenario_shell(
       justify-content: center;
       min-height: 44px;
       padding: 0 15px;
-      border: 1px solid rgba(125, 211, 252, 0.12);
+      border: 1px solid rgba(125, 211, 252, 0.16);
       border-radius: 12px;
       color: var(--text);
       text-decoration: none;
@@ -194,12 +149,12 @@ def build_scenario_shell(
       overflow: hidden;
       border: none;
       background: transparent;
-      min-height: 200vh;
+      min-height: 156vh;
     }}
     iframe {{
       display: block;
       width: 100%;
-      height: 200vh;
+      height: 156vh;
       border: none;
       background: transparent;
     }}
@@ -224,46 +179,33 @@ def build_scenario_shell(
       padding-right: 2px;
     }}
     @media (max-width: 980px) {{
-      .topbar {{
-        grid-template-columns: 1fr;
-        gap: 12px;
-        padding: 14px;
-      }}
-      .selector-surface {{
-        grid-template-columns: 1fr;
-      }}
+      .control-row {{ align-items: stretch; }}
+      .selector-main {{ flex-basis: 100%; }}
       .frame-wrap, iframe {{
         min-height: 140vh;
         height: 140vh;
       }}
-      .control-actions {{ justify-content: flex-start; }}
     }}
   </style>
 </head>
 <body>
   <div class="page">
     <section class="topbar">
-      <div class="brand">
-        <h1>Net Worth Navigator</h1>
-        <p>Switch between pre-rendered scenarios without waiting on a fresh run.</p>
-        <div class="topbar-meta">
-          <div class="meta-pill" id="manifest-generated-at">Manifest pending</div>
-          <div class="meta-pill" id="scenario-count-pill">0 scenarios</div>
-        </div>
+      <div class="topbar-meta">
+        <div class="meta-pill" id="manifest-generated-at">Manifest pending</div>
+        <div class="meta-pill" id="scenario-count-pill">0 scenarios</div>
       </div>
       <div class="selector-card">
-        <div class="selector-surface">
+        <div class="control-row">
           <div class="selector-main">
-            <div class="control-label">Scenario</div>
             <select id="scenario-select" aria-label="Select scenario"></select>
           </div>
           <div class="control-actions">
-            <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
+            <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
           </div>
         </div>
         <div class="scenario-summary">
-          <div class="scenario-name" id="scenario-name">Loading…</div>
           <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
         </div>
       </div>
@@ -330,9 +272,8 @@ def build_scenario_shell(
         }}
 
         select.value = selected.slug;
-        name.textContent = selected.name;
         description.textContent = selected.description || "No description provided.";
-        frame.src = selected.projection_path;
+        frame.src = selected.projection_path + "?embed=1";
         openLink.href = selected.projection_path;
         frameWrap.classList.remove("empty");
         emptyState.classList.remove("active");

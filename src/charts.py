@@ -18,6 +18,13 @@ _TABS_CSS = """
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
          margin: 0; padding: 0 16px 92px; background: #0b1220; color: #e5edf7; }
+  body.embedded { padding: 0; background: transparent; }
+  body.embedded .page-toolbar { display: none; }
+  body.embedded .chart-wrap { background: transparent; box-shadow: none; padding: 0; margin-bottom: 8px; }
+  body.embedded .tabs { margin-top: 8px; }
+  body.embedded .gantt-wrap,
+  body.embedded .assumptions-wrap,
+  body.embedded table.datatable { box-shadow: none; }
   .page-toolbar { position: fixed; right: 18px; bottom: 18px; z-index: 40; }
   .toolbar-link { display: inline-block; padding: 10px 14px; border-radius: 999px;
                   border: 1px solid #243142; background: rgba(17,24,39,0.94); color: #e5edf7;
@@ -217,6 +224,11 @@ function switchTab(id) {
 
 // Freeze first column + improved horizontal table navigation
 document.addEventListener('DOMContentLoaded', function() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('embed') === '1') {
+    document.body.classList.add('embedded');
+  }
+
   setTimeout(function() {
     var activeBtn = document.querySelector('.tab-btn.active');
     if (activeBtn) {
