@@ -22,7 +22,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
 - Analysis sidecar bundle now emits on each run: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, and `accounts_snapshot.json`
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`
-- Social Security timing and monthly benefit are now synced from each person's `ss_start_age` + `ss_monthly_benefit`, and `ss_start_year` has been removed from the person-level config surface
+- Social Security timing and monthly benefit are now synced from each person's `ss_start_age`, with runtime benefit selection coming from the matching `social_security_benefits` age bracket and legacy `ss_monthly_benefit` retained as a fallback; `ss_start_year` has been removed from the person-level config surface
 - Cash Flow now exposes a dedicated Portfolio Funding / Withdrawals section with cash reserve drawdown, taxable withdrawals, traditional IRA / 401k withdrawals, Roth withdrawals, and a total portfolio-funding row
 - Regression coverage for `SellHome` equity-to-cash behavior under `tests/test_withdrawal_policy.py`
 - Main-chart x-axis can now show ages below the year ticks using household DOBs from config

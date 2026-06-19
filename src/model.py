@@ -110,13 +110,16 @@ def _sync_social_security_events(config: dict) -> list[dict]:
             person = config.get(str(updated["person"]), {})
             dob = person.get("dob")
             ss_start_age = person.get("ss_start_age")
-            ss_monthly_benefit = person.get("ss_monthly_benefit")
             if dob and ss_start_age is not None:
                 try:
                     birth_year = int(str(dob).split("-", 1)[0])
                     updated["year"] = birth_year + int(ss_start_age)
                 except (TypeError, ValueError):
                     pass
+            ss_monthly_benefit = _resolve_social_security_monthly_benefit(
+                person,
+                ss_start_age=ss_start_age,
+            )
             if ss_monthly_benefit is not None:
                 try:
                     updated["monthly_benefit"] = float(ss_monthly_benefit)
@@ -124,6 +127,28 @@ def _sync_social_security_events(config: dict) -> list[dict]:
                     pass
         synced.append(updated)
     return synced
+
+
+def _resolve_social_security_monthly_benefit(
+    person: dict,
+    *,
+    ss_start_age,
+) -> float | None:
+    """Return the configured SS monthly benefit for the selected start age."""
+    benefit_schedule = person.get("social_security_benefits")
+    if isinstance(benefit_schedule, dict) and ss_start_age is not None:
+        lookup_keys = []
+        try:
+            lookup_keys.append(str(int(ss_start_age)))
+        except (TypeError, ValueError):
+            lookup_keys.append(str(ss_start_age))
+        lookup_keys.append(ss_start_age)
+
+        for key in lookup_keys:
+            if key in benefit_schedule:
+                return benefit_schedule[key]
+
+    return person.get("ss_monthly_benefit")
 
 
 def expand_events(events: list[dict], simulation: dict | None = None) -> list[dict]:

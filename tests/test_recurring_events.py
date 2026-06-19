@@ -164,12 +164,21 @@ class RecurringEventsTests(unittest.TestCase):
             "matthew": {
                 "dob": "1967-04-23",
                 "ss_start_age": 70,
-                "ss_monthly_benefit": 3698,
+                "social_security_benefits": {
+                    "62": 1553,
+                    "65": 2164,
+                    "67": 2691,
+                    "70": 3698,
+                },
             },
             "weny": {
                 "dob": "1976-10-02",
                 "ss_start_age": 67,
-                "ss_monthly_benefit": 1000,
+                "social_security_benefits": {
+                    "62": 700,
+                    "67": 1000,
+                    "70": 1400,
+                },
             },
             "events": [
                 {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (M)", "person": "matthew", "year": 2034, "monthly_benefit": 2691},
@@ -184,6 +193,25 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(ss_events["matthew"]["monthly_benefit"], 3698.0)
         self.assertEqual(ss_events["weny"]["year"], 2043)
         self.assertEqual(ss_events["weny"]["monthly_benefit"], 1000.0)
+
+    def test_resolve_runtime_config_social_security_uses_legacy_fallback_when_schedule_missing(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {
+                "dob": "1967-04-23",
+                "ss_start_age": 70,
+                "ss_monthly_benefit": 3698,
+            },
+            "events": [
+                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (M)", "person": "matthew", "year": 2034, "monthly_benefit": 2691},
+            ],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        ss_event = resolved["events"][0]
+
+        self.assertEqual(ss_event["year"], 2037)
+        self.assertEqual(ss_event["monthly_benefit"], 3698.0)
 
     def test_home_value_uses_real_estate_appreciation_when_present(self):
         config = {

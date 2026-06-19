@@ -46,7 +46,7 @@ run.py
 - **Recurring chart annotations can be decoupled from model recurrence.** `chart_first_occurrence_only = true` keeps repeated events active in the model and tables while suppressing later main-chart annotations for readability.
 - **Portfolio funding is now explicit in the data model.** Deficit coverage records bucket-level withdrawals (`cash`, `taxable`, `trad_ira`, `roth`) so the Cash Flow tab can show how retirement spending is funded.
 - **Main-chart age labels are responsive UI, not model truth.** The parenthetical ages below year ticks are shown on larger screens but suppressed on narrow viewports so the x-axis remains legible.
-- **Social Security person settings are the source of truth.** Runtime config now derives `SocialSecurity` event year and benefit from each person's `ss_start_age` + `ss_monthly_benefit`; `ss_start_year` is not part of the intended person-level control surface.
+- **Social Security person settings are the source of truth.** Runtime config now derives each `SocialSecurity` event year from `ss_start_age` and its benefit from the matching `social_security_benefits` age bracket, with legacy `ss_monthly_benefit` retained as a fallback; `ss_start_year` is not part of the intended person-level control surface.
 
 ## Event System
 
