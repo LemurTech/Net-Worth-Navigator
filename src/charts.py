@@ -854,14 +854,14 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
             annotation_borderpad=3,
         )
 
-    title_suffix = config.get("display", {}).get("projection_title", "Household Projection")
+    title_text = config.get("display", {}).get("projection_title", "Household Projection")
 
     # ── Layout ─────────────────────────────────────────────────────────────────
     fig.update_layout(
         font=dict(color=font_color),
         title=dict(
             text=(
-                f"Net Worth Navigator — {title_suffix}"
+                f"{title_text}"
                 "<br><sup>Values shown are end-of-year estimates, "
                 "anchored to live Monarch balances</sup>"
             ),
