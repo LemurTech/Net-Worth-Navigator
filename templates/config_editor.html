@@ -200,6 +200,14 @@
         <p>Raw TOML editor for <code>{{ config_path }}</code>. This page validates the file before save and can rebuild the offline projection after saving.</p>
       </div>
       <div class="links">
+        <form method="get" action="">
+          <label for="scenario" style="display:block;color:#9fb2c8;font-size:13px;margin-bottom:6px;">Scenario</label>
+          <select id="scenario" name="scenario" onchange="this.form.submit()" style="min-width:220px;padding:9px 12px;border-radius:8px;border:1px solid #243142;background:#111827;color:#e5edf7;">
+            {% for scenario in scenario_options %}
+            <option value="{{ scenario.slug }}" {% if scenario.slug == scenario_slug %}selected{% endif %}>{{ scenario.name }}</option>
+            {% endfor %}
+          </select>
+        </form>
         <a class="linkbtn" href="{{ projection_url }}" target="_blank" rel="noreferrer">Open projection</a>
       </div>
     </div>
@@ -226,6 +234,7 @@
     </div>
 
     <form class="card" method="post" action="">
+      <input type="hidden" name="scenario_slug" value="{{ scenario_slug }}">
       <div class="editor-head">Edit the current scenario TOML below. Comments and formatting are preserved because the saved content is written back exactly as entered after validation.</div>
       <textarea name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
       <div class="actions">

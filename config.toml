@@ -1,7 +1,7 @@
-# Net Worth Navigator — Configuration
-# Edit this file to change assumptions, then run: python run.py
-# All monetary values are in today's USD unless noted.
-# Events can be toggled on/off with enabled = true/false without deleting them.
+# Net Worth Navigator — Legacy Compatibility Config
+# Active scenario editing has moved to scenarios/default.toml and the web editor
+# now targets the scenario files directly. This root file remains as a fallback
+# during the migration but is no longer the primary scenario source.
 
 [simulation]
 start_year = 2026

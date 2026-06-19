@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
-from src.scenarios import get_default_scenario
+from src.scenarios import discover_scenarios, get_scenario
 
 APP_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_ROOT / "output"
@@ -27,20 +27,20 @@ app = FastAPI(title="Net Worth Navigator Config Editor")
 templates = Jinja2Templates(directory=str(APP_ROOT / "templates"))
 
 
-def _current_scenario():
-    return get_default_scenario()
+def _current_scenario(scenario_slug: str | None = None):
+    return get_scenario(scenario_slug)
 
 
-def _config_path() -> Path:
-    return _current_scenario().config_path
+def _config_path(scenario_slug: str | None = None) -> Path:
+    return _current_scenario(scenario_slug).config_path
 
 
-def _backup_dir() -> Path:
-    return OUTPUT_DIR / "config-backups" / _current_scenario().slug
+def _backup_dir(scenario_slug: str | None = None) -> Path:
+    return OUTPUT_DIR / "config-backups" / _current_scenario(scenario_slug).slug
 
 
-def _read_config_text() -> str:
-    return _config_path().read_text(encoding="utf-8")
+def _read_config_text(scenario_slug: str | None = None) -> str:
+    return _config_path(scenario_slug).read_text(encoding="utf-8")
 
 
 def _validate_config_text(content: str) -> dict:
@@ -49,20 +49,23 @@ def _validate_config_text(content: str) -> dict:
     return merge_tax_tables(tomllib.loads(content))
 
 
-def _backup_and_write(content: str) -> Path:
+def _backup_and_write(content: str, scenario_slug: str | None = None) -> Path:
     OUTPUT_DIR.mkdir(exist_ok=True)
-    backup_dir = _backup_dir()
+    backup_dir = _backup_dir(scenario_slug)
     backup_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup_path = backup_dir / f"config-{ts}.toml"
-    backup_path.write_text(_read_config_text(), encoding="utf-8")
-    _config_path().write_text(content, encoding="utf-8")
+    backup_path.write_text(_read_config_text(scenario_slug), encoding="utf-8")
+    _config_path(scenario_slug).write_text(content, encoding="utf-8")
     return backup_path
 
 
-def _render_projection_offline() -> subprocess.CompletedProcess[str]:
+def _render_projection_offline(scenario_slug: str | None = None) -> subprocess.CompletedProcess[str]:
+    command = [str(PYTHON_BIN), str(RUN_SCRIPT), "--offline"]
+    if scenario_slug:
+        command.extend(["--scenario", scenario_slug])
     return subprocess.run(
-        [str(PYTHON_BIN), str(RUN_SCRIPT), "--offline"],
+        command,
         cwd=str(APP_ROOT),
         capture_output=True,
         text=True,
@@ -72,9 +75,10 @@ def _render_projection_offline() -> subprocess.CompletedProcess[str]:
 
 def _build_context(request: Request, *, content: str, status_kind: str = "info",
                    status_title: str | None = None, status_message: str | None = None,
-                   details: str | None = None, backup_path: str | None = None) -> dict:
-    scenario = _current_scenario()
-    config_path = _config_path()
+                   details: str | None = None, backup_path: str | None = None,
+                   scenario_slug: str | None = None) -> dict:
+    scenario = _current_scenario(scenario_slug)
+    config_path = _config_path(scenario_slug)
     last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
     return {
         "request": request,
@@ -84,10 +88,11 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "status_message": status_message,
         "details": details,
         "backup_path": backup_path,
-        "backup_dir": str(_backup_dir()),
+        "backup_dir": str(_backup_dir(scenario.slug)),
         "config_path": str(config_path),
         "scenario_name": scenario.name,
         "scenario_slug": scenario.slug,
+        "scenario_options": discover_scenarios(),
         "last_modified": last_modified,
         "projection_url": PUBLIC_PROJECTION_URL,
         "editor_url": PUBLIC_EDITOR_URL,
@@ -102,13 +107,15 @@ async def _parse_form(request: Request) -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 async def editor_home(request: Request) -> HTMLResponse:
-    content = _read_config_text()
+    scenario_slug = request.query_params.get("scenario")
+    content = _read_config_text(scenario_slug)
     context = _build_context(
         request,
         content=content,
         status_kind="info",
         status_title="Ready",
         status_message="Load, edit, validate, save, or save and re-render the offline projection.",
+        scenario_slug=scenario_slug,
     )
     return templates.TemplateResponse(request, "config_editor.html", context)
 
@@ -118,6 +125,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
     form = await _parse_form(request)
     action = form.get("action", "validate")
     content = form.get("content", "")
+    scenario_slug = form.get("scenario_slug") or None
 
     try:
         parsed = _validate_config_text(content)
@@ -134,10 +142,11 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 status_kind="success",
                 status_title="Validation passed",
                 status_message=summary,
+                scenario_slug=scenario_slug,
             )
             return templates.TemplateResponse(request, "config_editor.html", context)
 
-        backup_path = _backup_and_write(content)
+        backup_path = _backup_and_write(content, scenario_slug)
 
         if action == "save":
             context = _build_context(
@@ -147,11 +156,12 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 status_title="Saved",
                 status_message="Configuration saved successfully.",
                 backup_path=str(backup_path),
+                scenario_slug=scenario_slug,
             )
             return templates.TemplateResponse(request, "config_editor.html", context)
 
         if action == "save_render":
-            result = _render_projection_offline()
+            result = _render_projection_offline(scenario_slug)
             if result.returncode == 0:
                 details = (result.stdout or "").strip()
                 context = _build_context(
@@ -162,6 +172,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
                     status_message="Configuration saved and offline projection rebuilt successfully.",
                     details=details,
                     backup_path=str(backup_path),
+                    scenario_slug=scenario_slug,
                 )
                 return templates.TemplateResponse(request, "config_editor.html", context)
 
@@ -174,6 +185,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 status_message="The config was saved, but the offline projection rebuild failed.",
                 details=details or "No process output captured.",
                 backup_path=str(backup_path),
+                scenario_slug=scenario_slug,
             )
             return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
 
@@ -183,6 +195,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
             status_kind="error",
             status_title="Unknown action",
             status_message=f"Unsupported action: {html.escape(action)}",
+            scenario_slug=scenario_slug,
         )
         return templates.TemplateResponse(request, "config_editor.html", context, status_code=400)
 
@@ -193,6 +206,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
             status_kind="error",
             status_title="Validation failed",
             status_message=str(exc),
+            scenario_slug=scenario_slug,
         )
         return templates.TemplateResponse(request, "config_editor.html", context, status_code=400)
     except Exception as exc:
@@ -202,16 +216,18 @@ async def editor_submit(request: Request) -> HTMLResponse:
             status_kind="error",
             status_title="Operation failed",
             status_message=str(exc),
+            scenario_slug=scenario_slug,
         )
         return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
 
 
 @app.get("/health")
 async def health() -> JSONResponse:
+    scenario = _current_scenario()
     return JSONResponse({
         "ok": True,
-        "config_path": str(_config_path()),
-        "scenario_slug": _current_scenario().slug,
+        "config_path": str(_config_path(scenario.slug)),
+        "scenario_slug": scenario.slug,
         "projection_url": PUBLIC_PROJECTION_URL,
         "editor_url": PUBLIC_EDITOR_URL,
     })

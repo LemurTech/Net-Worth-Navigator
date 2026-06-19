@@ -33,9 +33,11 @@ open output/projection.html
 
 ```
 Net-Worth-Navigator/
-├── config.toml          ← Main household/scenario config
+├── config.toml          ← Legacy compatibility fallback during migration
 ├── config/
 │   └── tax_tables/      ← Shared tax reference files
+├── scenarios/
+│   └── default.toml     ← Active default scenario
 ├── run.py               ← Entry point
 ├── src/
 │   ├── model.py         ← Year-by-year simulation engine
@@ -47,9 +49,10 @@ Net-Worth-Navigator/
 
 ## Configuration
 
-Scenario-specific parameters live in `config.toml`. Shared tax reference data now
-loads from `config/tax_tables/` via `[taxes].table_set`. Edit the main config
-directly before re-running:
+Scenario-specific parameters now live in `scenarios/*.toml`, starting with
+`scenarios/default.toml`. Shared tax reference data loads from
+`config/tax_tables/` via `[taxes].table_set`. The root `config.toml` remains as
+a temporary compatibility fallback during the migration.
 
 - `[matthew]` / `[weny]` — personal parameters, income, retirement year
 - `[assumptions]` — growth rates, inflation, allocation
