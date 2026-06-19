@@ -17,7 +17,7 @@ projection_title = "Casa Lemuria"
 name              = "Person 1"
 dob               = "1967-04-23"
 life_expectancy   = 90              # → year 2057
-retirement_year   = 2034
+retirement_year   = 2037
 annual_take_home  = 74958           # current net (after tax) income
 
 # Social Security
@@ -31,12 +31,11 @@ ss_start_age       = 70             # source of truth for SS start timing
 annual_401k_contribution = 12225    # 401k + Roth combined
 annual_ira_contribution  = 0
 
-
 [weny]
 name              = "Person 2"
 dob               = "1976-10-02"
 life_expectancy   = 90              # → year 2066
-retirement_year   = 2040
+retirement_year   = 2037
 annual_take_home  = 28512           # current net (after tax) income
 
 # Social Security
@@ -70,8 +69,8 @@ survivor_annual   = 70000           # ~70% of retirement_annual — single-perso
 # - retirement:   roughly one year of planned retirement spending
 # - survivor:     roughly one year of planned survivor spending
 accumulation_cash_target = 64000
-retirement_cash_target   = 95000
-survivor_cash_target     = 66500
+retirement_cash_target   = 100000
+survivor_cash_target     = 70000
 
 # Deficit coverage order.
 # cash_above_target uses only dollars above the reserve.
@@ -373,7 +372,7 @@ type          = "auto"
 #   Marriage        year
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Default Events
+# ─── 1. Plan Boundary / Life Expectancy ───────────────────────────────────────
 
 [[events]]
 enabled = true
@@ -389,23 +388,77 @@ label   = "End of Plan (W)"
 person  = "weny"
 year    = 2066                      # 1976 + 90
 
+
+# ─── 2. Pre-Retirement / Near-Term Known Events ───────────────────────────────
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Surgery (W)"
+year    = 2026
+amount  = -18000                    # Person 1's $5K contribution + from other accounts
+expense_kind = "mandatory"
+
+# ─── 3. Lifestyle Before and During Retirement ────────────────────────────────
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Big Vacation"
+year    = 2027
+amount  = -10000
+expense_kind = "discretionary"
+repeat_every_years = 3
+repeat_until_year  = 2054
+chart_first_occurrence_only = false
+
+# ─── 4. Home Ownership / Fixed Housing Costs ──────────────────────────────────
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Property Taxes (annual)"
+year    = 2029
+amount  = -4500
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2057
+chart_first_occurrence_only = true
+
+# ─── 5. Major Home and Vehicle Capital Expenses ───────────────────────────────
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "HVAC Replacement"
+year    = 2036
+amount  = -12000            
+expense_kind = "mandatory"
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "New Car"
+year    = 2040
+amount  = -18000            
+expense_kind = "mandatory"
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Roof Replacement"
+year    = 2041
+amount  = -22000            
+expense_kind = "mandatory"
+
+# ─── 6. Retirement Start and Social Security ──────────────────────────────────
+
 [[events]]
 enabled = true
 type    = "Retire"
 label   = "Retirement (M)"
 person  = "matthew"
-year    = 2035                      # Age 68
-
-[[events]]
-enabled = true
-type    = "Expense"
-label   = "Health Expenses (60s)"
-year    = 2035
-amount  = -12000
-expense_kind = "mandatory"
-repeat_every_years = 1
-repeat_until_year  = 2036
-chart_first_occurrence_only = true
+year    = 2037                      # Age 68
 
 [[events]]
 enabled = true
@@ -432,86 +485,17 @@ year    = 2043                      # runtime syncs from weny.ss_start_age
 monthly_benefit = 1000              # runtime syncs from weny.ss_monthly_benefit
 # taxable / taxable_fraction optional — defaults to fully taxable in current model
 
-# Income Events
-
-[[events]]
-enabled = false
-type    = "NewJob"
-label   = "New job example"
-person  = "matthew"
-year    = 2028
-annual_income = 90000
-
-[[events]]
-enabled  = false
-type     = "Income"
-label    = "Side income example"
-year     = 2027
-amount   = 12000
-end_year = 2030                     # optional — omit for one-time income
-taxable  = true                      # optional — set false for non-taxable inflows
-# taxable_fraction = 0.50           # optional partial-taxability override
-
-# Mandatory Expenses (non-repeating)
-
-[[events]]
-enabled = true
-type    = "Expense"
-label   = "Surgery (W)"
-year    = 2026
-amount  = -18000                    # Person 1's $5K contribution + from other accounts
-expense_kind = "mandatory"
+# ─── 7. Medical Expenses by Life Stage ────────────────────────────────────────
 
 [[events]]
 enabled = false
 type    = "Expense"
-label   = "Indonesia land purchase"
-year    = 2032
-amount  = -50000                    # PLACEHOLDER — adjust when known
-expense_kind = "mandatory"
-
-# Mandatory Expenses (repeating)
-
-[[events]]
-enabled = true
-type    = "Expense"
-label   = "Property Taxes (annual)"
-year    = 2030
-amount  = -4500
+label   = "Health Expenses (60s)"
+year    = 2035
+amount  = -12000
 expense_kind = "mandatory"
 repeat_every_years = 1
-repeat_until_year  = 2050
-chart_first_occurrence_only = true
-
-[[events]]
-enabled = true
-type    = "Expense"
-label   = "Rent (annual)"
-year    = 2050
-amount  = -48000
-expense_kind = "mandatory"
-repeat_every_years = 1
-chart_first_occurrence_only = true
-
-[[events]]
-enabled = false
-type    = "Expense"
-label   = "Health Events"
-year    = 2032
-amount  = -24000
-expense_kind = "mandatory"
-repeat_every_years = 4
-repeat_until_year  = 2054
-chart_first_occurrence_only = false
-
-[[events]]
-enabled = true
-type    = "Expense"
-label   = "Caregiving Expenses"
-year    = 2052
-amount  = -36000
-expense_kind = "mandatory"
-repeat_every_years = 1
+repeat_until_year  = 2036
 chart_first_occurrence_only = true
 
 [[events]]
@@ -546,47 +530,88 @@ expense_kind = "mandatory"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
-# Discretionary Expenses (non-repeating)
+# ─── 8. Elder Care / Parent Death ───────────────────────────────────────
 
 [[events]]
 enabled = true
-type    = "BuyHome"
-label   = "Condo Purchase"
-year    = 2050
-price        = 200000
-down_payment = 200000
-mortgage_rate = 0.065
-term_years   = 30
+type    = "Expense"
+label   = "Mom Lou Dies"
+year    = 2038
+amount  = -5000                    # Person 1's $5K contribution + from other accounts
+expense_kind = "mandatory"
+
+# ─── 9. Later-Life Housing Transitions ───────────────────────────────────────
 
 [[events]]
 enabled = true
 type    = "SellHome"
 label   = "Sell Casa Lemuria"
-year    = 2050
+year    = 2058
 property = "Casa Lemuria"
 liability_names = ["Mortgage (5156)"]     # optional when only one active mortgaged property exists
 # sale_fee_rate = 0.06              # optional override; defaults to [assumptions].real_estate_sale_fee_rate
 reinvest_to = "taxable"          # optional — move sale proceeds into taxable brokerage instead of leaving them in cash
-reinvest_fraction = 0.6           # optional — defaults to all positive net proceeds when reinvest_to is set
+reinvest_fraction = 0.8           # optional — defaults to all positive net proceeds when reinvest_to is set
 
 [[events]]
-enabled = false
-type    = "Marriage"
-label   = "Marriage event placeholder"
-year    = 2026                      # informational in V1
-
-# Discretionary Expenses (repeating)
+enabled = true
+type    = "BuyHome"
+label   = "Condo Purchase"
+year    = 2058
+price        = 200000
+down_payment = 200000
+#mortgage_rate = 0.065
+#term_years   = 30
 
 [[events]]
 enabled = true
 type    = "Expense"
-label   = "Big Vacation"
-year    = 2027
-amount  = -10000
-expense_kind = "discretionary"
-repeat_every_years = 2
-repeat_until_year  = 2054
-chart_first_occurrence_only = false
+label   = "Rent (annual)"
+year    = 2057
+amount  = -48000
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+# ─── 10. Later-Life Care / Support Needs ───────────────────────────────────────
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Caregiving Expenses"
+year    = 2052
+amount  = -36000
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+# ─── 11. Disabled / Examples ───────────────────────────────────────
+
+[[events]]
+enabled = false
+type    = "Expense"
+label   = "Indonesia land purchase"
+year    = 2032
+amount  = -50000                    # PLACEHOLDER — adjust when known
+expense_kind = "mandatory"
+
+[[events]]
+enabled = false
+type    = "NewJob"
+label   = "New job example"
+person  = "matthew"
+year    = 2028
+annual_income = 90000
+
+[[events]]
+enabled  = false
+type     = "Income"
+label    = "Side income example"
+year     = 2027
+amount   = 12000
+end_year = 2030                     # optional — omit for one-time income
+taxable  = true                      # optional — set false for non-taxable inflows
+# taxable_fraction = 0.50           # optional partial-taxability override
 
 [[events]]
 enabled = false
@@ -605,3 +630,13 @@ start_year  = 2028
 end_year    = 2030
 annual_cost = 15000
 
+[[events]]
+enabled = false
+type    = "Expense"
+label   = "Health Events"
+year    = 2032
+amount  = -24000
+expense_kind = "mandatory"
+repeat_every_years = 4
+repeat_until_year  = 2054
+chart_first_occurrence_only = false
