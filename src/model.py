@@ -377,9 +377,7 @@ def resolve_withdrawal_policy(config: dict, balances: dict[str, float]) -> dict[
     spending = config.get("spending", {})
     current_cash = round(float(balances.get("cash", 0.0)), 2)
     retirement_spend = float(spending.get("retirement_annual", 0.0))
-    survivor_spend = float(
-        spending.get("survivor_annual", round(retirement_spend * 0.70))
-    )
+    survivor_spend = resolve_survivor_spending(spending)
 
     return {
         "accumulation_cash_target": max(
@@ -401,6 +399,18 @@ def resolve_withdrawal_policy(config: dict, balances: dict[str, float]) -> dict[
             section.get("survivor_withdrawal_order", DEFAULT_WITHDRAWAL_ORDER)
         ),
     }
+
+
+def resolve_survivor_spending(spending: dict) -> float:
+    """Return survivor annual spending from percent-of-retirement or legacy fallback."""
+    retirement_spend = float(spending.get("retirement_annual", 0.0))
+    survivor_ratio = spending.get("survivor_percent_of_retirement")
+    if survivor_ratio is not None:
+        try:
+            return retirement_spend * float(survivor_ratio)
+        except (TypeError, ValueError):
+            pass
+    return float(spending.get("survivor_annual", round(retirement_spend * 0.70)))
 
 
 def get_phase_withdrawal_settings(
@@ -768,7 +778,7 @@ def run_projection(
 
         # ── Net cash flow for the year ─────────────────────────────────────────
         target_spend   = spending.get("retirement_annual", 0)
-        survivor_spend = spending.get("survivor_annual", round(target_spend * 0.70))
+        survivor_spend = resolve_survivor_spending(spending)
         both_retired   = matthew_retired and weny_retired
         one_deceased   = matthew_deceased or weny_deceased
 

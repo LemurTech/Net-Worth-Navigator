@@ -26,6 +26,7 @@
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
 - Social Security event timing and monthly benefit are now synced at runtime from each person's `ss_start_age` plus the matching `social_security_benefits` bracket, with legacy `ss_monthly_benefit` retained as a compatibility fallback; `ss_start_year` has been removed from the person-level config surface
+- Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a compatibility fallback
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
@@ -75,7 +76,7 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - decide whether to add scenario deletion/rename management or keep clone-plus-manual-edit as the supported workflow
 - Design the scenario manifest and default-scenario source of truth before wiring the shell projections page
 - Decide whether root `config.toml` gets a short compatibility window or a one-cut migration into `scenarios/default.toml`
-- Confirm `survivor_annual = 66500` feels right (currently 70% of $95K)
+- Confirm the survivor spending percentage feels right (currently 70% of retirement spending)
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available
 - Validate the new `[withdrawal_policy]` defaults against Person 1's intent
   - accumulation cash target = $64,000 (roughly current liquid reserve)

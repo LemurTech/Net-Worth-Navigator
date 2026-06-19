@@ -34,7 +34,7 @@ class WithdrawalPolicyTests(unittest.TestCase):
             },
             "spending": {
                 "retirement_annual": 0,
-                "survivor_annual": 0,
+                "survivor_percent_of_retirement": 0.0,
             },
             "withdrawal_policy": {
                 "accumulation_cash_target": 0.0,
@@ -119,6 +119,16 @@ class WithdrawalPolicyTests(unittest.TestCase):
         row = df.iloc[0]
         self.assertEqual(row["cash"], 50.0)
         self.assertEqual(row["taxable"], 90.0)
+
+    def test_survivor_cash_target_defaults_from_percent_of_retirement_spend(self):
+        config = self._base_config()
+        config["spending"]["retirement_annual"] = 100000
+        config["spending"]["survivor_percent_of_retirement"] = 0.65
+        config["withdrawal_policy"].pop("survivor_cash_target")
+
+        policy = model.resolve_withdrawal_policy(config, {"cash": 1000.0})
+
+        self.assertEqual(policy["survivor_cash_target"], 65000.0)
 
     def test_sell_home_event_converts_equity_to_cash_and_clears_mortgage(self):
         config = self._base_config()

@@ -56,6 +56,20 @@ def _fmt_percent(value) -> str:
     return f"{text}%"
 
 
+def _resolve_survivor_annual(spending: dict) -> float:
+    retirement_annual = float(spending.get("retirement_annual", 0.0))
+    survivor_ratio = spending.get("survivor_percent_of_retirement")
+    if survivor_ratio is not None:
+        try:
+            return retirement_annual * float(survivor_ratio)
+        except (TypeError, ValueError):
+            pass
+    try:
+        return float(spending.get("survivor_annual", round(retirement_annual * 0.70)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _birth_year(dob: str | None) -> int | None:
     if not dob:
         return None
@@ -170,7 +184,8 @@ def build_assumptions_summary(config: dict) -> str:
     spending = config.get("spending", {})
     spending_rows = [
         ("Retirement annual", _fmt_currency(spending.get("retirement_annual"))),
-        ("Survivor annual", _fmt_currency(spending.get("survivor_annual"))),
+        ("Survivor % of retirement", _fmt_percent(spending.get("survivor_percent_of_retirement", 0.70))),
+        ("Survivor annual", _fmt_currency(_resolve_survivor_annual(spending))),
     ]
 
     withdrawal_policy = config.get("withdrawal_policy", {})

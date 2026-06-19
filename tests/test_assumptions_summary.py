@@ -30,7 +30,7 @@ class AssumptionsSummaryTests(unittest.TestCase):
             },
             "spending": {
                 "retirement_annual": 100000,
-                "survivor_annual": 70000,
+                "survivor_percent_of_retirement": 0.70,
             },
             "withdrawal_policy": {
                 "accumulation_cash_target": 64000,
@@ -54,6 +54,7 @@ class AssumptionsSummaryTests(unittest.TestCase):
         self.assertIn("70%", html)
         self.assertIn("6%", html)
         self.assertIn("$100,000", html)
+        self.assertIn("70%", html)
         self.assertIn("$70,000", html)
         self.assertIn("$64,000", html)
         self.assertIn("$95,000", html)
