@@ -31,7 +31,7 @@ run.py
 
 ## Patterns & Conventions
 
-- **Config is the single source of truth for assumptions.** No rates, ages, or amounts are hardcoded in source files. Everything Person 1 might tune flows through `config.toml`.
+- **Config is the single source of truth for assumptions.** No rates, ages, or amounts are hardcoded in source files. Scenario-specific controls live in `config.toml`, and shared tax reference data now loads from `config/tax_tables/` through a shared config loader.
 - **Events are typed.** Each `[[events]]` entry has a `type` field that determines how it impacts the model. Event types have defined property schemas.
 - **Events are togglable.** Every event has `enabled = true/false`. Disabling never requires deleting the entry.
 - **Monarch bridge is the live anchor.** Year 0 balances come from Monarch. All prior-year assumptions are overridden by live data on each run.

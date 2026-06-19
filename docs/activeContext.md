@@ -13,8 +13,7 @@
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view
 - First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via the 2025 federal ordinary-income bracket schedule plus standard deduction, with effective-rate fallback retained only for compatibility
-- Ordinary-income tax brackets, standard deductions, filing status by lifecycle phase, and simplified Social Security provisional-income thresholds now live in `config.toml [taxes]`
-- Oregon state tax treatment is now active via `config.toml [taxes.state]`, using the official 2025 OR-40 tax table under $50,000 taxable income and the official rate-chart formulas above that
+- Ordinary-income tax brackets, standard deductions, simplified Social Security provisional-income thresholds, and Oregon state tax reference data now load from shared tax-table TOML under `config/tax_tables/`, while scenario-specific tax toggles remain in `config.toml [taxes]`
 - Event-level taxability is now configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
 - Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the bracket-based ordinary-income tax path
 - Withdrawal policy is now configurable by lifecycle phase via `[withdrawal_policy]` in `config.toml`
@@ -67,10 +66,10 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 
 ## Open Items for Next Session
 
-- Execute the scenario-transition plan in [scenario-transition-plan.md](D:/Dev/Net-Worth-Navigator/docs/scenario-transition-plan.md)
-  - start with a shared config loader used by model, bridge, runner, and editor
-  - extract the current 2025 federal/Oregon tax reference tables into `config/tax_tables/`
-  - keep the first implementation slice compatible with the current single-scenario workflow until the new `scenarios/` layout lands
+- Execute the next scenario-transition slice in [scenario-transition-plan.md](D:/Dev/Net-Worth-Navigator/docs/scenario-transition-plan.md)
+  - introduce `scenarios/` and migrate the current root config into the first scenario file
+  - design and generate the scenario manifest used by the future shell projections page
+  - keep editor-driven rendering as the control plane while projection-page selection stays static
 - Design the scenario manifest and default-scenario source of truth before wiring the shell projections page
 - Decide whether root `config.toml` gets a short compatibility window or a one-cut migration into `scenarios/default.toml`
 - Confirm `survivor_annual = 66500` feels right (currently 70% of $95K)

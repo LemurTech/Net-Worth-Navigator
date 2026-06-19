@@ -759,6 +759,7 @@ def build_chart(df: pd.DataFrame, output_path: Path) -> None:
 </body>
 </html>"""
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
     size_kb = output_path.stat().st_size // 1024
     print(f"  Chart written: {output_path} ({size_kb}KB)")

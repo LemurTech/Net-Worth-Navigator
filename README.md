@@ -33,7 +33,9 @@ open output/projection.html
 
 ```
 Net-Worth-Navigator/
-├── config.toml          ← Edit this to change assumptions and events
+├── config.toml          ← Main household/scenario config
+├── config/
+│   └── tax_tables/      ← Shared tax reference files
 ├── run.py               ← Entry point
 ├── src/
 │   ├── model.py         ← Year-by-year simulation engine
@@ -45,7 +47,9 @@ Net-Worth-Navigator/
 
 ## Configuration
 
-All scenario parameters live in `config.toml`. Edit it directly before re-running:
+Scenario-specific parameters live in `config.toml`. Shared tax reference data now
+loads from `config/tax_tables/` via `[taxes].table_set`. Edit the main config
+directly before re-running:
 
 - `[matthew]` / `[weny]` — personal parameters, income, retirement year
 - `[assumptions]` — growth rates, inflation, allocation

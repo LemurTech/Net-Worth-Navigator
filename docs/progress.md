@@ -6,6 +6,9 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Shared config loader in `src/config_loader.py` for merged runtime config resolution across model, bridge, and editor
+- Shared tax reference file at `config/tax_tables/2025_us_federal_oregon.toml`
+- Regression coverage for merged tax-table loading in `tests/test_config_loader.py`
 - `SellHome` event type for converting a named real-estate account into cash proceeds, with default/override sale-fee rates and optional mortgage payoff linkage
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
 - Analysis sidecar bundle now emits on each run: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, and `accounts_snapshot.json`
@@ -56,6 +59,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Changed
 
+- `config.toml [taxes]` now points to shared tax reference data via `table_set = "2025_us_federal_oregon"` instead of inlining the large bracket/deduction tables
 - Negative-only liquid series now remain visible on the main chart instead of being suppressed when the series sum is below zero
 - Offline/full projection runs now pass named real-estate accounts into the model so `SellHome` can target a specific property
 - Projection config schema and sample config now include `real_estate_sale_fee_rate` plus `SellHome` event examples

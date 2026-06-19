@@ -7,13 +7,13 @@ Returns a pandas DataFrame with one row per year:
     year | net_worth | matthew_income | weny_income | events_active | ...
 """
 
-import tomllib
 from copy import deepcopy
 from pathlib import Path
 from dataclasses import dataclass, field
 
 import pandas as pd
 
+from src.config_loader import load_config as shared_load_config
 from src.oregon_tax_2025 import OREGON_2025_TAX_TABLE, OREGON_2025_RATE_CHARTS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
@@ -67,8 +67,7 @@ def _empty_withdrawal_breakdown() -> dict[str, float]:
 
 
 def load_config() -> dict:
-    with open(CONFIG_PATH, "rb") as f:
-        return tomllib.load(f)
+    return shared_load_config(CONFIG_PATH)
 
 
 def resolve_runtime_config(config: dict) -> dict:

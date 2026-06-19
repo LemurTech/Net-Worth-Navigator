@@ -17,8 +17,9 @@ Run standalone to list/verify accounts:
 import json
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
+
+from src.config_loader import load_config as shared_load_config
 
 CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
 
@@ -49,8 +50,7 @@ asyncio.run(main())
 
 
 def load_config() -> dict:
-    with open(CONFIG_PATH, "rb") as f:
-        return tomllib.load(f)
+    return shared_load_config(CONFIG_PATH)
 
 
 def fetch_raw_accounts() -> list[dict]:

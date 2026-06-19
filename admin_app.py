@@ -12,6 +12,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from src.config_loader import merge_tax_tables
+
 APP_ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = APP_ROOT / "config.toml"
 OUTPUT_DIR = APP_ROOT / "output"
@@ -33,7 +35,7 @@ def _read_config_text() -> str:
 def _validate_config_text(content: str) -> dict:
     if not content.strip():
         raise ValueError("Configuration cannot be empty.")
-    return tomllib.loads(content)
+    return merge_tax_tables(tomllib.loads(content))
 
 
 def _backup_and_write(content: str) -> Path:

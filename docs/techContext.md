@@ -5,7 +5,7 @@
 ## Stack
 
 - Language: Python 3.11+ (uses stdlib `tomllib`)
-- Config: TOML (`config.toml` at project root)
+- Config: TOML (`config.toml` at project root plus shared tax reference files under `config/tax_tables/`)
 - Simulation: Pure arithmetic — year-by-year cash flow, no LP solver
 - Charts: Plotly (standalone HTML output)
 - Data source: Monarch MCP (`/opt/monarch-mcp-server`, Python 3.13 venv, keyring auth)
