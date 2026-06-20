@@ -124,6 +124,98 @@ class WithdrawalPolicyTests(unittest.TestCase):
         self.assertEqual(row["cash"], 50.0)
         self.assertEqual(row["taxable"], 90.0)
 
+    def test_surplus_sweeps_cash_above_target_back_into_investments(self):
+        portfolio = {"cash": 120.0, "taxable": 80.0, "trad_ira": 0.0, "roth": 0.0}
+
+        model._apply_surplus_with_reserve_target(
+            portfolio,
+            surplus=10.0,
+            cash_target=50.0,
+            excluded_categories=set(),
+            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+        )
+
+        self.assertEqual(portfolio["cash"], 50.0)
+        self.assertEqual(portfolio["taxable"], 160.0)
+
+    def test_surplus_sweep_runs_even_with_zero_new_surplus(self):
+        portfolio = {"cash": 120.0, "taxable": 80.0, "trad_ira": 0.0, "roth": 0.0}
+
+        model._apply_surplus_with_reserve_target(
+            portfolio,
+            surplus=0.0,
+            cash_target=50.0,
+            excluded_categories=set(),
+            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+        )
+
+        self.assertEqual(portfolio["cash"], 50.0)
+        self.assertEqual(portfolio["taxable"], 150.0)
+
+    def test_surplus_sweep_respects_protected_cash_floor(self):
+        portfolio = {"cash": 170.0, "taxable": 80.0, "trad_ira": 0.0, "roth": 0.0}
+
+        model._apply_surplus_with_reserve_target(
+            portfolio,
+            surplus=0.0,
+            cash_target=50.0,
+            protected_cash=100.0,
+            excluded_categories=set(),
+            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+        )
+
+        self.assertEqual(portfolio["cash"], 150.0)
+        self.assertEqual(portfolio["taxable"], 100.0)
+
+    def test_surplus_fallback_prefers_configured_surplus_order_over_reversed_withdrawal_order(self):
+        portfolio = {"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0}
+
+        model._apply_surplus_with_reserve_target(
+            portfolio,
+            surplus=100.0,
+            cash_target=0.0,
+            excluded_categories=set(),
+            surplus_order=["taxable", "roth", "trad_ira"],
+            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+        )
+
+        self.assertEqual(portfolio["taxable"], 100.0)
+        self.assertEqual(portfolio["cash"], 0.0)
+        self.assertEqual(portfolio["roth"], 0.0)
+        self.assertEqual(portfolio["trad_ira"], 0.0)
+
+    def test_surplus_fallback_uses_reversed_withdrawal_order_when_no_non_cash_receivers(self):
+        portfolio = {"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0}
+
+        model._apply_surplus_with_reserve_target(
+            portfolio,
+            surplus=100.0,
+            cash_target=0.0,
+            excluded_categories=set(),
+            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+        )
+
+        self.assertEqual(portfolio["trad_ira"], 100.0)
+        self.assertEqual(portfolio["cash"], 0.0)
+        self.assertEqual(portfolio["taxable"], 0.0)
+        self.assertEqual(portfolio["roth"], 0.0)
+
+    def test_surplus_fallback_skips_excluded_bucket_and_uses_next_reversed_choice(self):
+        portfolio = {"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0}
+
+        model._apply_surplus_with_reserve_target(
+            portfolio,
+            surplus=100.0,
+            cash_target=0.0,
+            excluded_categories={"trad_ira"},
+            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+        )
+
+        self.assertEqual(portfolio["roth"], 100.0)
+        self.assertEqual(portfolio["cash"], 0.0)
+        self.assertEqual(portfolio["taxable"], 0.0)
+        self.assertEqual(portfolio["trad_ira"], 0.0)
+
     def test_survivor_cash_target_defaults_from_percent_of_retirement_spend(self):
         config = self._base_config()
         config["spending"]["retirement_annual"] = 100000

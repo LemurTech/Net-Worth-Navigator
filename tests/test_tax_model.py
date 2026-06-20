@@ -261,6 +261,55 @@ class TaxModelTests(unittest.TestCase):
         self.assertAlmostEqual(row["taxable_income"], 65_670.0, places=2)
         self.assertAlmostEqual(row["annual_taxes"], 4_631.0, places=2)
 
+    def test_rmd_forces_trad_withdrawal_and_taxable_income(self):
+        config = self._base_config()
+        config["matthew"]["dob"] = "1940-01-01"
+        config["weny"]["dob"] = "1980-01-01"
+        config["matthew"]["rmd_trad_ira_share"] = 1.0
+        config["weny"]["rmd_trad_ira_share"] = 0.0
+        config["taxes"]["rmd"] = {"enabled": True, "start_age": 73}
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 152.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(row["rmd_required"], 10.0, places=2)
+        self.assertAlmostEqual(row["rmd_withdrawn"], 10.0, places=2)
+        self.assertAlmostEqual(row["withdrawal_trad_ira"], 10.0, places=2)
+        self.assertAlmostEqual(row["taxable_income"], 10.0, places=2)
+        self.assertAlmostEqual(row["annual_taxes"], 1.0, places=2)
+
+    def test_rmd_does_not_add_extra_when_voluntary_trad_withdrawals_already_higher(self):
+        config = self._base_config()
+        config["matthew"]["dob"] = "1940-01-01"
+        config["weny"]["dob"] = "1980-01-01"
+        config["matthew"]["rmd_trad_ira_share"] = 1.0
+        config["weny"]["rmd_trad_ira_share"] = 0.0
+        config["taxes"]["enabled"] = False
+        config["taxes"]["rmd"] = {"enabled": True, "start_age": 73}
+        config["assumptions"]["effective_tax_rate_post_retirement"] = 0.0
+        config["assumptions"]["trad_ira_withdrawal_taxable_fraction"] = 0.0
+        config["spending"]["retirement_annual"] = 30.0
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 100.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(row["rmd_required"], 6.58, places=2)
+        self.assertAlmostEqual(row["rmd_withdrawn"], 6.58, places=2)
+        self.assertAlmostEqual(row["withdrawal_cash"], 6.58, places=2)
+        self.assertAlmostEqual(row["withdrawal_trad_ira"], 23.42, places=2)
+        self.assertAlmostEqual(row["withdrawal_cash"] + row["withdrawal_trad_ira"], 30.0, places=2)
+        self.assertAlmostEqual(row["trad_ira"], 76.58, places=2)
+
     def test_build_chart_includes_tax_semantics_note(self):
         config = {
             "display": {"projection_title": "Casa Lemuria"},

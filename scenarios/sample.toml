@@ -1,0 +1,236 @@
+# Net Worth Navigator — Shareable Sample Scenario
+# This scenario is safe for demos: it uses synthetic starting balances,
+# not live Monarch data and not Monarch cache data.
+
+[scenario]
+name = "Sample Plan"
+slug = "sample"
+description = "Share-safe synthetic scenario for demos and walkthroughs."
+is_default = false
+
+[data_source]
+mode = "synthetic"   # synthetic | monarch
+
+[synthetic_start]
+# Starting investable balances (synthetic)
+taxable = 120000
+trad_ira = 380000
+roth = 95000
+cash = 45000
+
+# Starting non-investable balances (synthetic)
+home_value = 520000
+
+# Optional synthetic rollups
+vehicles = 0
+other = 0
+
+# Optional named property balances for SellHome/property tracking
+[synthetic_start.property_values]
+"Sample Residence" = 520000
+
+# Optional named liability balances (must match [[liabilities]].name if used)
+[synthetic_start.liability_balances]
+"Sample Mortgage" = 265000
+
+[simulation]
+start_year = 2026
+end_year = 2066
+
+[display]
+projection_title = "Sample Household Plan (Synthetic Demo)"
+
+[matthew]
+name = "Alex"
+dob = "1969-04-12"
+life_expectancy = 90
+retirement_year = 2038
+annual_take_home = 78000
+annual_take_home_is_net_of_retirement_contributions = true
+annual_take_home_real_raise = 0.01
+annual_401k_contribution = 22000
+annual_401k_contribution_extra_increase = 0.00
+annual_ira_contribution = 0
+rmd_trad_ira_share = 0.6
+ss_start_age = 67
+
+[matthew.social_security_benefits]
+"62" = 1700
+"63" = 1840
+"64" = 1990
+"65" = 2160
+"66" = 2340
+"67" = 2520
+"68" = 2710
+"69" = 2910
+"70" = 3120
+
+[weny]
+name = "Sam"
+dob = "1974-10-03"
+life_expectancy = 92
+retirement_year = 2043
+annual_take_home = 52000
+annual_take_home_is_net_of_retirement_contributions = true
+annual_take_home_real_raise = 0.005
+annual_401k_contribution = 8000
+annual_401k_contribution_extra_increase = 0.00
+annual_ira_contribution = 3000
+annual_ira_contribution_bucket = "roth"
+rmd_trad_ira_share = 0.4
+ss_start_age = 67
+
+[weny.social_security_benefits]
+"62" = 1100
+"63" = 1180
+"64" = 1270
+"65" = 1370
+"66" = 1480
+"67" = 1600
+"68" = 1730
+"69" = 1860
+"70" = 2010
+
+[spending]
+retirement_annual = 82000
+survivor_percent_of_retirement = 0.72
+spending_basis = "real"
+
+[withdrawal_policy]
+accumulation_cash_target = 45000
+retirement_cash_target = 85000
+survivor_cash_target = 65000
+
+accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
+retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+survivor_withdrawal_order     = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+
+accumulation_surplus_order = ["taxable", "roth", "trad_ira"]
+retirement_surplus_order   = ["taxable", "roth", "trad_ira"]
+survivor_surplus_order     = ["taxable", "roth", "trad_ira"]
+
+[assumptions]
+stock_return = 0.07
+bond_return = 0.04
+inflation = 0.03
+cash_return = 0.03
+real_estate_appreciation = 0.03
+equity_allocation = 0.70
+real_estate_sale_fee_rate = 0.06
+
+effective_tax_rate_pre_retirement = 0.22
+effective_tax_rate_post_retirement = 0.15
+
+taxable_withdrawal_taxable_fraction = 0.50
+trad_ira_withdrawal_taxable_fraction = 1.00
+
+[taxes]
+enabled = true
+table_set = "2025_us_federal_oregon"
+pre_retirement_filing_status = "married_joint"
+retirement_filing_status = "married_joint"
+survivor_filing_status = "single"
+wage_tax_treatment = "net_cash"
+
+[taxes.rmd]
+enabled = true
+start_age = 73
+
+[[liabilities]]
+name = "Sample Mortgage"
+annual_rate = 0.0575
+monthly_base = 2100
+monthly_extra = 200
+type = "mortgage"
+
+# Core lifecycle anchors
+[[events]]
+enabled = true
+type = "EndOfPlan"
+label = "End of Plan (Alex)"
+person = "matthew"
+year = 2059
+
+[[events]]
+enabled = true
+type = "EndOfPlan"
+label = "End of Plan (Sam)"
+person = "weny"
+year = 2066
+
+# Example recurring discretionary spending
+[[events]]
+enabled = true
+type = "Expense"
+label = "Travel"
+year = 2027
+amount = -8000
+expense_kind = "discretionary"
+repeat_every_years = 2
+repeat_until_year = 2055
+chart_first_occurrence_only = true
+
+# Typical home maintenance / repairs
+[[events]]
+enabled = true
+type = "Expense"
+label = "Home maintenance reserve"
+year = 2026
+amount = -3500
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type = "Expense"
+label = "HVAC replacement"
+year = 2034
+amount = -12000
+expense_kind = "mandatory"
+
+[[events]]
+enabled = true
+type = "Expense"
+label = "Roof replacement"
+year = 2043
+amount = -18000
+expense_kind = "mandatory"
+
+# Vehicle lifecycle events
+[[events]]
+enabled = true
+type = "Expense"
+label = "Vehicle purchase"
+year = 2032
+amount = -26000
+expense_kind = "mandatory"
+
+[[events]]
+enabled = true
+type = "Expense"
+label = "Vehicle replacement"
+year = 2044
+amount = -30000
+expense_kind = "mandatory"
+
+# Example bounded side income
+[[events]]
+enabled = true
+type = "Income"
+label = "Part-time consulting"
+year = 2038
+amount = 18000
+end_year = 2042
+taxable = true
+
+# Example later-life care cost
+[[events]]
+enabled = true
+type = "Expense"
+label = "Care support"
+year = 2053
+amount = -25000
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true

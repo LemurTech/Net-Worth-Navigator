@@ -53,6 +53,10 @@ DEFAULT_WITHDRAWAL_ORDER = [
     "cash_below_target",
 ]
 
+# Surplus routing preference when investing cash above reserve targets.
+# Typical retirement behavior: sweep excess to taxable first.
+DEFAULT_SURPLUS_ORDER = ["taxable", "roth", "trad_ira"]
+
 DEFAULT_TAX_FILING_STATUS = {
     "pre_retirement": "married_joint",
     "retirement": "married_joint",
@@ -61,6 +65,60 @@ DEFAULT_TAX_FILING_STATUS = {
 
 VALID_FILING_STATUSES = {"single", "married_joint", "head_of_household"}
 WITHDRAWAL_BUCKETS = ("cash", "taxable", "trad_ira", "roth")
+
+# IRS Uniform Lifetime Table factors (2022+), used for RMD calculation.
+# Applies to account owners age 72+; 120+ reuses age-120 factor.
+UNIFORM_LIFETIME_FACTORS = {
+    72: 27.4,
+    73: 26.5,
+    74: 25.5,
+    75: 24.6,
+    76: 23.7,
+    77: 22.9,
+    78: 22.0,
+    79: 21.1,
+    80: 20.2,
+    81: 19.4,
+    82: 18.5,
+    83: 17.7,
+    84: 16.8,
+    85: 16.0,
+    86: 15.2,
+    87: 14.4,
+    88: 13.7,
+    89: 12.9,
+    90: 12.2,
+    91: 11.5,
+    92: 10.8,
+    93: 10.1,
+    94: 9.5,
+    95: 8.9,
+    96: 8.4,
+    97: 7.8,
+    98: 7.3,
+    99: 6.8,
+    100: 6.4,
+    101: 6.0,
+    102: 5.6,
+    103: 5.2,
+    104: 4.9,
+    105: 4.6,
+    106: 4.3,
+    107: 4.1,
+    108: 3.9,
+    109: 3.7,
+    110: 3.5,
+    111: 3.4,
+    112: 3.3,
+    113: 3.1,
+    114: 3.0,
+    115: 2.9,
+    116: 2.8,
+    117: 2.7,
+    118: 2.5,
+    119: 2.3,
+    120: 2.0,
+}
 
 
 def _empty_withdrawal_breakdown() -> dict[str, float]:
@@ -103,6 +161,17 @@ def _sync_end_of_plan_years(config: dict) -> list[dict]:
     return synced
 
 
+def _person_event_initial(config: dict, person_key: str) -> str:
+    """Return a display initial for synthesized person events."""
+    person = config.get(person_key, {}) if isinstance(config.get(person_key), dict) else {}
+    name = str(person.get("name", "")).strip()
+    if name:
+        for ch in name:
+            if ch.isalpha():
+                return ch.upper()
+    return person_key[:1].upper()
+
+
 def _resolve_retirement_events(config: dict) -> list[dict]:
     """Return events with Retire derived from person-level retirement settings.
 
@@ -137,6 +206,7 @@ def _resolve_retirement_events(config: dict) -> list[dict]:
         synthesized = _synthesize_retire_event(
             person_key=person_key,
             person=person,
+            person_initial=_person_event_initial(config, person_key),
             legacy_event=legacy_retire_by_person.get(person_key),
         )
         if synthesized is not None:
@@ -160,6 +230,7 @@ def _synthesize_retire_event(
     *,
     person_key: str,
     person: dict,
+    person_initial: str,
     legacy_event: dict | None,
 ) -> dict | None:
     retirement_year = person.get("retirement_year")
@@ -174,7 +245,7 @@ def _synthesize_retire_event(
     event = {
         "enabled": True,
         "type": "Retire",
-        "label": f"Retirement ({person_key[:1].upper()})",
+        "label": f"Retirement ({person_initial})",
         "person": person_key,
         "year": retirement_year,
     }
@@ -226,6 +297,7 @@ def _resolve_social_security_events(config: dict) -> list[dict]:
         synthesized = _synthesize_social_security_event(
             person_key=person_key,
             person=person,
+            person_initial=_person_event_initial(config, person_key),
             legacy_event=legacy_ss_by_person.get(person_key),
         )
         if synthesized is not None:
@@ -249,6 +321,7 @@ def _synthesize_social_security_event(
     *,
     person_key: str,
     person: dict,
+    person_initial: str,
     legacy_event: dict | None,
 ) -> dict | None:
     dob = person.get("dob")
@@ -277,7 +350,7 @@ def _synthesize_social_security_event(
     event = {
         "enabled": True,
         "type": "SocialSecurity",
-        "label": f"SS Begins ({person_key[:1].upper()})",
+        "label": f"SS Begins ({person_initial})",
         "person": person_key,
         "year": start_year,
         "monthly_benefit": monthly_benefit,
@@ -563,6 +636,15 @@ def resolve_withdrawal_policy(config: dict, balances: dict[str, float]) -> dict[
         ),
         "survivor_withdrawal_order": _normalize_withdrawal_order(
             section.get("survivor_withdrawal_order", DEFAULT_WITHDRAWAL_ORDER)
+        ),
+        "accumulation_surplus_order": _normalize_surplus_order(
+            section.get("accumulation_surplus_order", DEFAULT_SURPLUS_ORDER)
+        ),
+        "retirement_surplus_order": _normalize_surplus_order(
+            section.get("retirement_surplus_order", DEFAULT_SURPLUS_ORDER)
+        ),
+        "survivor_surplus_order": _normalize_surplus_order(
+            section.get("survivor_surplus_order", DEFAULT_SURPLUS_ORDER)
         ),
     }
 
@@ -868,8 +950,8 @@ def get_phase_withdrawal_settings(
     *,
     both_retired: bool,
     one_deceased: bool,
-) -> tuple[float, list[str]]:
-    """Return the active cash target and withdrawal order for the current phase."""
+) -> tuple[float, list[str], list[str]]:
+    """Return active cash target, withdrawal order, and surplus order for phase."""
     if one_deceased:
         phase = "survivor"
     elif both_retired:
@@ -880,7 +962,170 @@ def get_phase_withdrawal_settings(
     return (
         float(policy.get(f"{phase}_cash_target", 0.0)),
         list(policy.get(f"{phase}_withdrawal_order", DEFAULT_WITHDRAWAL_ORDER)),
+        list(policy.get(f"{phase}_surplus_order", DEFAULT_SURPLUS_ORDER)),
     )
+
+
+def resolve_rmd_settings(config: dict) -> dict[str, object]:
+    """Return normalized RMD settings from config.taxes.rmd."""
+    taxes = config.get("taxes", {}) if isinstance(config, dict) else {}
+    section = taxes.get("rmd", {}) if isinstance(taxes, dict) else {}
+
+    start_age = 73
+    try:
+        start_age = int(section.get("start_age", 73))
+    except (TypeError, ValueError):
+        start_age = 73
+
+    factors = dict(UNIFORM_LIFETIME_FACTORS)
+    raw_factors = section.get("factors", {})
+    if isinstance(raw_factors, dict):
+        for raw_age, raw_factor in raw_factors.items():
+            try:
+                age = int(raw_age)
+                factor = float(raw_factor)
+            except (TypeError, ValueError):
+                continue
+            if age > 0 and factor > 0:
+                factors[age] = factor
+
+    return {
+        "enabled": _as_bool(section.get("enabled"), default=False),
+        "start_age": max(1, start_age),
+        "factors": factors,
+    }
+
+
+def _birth_year(person: dict) -> int | None:
+    """Return birth year from DOB string (YYYY-MM-DD), else None."""
+    dob = person.get("dob")
+    if not dob:
+        return None
+    try:
+        return int(str(dob).split("-", 1)[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def _uniform_lifetime_factor(age: int, factors: dict[int, float]) -> float | None:
+    """Return uniform-lifetime divisor for age, clamped to max known age."""
+    if not factors:
+        return None
+    if age in factors:
+        return float(factors[age])
+    max_age = max(factors)
+    if age > max_age:
+        return float(factors[max_age])
+    return None
+
+
+def _normalized_household_rmd_shares(
+    *,
+    matthew: dict,
+    weny: dict,
+    matthew_deceased: bool,
+    weny_deceased: bool,
+) -> dict[str, float]:
+    """Return normalized trad-IRA ownership shares for household RMD allocation."""
+    if matthew_deceased and weny_deceased:
+        return {"matthew": 0.0, "weny": 0.0}
+    if matthew_deceased:
+        return {"matthew": 0.0, "weny": 1.0}
+    if weny_deceased:
+        return {"matthew": 1.0, "weny": 0.0}
+
+    raw_m = matthew.get("rmd_trad_ira_share")
+    raw_w = weny.get("rmd_trad_ira_share")
+    try:
+        m_share = max(0.0, float(raw_m)) if raw_m is not None else 0.0
+    except (TypeError, ValueError):
+        m_share = 0.0
+    try:
+        w_share = max(0.0, float(raw_w)) if raw_w is not None else 0.0
+    except (TypeError, ValueError):
+        w_share = 0.0
+
+    total = m_share + w_share
+    if total > 0:
+        return {
+            "matthew": m_share / total,
+            "weny": w_share / total,
+        }
+
+    return {"matthew": 0.5, "weny": 0.5}
+
+
+def calculate_household_rmd_required(
+    *,
+    year: int,
+    trad_ira_balance: float,
+    matthew: dict,
+    weny: dict,
+    matthew_deceased: bool,
+    weny_deceased: bool,
+    rmd_settings: dict[str, object],
+) -> float:
+    """Return required household RMD amount for the year.
+
+    Uses per-person ages + ownership shares against household trad_ira balance.
+    """
+    if not rmd_settings.get("enabled"):
+        return 0.0
+
+    trad_ira_balance = max(0.0, float(trad_ira_balance))
+    if trad_ira_balance <= 0:
+        return 0.0
+
+    factors = dict(rmd_settings.get("factors", {}))
+    start_age = int(rmd_settings.get("start_age", 73))
+    shares = _normalized_household_rmd_shares(
+        matthew=matthew,
+        weny=weny,
+        matthew_deceased=matthew_deceased,
+        weny_deceased=weny_deceased,
+    )
+
+    total_required = 0.0
+    for person_key, person, deceased in (
+        ("matthew", matthew, matthew_deceased),
+        ("weny", weny, weny_deceased),
+    ):
+        if deceased:
+            continue
+        birth_year = _birth_year(person)
+        if birth_year is None:
+            continue
+        age = int(year) - int(birth_year)
+        if age < start_age:
+            continue
+        factor = _uniform_lifetime_factor(age, factors)
+        if not factor or factor <= 0:
+            continue
+        owned_balance = trad_ira_balance * float(shares.get(person_key, 0.0))
+        total_required += owned_balance / factor
+
+    return max(0.0, total_required)
+
+
+def _apply_forced_rmd_withdrawal(
+    portfolio: dict[str, float],
+    *,
+    required_amount: float,
+    assumptions: dict,
+) -> tuple[float, float, float]:
+    """Apply a forced traditional-account withdrawal to satisfy RMD.
+
+    Returns: (withdrawn_amount, taxable_income_from_withdrawal, shortfall)
+    """
+    required_amount = max(0.0, float(required_amount))
+    available = max(0.0, float(portfolio.get("trad_ira", 0.0)))
+    withdrawn = min(required_amount, available)
+    if withdrawn > 0:
+        portfolio["trad_ira"] = available - withdrawn
+        portfolio["cash"] = float(portfolio.get("cash", 0.0)) + withdrawn
+    taxable_income = withdrawn * _withdrawal_taxable_fraction("trad_ira", assumptions)
+    shortfall = max(0.0, required_amount - withdrawn)
+    return withdrawn, taxable_income, shortfall
 
 
 def run_projection(
@@ -918,6 +1163,7 @@ def run_projection(
     weny = config["weny"]
     spending = config["spending"]
     liability_configs = config.get("liabilities", [])
+    rmd_settings = resolve_rmd_settings(config)
 
     if liability_balances is None:
         liability_balances = {}
@@ -1306,7 +1552,17 @@ def run_projection(
                 simulation_start_year=start_year,
             )
 
-        cash_target, withdrawal_order = get_phase_withdrawal_settings(
+        rmd_required = calculate_household_rmd_required(
+            year=year,
+            trad_ira_balance=float(portfolio.get("trad_ira", 0.0)),
+            matthew=matthew,
+            weny=weny,
+            matthew_deceased=matthew_deceased,
+            weny_deceased=weny_deceased,
+            rmd_settings=rmd_settings,
+        )
+
+        cash_target, withdrawal_order, surplus_order = get_phase_withdrawal_settings(
             withdrawal_policy,
             both_retired=both_retired,
             one_deceased=one_deceased,
@@ -1365,6 +1621,8 @@ def run_projection(
         withdrawal_breakdown = _empty_withdrawal_breakdown()
         contribution_breakdown = prefunded_contrib_buckets.copy()
         working_portfolio = grown_portfolio.copy()
+        rmd_withdrawn = 0.0
+        rmd_shortfall = 0.0
 
         # Iterate because taxable withdrawals themselves increase taxes.
         for _ in range(12):
@@ -1374,7 +1632,19 @@ def run_projection(
                 if amount > 0:
                     working_portfolio[bucket] = working_portfolio.get(bucket, 0.0) + amount
 
-            post_tax_flow = base_net_flow - annual_taxes
+            forced_rmd_withdrawn, forced_rmd_taxable_income, forced_rmd_shortfall = _apply_forced_rmd_withdrawal(
+                working_portfolio,
+                required_amount=rmd_required,
+                assumptions=assumptions,
+            )
+            rmd_withdrawn = forced_rmd_withdrawn
+            rmd_shortfall = forced_rmd_shortfall
+
+            post_tax_flow = base_net_flow + forced_rmd_withdrawn - annual_taxes
+
+            withdrawal_breakdown = _empty_withdrawal_breakdown()
+            withdrawal_breakdown["trad_ira"] += forced_rmd_withdrawn
+            withdrawal_taxable_income = forced_rmd_taxable_income
 
             if post_tax_flow >= 0:
                 preserved_cash = min(post_tax_flow, cash_preserve_flow)
@@ -1397,21 +1667,36 @@ def run_projection(
                     working_portfolio,
                     surplus=available_for_contrib,
                     cash_target=cash_target,
+                    excluded_categories={"trad_ira"} if forced_rmd_withdrawn > 0 else None,
+                    surplus_order=surplus_order,
+                    withdrawal_order=withdrawal_order,
+                    protected_cash=preserved_cash,
                 )
-                withdrawal_taxable_income = 0.0
-                withdrawal_breakdown = _empty_withdrawal_breakdown()
             else:
-                withdrawal_taxable_income, unmet_deficit, withdrawal_breakdown = _cover_deficit_with_policy(
+                extra_taxable_income, unmet_deficit, extra_withdrawal_breakdown = _cover_deficit_with_policy(
                     working_portfolio,
                     deficit=-post_tax_flow,
                     assumptions=assumptions,
                     withdrawal_order=withdrawal_order,
                     cash_target=cash_target,
                 )
+                withdrawal_taxable_income += extra_taxable_income
+                for bucket in WITHDRAWAL_BUCKETS:
+                    withdrawal_breakdown[bucket] += extra_withdrawal_breakdown[bucket]
                 if unmet_deficit > 0:
                     for cat in working_portfolio:
                         working_portfolio[cat] = 0.0
                     working_portfolio["cash"] = -unmet_deficit
+                else:
+                    _apply_surplus_with_reserve_target(
+                        working_portfolio,
+                        surplus=0.0,
+                        cash_target=cash_target,
+                        excluded_categories={"trad_ira"} if forced_rmd_withdrawn > 0 else None,
+                        surplus_order=surplus_order,
+                        withdrawal_order=withdrawal_order,
+                        protected_cash=0.0,
+                    )
 
             new_annual_taxes, taxable_income, federal_taxes, state_taxes = estimate_annual_taxes(
                 non_ss_taxable_income=base_non_ss_taxable_income,
@@ -1468,6 +1753,9 @@ def run_projection(
             "annual_spend":   annual_spend,
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
+            "rmd_required":   rmd_required,
+            "rmd_withdrawn":  rmd_withdrawn,
+            "rmd_shortfall":  rmd_shortfall,
             "withdrawal_cash": withdrawal_breakdown["cash"],
             "withdrawal_taxable": withdrawal_breakdown["taxable"],
             "withdrawal_trad_ira": withdrawal_breakdown["trad_ira"],
@@ -1804,6 +2092,21 @@ def _normalize_withdrawal_order(order) -> list[str]:
     return normalized or list(DEFAULT_WITHDRAWAL_ORDER)
 
 
+def _normalize_surplus_order(order) -> list[str]:
+    """Return validated surplus routing preferences across investable non-cash buckets."""
+    valid_steps = {"taxable", "trad_ira", "roth"}
+    if not isinstance(order, list):
+        return list(DEFAULT_SURPLUS_ORDER)
+
+    normalized: list[str] = []
+    for step in order:
+        step = str(step).strip()
+        if step in valid_steps and step not in normalized:
+            normalized.append(step)
+
+    return normalized or list(DEFAULT_SURPLUS_ORDER)
+
+
 def _cover_deficit_with_policy(
     portfolio: dict[str, float],
     deficit: float,
@@ -1842,31 +2145,100 @@ def _cover_deficit_with_policy(
     return taxable_withdrawals, remaining, breakdown
 
 
+def _surplus_fallback_bucket(
+    *,
+    portfolio: dict[str, float],
+    surplus_order: list[str] | None,
+    withdrawal_order: list[str] | None,
+    excluded_categories: set[str],
+) -> str | None:
+    """Return fallback non-cash bucket for surplus when proportional routing has no receivers.
+
+    Priority:
+    1) configured surplus_order (phase-specific)
+    2) reverse withdrawal order (legacy mirror behavior)
+    3) static default order
+    """
+    if surplus_order:
+        for step in surplus_order:
+            if step not in {"taxable", "trad_ira", "roth"}:
+                continue
+            if step in excluded_categories:
+                continue
+            if step in portfolio:
+                return step
+
+    if withdrawal_order:
+        for step in reversed(withdrawal_order):
+            if step not in WITHDRAWAL_BUCKETS:
+                continue
+            if step == "cash":
+                continue
+            if step in excluded_categories:
+                continue
+            if step in portfolio:
+                return step
+
+    for bucket in DEFAULT_SURPLUS_ORDER:
+        if bucket in portfolio and bucket not in excluded_categories:
+            return bucket
+
+    return None
+
+
 def _apply_surplus_with_reserve_target(
     portfolio: dict[str, float],
     surplus: float,
     cash_target: float,
+    excluded_categories: set[str] | None = None,
+    surplus_order: list[str] | None = None,
+    withdrawal_order: list[str] | None = None,
+    protected_cash: float = 0.0,
 ) -> None:
-    """Refill cash to target first, then invest the remaining surplus."""
-    if surplus <= 0:
-        return
+    """Refill cash floor first, then invest surplus and sweep excess cash above that floor.
 
+    `protected_cash` reserves an additional amount above `cash_target` that should
+    remain in cash for this year (e.g., explicitly-preserved SellHome proceeds).
+    """
+    if excluded_categories is None:
+        excluded_categories = set()
+
+    cash_floor = max(0.0, cash_target) + max(0.0, protected_cash)
+
+    remaining = max(0.0, float(surplus))
     current_cash = portfolio.get("cash", 0.0)
-    refill = min(max(0.0, cash_target - current_cash), surplus)
-    portfolio["cash"] = current_cash + refill
-    remaining = surplus - refill
+
+    refill = min(max(0.0, cash_floor - current_cash), remaining)
+    current_cash += refill
+    portfolio["cash"] = current_cash
+    remaining -= refill
+
+    excess_cash = max(0.0, current_cash - cash_floor)
+    if excess_cash > 0:
+        portfolio["cash"] = current_cash - excess_cash
+        remaining += excess_cash
+
     if remaining <= 0:
         return
 
     positive_non_cash_total = sum(
         balance
         for category, balance in portfolio.items()
-        if category != "cash" and balance > 0
+        if category != "cash" and category not in excluded_categories and balance > 0
     )
     if positive_non_cash_total <= 0:
-        portfolio["cash"] = portfolio.get("cash", 0.0) + remaining
+        fallback_bucket = _surplus_fallback_bucket(
+            portfolio=portfolio,
+            surplus_order=surplus_order,
+            withdrawal_order=withdrawal_order,
+            excluded_categories=excluded_categories,
+        )
+        if fallback_bucket is not None:
+            portfolio[fallback_bucket] = portfolio.get(fallback_bucket, 0.0) + remaining
+        else:
+            portfolio["cash"] = portfolio.get("cash", 0.0) + remaining
         return
 
     for category, balance in list(portfolio.items()):
-        if category != "cash" and balance > 0:
+        if category != "cash" and category not in excluded_categories and balance > 0:
             portfolio[category] += remaining * (balance / positive_non_cash_total)

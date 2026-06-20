@@ -11,6 +11,7 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from src.charts import build_chart
 from src.model import load_config, run_projection
@@ -22,6 +23,7 @@ from src.monarch_bridge import (
 )
 from src.scenarios import (
     SCENARIO_OUTPUT_ROOT,
+    get_default_scenario,
     get_scenario,
     scenario_output_dir,
     write_scenarios_index,
@@ -74,20 +76,76 @@ def load_cache() -> dict:
     return data
 
 
+def _f(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _synthetic_inputs_from_config(config: dict) -> tuple[dict, dict, dict, dict]:
+    synthetic = config.get("synthetic_start", {}) if isinstance(config.get("synthetic_start"), dict) else {}
+
+    portfolio = {
+        "taxable": _f(synthetic.get("taxable", 0.0)),
+        "trad_ira": _f(synthetic.get("trad_ira", 0.0)),
+        "roth": _f(synthetic.get("roth", 0.0)),
+        "cash": _f(synthetic.get("cash", 0.0)),
+    }
+    extras = {
+        "home_value": _f(synthetic.get("home_value", 0.0)),
+        "vehicles": _f(synthetic.get("vehicles", 0.0)),
+        "other": _f(synthetic.get("other", 0.0)),
+    }
+
+    raw_liability_balances = synthetic.get("liability_balances", {})
+    liability_balances = {
+        str(name): _f(balance)
+        for name, balance in raw_liability_balances.items()
+        if _f(balance) > 0
+    } if isinstance(raw_liability_balances, dict) else {}
+
+    raw_property_values = synthetic.get("property_values", {})
+    property_values = {
+        str(name): _f(value)
+        for name, value in raw_property_values.items()
+        if _f(value) != 0
+    } if isinstance(raw_property_values, dict) else {}
+
+    if not property_values and extras["home_value"] != 0:
+        property_values = {"Primary Residence": extras["home_value"]}
+
+    return portfolio, extras, liability_balances, property_values
+
+
 def main():
     scenario = get_scenario(selected_scenario_slug(sys.argv))
     config = load_config(scenario.config_path)
+    default_scenario = get_default_scenario()
+    baseline_config = load_config(default_scenario.config_path)
     scenario_dir = scenario_output_dir(scenario.slug)
 
     print("Net Worth Navigator")
     print("=" * 40)
     print(f"Scenario: {scenario.name} ({scenario.slug})")
-    mode = "offline" if OFFLINE else "full"
-    print(f"Mode: {'OFFLINE (cached)' if OFFLINE else 'FULL (live Monarch)'}")
 
-    # 1. Balances — live or cached
+    data_source_cfg = config.get("data_source", {}) if isinstance(config.get("data_source"), dict) else {}
+    data_source_mode = str(data_source_cfg.get("mode", "monarch")).strip().lower() or "monarch"
+    use_synthetic = data_source_mode == "synthetic"
+
+    mode = "synthetic" if use_synthetic else ("offline" if OFFLINE else "full")
+
+    if use_synthetic:
+        print("Mode: SYNTHETIC (scenario-provided starting balances; Monarch bypassed)")
+    else:
+        print(f"Mode: {'OFFLINE (cached)' if OFFLINE else 'FULL (live Monarch)'}")
+
+    # 1. Balances — synthetic, live, or cached
     cache_timestamp = None
-    if OFFLINE:
+    if use_synthetic:
+        portfolio, extras, liability_balances, property_values = _synthetic_inputs_from_config(config)
+        raw_accounts = []
+    elif OFFLINE:
         cached = load_cache()
         cache_timestamp = cached.get("timestamp")
         raw_accounts = cached.get("raw_accounts")
@@ -134,7 +192,13 @@ def main():
     sidecar_dir = scenario_dir / "sidecars"
     output_path = scenario_dir / "projection.html"
     print(f"→ Generating chart → {output_path}")
-    build_chart(df, output_path, config=config)
+    build_chart(
+        df,
+        output_path,
+        config=config,
+        scenario=scenario,
+        baseline_config=baseline_config,
+    )
     print(f"→ Writing sidecar analysis files → {sidecar_dir}")
     sidecars = write_sidecars(
         output_dir=sidecar_dir,

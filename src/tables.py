@@ -114,11 +114,17 @@ def _person_keys(config: dict) -> list[str]:
     return preferred + extras
 
 
-def _kv_table(rows: list[tuple[str, str]]) -> str:
-    body = "".join(
-        f"<tr><th>{escape(label)}</th><td>{value}</td></tr>"
-        for label, value in rows
-    )
+def _kv_table(rows: list[tuple]) -> str:
+    rendered_rows = []
+    for row in rows:
+        if len(row) == 2:
+            label, value = row
+            row_class = ""
+        else:
+            label, value, row_class = row
+        cls_attr = f" class='{escape(str(row_class))}'" if row_class else ""
+        rendered_rows.append(f"<tr{cls_attr}><th>{escape(str(label))}</th><td>{value}</td></tr>")
+    body = "".join(rendered_rows)
     return f"<table class='assumptions-table assumptions-kv'><tbody>{body}</tbody></table>"
 
 
@@ -197,7 +203,7 @@ def build_assumptions_summary(config: dict) -> str:
 
     return (
         "<div class='assumptions-wrap'>"
-        "<div class='assumptions-note'>Current planning assumptions from <code>config.toml</code>.</div>"
+        "<div class='assumptions-note'>Current planning assumptions from the active scenario config.</div>"
         "<div class='assumptions-grid'>"
         "<section class='assumption-card assumption-card-wide'>"
         "<h3>Persons</h3>"
@@ -216,6 +222,320 @@ def build_assumptions_summary(config: dict) -> str:
         "<h3>Withdrawal policy</h3>"
         "<p class='assumption-subtitle'>Configured cash reserve targets by phase.</p>"
         f"{_kv_table(withdrawal_rows)}"
+        "</section>"
+        "</div>"
+        "</div>"
+    )
+
+
+def _fmt_bool(value) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return "—"
+
+
+def _fmt_list(values) -> str:
+    if not isinstance(values, list):
+        return "—"
+    return " → ".join(escape(str(v)) for v in values) if values else "(empty)"
+
+
+def _events_enabled_metrics(events) -> dict[str, int]:
+    if not isinstance(events, list):
+        return {"Enabled events": 0, "Recurring-enabled events": 0}
+
+    enabled = [e for e in events if isinstance(e, dict) and bool(e.get("enabled", False))]
+    by_type: dict[str, int] = {}
+    recurring = 0
+    for event in enabled:
+        etype = str(event.get("type", "Unknown"))
+        by_type[etype] = by_type.get(etype, 0) + 1
+        if any(k in event for k in ("repeat_every_years", "repeat_until_year", "repeat_count")):
+            recurring += 1
+
+    metrics: dict[str, int] = {
+        "Enabled events": len(enabled),
+        "Recurring-enabled events": recurring,
+    }
+    for etype in sorted(by_type):
+        metrics[etype] = by_type[etype]
+    return metrics
+
+
+def build_scenario_parameters_summary(
+    config: dict,
+    scenario=None,
+    baseline_config: dict | None = None,
+) -> str:
+    """Return a detailed scenario-parameter summary for audit/comparison."""
+    scenario_cfg = config.get("scenario", {}) if isinstance(config.get("scenario"), dict) else {}
+    simulation = config.get("simulation", {}) if isinstance(config.get("simulation"), dict) else {}
+    taxes = config.get("taxes", {}) if isinstance(config.get("taxes"), dict) else {}
+    rmd = taxes.get("rmd", {}) if isinstance(taxes.get("rmd"), dict) else {}
+    wp = config.get("withdrawal_policy", {}) if isinstance(config.get("withdrawal_policy"), dict) else {}
+
+    baseline_scenario_cfg = (
+        baseline_config.get("scenario", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("scenario"), dict)
+        else {}
+    )
+    baseline_simulation = (
+        baseline_config.get("simulation", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("simulation"), dict)
+        else {}
+    )
+    baseline_taxes = (
+        baseline_config.get("taxes", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("taxes"), dict)
+        else {}
+    )
+    baseline_rmd = baseline_taxes.get("rmd", {}) if isinstance(baseline_taxes.get("rmd"), dict) else {}
+    baseline_wp = (
+        baseline_config.get("withdrawal_policy", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("withdrawal_policy"), dict)
+        else {}
+    )
+
+    changed_count = 0
+
+    def _diff_row(label: str, value, baseline_value, formatter) -> tuple[str, str, str]:
+        nonlocal changed_count
+        changed = baseline_config is not None and value != baseline_value
+        if changed:
+            changed_count += 1
+        return (label, formatter(value), "param-diff" if changed else "")
+
+    def _fmt_text(value) -> str:
+        if value in (None, ""):
+            return "—"
+        return escape(str(value))
+
+    scenario_rows = [
+        _diff_row("Scenario name", scenario_cfg.get("name"), baseline_scenario_cfg.get("name"), _fmt_text),
+        _diff_row("Scenario slug", scenario_cfg.get("slug"), baseline_scenario_cfg.get("slug"), _fmt_text),
+        _diff_row(
+            "Scenario description",
+            scenario_cfg.get("description"),
+            baseline_scenario_cfg.get("description"),
+            _fmt_text,
+        ),
+        _diff_row("Start year", simulation.get("start_year"), baseline_simulation.get("start_year"), _fmt_text),
+        _diff_row("End year", simulation.get("end_year"), baseline_simulation.get("end_year"), _fmt_text),
+    ]
+    if scenario is not None:
+        scenario_rows.extend([
+            ("Config path", f"<code>{escape(str(getattr(scenario, 'config_path', '—')))}</code>", ""),
+            ("Marked default", _fmt_bool(getattr(scenario, "is_default", None)), ""),
+        ])
+
+    tax_rows = [
+        _diff_row("Tax model enabled", taxes.get("enabled"), baseline_taxes.get("enabled"), _fmt_bool),
+        _diff_row("Tax table set", taxes.get("table_set"), baseline_taxes.get("table_set"), _fmt_text),
+        _diff_row(
+            "Wage tax treatment",
+            taxes.get("wage_tax_treatment"),
+            baseline_taxes.get("wage_tax_treatment"),
+            _fmt_text,
+        ),
+        _diff_row(
+            "Pre-retirement filing",
+            taxes.get("pre_retirement_filing_status"),
+            baseline_taxes.get("pre_retirement_filing_status"),
+            _fmt_text,
+        ),
+        _diff_row(
+            "Retirement filing",
+            taxes.get("retirement_filing_status"),
+            baseline_taxes.get("retirement_filing_status"),
+            _fmt_text,
+        ),
+        _diff_row(
+            "Survivor filing",
+            taxes.get("survivor_filing_status"),
+            baseline_taxes.get("survivor_filing_status"),
+            _fmt_text,
+        ),
+        _diff_row("RMD enabled", rmd.get("enabled"), baseline_rmd.get("enabled"), _fmt_bool),
+        _diff_row("RMD start age", rmd.get("start_age"), baseline_rmd.get("start_age"), _fmt_text),
+    ]
+
+    policy_rows = [
+        _diff_row(
+            "Accumulation cash target",
+            wp.get("accumulation_cash_target"),
+            baseline_wp.get("accumulation_cash_target"),
+            _fmt_currency,
+        ),
+        _diff_row(
+            "Retirement cash target",
+            wp.get("retirement_cash_target"),
+            baseline_wp.get("retirement_cash_target"),
+            _fmt_currency,
+        ),
+        _diff_row(
+            "Survivor cash target",
+            wp.get("survivor_cash_target"),
+            baseline_wp.get("survivor_cash_target"),
+            _fmt_currency,
+        ),
+        _diff_row(
+            "Accumulation withdrawal order",
+            wp.get("accumulation_withdrawal_order"),
+            baseline_wp.get("accumulation_withdrawal_order"),
+            _fmt_list,
+        ),
+        _diff_row(
+            "Retirement withdrawal order",
+            wp.get("retirement_withdrawal_order"),
+            baseline_wp.get("retirement_withdrawal_order"),
+            _fmt_list,
+        ),
+        _diff_row(
+            "Survivor withdrawal order",
+            wp.get("survivor_withdrawal_order"),
+            baseline_wp.get("survivor_withdrawal_order"),
+            _fmt_list,
+        ),
+        _diff_row(
+            "Accumulation surplus order",
+            wp.get("accumulation_surplus_order"),
+            baseline_wp.get("accumulation_surplus_order"),
+            _fmt_list,
+        ),
+        _diff_row(
+            "Retirement surplus order",
+            wp.get("retirement_surplus_order"),
+            baseline_wp.get("retirement_surplus_order"),
+            _fmt_list,
+        ),
+        _diff_row(
+            "Survivor surplus order",
+            wp.get("survivor_surplus_order"),
+            baseline_wp.get("survivor_surplus_order"),
+            _fmt_list,
+        ),
+    ]
+
+    person_cards = []
+    for person_key in _person_keys(config):
+        person = config.get(person_key, {})
+        baseline_person = (
+            baseline_config.get(person_key, {})
+            if isinstance(baseline_config, dict) and isinstance(baseline_config.get(person_key), dict)
+            else {}
+        )
+        name = person.get("name") or person_key.replace("_", " ").title()
+        person_rows = [
+            _diff_row("Take-home (annual)", person.get("annual_take_home"), baseline_person.get("annual_take_home"), _fmt_currency),
+            _diff_row(
+                "Take-home already net of retirement contributions",
+                person.get("annual_take_home_is_net_of_retirement_contributions"),
+                baseline_person.get("annual_take_home_is_net_of_retirement_contributions"),
+                _fmt_bool,
+            ),
+            _diff_row(
+                "Take-home real raise",
+                person.get("annual_take_home_real_raise"),
+                baseline_person.get("annual_take_home_real_raise"),
+                _fmt_percent,
+            ),
+            _diff_row(
+                "401k contribution (annual)",
+                person.get("annual_401k_contribution"),
+                baseline_person.get("annual_401k_contribution"),
+                _fmt_currency,
+            ),
+            _diff_row(
+                "401k extra increase",
+                person.get("annual_401k_contribution_extra_increase"),
+                baseline_person.get("annual_401k_contribution_extra_increase"),
+                _fmt_percent,
+            ),
+            _diff_row(
+                "IRA contribution (annual)",
+                person.get("annual_ira_contribution"),
+                baseline_person.get("annual_ira_contribution"),
+                _fmt_currency,
+            ),
+            _diff_row(
+                "401k contribution bucket override",
+                person.get("annual_401k_contribution_bucket"),
+                baseline_person.get("annual_401k_contribution_bucket"),
+                _fmt_text,
+            ),
+            _diff_row(
+                "IRA contribution bucket override",
+                person.get("annual_ira_contribution_bucket"),
+                baseline_person.get("annual_ira_contribution_bucket"),
+                _fmt_text,
+            ),
+            _diff_row(
+                "RMD trad_ira share",
+                person.get("rmd_trad_ira_share"),
+                baseline_person.get("rmd_trad_ira_share"),
+                _fmt_text,
+            ),
+        ]
+        person_cards.append(
+            "<section class='assumption-card'>"
+            f"<h3>{escape(str(name))} parameters</h3>"
+            f"{_kv_table(person_rows)}"
+            "</section>"
+        )
+
+    event_metrics = _events_enabled_metrics(config.get("events", []))
+    baseline_event_metrics = (
+        _events_enabled_metrics(baseline_config.get("events", []))
+        if isinstance(baseline_config, dict)
+        else {}
+    )
+    event_rows = [
+        _diff_row(label, value, baseline_event_metrics.get(label), lambda v: escape(str(v)))
+        for label, value in event_metrics.items()
+    ]
+
+    person_cards_html = "".join(person_cards)
+    baseline_note = (
+        f" <strong>{changed_count}</strong> field(s) differ from baseline default scenario."
+        if baseline_config is not None
+        else ""
+    )
+    default_diff_checked = bool(
+        baseline_config is not None
+        and scenario is not None
+        and not bool(getattr(scenario, "is_default", False))
+    )
+    checked_attr = " checked" if default_diff_checked else ""
+    filter_toolbar = (
+        "<div class='scenario-diff-toolbar'>"
+        f"<label><input type='checkbox' id='scenario-diff-only-toggle'{checked_attr} /> Show only differences</label>"
+        "</div>"
+        if baseline_config is not None
+        else ""
+    )
+
+    return (
+        "<div class='assumptions-wrap'>"
+        "<div class='assumptions-note'>Detailed parameters that distinguish this scenario run."
+        f"{baseline_note}</div>"
+        f"{filter_toolbar}"
+        "<div class='assumptions-grid'>"
+        "<section class='assumption-card'>"
+        "<h3>Scenario metadata</h3>"
+        f"{_kv_table(scenario_rows)}"
+        "</section>"
+        "<section class='assumption-card'>"
+        "<h3>Tax and RMD controls</h3>"
+        f"{_kv_table(tax_rows)}"
+        "</section>"
+        "<section class='assumption-card assumption-card-wide'>"
+        "<h3>Withdrawal policy (full)</h3>"
+        f"{_kv_table(policy_rows)}"
+        "</section>"
+        f"{person_cards_html}"
+        "<section class='assumption-card'>"
+        "<h3>Enabled events summary</h3>"
+        f"{_kv_table(event_rows)}"
         "</section>"
         "</div>"
         "</div>"
@@ -349,6 +669,7 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
         ("Cash reserve drawdown", col("withdrawal_cash")),
         ("Taxable withdrawals", col("withdrawal_taxable")),
         ("Traditional IRA / 401k withdrawals", col("withdrawal_trad_ira")),
+        ("Required minimum distributions (RMD)", col("rmd_withdrawn")),
         ("Roth withdrawals", col("withdrawal_roth")),
     ]
     shown_portfolio_rows = [

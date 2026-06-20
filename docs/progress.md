@@ -6,6 +6,14 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Scenario Parameters tab in projection page (`src/charts.py` + `src/tables.py`) with detailed per-scenario controls: metadata, tax/RMD settings, withdrawal orders/surplus orders, per-person contribution semantics, and enabled-event metrics
+- Baseline-diff emphasis in Scenario Parameters: rows that differ from default scenario are marked with `param-diff`, and the tab shows a total changed-field count
+- Client-side `Show only differences` filter for Scenario Parameters, including automatic hiding of cards with no diff rows
+- Synthetic scenario data-source mode in `run.py`: `[data_source].mode = "synthetic"` with `[synthetic_start]` seeds (portfolio/home/liabilities) bypasses live Monarch and cached balances
+- Share-safe sample scenario at `scenarios/sample.toml` using synthetic start balances and realistic recurring/one-time events for demos
+- Portfolio tab display cue when taxable/brokerage is zero across all years
+- Expanded `[[events]]` documentation in `scenarios/default.toml`: required/optional fields by event type plus copy/paste templates for each supported event type
+
 - Per-bucket cash/investment growth behavior in `model.py`: `cash_return` now applies to `cash`, while non-cash investable buckets keep blended stock/bond growth
 - Spending-basis control in `model.py`/scenario config via `spending_basis = "real" | "nominal"`, with inflation indexing for retirement/survivor spending when real mode is selected
 - Explicit pre-retirement spending precedence in `model.py`: `pre_retirement_spending` → `annual_savings_override` → implied `income - contributions`
@@ -77,6 +85,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Changed
 
+- Synthesized `Retirement (...)` and `SS Begins (...)` labels now use configured person-name initials instead of person-key initials, so sample scenarios render A/S (etc.) instead of M/W
 - `config.toml [taxes]` now points to shared tax reference data via `table_set = "2025_us_federal_oregon"` instead of inlining the large bracket/deduction tables
 - The current root `config.toml` is now treated as the legacy default scenario until real `scenarios/*.toml` files take over
 - The default runtime/editor scenario now comes from `scenarios/default.toml`; root `config.toml` remains only as a fallback during migration

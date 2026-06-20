@@ -10,7 +10,12 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.tables import build_accounts_table, build_cashflow_table, build_assumptions_summary
+from src.tables import (
+    build_accounts_table,
+    build_cashflow_table,
+    build_assumptions_summary,
+    build_scenario_parameters_summary,
+)
 from src.model import load_config, resolve_runtime_config, get_event_icon, EVENT_ICONS, LIABILITY_ICONS
 
 # ── CSS + JS for the tabbed layout ────────────────────────────────────────────
@@ -85,9 +90,13 @@ _TABS_CSS = """
   .assumptions-wrap { background: #111827; border-radius: 6px; padding: 12px;
                       box-shadow: 0 8px 24px rgba(0,0,0,.28); }
   .assumptions-note { margin: 2px 2px 12px; color: #9fb2c8; font-size: 12px; }
+  .scenario-diff-toolbar { margin: 2px 2px 12px; color: #cbd5e1; font-size: 12px; }
+  .scenario-diff-toolbar label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+  .scenario-diff-toolbar input[type='checkbox'] { accent-color: #14b8a6; }
   .assumptions-note code { color: #e5edf7; background: #0b1220; padding: 1px 5px; border-radius: 4px; }
   .assumptions-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .assumption-card { background: #0f1725; border: 1px solid #243142; border-radius: 10px; overflow: hidden; }
+  .assumption-card.filtered-empty { display: none; }
   .assumption-card-wide { grid-column: 1 / -1; }
   .assumption-card h3 { margin: 0; padding: 12px 14px; border-bottom: 1px solid #243142;
                         font-size: 14px; color: #f8fafc; }
@@ -99,6 +108,15 @@ _TABS_CSS = """
   table.assumptions-table tbody td { text-align: left; color: #f8fafc; }
   table.assumptions-table tbody tr:last-child th,
   table.assumptions-table tbody tr:last-child td { border-bottom: none; }
+  table.assumptions-table tbody tr.param-diff th,
+  table.assumptions-table tbody tr.param-diff td {
+    background: rgba(45, 212, 191, 0.12);
+    box-shadow: inset 3px 0 0 rgba(45, 212, 191, 0.65);
+  }
+  table.assumptions-table tbody tr.param-diff th { color: #d1fae5; }
+  #panel-scenario-parameters.show-diffs-only table.assumptions-table tbody tr:not(.param-diff) {
+    display: none;
+  }
   table.assumptions-people tbody td:first-child { font-weight: 600; }
   @media (max-width: 900px) {
     .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -243,6 +261,29 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('resize', function() {
     applyResponsiveChartLayout();
   });
+
+  function updateScenarioDiffVisibility() {
+    var panel = document.getElementById('panel-scenario-parameters');
+    var toggle = document.getElementById('scenario-diff-only-toggle');
+    if (!panel || !toggle) return;
+
+    var showOnlyDiffs = !!toggle.checked;
+    panel.classList.toggle('show-diffs-only', showOnlyDiffs);
+    panel.querySelectorAll('.assumption-card').forEach(function(card) {
+      if (!showOnlyDiffs) {
+        card.classList.remove('filtered-empty');
+        return;
+      }
+      var hasDiffRow = !!card.querySelector('tr.param-diff');
+      card.classList.toggle('filtered-empty', !hasDiffRow);
+    });
+  }
+
+  var diffToggle = document.getElementById('scenario-diff-only-toggle');
+  if (diffToggle) {
+    diffToggle.addEventListener('change', updateScenarioDiffVisibility);
+    updateScenarioDiffVisibility();
+  }
 
   document.querySelectorAll('.table-panel').forEach(function(panel) {
     var ticking = false;
@@ -497,7 +538,16 @@ def _build_portfolio_chart(df: pd.DataFrame) -> str:
         include_plotlyjs=False,
         div_id="nwn-portfolio",
     )
-    return f"<div class='gantt-wrap'>{portfolio_div}</div>"
+
+    taxable_hidden_note = ""
+    if not (df["taxable"] != 0).any():
+        taxable_hidden_note = (
+            "<div class='modeling-note'><strong>Portfolio display note:</strong> "
+            "Taxable/Brokerage is hidden in this chart because its projected value is "
+            "$0 in every year of this scenario.</div>"
+        )
+
+    return f"<div class='gantt-wrap'>{portfolio_div}</div>{taxable_hidden_note}"
 
 
 def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
@@ -705,12 +755,19 @@ def _build_tax_semantics_note() -> str:
     )
 
 
-def build_chart(df: pd.DataFrame, output_path: Path, config: dict | None = None) -> None:
+def build_chart(
+    df: pd.DataFrame,
+    output_path: Path,
+    config: dict | None = None,
+    scenario=None,
+    baseline_config: dict | None = None,
+) -> None:
     """
     Generate the Plotly chart figure, build HTML tables, and write
     a single self-contained tabbed HTML page to output_path.
     """
     config = resolve_runtime_config(config or load_config())
+    baseline_config = resolve_runtime_config(baseline_config) if baseline_config is not None else None
     fig = _build_figure(df, config)
 
     # Export figure as a standalone div (no full HTML, no duplicate Plotly JS)
@@ -728,6 +785,11 @@ def build_chart(df: pd.DataFrame, output_path: Path, config: dict | None = None)
     portfolio_html = _build_portfolio_chart(df)
     gantt_html     = _build_gantt_chart(config, df)
     assumptions_html = build_assumptions_summary(config)
+    scenario_params_html = build_scenario_parameters_summary(
+        config,
+        scenario=scenario,
+        baseline_config=baseline_config,
+    )
 
     # Assemble full page
     html = f"""<!DOCTYPE html>
@@ -759,6 +821,8 @@ def build_chart(df: pd.DataFrame, output_path: Path, config: dict | None = None)
             onclick="switchTab('gantt')">Gantt</button>
     <button class="tab-btn" id="btn-assumptions"
             onclick="switchTab('assumptions')">Assumptions</button>
+    <button class="tab-btn" id="btn-scenario-parameters"
+            onclick="switchTab('scenario-parameters')">Scenario Parameters</button>
   </div>
 
   <div class="tab-panel table-panel active" id="panel-accounts">
@@ -775,6 +839,9 @@ def build_chart(df: pd.DataFrame, output_path: Path, config: dict | None = None)
   </div>
   <div class="tab-panel assumptions-panel" id="panel-assumptions">
     {assumptions_html}
+  </div>
+  <div class="tab-panel assumptions-panel" id="panel-scenario-parameters">
+    {scenario_params_html}
   </div>
 
   {_TABS_JS}

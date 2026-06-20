@@ -1,6 +1,6 @@
 # Active Context — Net Worth Navigator
 
-**Iteration Window:** 2026-06-19 → 2026-06-19
+**Iteration Window:** 2026-06-19 → 2026-06-20
 **Current Status:** V1 is stable, and the next planned architecture shift is a move from one root config to a scenario-based model. The immediate design direction is shared tax-table extraction plus one-scenario-per-file with editor-driven rendering and a manifest-backed shell projections page. The 2026-06-19 model-accuracy audit delivered the core fixes: separate cash return, inflation-consistent spending basis, explicit contribution bucket routing, explicit pre-retirement spending controls, and configurable wage tax treatment (defaulting to `net_cash` for Monarch semantics).
 
 ## Current State
@@ -13,6 +13,7 @@
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view
 - First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via the 2025 federal ordinary-income bracket schedule plus standard deduction, with effective-rate fallback retained only for compatibility
+- Required Minimum Distribution (RMD) modeling is now supported via optional `taxes.rmd` settings: forced annual traditional-account withdrawals based on IRS life-expectancy factors feed modeled cash flow and taxable income
 - Ordinary-income tax brackets, standard deductions, simplified Social Security provisional-income thresholds, and Oregon state tax reference data now load from shared tax-table TOML under `config/tax_tables/`, while scenario-specific tax toggles remain in `config.toml [taxes]`
 - Event-level taxability is now configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
 - Withdrawal-source taxation and sequencing are now active: deficits withdraw from cash → taxable → trad IRA → Roth, with taxable/trad withdrawals feeding the bracket-based ordinary-income tax path
@@ -49,6 +50,12 @@
 - Gantt includes liability payoff milestones derived from the projection output and uses a centered legend
 - Gantt row labels now include event/liability icons, use larger tick-label text, and the Gantt includes a survivor-period band aligned to the projection output
 - Assumptions tab now summarizes the current config inputs for people, market assumptions, spending, and withdrawal-policy cash targets
+- New Scenario Parameters tab provides per-scenario audit detail (scenario metadata, tax/RMD controls, withdrawal orders/surplus orders, per-person contribution semantics, enabled-event metrics)
+- Scenario Parameters supports baseline-vs-default diff emphasis (`param-diff` row styling) and a `Show only differences` toggle
+- Diff-only toggle defaults OFF for default scenario and ON for non-default scenarios
+- `run.py` now supports scenario-level synthetic start balances via `[data_source].mode = "synthetic"` and `[synthetic_start]` so shareable scenarios can bypass Monarch/cache entirely
+- Added a share-safe `scenarios/sample.toml` synthetic scenario with realistic recurring/one-time events (home maintenance, roof/HVAC replacement, vehicle purchase/replacement, travel, consulting)
+- Synthesized retirement/SS labels now use configured person-name initials (e.g., A/S in sample scenarios) instead of hardcoded person-key initials (M/W)
 - Gantt row pitch and bar geometry were tuned together for a denser layout: slimmer bars, materially less vertical whitespace, and a more compact overall chart height
 - Both tables scroll horizontally, yearly tick columns
 - First-column labels and section bands are frozen via JS `translateX(scrollLeft)` + `requestAnimationFrame`
