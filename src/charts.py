@@ -841,7 +841,7 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
     events_df = df[df["events_active"] != ""].copy()
     for _, row in events_df.iterrows():
         label  = row["events_active"]
-        is_eop = "⚰️" in label
+        is_eop = "💀" in label
         fig.add_vline(
             x=row["year"],
             line_dash="dash" if is_eop else "dot",

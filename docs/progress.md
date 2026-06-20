@@ -109,7 +109,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - SS survivor benefit: on Person 1's death, Person 2 steps up to $2,691/mo (his higher check)
 - Survivor period: spending switches to survivor_annual ($66,500 = ~70% of $95K)
 - Survivor period shading on chart (gray vrect, paper-space label)
-- Emoji icons for all event types: ⚰️🏖️🏛️💸💰🏠💼⏸️🎓💍🚗
+- Emoji icons for all event types: 💀🏖️🏛️💸💰🏠💼⏸️🎓💍🚗
 - Annotation overlap fix: EndOfPlan uses bottom-right; alternating positions for others;
   survivor label moved to paper-space annotation
 - Chart subtitle: "Values shown are end-of-year estimates, anchored to live Monarch balances"

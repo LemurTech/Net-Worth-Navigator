@@ -20,7 +20,7 @@ CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
 
 # ── Event type → emoji icon ────────────────────────────────────────────────────
 EVENT_ICONS = {
-    "EndOfPlan":      "⚰️",
+    "EndOfPlan":      "💀",
     "Retire":         "🎉",
     "SocialSecurity": "🏛️",
     "Expense":        "💸",
