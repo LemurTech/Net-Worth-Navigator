@@ -25,7 +25,7 @@
 - `SellHome` proceeds are now preserved in cash in the sale year rather than being auto-invested into existing non-cash buckets
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
-- Social Security event timing and monthly benefit are now synced at runtime from each person's `ss_start_age` plus the matching `social_security_benefits` bracket, with legacy `ss_monthly_benefit` retained as a compatibility fallback; `ss_start_year` has been removed from the person-level config surface
+- Retirement timing and Social Security timing/benefits are now synthesized at runtime from person settings (`retirement_year`, `ss_start_age`, and matching `social_security_benefits` with `ss_monthly_benefit` fallback), while preserving legacy event metadata overrides for compatibility
 - Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a compatibility fallback
 - Pre-retirement take-home income can now grow annually from inflation plus person-level `annual_take_home_real_raise`, and 401(k) contributions can now grow from that same income path plus person-level `annual_401k_contribution_extra_increase`
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉

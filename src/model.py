@@ -78,7 +78,8 @@ def resolve_runtime_config(config: dict) -> dict:
         runtime.get("simulation", {}),
     )
     runtime["events"] = _sync_end_of_plan_years(runtime)
-    runtime["events"] = _sync_social_security_events(runtime)
+    runtime["events"] = _resolve_retirement_events(runtime)
+    runtime["events"] = _resolve_social_security_events(runtime)
     return runtime
 
 
@@ -101,32 +102,196 @@ def _sync_end_of_plan_years(config: dict) -> list[dict]:
     return synced
 
 
-def _sync_social_security_events(config: dict) -> list[dict]:
-    """Sync SocialSecurity event timing/benefit to person-level SS settings."""
-    synced: list[dict] = []
-    for event in config.get("events", []):
-        updated = dict(event)
-        if updated.get("type") == "SocialSecurity" and updated.get("person"):
-            person = config.get(str(updated["person"]), {})
-            dob = person.get("dob")
-            ss_start_age = person.get("ss_start_age")
-            if dob and ss_start_age is not None:
-                try:
-                    birth_year = int(str(dob).split("-", 1)[0])
-                    updated["year"] = birth_year + int(ss_start_age)
-                except (TypeError, ValueError):
-                    pass
-            ss_monthly_benefit = _resolve_social_security_monthly_benefit(
-                person,
-                ss_start_age=ss_start_age,
-            )
-            if ss_monthly_benefit is not None:
-                try:
-                    updated["monthly_benefit"] = float(ss_monthly_benefit)
-                except (TypeError, ValueError):
-                    pass
-        synced.append(updated)
-    return synced
+def _resolve_retirement_events(config: dict) -> list[dict]:
+    """Return events with Retire derived from person-level retirement settings.
+
+    Person sections are the source of truth for retirement timing.
+    Legacy Retire events are treated as compatibility metadata carriers
+    (for example label / enabled) and are replaced by synthesized runtime
+    events where person settings are complete.
+    """
+    events = list(config.get("events", []))
+
+    legacy_retire_by_person: dict[str, dict] = {}
+    passthrough_events: list[dict] = []
+    for event in events:
+        etype = event.get("type")
+        person_key = str(event.get("person", "")).lower()
+        if etype == "Retire" and person_key:
+            if person_key not in legacy_retire_by_person:
+                legacy_retire_by_person[person_key] = dict(event)
+            continue
+        passthrough_events.append(dict(event))
+
+    resolved_events = list(passthrough_events)
+    handled_person_keys = set()
+    for person_key in ("matthew", "weny"):
+        handled_person_keys.add(person_key)
+        person = config.get(person_key)
+        if not isinstance(person, dict):
+            if person_key in legacy_retire_by_person:
+                resolved_events.append(dict(legacy_retire_by_person[person_key]))
+            continue
+
+        synthesized = _synthesize_retire_event(
+            person_key=person_key,
+            person=person,
+            legacy_event=legacy_retire_by_person.get(person_key),
+        )
+        if synthesized is not None:
+            resolved_events.append(synthesized)
+            continue
+
+        # Fallback compatibility path: keep a legacy Retire event when
+        # person-level fields are incomplete and synthesis is not possible.
+        if person_key in legacy_retire_by_person:
+            resolved_events.append(dict(legacy_retire_by_person[person_key]))
+
+    # Preserve any Retire events for non-default person keys untouched.
+    for person_key, legacy_event in legacy_retire_by_person.items():
+        if person_key not in handled_person_keys:
+            resolved_events.append(dict(legacy_event))
+
+    return resolved_events
+
+
+def _synthesize_retire_event(
+    *,
+    person_key: str,
+    person: dict,
+    legacy_event: dict | None,
+) -> dict | None:
+    retirement_year = person.get("retirement_year")
+    if retirement_year is None:
+        return None
+
+    try:
+        retirement_year = int(retirement_year)
+    except (TypeError, ValueError):
+        return None
+
+    event = {
+        "enabled": True,
+        "type": "Retire",
+        "label": f"Retirement ({person_key[:1].upper()})",
+        "person": person_key,
+        "year": retirement_year,
+    }
+
+    if legacy_event:
+        if "enabled" in legacy_event:
+            event["enabled"] = legacy_event["enabled"]
+        if legacy_event.get("label"):
+            event["label"] = legacy_event["label"]
+        if "chart_first_occurrence_only" in legacy_event:
+            event["chart_first_occurrence_only"] = legacy_event[
+                "chart_first_occurrence_only"
+            ]
+
+    return event
+
+
+def _resolve_social_security_events(config: dict) -> list[dict]:
+    """Return events with Social Security derived from person-level settings.
+
+    Person sections are the source of truth for SS start age and benefit values.
+    Legacy SocialSecurity events are treated as compatibility metadata carriers
+    (for example label / taxable_fraction / enabled) and are replaced by
+    synthesized runtime events where person settings are complete.
+    """
+    events = list(config.get("events", []))
+
+    legacy_ss_by_person: dict[str, dict] = {}
+    passthrough_events: list[dict] = []
+    for event in events:
+        etype = event.get("type")
+        person_key = str(event.get("person", "")).lower()
+        if etype == "SocialSecurity" and person_key:
+            if person_key not in legacy_ss_by_person:
+                legacy_ss_by_person[person_key] = dict(event)
+            continue
+        passthrough_events.append(dict(event))
+
+    resolved_events = list(passthrough_events)
+    handled_person_keys = set()
+    for person_key in ("matthew", "weny"):
+        handled_person_keys.add(person_key)
+        person = config.get(person_key)
+        if not isinstance(person, dict):
+            if person_key in legacy_ss_by_person:
+                resolved_events.append(dict(legacy_ss_by_person[person_key]))
+            continue
+
+        synthesized = _synthesize_social_security_event(
+            person_key=person_key,
+            person=person,
+            legacy_event=legacy_ss_by_person.get(person_key),
+        )
+        if synthesized is not None:
+            resolved_events.append(synthesized)
+            continue
+
+        # Fallback compatibility path: keep a legacy SocialSecurity event when
+        # person-level fields are incomplete and synthesis is not possible.
+        if person_key in legacy_ss_by_person:
+            resolved_events.append(dict(legacy_ss_by_person[person_key]))
+
+    # Preserve any SocialSecurity events for non-default person keys untouched.
+    for person_key, legacy_event in legacy_ss_by_person.items():
+        if person_key not in handled_person_keys:
+            resolved_events.append(dict(legacy_event))
+
+    return resolved_events
+
+
+def _synthesize_social_security_event(
+    *,
+    person_key: str,
+    person: dict,
+    legacy_event: dict | None,
+) -> dict | None:
+    dob = person.get("dob")
+    ss_start_age = person.get("ss_start_age")
+    if not dob or ss_start_age is None:
+        return None
+
+    try:
+        birth_year = int(str(dob).split("-", 1)[0])
+        start_year = birth_year + int(ss_start_age)
+    except (TypeError, ValueError):
+        return None
+
+    monthly_benefit = _resolve_social_security_monthly_benefit(
+        person,
+        ss_start_age=ss_start_age,
+    )
+    if monthly_benefit is None:
+        return None
+
+    try:
+        monthly_benefit = float(monthly_benefit)
+    except (TypeError, ValueError):
+        return None
+
+    event = {
+        "enabled": True,
+        "type": "SocialSecurity",
+        "label": f"SS Begins ({person_key[:1].upper()})",
+        "person": person_key,
+        "year": start_year,
+        "monthly_benefit": monthly_benefit,
+    }
+
+    if legacy_event:
+        if "enabled" in legacy_event:
+            event["enabled"] = legacy_event["enabled"]
+        if legacy_event.get("label"):
+            event["label"] = legacy_event["label"]
+        for field in ("taxable", "taxable_fraction", "chart_first_occurrence_only"):
+            if field in legacy_event:
+                event[field] = legacy_event[field]
+
+    return event
 
 
 def _resolve_social_security_monthly_benefit(

@@ -158,7 +158,75 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(years["matthew"], 2057)
         self.assertEqual(years["weny"], 2066)
 
-    def test_resolve_runtime_config_syncs_social_security_from_person_settings(self):
+    def test_resolve_runtime_config_synthesizes_retirement_from_person_settings(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {
+                "retirement_year": 2035,
+            },
+            "weny": {
+                "retirement_year": 2037,
+            },
+            "events": [],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        retire_events = {
+            event["person"]: event
+            for event in resolved["events"]
+            if event["type"] == "Retire"
+        }
+
+        self.assertEqual(retire_events["matthew"]["year"], 2035)
+        self.assertEqual(retire_events["matthew"]["label"], "Retirement (M)")
+        self.assertEqual(retire_events["weny"]["year"], 2037)
+        self.assertEqual(retire_events["weny"]["label"], "Retirement (W)")
+
+    def test_resolve_runtime_config_retire_keeps_legacy_label_and_enabled(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {
+                "retirement_year": 2035,
+            },
+            "events": [
+                {
+                    "enabled": False,
+                    "type": "Retire",
+                    "label": "Retire (Person 1 legacy)",
+                    "person": "matthew",
+                    "year": 2037,
+                },
+            ],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        retire_event = next(e for e in resolved["events"] if e["type"] == "Retire")
+
+        self.assertEqual(retire_event["year"], 2035)
+        self.assertEqual(retire_event["label"], "Retire (Person 1 legacy)")
+        self.assertFalse(retire_event["enabled"])
+
+    def test_resolve_runtime_config_retire_falls_back_to_legacy_when_missing_person_year(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {},
+            "events": [
+                {
+                    "enabled": True,
+                    "type": "Retire",
+                    "label": "Retirement (M)",
+                    "person": "matthew",
+                    "year": 2037,
+                },
+            ],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        retire_event = next(e for e in resolved["events"] if e["type"] == "Retire")
+
+        self.assertEqual(retire_event["year"], 2037)
+
+    def test_resolve_runtime_config_synthesizes_social_security_from_person_settings(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
             "matthew": {
@@ -180,19 +248,22 @@ class RecurringEventsTests(unittest.TestCase):
                     "70": 1400,
                 },
             },
-            "events": [
-                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (M)", "person": "matthew", "year": 2034, "monthly_benefit": 2691},
-                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (W)", "person": "weny", "year": 2040, "monthly_benefit": 1200},
-            ],
+            "events": [],
         }
 
         resolved = model.resolve_runtime_config(config)
-        ss_events = {event["person"]: event for event in resolved["events"]}
+        ss_events = {
+            event["person"]: event
+            for event in resolved["events"]
+            if event["type"] == "SocialSecurity"
+        }
 
         self.assertEqual(ss_events["matthew"]["year"], 2037)
         self.assertEqual(ss_events["matthew"]["monthly_benefit"], 3698.0)
+        self.assertEqual(ss_events["matthew"]["label"], "SS Begins (M)")
         self.assertEqual(ss_events["weny"]["year"], 2043)
         self.assertEqual(ss_events["weny"]["monthly_benefit"], 1000.0)
+        self.assertEqual(ss_events["weny"]["label"], "SS Begins (W)")
 
     def test_resolve_runtime_config_social_security_uses_legacy_fallback_when_schedule_missing(self):
         config = {
@@ -212,6 +283,38 @@ class RecurringEventsTests(unittest.TestCase):
 
         self.assertEqual(ss_event["year"], 2037)
         self.assertEqual(ss_event["monthly_benefit"], 3698.0)
+
+    def test_resolve_runtime_config_ss_keeps_legacy_taxability_metadata(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "matthew": {
+                "dob": "1967-04-23",
+                "ss_start_age": 70,
+                "social_security_benefits": {
+                    "70": 3698,
+                },
+            },
+            "events": [
+                {
+                    "enabled": False,
+                    "type": "SocialSecurity",
+                    "label": "SS (Person 1 legacy)",
+                    "person": "matthew",
+                    "year": 2034,
+                    "monthly_benefit": 2691,
+                    "taxable_fraction": 0.5,
+                },
+            ],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        ss_event = next(e for e in resolved["events"] if e["type"] == "SocialSecurity")
+
+        self.assertEqual(ss_event["year"], 2037)
+        self.assertEqual(ss_event["monthly_benefit"], 3698.0)
+        self.assertEqual(ss_event["label"], "SS (Person 1 legacy)")
+        self.assertEqual(ss_event["taxable_fraction"], 0.5)
+        self.assertFalse(ss_event["enabled"])
 
     def test_home_value_uses_real_estate_appreciation_when_present(self):
         config = {
