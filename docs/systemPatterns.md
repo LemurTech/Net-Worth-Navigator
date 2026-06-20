@@ -79,6 +79,7 @@ amount = -6000             # negative = cash outflow
 | `CareerBreak` | Bounded | `person`, `start_year`, `end_year` — zeroes earned income |
 | `Education` | Bounded | `person`, `start_year`, `end_year`, `annual_cost` |
 | `Marriage` | Singular | `year` — currently informational; future: tax filing status change |
+| `SpendingShift` | Singular or bounded | `year`, `mode="replace"`, optional `phase`, optional `end_year`, plus replacement spending fields |
 
 ### Model Impact Rules
 
@@ -92,6 +93,7 @@ amount = -6000             # negative = cash outflow
 - `CareerBreak`: zeroes `person.income` for `[start_year, end_year]`
 - `Education`: subtracts `annual_cost` per year for `[start_year, end_year]`
 - `Marriage`: no model impact in V1 (placeholder for future tax filing status)
+- `SpendingShift` (mode=`replace`): changes retirement/survivor baseline spending from `year` (optionally through `end_year`) without creating direct event cashflow lines
 
 ## Critical Paths
 

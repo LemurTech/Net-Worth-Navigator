@@ -312,6 +312,7 @@ EVENT_TYPE_COLORS = {
     "CareerBreak": "rgba(243,156,18,0.78)",
     "Education": "rgba(155,89,182,0.78)",
     "Marriage": "rgba(214,103,137,0.78)",
+    "SpendingShift": "rgba(45, 212, 191, 0.82)",
     "LiabilityPayoff": "rgba(90,160,120,0.82)",
 }
 
@@ -566,6 +567,12 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
             final_year = min(eop_years.get(person, sim_end), retirement_year - 1)
             if final_year >= event["year"]:
                 add_item(event, event["year"], final_year)
+            else:
+                add_item(event, event["year"])
+        elif etype == "SpendingShift":
+            end_year = int(event.get("end_year", sim_end))
+            if end_year > event["year"]:
+                add_item(event, event["year"], end_year)
             else:
                 add_item(event, event["year"])
 

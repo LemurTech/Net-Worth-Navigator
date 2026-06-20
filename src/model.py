@@ -31,6 +31,7 @@ EVENT_ICONS = {
     "CareerBreak":    "⏸️",
     "Education":      "🎓",
     "Marriage":       "💍",
+    "SpendingShift":  "🌍",
 }
 
 EXPENSE_KIND_ICONS = {
@@ -578,6 +579,79 @@ def resolve_survivor_spending(spending: dict) -> float:
     return float(spending.get("survivor_annual", round(retirement_spend * 0.70)))
 
 
+def _spending_shift_phase(event: dict) -> str:
+    """Return normalized SpendingShift phase target."""
+    phase = str(event.get("phase", "retirement_and_survivor")).strip().lower()
+    if phase in {"retirement", "survivor", "retirement_and_survivor"}:
+        return phase
+    return "retirement_and_survivor"
+
+
+def _spending_shift_mode(event: dict) -> str:
+    """Return normalized SpendingShift mode."""
+    return str(event.get("mode", "replace")).strip().lower()
+
+
+def _event_active_for_year(event: dict, year: int) -> bool:
+    """Return whether an event with year/end_year is active in a given year."""
+    start = int(event.get("year", year))
+    end_raw = event.get("end_year")
+    if end_raw is None:
+        return year >= start
+    end = int(end_raw)
+    return start <= year <= end
+
+
+def resolve_spending_shift_for_year(
+    *,
+    base_retirement_spend: float,
+    base_survivor_spend: float,
+    events: list[dict],
+    year: int,
+    in_survivor_phase: bool,
+) -> tuple[float, float]:
+    """Apply active SpendingShift events for the current year.
+
+    MVP semantics:
+    - mode=replace only
+    - shifts retirement and/or survivor baseline spending by phase
+    - latest matching active event in config order wins
+    """
+    retirement_spend = float(base_retirement_spend)
+    survivor_spend = float(base_survivor_spend)
+
+    for event in events:
+        if event.get("type") != "SpendingShift":
+            continue
+        if not _event_active_for_year(event, year):
+            continue
+
+        phase = _spending_shift_phase(event)
+        if in_survivor_phase:
+            if phase not in {"survivor", "retirement_and_survivor"}:
+                continue
+        else:
+            if phase not in {"retirement", "retirement_and_survivor"}:
+                continue
+
+        mode = _spending_shift_mode(event)
+        if mode != "replace":
+            raise ValueError(
+                f"SpendingShift event '{event.get('label', '?')}' has unsupported mode '{mode}'. Supported: replace"
+            )
+
+        if phase in {"retirement", "retirement_and_survivor"} and "retirement_annual" in event:
+            retirement_spend = float(event["retirement_annual"])
+
+        if phase in {"survivor", "retirement_and_survivor"}:
+            if "survivor_annual" in event:
+                survivor_spend = float(event["survivor_annual"])
+            elif "survivor_percent_of_retirement" in event:
+                survivor_spend = retirement_spend * float(event["survivor_percent_of_retirement"])
+
+    return retirement_spend, survivor_spend
+
+
 def _combined_annual_growth_rate(*rates) -> float:
     """Return the compounded annual growth rate produced by multiple components."""
     factor = 1.0
@@ -1073,6 +1147,11 @@ def run_projection(
                     icon = EVENT_ICONS["Marriage"]
                     active_labels.append(f"{icon} {event['label']}")
 
+            elif etype == "SpendingShift":
+                if event["year"] == year and should_show_chart_label(event):
+                    icon = EVENT_ICONS["SpendingShift"]
+                    active_labels.append(f"{icon} {event['label']}")
+
         mortgage_balance = sum(
             s["balance"] for s in lib_state if s["type"] == "mortgage"
         )
@@ -1196,12 +1275,19 @@ def run_projection(
         total_cash_required_contrib = sum(cash_required_contrib_buckets.values())
 
         # ── Net cash flow for the year ─────────────────────────────────────────
-        target_spend   = spending.get("retirement_annual", 0)
+        target_spend = float(spending.get("retirement_annual", 0.0))
         survivor_spend = resolve_survivor_spending(spending)
-        both_retired   = matthew_retired and weny_retired
-        one_deceased   = matthew_deceased or weny_deceased
+        both_retired = matthew_retired and weny_retired
+        one_deceased = matthew_deceased or weny_deceased
 
         if both_retired:
+            target_spend, survivor_spend = resolve_spending_shift_for_year(
+                base_retirement_spend=target_spend,
+                base_survivor_spend=survivor_spend,
+                events=events,
+                year=year,
+                in_survivor_phase=one_deceased,
+            )
             base_spend = survivor_spend if one_deceased else target_spend
             annual_spend = base_spend
             if resolve_spending_basis(spending) == "real":

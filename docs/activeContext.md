@@ -35,6 +35,7 @@
 - Recurring events now expand at runtime for both the model and Gantt via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
 - Recurring event definitions can now set `chart_first_occurrence_only = true` so the event still affects the model and tables on every occurrence while only the first occurrence is annotated on the main projection chart
 - Bounded `Income` events now annotate each active year by default (instead of start-year-only); setting `chart_first_occurrence_only = true` still suppresses labels for later recurring occurrences
+- New `SpendingShift` event type (MVP: `mode="replace"`) can change retirement/survivor baseline spending from a start year (optionally through `end_year`) to model regime changes like moving countries
 - Raw config editor is now available at `http://casalemuria.lan/finances/config/`
 - Config editor projection links now append a one-time `refresh=<timestamp>` nonce on click so `Open projection` avoids stale cached pages
 - Editor supports validate, save, and save+offline-rerender actions with timestamped backups under per-scenario paths in `output/config-backups/<slug>/`, auto-pruned to the newest 10 per scenario
