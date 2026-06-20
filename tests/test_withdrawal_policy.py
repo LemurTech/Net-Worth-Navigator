@@ -162,6 +162,26 @@ class WithdrawalPolicyTests(unittest.TestCase):
         )
         self.assertAlmostEqual(contribution, 114.8352278544, places=5)
 
+    def test_take_home_net_of_retirement_contrib_does_not_reduce_implied_spending(self):
+        config = self._base_config()
+        config["matthew"]["retirement_year"] = 2100
+        config["weny"]["retirement_year"] = 2100
+        config["matthew"]["annual_take_home"] = 100.0
+        config["matthew"]["annual_ira_contribution"] = 10.0
+        config["matthew"]["annual_take_home_is_net_of_retirement_contributions"] = True
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["annual_spend"], 100.0)
+        self.assertEqual(row["contribution_roth"], 10.0)
+        self.assertEqual(row["roth"], 10.0)
+
     def test_sell_home_event_converts_equity_to_cash_and_clears_mortgage(self):
         config = self._base_config()
         config["liabilities"] = [

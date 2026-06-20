@@ -727,6 +727,29 @@ def _normalize_contribution_bucket(raw_bucket: object, *, default: str) -> str:
     return bucket if bucket in {"trad_ira", "roth"} else default
 
 
+def _as_bool(value: object, default: bool = False) -> bool:
+    """Parse permissive bool-like config values."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _take_home_is_net_of_retirement_contributions(person: dict) -> bool:
+    """Whether annual_take_home already excludes payroll retirement contributions.
+
+    When true, retirement contributions are treated as payroll-prefunded and should
+    not be subtracted again from implied pre-retirement spending cash.
+    """
+    return _as_bool(
+        person.get("annual_take_home_is_net_of_retirement_contributions"),
+        default=False,
+    )
+
+
 def _person_retirement_contribution_breakdown(
     person: dict,
     *,
@@ -953,7 +976,7 @@ def run_projection(
                         taxable_event_income += (
                             event["amount"] * _event_taxable_fraction(event, default=1.0)
                         )
-                    if event["year"] == year and should_show_chart_label(event):
+                    if should_show_chart_label(event):
                         icon = EVENT_ICONS["Income"]
                         active_labels.append(f"{icon} {event['label']}")
 
@@ -1152,13 +1175,25 @@ def run_projection(
                 assumptions=assumptions,
             )
         )
-        contrib_buckets = {
-            "trad_ira": matthew_contrib_buckets["trad_ira"] + weny_contrib_buckets["trad_ira"],
-            "roth": matthew_contrib_buckets["roth"] + weny_contrib_buckets["roth"],
-        }
-        matthew_contrib = sum(matthew_contrib_buckets.values())
-        weny_contrib = sum(weny_contrib_buckets.values())
-        total_contrib = matthew_contrib + weny_contrib
+
+        prefunded_contrib_buckets = {"trad_ira": 0.0, "roth": 0.0}
+        cash_required_contrib_buckets = {"trad_ira": 0.0, "roth": 0.0}
+
+        matthew_prefunded = _take_home_is_net_of_retirement_contributions(matthew)
+        weny_prefunded = _take_home_is_net_of_retirement_contributions(weny)
+
+        for bucket in ("trad_ira", "roth"):
+            if matthew_prefunded:
+                prefunded_contrib_buckets[bucket] += matthew_contrib_buckets[bucket]
+            else:
+                cash_required_contrib_buckets[bucket] += matthew_contrib_buckets[bucket]
+
+            if weny_prefunded:
+                prefunded_contrib_buckets[bucket] += weny_contrib_buckets[bucket]
+            else:
+                cash_required_contrib_buckets[bucket] += weny_contrib_buckets[bucket]
+
+        total_cash_required_contrib = sum(cash_required_contrib_buckets.values())
 
         # ── Net cash flow for the year ─────────────────────────────────────────
         target_spend   = spending.get("retirement_annual", 0)
@@ -1179,7 +1214,7 @@ def run_projection(
             annual_spend = resolve_pre_retirement_spending(
                 spending,
                 total_income=total_income,
-                total_contrib=total_contrib,
+                total_contrib=total_cash_required_contrib,
                 assumptions=assumptions,
                 year=year,
                 simulation_start_year=start_year,
@@ -1242,12 +1277,17 @@ def run_projection(
         )
         withdrawal_taxable_income = 0.0
         withdrawal_breakdown = _empty_withdrawal_breakdown()
-        contribution_breakdown = {"trad_ira": 0.0, "roth": 0.0}
+        contribution_breakdown = prefunded_contrib_buckets.copy()
         working_portfolio = grown_portfolio.copy()
 
         # Iterate because taxable withdrawals themselves increase taxes.
         for _ in range(12):
             working_portfolio = grown_portfolio.copy()
+            contribution_breakdown = prefunded_contrib_buckets.copy()
+            for bucket, amount in prefunded_contrib_buckets.items():
+                if amount > 0:
+                    working_portfolio[bucket] = working_portfolio.get(bucket, 0.0) + amount
+
             post_tax_flow = base_net_flow - annual_taxes
 
             if post_tax_flow >= 0:
@@ -1256,16 +1296,16 @@ def run_projection(
                     working_portfolio["cash"] = working_portfolio.get("cash", 0.0) + preserved_cash
 
                 available_for_contrib = max(0.0, post_tax_flow - preserved_cash)
-                trad_contrib = min(contrib_buckets["trad_ira"], available_for_contrib)
+                trad_contrib = min(cash_required_contrib_buckets["trad_ira"], available_for_contrib)
                 available_for_contrib -= trad_contrib
-                roth_contrib = min(contrib_buckets["roth"], available_for_contrib)
+                roth_contrib = min(cash_required_contrib_buckets["roth"], available_for_contrib)
                 available_for_contrib -= roth_contrib
                 if trad_contrib > 0:
                     working_portfolio["trad_ira"] = working_portfolio.get("trad_ira", 0.0) + trad_contrib
                 if roth_contrib > 0:
                     working_portfolio["roth"] = working_portfolio.get("roth", 0.0) + roth_contrib
-                contribution_breakdown["trad_ira"] = trad_contrib
-                contribution_breakdown["roth"] = roth_contrib
+                contribution_breakdown["trad_ira"] += trad_contrib
+                contribution_breakdown["roth"] += roth_contrib
 
                 _apply_surplus_with_reserve_target(
                     working_portfolio,
@@ -1282,7 +1322,6 @@ def run_projection(
                     withdrawal_order=withdrawal_order,
                     cash_target=cash_target,
                 )
-                contribution_breakdown = {"trad_ira": 0.0, "roth": 0.0}
                 if unmet_deficit > 0:
                     for cat in working_portfolio:
                         working_portfolio[cat] = 0.0

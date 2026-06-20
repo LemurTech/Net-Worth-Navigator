@@ -28,16 +28,20 @@
 - Retirement timing and Social Security timing/benefits are now synthesized at runtime from person settings (`retirement_year`, `ss_start_age`, and matching `social_security_benefits` with `ss_monthly_benefit` fallback), while preserving legacy event metadata overrides for compatibility
 - Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a compatibility fallback
 - Pre-retirement take-home income can now grow annually from inflation plus person-level `annual_take_home_real_raise`, and 401(k) contributions can now grow from that same income path plus person-level `annual_401k_contribution_extra_increase`
+- Person-level `annual_take_home_is_net_of_retirement_contributions` is now supported: when true, retirement contributions are treated as payroll-prefunded (still routed into IRA/Roth buckets) and are not subtracted again from implied pre-retirement spending cash
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
 - Recurring events now expand at runtime for both the model and Gantt via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
 - Recurring event definitions can now set `chart_first_occurrence_only = true` so the event still affects the model and tables on every occurrence while only the first occurrence is annotated on the main projection chart
+- Bounded `Income` events now annotate each active year by default (instead of start-year-only); setting `chart_first_occurrence_only = true` still suppresses labels for later recurring occurrences
 - Raw config editor is now available at `http://casalemuria.lan/finances/config/`
+- Config editor projection links now append a one-time `refresh=<timestamp>` nonce on click so `Open projection` avoids stale cached pages
 - Editor supports validate, save, and save+offline-rerender actions with timestamped backups under per-scenario paths in `output/config-backups/<slug>/`, auto-pruned to the newest 10 per scenario
 - The active default scenario now lives in `scenarios/default.toml`; root `config.toml` is a migration fallback only
 - The config editor now supports scenario selection, clone/create inputs, and a `Save + Render All` control for batch output refresh
 - The public `projection.html` entry point now serves as a scenario shell page backed by `output/scenarios/index.json`, with rendered scenario pages loaded inside an iframe
+- Scenario shell iframe URLs now include a version query parameter (`v=<rendered_at/generated_at>`) and expose a `Refresh Frame` control that appends a nonce to force-load the latest rendered scenario page when browser caching gets sticky
 - Scenario TOMLs are intended to be local-only working files rather than shared repository state
 - Projection page now includes a bottom-fixed `Edit Config` shortcut
 - The editor backend now runs as a small FastAPI app, proxied behind the static nginx container
@@ -78,7 +82,7 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 2. **Wage tax treatment is now configurable and set to net-cash in default scenario.** `taxes.wage_tax_treatment` supports `net_cash` (current default) and `taxable_wages`; with `net_cash`, wages remain cashflow-only and do not enter ordinary-income tax or Social Security provisional-income calculations.
 3. **Retirement/survivor spending was flat nominal despite “today’s dollars” comments.** Started fix: `[spending].spending_basis = "real"` now inflates retirement/survivor targets by CPI; `nominal` remains available as an explicit mode.
 4. **401(k)/IRA contributions now route to explicit destination buckets** (`trad_ira` / `roth`) before generic surplus allocation, with optional per-person bucket overrides (`annual_401k_contribution_bucket`, `annual_ira_contribution_bucket`). IRS caps/employer match logic is still pending.
-5. **Pre-retirement spending control is now implemented with explicit precedence.** The model now applies: `pre_retirement_spending` (highest) → `annual_savings_override` → implied `total_income - total_contrib`, with real-dollar inflation handling when `spending_basis = "real"`.
+5. **Pre-retirement spending control is now implemented with explicit precedence.** The model now applies: `pre_retirement_spending` (highest) → `annual_savings_override` → implied `total_income - cash_required_total_contrib`, with real-dollar inflation handling when `spending_basis = "real"` and support for payroll-prefunded contributions via `annual_take_home_is_net_of_retirement_contributions`.
 
 ### Next implementation slices after current in-progress fixes
 

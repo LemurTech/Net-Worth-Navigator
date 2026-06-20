@@ -286,7 +286,7 @@
             {% endfor %}
           </select>
         </form>
-        <a class="linkbtn" href="{{ projection_url }}">Open projection</a>
+        <a class="linkbtn" id="open-projection-btn" href="{{ projection_url }}">Open projection</a>
       </div>
     </div>
 
@@ -298,7 +298,7 @@
         </div>
         <div class="meta-item">
           <span class="meta-label">Projection</span>
-          <div class="meta-value"><a href="{{ projection_url }}">{{ projection_url }}</a></div>
+          <div class="meta-value"><a id="projection-link" href="{{ projection_url }}">{{ projection_url }}</a></div>
         </div>
         <div class="meta-item">
           <span class="meta-label">Description</span>
@@ -358,5 +358,27 @@
       <div class="hint">Backups are written to <code>{{ backup_dir }}</code> before each save.</div>
     </form>
   </div>
+  <script>
+    (function () {
+      function withRefreshNonce(urlText) {
+        const url = new URL(urlText, window.location.origin);
+        url.searchParams.set("refresh", Date.now().toString());
+        return url.toString();
+      }
+
+      function installCacheBustedLink(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("click", function (evt) {
+          evt.preventDefault();
+          const target = withRefreshNonce(el.getAttribute("href") || "");
+          window.location.href = target;
+        });
+      }
+
+      installCacheBustedLink("open-projection-btn");
+      installCacheBustedLink("projection-link");
+    })();
+  </script>
 </body>
 </html>

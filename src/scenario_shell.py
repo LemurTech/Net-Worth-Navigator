@@ -138,6 +138,8 @@ def build_scenario_shell(
       background: linear-gradient(180deg, rgba(22,34,52,0.96), rgba(20,31,48,0.86));
       font-size: 13px;
       font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
       white-space: nowrap;
       transition: transform .14s ease, border-color .14s ease, background .14s ease;
     }}
@@ -261,6 +263,7 @@ def build_scenario_shell(
           </div>
           <div class="control-actions">
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
+            <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
             <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
           </div>
         </div>
@@ -297,6 +300,7 @@ def build_scenario_shell(
       const description = document.getElementById("scenario-description");
       const frame = document.getElementById("scenario-frame");
       const openLink = document.getElementById("open-scenario-link");
+      const refreshButton = document.getElementById("refresh-frame-btn");
       const frameWrap = document.getElementById("frame-wrap");
       const emptyState = document.getElementById("empty-state");
 
@@ -309,6 +313,27 @@ def build_scenario_shell(
         option.textContent = scenario.name;
         select.appendChild(option);
       }});
+
+      function projectionUrlFor(selected, {{ embed = false, force = false }} = {{}}) {{
+        const base = selected.projection_path;
+        const version = selected.rendered_at || manifest.generated_at || new Date().toISOString();
+        const params = new URLSearchParams();
+        if (embed) params.set("embed", "1");
+        params.set("v", version);
+        if (force) params.set("refresh", Date.now().toString());
+        return `${{base}}?${{params.toString()}}`;
+      }}
+
+      function currentSelectedScenario() {{
+        const slug = select.value || getScenarioFromQuery();
+        return scenarios.find((scenario) => scenario.slug === slug) || null;
+      }}
+
+      function hardRefreshFrame() {{
+        const selected = currentSelectedScenario();
+        if (!selected) return;
+        frame.src = projectionUrlFor(selected, {{ embed: true, force: true }});
+      }}
 
       function activateScenario(slug) {{
         const selected = scenarios.find((scenario) => scenario.slug === slug) || scenarios.find((scenario) => scenario.slug === manifest.default_slug) || scenarios[0];
@@ -323,14 +348,15 @@ def build_scenario_shell(
 
         select.value = selected.slug;
         description.textContent = selected.description || "No description provided.";
-        frame.src = selected.projection_path + "?embed=1";
-        openLink.href = selected.projection_path;
+        frame.src = projectionUrlFor(selected, {{ embed: true }});
+        openLink.href = projectionUrlFor(selected, {{ embed: false }});
         frameWrap.classList.remove("empty");
         emptyState.classList.remove("active");
         setQueryScenario(selected.slug);
       }}
 
       select.addEventListener("change", () => activateScenario(select.value));
+      refreshButton?.addEventListener("click", hardRefreshFrame);
       activateScenario(getScenarioFromQuery() || manifest.default_slug || initialDefaultSlug);
     }}
 
