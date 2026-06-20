@@ -172,12 +172,12 @@ function applyResponsiveChartLayout() {
       'legend.orientation': 'h',
       'legend.x': 0.5,
       'legend.xanchor': 'center',
-      'legend.y': -0.20,
+      'legend.y': -0.30,
       'legend.yanchor': 'top',
       'legend.font.size': 10,
       'title.font.size': 15,
       'margin.t': 72,
-      'margin.b': 104
+      'margin.b': 136
     } : {
       'legend.orientation': 'h',
       'legend.x': 0.5,
