@@ -883,6 +883,26 @@ def _normalize_contribution_bucket(raw_bucket: object, *, default: str) -> str:
     return bucket if bucket in {"trad_ira", "roth"} else default
 
 
+def _normalize_401k_contribution_split(raw_split: object) -> dict[str, float] | None:
+    """Return normalized trad/Roth 401(k) split weights when configured."""
+    if not isinstance(raw_split, dict):
+        return None
+
+    weights = {}
+    total = 0.0
+    for bucket in ("trad_ira", "roth"):
+        try:
+            weight = max(0.0, float(raw_split.get(bucket, 0.0)))
+        except (TypeError, ValueError):
+            weight = 0.0
+        weights[bucket] = weight
+        total += weight
+
+    if total <= 0.0:
+        return None
+    return {bucket: weight / total for bucket, weight in weights.items()}
+
+
 def _as_bool(value: object, default: bool = False) -> bool:
     """Parse permissive bool-like config values."""
     if value is None:
@@ -916,7 +936,7 @@ def _person_retirement_contribution_breakdown(
     """Return current-year retirement contributions by destination bucket.
 
     Defaults:
-    - 401(k) -> trad_ira
+    - 401(k) -> trad_ira unless annual_401k_contribution_split is configured
     - IRA -> roth
     """
     annual_401k = _project_person_401k_contribution(
@@ -938,9 +958,17 @@ def _person_retirement_contribution_breakdown(
         person.get("annual_ira_contribution_bucket"),
         default="roth",
     )
+    split_401k = _normalize_401k_contribution_split(
+        person.get("annual_401k_contribution_split")
+    )
 
     breakdown = {"trad_ira": 0.0, "roth": 0.0}
-    breakdown[bucket_401k] += max(0.0, annual_401k)
+    annual_401k = max(0.0, annual_401k)
+    if split_401k is not None:
+        for bucket, ratio in split_401k.items():
+            breakdown[bucket] += annual_401k * ratio
+    else:
+        breakdown[bucket_401k] += annual_401k
     breakdown[bucket_ira] += max(0.0, annual_ira)
     return breakdown
 

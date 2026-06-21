@@ -56,6 +56,24 @@ def _fmt_percent(value) -> str:
     return f"{text}%"
 
 
+def _fmt_401k_split(value) -> str:
+    if not isinstance(value, dict):
+        return "—"
+    try:
+        trad = max(0.0, float(value.get("trad_ira", 0.0)))
+        roth = max(0.0, float(value.get("roth", 0.0)))
+    except (TypeError, ValueError):
+        return "—"
+    total = trad + roth
+    if total <= 0:
+        return "—"
+    trad_pct = (trad / total) * 100.0
+    roth_pct = (roth / total) * 100.0
+    trad_text = f"{trad_pct:.1f}".rstrip("0").rstrip(".")
+    roth_text = f"{roth_pct:.1f}".rstrip("0").rstrip(".")
+    return f"{trad_text}% trad / {roth_text}% Roth"
+
+
 def _resolve_survivor_annual(spending: dict) -> float:
     retirement_annual = float(spending.get("retirement_annual", 0.0))
     survivor_ratio = spending.get("survivor_percent_of_retirement")
@@ -561,6 +579,12 @@ def build_scenario_parameters_summary(
                 person.get("annual_401k_contribution_extra_increase"),
                 baseline_person.get("annual_401k_contribution_extra_increase"),
                 _fmt_percent,
+            ),
+            _diff_row(
+                "401k contribution split",
+                person.get("annual_401k_contribution_split"),
+                baseline_person.get("annual_401k_contribution_split"),
+                _fmt_401k_split,
             ),
             _diff_row(
                 "IRA contribution (annual)",

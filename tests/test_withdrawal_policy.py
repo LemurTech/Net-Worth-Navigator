@@ -254,6 +254,37 @@ class WithdrawalPolicyTests(unittest.TestCase):
         )
         self.assertAlmostEqual(contribution, 114.8352278544, places=5)
 
+    def test_401k_split_routes_total_contribution_between_trad_and_roth(self):
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "annual_401k_contribution": 100.0,
+                "annual_401k_contribution_split": {
+                    "trad_ira": 31,
+                    "roth": 69,
+                },
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+
+        self.assertAlmostEqual(breakdown["trad_ira"], 31.0)
+        self.assertAlmostEqual(breakdown["roth"], 69.0)
+
+    def test_401k_bucket_override_remains_fallback_when_no_split_is_configured(self):
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "annual_401k_contribution": 100.0,
+                "annual_401k_contribution_bucket": "roth",
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+
+        self.assertAlmostEqual(breakdown["trad_ira"], 0.0)
+        self.assertAlmostEqual(breakdown["roth"], 100.0)
+
     def test_take_home_net_of_retirement_contrib_does_not_reduce_implied_spending(self):
         config = self._base_config()
         config["matthew"]["retirement_year"] = 2100
