@@ -6,6 +6,12 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Assumptions tab baseline-diff support in `src/tables.py` + `src/charts.py`: changed rows now use `param-diff`, includes changed-field count and `Show only differences` filtering parity with Scenario Parameters
+- Scenario-aware projection/editor URL propagation updates in `admin_app.py`, `src/charts.py`, and `src/scenario_shell.py` so shell/editor/projection navigation preserves `?scenario=<slug>`
+- Config editor render-progress overlay spinner (`templates/config_editor.html`) shown during render-triggering submit actions
+- Main-chart event-label control strip (inside chart area, above tax note) with client-side toggles to show all labels or keep only key labels (Retirement, Social Security, End-of-Plan)
+- Regression tests for new behavior in `tests/test_assumptions_summary.py`, `tests/test_scenario_shell.py`, `tests/test_editor_scenarios.py`, and `tests/test_recurring_events.py`
+
 - Scenario Parameters tab in projection page (`src/charts.py` + `src/tables.py`) with detailed per-scenario controls: metadata, tax/RMD settings, withdrawal orders/surplus orders, per-person contribution semantics, and enabled-event metrics
 - Baseline-diff emphasis in Scenario Parameters: rows that differ from default scenario are marked with `param-diff`, and the tab shows a total changed-field count
 - Client-side `Show only differences` filter for Scenario Parameters, including automatic hiding of cards with no diff rows
@@ -85,6 +91,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Changed
 
+- Main-chart event annotations now wrap at two events per line, use right-anchored top-down placement into the graph body, and use softer translucent backgrounds (`rgba(15,23,37,0.60)`) for improved readability with multiline labels
 - Synthesized `Retirement (...)` and `SS Begins (...)` labels now use configured person-name initials instead of person-key initials, so sample scenarios render A/S (etc.) instead of M/W
 - `config.toml [taxes]` now points to shared tax reference data via `table_set = "2025_us_federal_oregon"` instead of inlining the large bracket/deduction tables
 - The current root `config.toml` is now treated as the legacy default scenario until real `scenarios/*.toml` files take over

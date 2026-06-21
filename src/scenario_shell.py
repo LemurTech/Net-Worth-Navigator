@@ -264,7 +264,7 @@ def build_scenario_shell(
           <div class="control-actions">
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
             <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
-            <a class="linkbtn primary" href="{editor_url}">Edit Scenarios</a>
+            <a class="linkbtn primary" id="edit-scenarios-link" href="{editor_url}">Edit Scenarios</a>
           </div>
         </div>
       </div>
@@ -301,6 +301,7 @@ def build_scenario_shell(
       const frame = document.getElementById("scenario-frame");
       const openLink = document.getElementById("open-scenario-link");
       const refreshButton = document.getElementById("refresh-frame-btn");
+      const editScenariosLink = document.getElementById("edit-scenarios-link");
       const frameWrap = document.getElementById("frame-wrap");
       const emptyState = document.getElementById("empty-state");
 
@@ -324,6 +325,14 @@ def build_scenario_shell(
         return `${{base}}?${{params.toString()}}`;
       }}
 
+      function editorUrlFor(selected) {{
+        const url = new URL("{editor_url}", window.location.origin);
+        if (selected && selected.slug) {{
+          url.searchParams.set("scenario", selected.slug);
+        }}
+        return url.toString();
+      }}
+
       function currentSelectedScenario() {{
         const slug = select.value || getScenarioFromQuery();
         return scenarios.find((scenario) => scenario.slug === slug) || null;
@@ -343,6 +352,9 @@ def build_scenario_shell(
           description.textContent = "Render a scenario from the editor to populate the public selector.";
           frame.removeAttribute("src");
           openLink.setAttribute("href", "#");
+          if (editScenariosLink) {{
+            editScenariosLink.setAttribute("href", "{editor_url}");
+          }}
           return;
         }}
 
@@ -350,6 +362,9 @@ def build_scenario_shell(
         description.textContent = selected.description || "No description provided.";
         frame.src = projectionUrlFor(selected, {{ embed: true }});
         openLink.href = projectionUrlFor(selected, {{ embed: false }});
+        if (editScenariosLink) {{
+          editScenariosLink.href = editorUrlFor(selected);
+        }}
         frameWrap.classList.remove("empty");
         emptyState.classList.remove("active");
         setQueryScenario(selected.slug);

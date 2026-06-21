@@ -83,3 +83,39 @@ class EditorScenarioTests(unittest.TestCase):
             self.assertEqual(len(remaining), 10)
             self.assertNotIn(created_paths[0].name, remaining)
             self.assertNotIn(created_paths[1].name, remaining)
+
+    def test_build_context_uses_scenario_specific_projection_and_editor_urls(self):
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            default_path = tmp_path / "default.toml"
+            alt_path = tmp_path / "alt.toml"
+            default_path.write_text("[scenario]\nname='Default'\n", encoding="utf-8")
+            alt_path.write_text("[scenario]\nname='Alt'\n", encoding="utf-8")
+
+            default = ScenarioRef(
+                slug="default",
+                name="Default Plan",
+                description="Baseline",
+                config_path=default_path,
+                is_default=True,
+            )
+            alt = ScenarioRef(
+                slug="alt",
+                name="Alt Plan",
+                description="Alternative",
+                config_path=alt_path,
+                is_default=False,
+            )
+
+            with patch("admin_app._current_scenario", side_effect=lambda slug=None: alt if slug == "alt" else default), \
+                 patch("admin_app.discover_scenarios", return_value=[default, alt]):
+                context = admin_app._build_context(
+                    object(),
+                    content="[scenario]\nname='Alt'\n",
+                    scenario_slug="alt",
+                )
+
+        self.assertTrue(context["projection_url"].endswith("?scenario=alt"))
+        self.assertTrue(context["editor_url"].endswith("?scenario=alt"))

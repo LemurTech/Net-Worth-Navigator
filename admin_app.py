@@ -129,8 +129,8 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "clone_slug": clone_slug,
         "clone_description": clone_description,
         "last_modified": last_modified,
-        "projection_url": PUBLIC_PROJECTION_URL,
-        "editor_url": PUBLIC_EDITOR_URL,
+        "projection_url": f"{PUBLIC_PROJECTION_URL}?scenario={resolved_slug}",
+        "editor_url": f"{PUBLIC_EDITOR_URL}?scenario={resolved_slug}",
     }
 
 
@@ -372,8 +372,8 @@ async def health() -> JSONResponse:
         "ok": True,
         "config_path": str(_config_path(scenario.slug)),
         "scenario_slug": scenario.slug,
-        "projection_url": PUBLIC_PROJECTION_URL,
-        "editor_url": PUBLIC_EDITOR_URL,
+        "projection_url": f"{PUBLIC_PROJECTION_URL}?scenario={scenario.slug}",
+        "editor_url": f"{PUBLIC_EDITOR_URL}?scenario={scenario.slug}",
     })
 
 

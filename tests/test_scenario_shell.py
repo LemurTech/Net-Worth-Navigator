@@ -37,3 +37,6 @@ class ScenarioShellTests(unittest.TestCase):
         self.assertIn("scenarios/default/projection.html", html)
         self.assertIn(json.dumps(manifest), html)
         self.assertIn("scenario-select", html)
+        self.assertIn("edit-scenarios-link", html)
+        self.assertIn('url.searchParams.set("scenario", selected.slug)', html)
+        self.assertIn('editScenariosLink.href = editorUrlFor(selected);', html)

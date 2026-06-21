@@ -26,6 +26,7 @@ _TABS_CSS = """
   body.embedded { padding: 0 0 40px; background: transparent; }
   body.embedded .page-toolbar { display: none; }
   body.embedded .chart-wrap { background: #111827; box-shadow: none; padding: 0; margin: 0 0 8px; border-radius: 10px; overflow: hidden; }
+  body.embedded .event-label-controls { margin: 8px 8px 6px; border-radius: 8px; }
   body.embedded .chart-wrap > div[id^="nwn-chart"] { padding: 0 8px 8px; }
   body.embedded .kpi-strip { margin: 0; border-radius: 0; border-left: none; border-right: none; border-top: none; }
   body.embedded .modeling-note { margin: 0 8px 8px; border-radius: 0 0 8px 8px; }
@@ -33,7 +34,14 @@ _TABS_CSS = """
   body.embedded .gantt-wrap,
   body.embedded .assumptions-wrap,
   body.embedded table.datatable { box-shadow: none; }
-  .page-toolbar { position: fixed; right: 18px; bottom: 18px; z-index: 40; }
+  .page-toolbar { position: fixed; right: 18px; bottom: 18px; z-index: 40;
+                  display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .event-label-controls { display: flex; flex-wrap: wrap; gap: 14px;
+                         padding: 8px 10px; border-radius: 10px; border: 1px solid #243142;
+                         background: rgba(17,24,39,0.82);
+                         font-size: 12px; color: #cbd5e1; margin: 0 6px 8px; }
+  .event-label-controls label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .event-label-controls input[type='checkbox'] { accent-color: #38bdf8; }
   .toolbar-link { display: inline-block; padding: 10px 14px; border-radius: 999px;
                   border: 1px solid #243142; background: rgba(17,24,39,0.94); color: #e5edf7;
                   text-decoration: none; font-size: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.35); }
@@ -115,6 +123,9 @@ _TABS_CSS = """
   }
   table.assumptions-table tbody tr.param-diff th { color: #d1fae5; }
   #panel-scenario-parameters.show-diffs-only table.assumptions-table tbody tr:not(.param-diff) {
+    display: none;
+  }
+  #panel-assumptions.show-diffs-only table.assumptions-table tbody tr:not(.param-diff) {
     display: none;
   }
   table.assumptions-people tbody td:first-child { font-weight: 600; }
@@ -262,6 +273,44 @@ document.addEventListener('DOMContentLoaded', function() {
     applyResponsiveChartLayout();
   });
 
+  function isKeyEventText(text) {
+    var value = String(text || '');
+    return value.indexOf('🎉') !== -1 || value.indexOf('🏛️') !== -1 || value.indexOf('💀') !== -1;
+  }
+
+  function applyEventLabelVisibility() {
+    var chart = document.getElementById('nwn-chart');
+    var showAllToggle = document.getElementById('event-labels-show-all');
+    var keepKeyToggle = document.getElementById('event-labels-keep-key');
+    if (!chart || !chart.layout || !Array.isArray(chart.layout.annotations) || !showAllToggle || !keepKeyToggle || typeof Plotly === 'undefined') return;
+
+    var showAll = !!showAllToggle.checked;
+    var keepKey = !!keepKeyToggle.checked;
+    keepKeyToggle.disabled = showAll;
+
+    var updates = {};
+    chart.layout.annotations.forEach(function(annotation, idx) {
+      if (!annotation || Number(annotation.textangle) !== -90) return;
+      var isKey = isKeyEventText(annotation.text);
+      var visible = showAll || (keepKey && isKey);
+      updates['annotations[' + idx + '].visible'] = visible;
+    });
+
+    if (Object.keys(updates).length > 0) {
+      Plotly.relayout(chart, updates);
+    }
+  }
+
+  var showAllEventLabelsToggle = document.getElementById('event-labels-show-all');
+  var keepKeyEventLabelsToggle = document.getElementById('event-labels-keep-key');
+  if (showAllEventLabelsToggle) {
+    showAllEventLabelsToggle.addEventListener('change', applyEventLabelVisibility);
+  }
+  if (keepKeyEventLabelsToggle) {
+    keepKeyEventLabelsToggle.addEventListener('change', applyEventLabelVisibility);
+  }
+  applyEventLabelVisibility();
+
   function updateScenarioDiffVisibility() {
     var panel = document.getElementById('panel-scenario-parameters');
     var toggle = document.getElementById('scenario-diff-only-toggle');
@@ -283,6 +332,29 @@ document.addEventListener('DOMContentLoaded', function() {
   if (diffToggle) {
     diffToggle.addEventListener('change', updateScenarioDiffVisibility);
     updateScenarioDiffVisibility();
+  }
+
+  function updateAssumptionsDiffVisibility() {
+    var panel = document.getElementById('panel-assumptions');
+    var toggle = document.getElementById('assumptions-diff-only-toggle');
+    if (!panel || !toggle) return;
+
+    var showOnlyDiffs = !!toggle.checked;
+    panel.classList.toggle('show-diffs-only', showOnlyDiffs);
+    panel.querySelectorAll('.assumption-card').forEach(function(card) {
+      if (!showOnlyDiffs) {
+        card.classList.remove('filtered-empty');
+        return;
+      }
+      var hasDiffRow = !!card.querySelector('tr.param-diff');
+      card.classList.toggle('filtered-empty', !hasDiffRow);
+    });
+  }
+
+  var assumptionsDiffToggle = document.getElementById('assumptions-diff-only-toggle');
+  if (assumptionsDiffToggle) {
+    assumptionsDiffToggle.addEventListener('change', updateAssumptionsDiffVisibility);
+    updateAssumptionsDiffVisibility();
   }
 
   document.querySelectorAll('.table-panel').forEach(function(panel) {
@@ -784,12 +856,19 @@ def build_chart(
     cashflow_html  = build_cashflow_table(df)
     portfolio_html = _build_portfolio_chart(df)
     gantt_html     = _build_gantt_chart(config, df)
-    assumptions_html = build_assumptions_summary(config)
+    assumptions_html = build_assumptions_summary(
+        config,
+        scenario=scenario,
+        baseline_config=baseline_config,
+    )
     scenario_params_html = build_scenario_parameters_summary(
         config,
         scenario=scenario,
         baseline_config=baseline_config,
     )
+
+    scenario_slug = getattr(scenario, "slug", None)
+    edit_config_href = f"/finances/config/?scenario={scenario_slug}" if scenario_slug else "/finances/config/"
 
     # Assemble full page
     html = f"""<!DOCTYPE html>
@@ -802,11 +881,15 @@ def build_chart(
 </head>
 <body>
   <div class="page-toolbar">
-    <a class="toolbar-link" href="/finances/config/">Edit Config</a>
+    <a class="toolbar-link" href="{edit_config_href}">Edit Config</a>
   </div>
   <div class="chart-wrap">
     {kpi_html}
     {chart_div}
+    <div class="event-label-controls" id="event-label-controls">
+      <label><input type="checkbox" id="event-labels-show-all" checked> Show all event labels</label>
+      <label><input type="checkbox" id="event-labels-keep-key" checked> Keep key labels when hidden</label>
+    </div>
     {tax_note_html}
   </div>
 
@@ -914,8 +997,9 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
     # ── Event annotations — vertical, right of line ────────────────────────────
     events_df = df[df["events_active"] != ""].copy()
     for _, row in events_df.iterrows():
-        label  = row["events_active"]
-        is_eop = "💀" in label
+        raw_label = str(row["events_active"])
+        label = _wrap_event_annotation(raw_label, per_line=2)
+        is_eop = "💀" in raw_label
         fig.add_vline(
             x=row["year"],
             line_dash="dash" if is_eop else "dot",
@@ -924,8 +1008,11 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
             annotation_position="top right",
             annotation_textangle=-90,
             annotation_font_size=11,
-            annotation_bgcolor="rgba(15,23,37,0.90)",
+            annotation_bgcolor="rgba(15,23,37,0.60)",
             annotation_borderpad=3,
+            annotation_align="right",
+            annotation_xanchor="right",
+            annotation_yanchor="top",
         )
 
     title_text = config.get("display", {}).get("projection_title", "Household Projection")
@@ -961,4 +1048,13 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
     )
 
     return fig
+
+
+def _wrap_event_annotation(label: str, per_line: int = 2) -> str:
+    """Wrap comma-separated event labels into groups to reduce annotation overflow."""
+    parts = [part.strip() for part in str(label).split(",") if part.strip()]
+    if len(parts) <= per_line:
+        return label
+    groups = [parts[i:i + per_line] for i in range(0, len(parts), per_line)]
+    return "<br>".join(", ".join(group) for group in groups)
 

@@ -238,6 +238,39 @@
       color: var(--muted);
       font-size: 13px;
     }
+    .render-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 13, 24, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(1px);
+    }
+    .render-overlay.active { display: flex; }
+    .render-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0f1725;
+      box-shadow: 0 10px 28px rgba(0,0,0,.24);
+      color: #e5edf7;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid rgba(125, 211, 252, 0.25);
+      border-top-color: var(--accent-2);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .scenario-tools {
       padding: 14px 16px;
       border-bottom: 1px solid var(--border);
@@ -330,7 +363,7 @@
       {% endif %}
     </div>
 
-    <form class="card" method="post" action="">
+    <form class="card" method="post" action="" id="config-form">
       <input type="hidden" name="scenario_slug" value="{{ scenario_slug }}">
       <div class="editor-head">Edit the current scenario TOML below. Comments and formatting are preserved because the saved content is written back exactly as entered after validation.</div>
       <div class="scenario-tools">
@@ -358,26 +391,83 @@
       <div class="hint">Backups are written to <code>{{ backup_dir }}</code> before each save.</div>
     </form>
   </div>
+  <div class="render-overlay" id="render-overlay" aria-live="polite" aria-hidden="true">
+    <div class="render-card">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Rendering projection…</span>
+    </div>
+  </div>
   <script>
     (function () {
-      function withRefreshNonce(urlText) {
+      const scenarioSelect = document.getElementById("scenario");
+      const configForm = document.getElementById("config-form");
+      const renderOverlay = document.getElementById("render-overlay");
+      let lastAction = "";
+
+      function showRenderOverlay() {
+        if (!renderOverlay) return;
+        renderOverlay.classList.add("active");
+        renderOverlay.setAttribute("aria-hidden", "false");
+      }
+
+      function installRenderProgress() {
+        if (!configForm) return;
+        configForm.querySelectorAll("button[name='action']").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            lastAction = btn.value || "";
+          });
+        });
+        configForm.addEventListener("submit", function () {
+          if (lastAction === "save_render" || lastAction === "save_render_all" || lastAction === "clone") {
+            showRenderOverlay();
+          }
+        });
+      }
+
+      function withProjectionContext(urlText) {
         const url = new URL(urlText, window.location.origin);
+        const slug = scenarioSelect && scenarioSelect.value ? scenarioSelect.value : "";
+        if (slug) {
+          url.searchParams.set("scenario", slug);
+        }
         url.searchParams.set("refresh", Date.now().toString());
         return url.toString();
       }
 
-      function installCacheBustedLink(id) {
+      function installProjectionLink(id) {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("click", function (evt) {
           evt.preventDefault();
-          const target = withRefreshNonce(el.getAttribute("href") || "");
+          const target = withProjectionContext(el.getAttribute("href") || "");
           window.location.href = target;
         });
       }
 
-      installCacheBustedLink("open-projection-btn");
-      installCacheBustedLink("projection-link");
+      function syncProjectionLinkHref(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const url = new URL(el.getAttribute("href") || "", window.location.origin);
+        const slug = scenarioSelect && scenarioSelect.value ? scenarioSelect.value : "";
+        if (slug) {
+          url.searchParams.set("scenario", slug);
+        }
+        el.setAttribute("href", url.toString());
+      }
+
+      function syncAllProjectionHrefs() {
+        syncProjectionLinkHref("open-projection-btn");
+        syncProjectionLinkHref("projection-link");
+      }
+
+      if (scenarioSelect) {
+        scenarioSelect.addEventListener("change", syncAllProjectionHrefs);
+      }
+
+      installRenderProgress();
+      syncAllProjectionHrefs();
+      installProjectionLink("open-projection-btn");
+      installProjectionLink("projection-link");
     })();
   </script>
 </body>

@@ -128,11 +128,46 @@ def _kv_table(rows: list[tuple]) -> str:
     return f"<table class='assumptions-table assumptions-kv'><tbody>{body}</tbody></table>"
 
 
-def build_assumptions_summary(config: dict) -> str:
+def build_assumptions_summary(
+    config: dict,
+    scenario=None,
+    baseline_config: dict | None = None,
+) -> str:
     """Return a formatted HTML summary of the current modeling assumptions."""
+    baseline_assumptions = (
+        baseline_config.get("assumptions", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("assumptions"), dict)
+        else {}
+    )
+    baseline_spending = (
+        baseline_config.get("spending", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("spending"), dict)
+        else {}
+    )
+    baseline_withdrawal_policy = (
+        baseline_config.get("withdrawal_policy", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("withdrawal_policy"), dict)
+        else {}
+    )
+
+    changed_count = 0
+
+    def _diff_row(label: str, value, baseline_value, formatter) -> tuple[str, str, str]:
+        nonlocal changed_count
+        changed = baseline_config is not None and value != baseline_value
+        if changed:
+            changed_count += 1
+        return (label, formatter(value), "param-diff" if changed else "")
+
     people_rows = []
     for person_key in _person_keys(config):
         person = config.get(person_key, {})
+        baseline_person = (
+            baseline_config.get(person_key, {})
+            if isinstance(baseline_config, dict) and isinstance(baseline_config.get(person_key), dict)
+            else {}
+        )
+
         name = person.get("name") or person_key.replace("_", " ").title()
         dob = person.get("dob") or "—"
 
@@ -156,8 +191,18 @@ def build_assumptions_summary(config: dict) -> str:
             except (TypeError, ValueError):
                 ss_start_year = None
 
+        row_changed = baseline_config is not None and (
+            person.get("dob") != baseline_person.get("dob")
+            or person.get("life_expectancy") != baseline_person.get("life_expectancy")
+            or person.get("retirement_year") != baseline_person.get("retirement_year")
+            or person.get("ss_start_age") != baseline_person.get("ss_start_age")
+        )
+        if row_changed:
+            changed_count += 1
+        row_cls = " class='param-diff'" if row_changed else ""
+
         people_rows.append(
-            "<tr>"
+            f"<tr{row_cls}>"
             f"<td>{escape(str(name))}</td>"
             f"<td>{escape(str(dob))}</td>"
             f"<td>{escape(_fmt_age_year(life_expectancy, end_year))}</td>"
@@ -179,31 +224,97 @@ def build_assumptions_summary(config: dict) -> str:
 
     assumptions = config.get("assumptions", {})
     market_rows = [
-        ("Stock return", _fmt_percent(assumptions.get("stock_return"))),
-        ("Bond return", _fmt_percent(assumptions.get("bond_return"))),
-        ("Inflation", _fmt_percent(assumptions.get("inflation"))),
-        ("Real estate appreciation", _fmt_percent(assumptions.get("real_estate_appreciation"))),
-        ("Equity allocation", _fmt_percent(assumptions.get("equity_allocation"))),
-        ("Real estate sale fee rate", _fmt_percent(assumptions.get("real_estate_sale_fee_rate"))),
+        _diff_row("Stock return", assumptions.get("stock_return"), baseline_assumptions.get("stock_return"), _fmt_percent),
+        _diff_row("Bond return", assumptions.get("bond_return"), baseline_assumptions.get("bond_return"), _fmt_percent),
+        _diff_row("Inflation", assumptions.get("inflation"), baseline_assumptions.get("inflation"), _fmt_percent),
+        _diff_row(
+            "Real estate appreciation",
+            assumptions.get("real_estate_appreciation"),
+            baseline_assumptions.get("real_estate_appreciation"),
+            _fmt_percent,
+        ),
+        _diff_row(
+            "Equity allocation",
+            assumptions.get("equity_allocation"),
+            baseline_assumptions.get("equity_allocation"),
+            _fmt_percent,
+        ),
+        _diff_row(
+            "Real estate sale fee rate",
+            assumptions.get("real_estate_sale_fee_rate"),
+            baseline_assumptions.get("real_estate_sale_fee_rate"),
+            _fmt_percent,
+        ),
     ]
 
     spending = config.get("spending", {})
     spending_rows = [
-        ("Retirement annual", _fmt_currency(spending.get("retirement_annual"))),
-        ("Survivor % of retirement", _fmt_percent(spending.get("survivor_percent_of_retirement", 0.70))),
-        ("Survivor annual", _fmt_currency(_resolve_survivor_annual(spending))),
+        _diff_row(
+            "Retirement annual",
+            spending.get("retirement_annual"),
+            baseline_spending.get("retirement_annual"),
+            _fmt_currency,
+        ),
+        _diff_row(
+            "Survivor % of retirement",
+            spending.get("survivor_percent_of_retirement", 0.70),
+            baseline_spending.get("survivor_percent_of_retirement", 0.70),
+            _fmt_percent,
+        ),
+        _diff_row(
+            "Survivor annual",
+            _resolve_survivor_annual(spending),
+            _resolve_survivor_annual(baseline_spending),
+            _fmt_currency,
+        ),
     ]
 
     withdrawal_policy = config.get("withdrawal_policy", {})
     withdrawal_rows = [
-        ("Accumulation cash target", _fmt_currency(withdrawal_policy.get("accumulation_cash_target"))),
-        ("Retirement cash target", _fmt_currency(withdrawal_policy.get("retirement_cash_target"))),
-        ("Survivor cash target", _fmt_currency(withdrawal_policy.get("survivor_cash_target"))),
+        _diff_row(
+            "Accumulation cash target",
+            withdrawal_policy.get("accumulation_cash_target"),
+            baseline_withdrawal_policy.get("accumulation_cash_target"),
+            _fmt_currency,
+        ),
+        _diff_row(
+            "Retirement cash target",
+            withdrawal_policy.get("retirement_cash_target"),
+            baseline_withdrawal_policy.get("retirement_cash_target"),
+            _fmt_currency,
+        ),
+        _diff_row(
+            "Survivor cash target",
+            withdrawal_policy.get("survivor_cash_target"),
+            baseline_withdrawal_policy.get("survivor_cash_target"),
+            _fmt_currency,
+        ),
     ]
+
+    baseline_note = (
+        f" <strong>{changed_count}</strong> field(s) differ from baseline default scenario."
+        if baseline_config is not None
+        else ""
+    )
+    default_diff_checked = bool(
+        baseline_config is not None
+        and scenario is not None
+        and not bool(getattr(scenario, "is_default", False))
+    )
+    checked_attr = " checked" if default_diff_checked else ""
+    filter_toolbar = (
+        "<div class='scenario-diff-toolbar'>"
+        f"<label><input type='checkbox' id='assumptions-diff-only-toggle'{checked_attr} /> Show only differences</label>"
+        "</div>"
+        if baseline_config is not None
+        else ""
+    )
 
     return (
         "<div class='assumptions-wrap'>"
-        "<div class='assumptions-note'>Current planning assumptions from the active scenario config.</div>"
+        "<div class='assumptions-note'>Current planning assumptions from the active scenario config."
+        f"{baseline_note}</div>"
+        f"{filter_toolbar}"
         "<div class='assumptions-grid'>"
         "<section class='assumption-card assumption-card-wide'>"
         "<h3>Persons</h3>"

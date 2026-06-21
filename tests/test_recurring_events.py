@@ -897,6 +897,40 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Cash", trace_names)
         self.assertEqual(list(fig.layout.xaxis.ticktext), ["2026<br>(59/50)"])
 
+    def test_wrap_event_annotation_groups_every_two_items(self):
+        label = "💸 One, 💸 Two, 💸 Three, 💸 Four, 💸 Five"
+        wrapped = charts._wrap_event_annotation(label, per_line=2)
+
+        self.assertEqual(wrapped, "💸 One, 💸 Two<br>💸 Three, 💸 Four<br>💸 Five")
+
+    def test_event_annotations_are_right_anchored_and_drop_into_chart_body(self):
+        config = {
+            "matthew": {"dob": "1967-04-23"},
+            "weny": {"dob": "1976-10-02"},
+        }
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "home_equity": 0.0,
+                "cash": 100.0,
+                "taxable": 0.0,
+                "trad_ira": 0.0,
+                "roth": 0.0,
+                "total_net_worth": 100.0,
+                "survivor": False,
+                "events_active": "💸 One, 💸 Two, 💸 Three",
+            }
+        ])
+
+        fig = charts._build_figure(df, config)
+        annotation = fig.layout.annotations[0]
+
+        self.assertEqual(annotation.align, "right")
+        self.assertEqual(annotation.xanchor, "right")
+        self.assertEqual(annotation.yanchor, "top")
+        self.assertEqual(annotation.textangle, -90)
+        self.assertEqual(annotation.text, "💸 One, 💸 Two<br>💸 Three")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Iteration Window:** 2026-06-19 → 2026-06-20
-**Current Status:** V1 is stable, and the next planned architecture shift is a move from one root config to a scenario-based model. The immediate design direction is shared tax-table extraction plus one-scenario-per-file with editor-driven rendering and a manifest-backed shell projections page. The 2026-06-19 model-accuracy audit delivered the core fixes: separate cash return, inflation-consistent spending basis, explicit contribution bucket routing, explicit pre-retirement spending controls, and configurable wage tax treatment (defaulting to `net_cash` for Monarch semantics).
+**Iteration Window:** 2026-06-19 → 2026-06-21
+**Current Status:** Scenario-driven V1 is stable and actively polished for projection UX: assumptions/parameter diff review, scenario context propagation between shell/editor/projection, and event-label readability controls are now implemented and validated with offline rerenders.
 
 ## Current State
 
@@ -39,7 +39,9 @@
 - New `SpendingShift` event type (MVP: `mode="replace"`) can change retirement/survivor baseline spending from a start year (optionally through `end_year`) to model regime changes like moving countries
 - Raw config editor is now available at `http://casalemuria.lan/finances/config/`
 - Config editor projection links now append a one-time `refresh=<timestamp>` nonce on click so `Open projection` avoids stale cached pages
+- Config editor `Open projection` now always uses the currently selected scenario slug from the dropdown at click time
 - Editor supports validate, save, and save+offline-rerender actions with timestamped backups under per-scenario paths in `output/config-backups/<slug>/`, auto-pruned to the newest 10 per scenario
+- Config editor now shows a render-in-progress overlay spinner during render actions (`Save + Re-render`, `Save + Render All`, `Clone`)
 - The active default scenario now lives in `scenarios/default.toml`; root `config.toml` is a migration fallback only
 - The config editor now supports scenario selection, clone/create inputs, and a `Save + Render All` control for batch output refresh
 - The public `projection.html` entry point now serves as a scenario shell page backed by `output/scenarios/index.json`, with rendered scenario pages loaded inside an iframe
@@ -53,6 +55,11 @@
 - New Scenario Parameters tab provides per-scenario audit detail (scenario metadata, tax/RMD controls, withdrawal orders/surplus orders, per-person contribution semantics, enabled-event metrics)
 - Scenario Parameters supports baseline-vs-default diff emphasis (`param-diff` row styling) and a `Show only differences` toggle
 - Diff-only toggle defaults OFF for default scenario and ON for non-default scenarios
+- Assumptions tab now also supports baseline-vs-default diff emphasis and its own `Show only differences` toggle
+- Projection toolbar links are scenario-scoped: per-scenario projection pages now open editor as `/finances/config/?scenario=<slug>`
+- Scenario shell `Edit Scenarios` link now follows the currently selected scenario
+- Main projection chart event labels now wrap at 2 events per line, remain right-anchored from the top into the graph body, and use softer translucent label backgrounds
+- Main projection chart now includes an in-chart event-label control strip (between graph and tax note) to: (a) show all labels, (b) hide non-key labels while keeping Retirement/Social Security/End-of-Plan, or (c) hide all labels
 - `run.py` now supports scenario-level synthetic start balances via `[data_source].mode = "synthetic"` and `[synthetic_start]` so shareable scenarios can bypass Monarch/cache entirely
 - Added a share-safe `scenarios/sample.toml` synthetic scenario with realistic recurring/one-time events (home maintenance, roof/HVAC replacement, vehicle purchase/replacement, travel, consulting)
 - Synthesized retirement/SS labels now use configured person-name initials (e.g., A/S in sample scenarios) instead of hardcoded person-key initials (M/W)
