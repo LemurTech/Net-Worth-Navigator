@@ -19,6 +19,21 @@ SCENARIO_MANIFEST_JSON = "scenario_manifest.json"
 ACCOUNTS_SNAPSHOT_JSON = "accounts_snapshot.json"
 
 
+def _person_keys(config: dict) -> list[str]:
+    preferred = [
+        key for key in ("person1", "person2")
+        if isinstance(config.get(key), dict)
+        and any(field in config[key] for field in ("dob", "life_expectancy", "retirement_year", "ss_start_age"))
+    ]
+    extras = [
+        key for key, value in config.items()
+        if key not in preferred
+        and isinstance(value, dict)
+        and any(field in value for field in ("dob", "life_expectancy", "retirement_year", "ss_start_age"))
+    ]
+    return preferred + extras
+
+
 def write_sidecars(
     *,
     output_dir: Path,
@@ -154,14 +169,11 @@ def _scenario_manifest(
         },
         "simulation": dict(config.get("simulation", {})),
         "people": {
-            "matthew": {
-                key: config.get("matthew", {}).get(key)
+            person_key: {
+                key: config.get(person_key, {}).get(key)
                 for key in ["name", "dob", "life_expectancy", "retirement_year", "annual_take_home"]
-            },
-            "weny": {
-                key: config.get("weny", {}).get(key)
-                for key in ["name", "dob", "life_expectancy", "retirement_year", "annual_take_home"]
-            },
+            }
+            for person_key in _person_keys(config)
         },
         "assumptions": dict(config.get("assumptions", {})),
         "withdrawal_policy": dict(config.get("withdrawal_policy", {})),

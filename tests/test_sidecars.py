@@ -19,8 +19,8 @@ class SidecarTests(unittest.TestCase):
                 "mortgage": 300.0,
                 "home_equity": 200.0,
                 "total_net_worth": 300.0,
-                "matthew_income": 10.0,
-                "weny_income": 20.0,
+                "person1_income": 10.0,
+                "person2_income": 20.0,
                 "taxable_income": 5.0,
                 "annual_taxes": 1.0,
                 "annual_federal_taxes": 1.0,
@@ -51,13 +51,13 @@ class SidecarTests(unittest.TestCase):
         ])
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {"name": "Person 1", "dob": "1967-04-23", "life_expectancy": 90, "retirement_year": 2035, "annual_take_home": 0.0},
-            "weny": {"name": "Person 2", "dob": "1976-10-02", "life_expectancy": 90, "retirement_year": 2035, "annual_take_home": 0.0},
+            "person1": {"name": "Person 1", "dob": "1967-04-23", "life_expectancy": 90, "retirement_year": 2035, "annual_take_home": 0.0},
+            "person2": {"name": "Person 2", "dob": "1976-10-02", "life_expectancy": 90, "retirement_year": 2035, "annual_take_home": 0.0},
             "assumptions": {"real_estate_sale_fee_rate": 0.06},
             "withdrawal_policy": {},
             "events": [
-                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "matthew", "year": 2054},
-                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "weny", "year": 2063},
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "person1", "year": 2054},
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "person2", "year": 2063},
                 {"enabled": True, "type": "SellHome", "label": "Sell Casa Lemuria", "year": 2049, "property": "Casa Lemuria", "reinvest_to": "taxable"},
             ],
         }
@@ -102,8 +102,8 @@ class SidecarTests(unittest.TestCase):
             manifest = json.loads((sidecar_dir / "scenario_manifest.json").read_text())
             self.assertEqual(manifest["mode"], "offline")
             self.assertEqual(manifest["scenario"]["slug"], "default")
-            self.assertEqual(manifest["resolved_end_of_plan_years"]["matthew"], 2057)
-            self.assertEqual(manifest["resolved_end_of_plan_years"]["weny"], 2066)
+            self.assertEqual(manifest["resolved_end_of_plan_years"]["person1"], 2057)
+            self.assertEqual(manifest["resolved_end_of_plan_years"]["person2"], 2066)
             self.assertEqual(manifest["projection_summary"]["row_count"], 1)
 
             accounts = json.loads((sidecar_dir / "accounts_snapshot.json").read_text())

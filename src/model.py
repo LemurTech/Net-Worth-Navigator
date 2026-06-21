@@ -4,7 +4,7 @@ model.py — Net Worth Navigator projection engine.
 Reads config.toml and a balances dict from monarch_bridge.
 Returns a pandas DataFrame with one row per year:
 
-    year | net_worth | matthew_income | weny_income | events_active | ...
+    year | net_worth | person1_income | person2_income | events_active | ...
 """
 
 from copy import deepcopy
@@ -195,7 +195,7 @@ def _resolve_retirement_events(config: dict) -> list[dict]:
 
     resolved_events = list(passthrough_events)
     handled_person_keys = set()
-    for person_key in ("matthew", "weny"):
+    for person_key in ("person1", "person2"):
         handled_person_keys.add(person_key)
         person = config.get(person_key)
         if not isinstance(person, dict):
@@ -286,7 +286,7 @@ def _resolve_social_security_events(config: dict) -> list[dict]:
 
     resolved_events = list(passthrough_events)
     handled_person_keys = set()
-    for person_key in ("matthew", "weny"):
+    for person_key in ("person1", "person2"):
         handled_person_keys.add(person_key)
         person = config.get(person_key)
         if not isinstance(person, dict):
@@ -1049,48 +1049,48 @@ def _uniform_lifetime_factor(age: int, factors: dict[int, float]) -> float | Non
 
 def _normalized_household_rmd_shares(
     *,
-    matthew: dict,
-    weny: dict,
-    matthew_deceased: bool,
-    weny_deceased: bool,
+    person1: dict,
+    person2: dict,
+    person1_deceased: bool,
+    person2_deceased: bool,
 ) -> dict[str, float]:
     """Return normalized trad-IRA ownership shares for household RMD allocation."""
-    if matthew_deceased and weny_deceased:
-        return {"matthew": 0.0, "weny": 0.0}
-    if matthew_deceased:
-        return {"matthew": 0.0, "weny": 1.0}
-    if weny_deceased:
-        return {"matthew": 1.0, "weny": 0.0}
+    if person1_deceased and person2_deceased:
+        return {"person1": 0.0, "person2": 0.0}
+    if person1_deceased:
+        return {"person1": 0.0, "person2": 1.0}
+    if person2_deceased:
+        return {"person1": 1.0, "person2": 0.0}
 
-    raw_m = matthew.get("rmd_trad_ira_share")
-    raw_w = weny.get("rmd_trad_ira_share")
+    raw_1 = person1.get("rmd_trad_ira_share")
+    raw_2 = person2.get("rmd_trad_ira_share")
     try:
-        m_share = max(0.0, float(raw_m)) if raw_m is not None else 0.0
+        share_1 = max(0.0, float(raw_1)) if raw_1 is not None else 0.0
     except (TypeError, ValueError):
-        m_share = 0.0
+        share_1 = 0.0
     try:
-        w_share = max(0.0, float(raw_w)) if raw_w is not None else 0.0
+        share_2 = max(0.0, float(raw_2)) if raw_2 is not None else 0.0
     except (TypeError, ValueError):
-        w_share = 0.0
+        share_2 = 0.0
 
-    total = m_share + w_share
+    total = share_1 + share_2
     if total > 0:
         return {
-            "matthew": m_share / total,
-            "weny": w_share / total,
+            "person1": share_1 / total,
+            "person2": share_2 / total,
         }
 
-    return {"matthew": 0.5, "weny": 0.5}
+    return {"person1": 0.5, "person2": 0.5}
 
 
 def calculate_household_rmd_required(
     *,
     year: int,
     trad_ira_balance: float,
-    matthew: dict,
-    weny: dict,
-    matthew_deceased: bool,
-    weny_deceased: bool,
+    person1: dict,
+    person2: dict,
+    person1_deceased: bool,
+    person2_deceased: bool,
     rmd_settings: dict[str, object],
 ) -> float:
     """Return required household RMD amount for the year.
@@ -1107,16 +1107,16 @@ def calculate_household_rmd_required(
     factors = dict(rmd_settings.get("factors", {}))
     start_age = int(rmd_settings.get("start_age", 73))
     shares = _normalized_household_rmd_shares(
-        matthew=matthew,
-        weny=weny,
-        matthew_deceased=matthew_deceased,
-        weny_deceased=weny_deceased,
+        person1=person1,
+        person2=person2,
+        person1_deceased=person1_deceased,
+        person2_deceased=person2_deceased,
     )
 
     total_required = 0.0
     for person_key, person, deceased in (
-        ("matthew", matthew, matthew_deceased),
-        ("weny", weny, weny_deceased),
+        ("person1", person1, person1_deceased),
+        ("person2", person2, person2_deceased),
     ):
         if deceased:
             continue
@@ -1187,8 +1187,8 @@ def run_projection(
     }
     withdrawal_policy = resolve_withdrawal_policy(config, balances)
 
-    matthew = config["matthew"]
-    weny = config["weny"]
+    person1 = config["person1"]
+    person2 = config["person2"]
     spending = config["spending"]
     liability_configs = config.get("liabilities", [])
     rmd_settings = resolve_rmd_settings(config)
@@ -1258,12 +1258,12 @@ def run_projection(
         )
 
         # ── Determine survivor state ───────────────────────────────────────────
-        matthew_deceased = year > matthew["retirement_year"] and any(
-            e["type"] == "EndOfPlan" and e.get("person") == "matthew" and year > e["year"]
+        person1_deceased = year > person1["retirement_year"] and any(
+            e["type"] == "EndOfPlan" and e.get("person") == "person1" and year > e["year"]
             for e in events
         )
-        weny_deceased = year > weny["retirement_year"] and any(
-            e["type"] == "EndOfPlan" and e.get("person") == "weny" and year > e["year"]
+        person2_deceased = year > person2["retirement_year"] and any(
+            e["type"] == "EndOfPlan" and e.get("person") == "person2" and year > e["year"]
             for e in events
         )
 
@@ -1432,22 +1432,24 @@ def run_projection(
 
         # ── Income for this year ───────────────────────────────────────────────
         include_taxable_wages = resolve_wage_tax_treatment(config) == "taxable_wages"
-        matthew_parts = _person_income_components(
-            matthew,
+        person1_parts = _person_income_components(
+            person1,
             year,
             events,
+            person_key="person1",
             assumptions=assumptions,
             simulation_start_year=start_year,
-            deceased=matthew_deceased,
+            deceased=person1_deceased,
             include_taxable_wages=include_taxable_wages,
         )
-        weny_parts = _person_income_components(
-            weny,
+        person2_parts = _person_income_components(
+            person2,
             year,
             events,
+            person_key="person2",
             assumptions=assumptions,
             simulation_start_year=start_year,
-            deceased=weny_deceased,
+            deceased=person2_deceased,
             include_taxable_wages=include_taxable_wages,
         )
 
@@ -1455,74 +1457,74 @@ def run_projection(
         # If one person is deceased and both had started SS, the survivor's
         # own benefit is already captured in _person_income. But if the deceased
         # had the higher benefit, the survivor steps up — recalculate here.
-        if matthew_deceased or weny_deceased:
-            matthew_ss = sum(
+        if person1_deceased or person2_deceased:
+            person1_ss = sum(
                 e.get("monthly_benefit", 0) * 12
                 for e in events
                 if e["type"] == "SocialSecurity"
-                and e.get("person") == "matthew"
+                and e.get("person") == "person1"
                 and year >= e["year"]
             )
-            matthew_ss_taxable = sum(
+            person1_ss_taxable = sum(
                 (e.get("monthly_benefit", 0) * 12) * _event_taxable_fraction(e, default=1.0)
                 for e in events
                 if e["type"] == "SocialSecurity"
-                and e.get("person") == "matthew"
+                and e.get("person") == "person1"
                 and year >= e["year"]
             )
-            weny_ss = sum(
+            person2_ss = sum(
                 e.get("monthly_benefit", 0) * 12
                 for e in events
                 if e["type"] == "SocialSecurity"
-                and e.get("person") == "weny"
+                and e.get("person") == "person2"
                 and year >= e["year"]
             )
-            weny_ss_taxable = sum(
+            person2_ss_taxable = sum(
                 (e.get("monthly_benefit", 0) * 12) * _event_taxable_fraction(e, default=1.0)
                 for e in events
                 if e["type"] == "SocialSecurity"
-                and e.get("person") == "weny"
+                and e.get("person") == "person2"
                 and year >= e["year"]
             )
-            higher_ss = max(matthew_ss, weny_ss)
-            lower_ss  = min(matthew_ss, weny_ss)
+            higher_ss = max(person1_ss, person2_ss)
+            lower_ss  = min(person1_ss, person2_ss)
 
-            if matthew_deceased and not weny_deceased and weny_ss > 0:
+            if person1_deceased and not person2_deceased and person2_ss > 0:
                 # Person 2 survives: receives higher of two checks (Person 1's if higher)
-                if matthew_ss > weny_ss:
+                if person1_ss > person2_ss:
                     # Step Person 2 up — replace her SS with Person 1's higher amount
-                    weny_parts["ss_income"] = matthew_ss
-                    weny_parts["ss_taxable_income"] = matthew_ss_taxable
-                    weny_parts["cash_income"] = (
-                        weny_parts["earned_income"] + weny_parts["ss_income"]
+                    person2_parts["ss_income"] = person1_ss
+                    person2_parts["ss_taxable_income"] = person1_ss_taxable
+                    person2_parts["cash_income"] = (
+                        person2_parts["earned_income"] + person2_parts["ss_income"]
                     )
-            elif weny_deceased and not matthew_deceased and matthew_ss > 0:
+            elif person2_deceased and not person1_deceased and person1_ss > 0:
                 # Person 1 survives: already on higher check, no change needed
                 pass
 
-        matthew_income = matthew_parts["cash_income"]
-        weny_income    = weny_parts["cash_income"]
-        total_income = matthew_income + weny_income
+        person1_income = person1_parts["cash_income"]
+        person2_income    = person2_parts["cash_income"]
+        total_income = person1_income + person2_income
 
         # ── Contributions (pre-retirement only) ────────────────────────────────
-        matthew_retired = year >= matthew["retirement_year"]
-        weny_retired = year >= weny["retirement_year"]
+        person1_retired = year >= person1["retirement_year"]
+        person2_retired = year >= person2["retirement_year"]
 
-        matthew_contrib_buckets = (
+        person1_contrib_buckets = (
             {"trad_ira": 0.0, "roth": 0.0}
-            if matthew_retired
+            if person1_retired
             else _person_retirement_contribution_breakdown(
-                matthew,
+                person1,
                 year=year,
                 simulation_start_year=start_year,
                 assumptions=assumptions,
             )
         )
-        weny_contrib_buckets = (
+        person2_contrib_buckets = (
             {"trad_ira": 0.0, "roth": 0.0}
-            if weny_retired
+            if person2_retired
             else _person_retirement_contribution_breakdown(
-                weny,
+                person2,
                 year=year,
                 simulation_start_year=start_year,
                 assumptions=assumptions,
@@ -1532,27 +1534,27 @@ def run_projection(
         prefunded_contrib_buckets = {"trad_ira": 0.0, "roth": 0.0}
         cash_required_contrib_buckets = {"trad_ira": 0.0, "roth": 0.0}
 
-        matthew_prefunded = _take_home_is_net_of_retirement_contributions(matthew)
-        weny_prefunded = _take_home_is_net_of_retirement_contributions(weny)
+        person1_prefunded = _take_home_is_net_of_retirement_contributions(person1)
+        person2_prefunded = _take_home_is_net_of_retirement_contributions(person2)
 
         for bucket in ("trad_ira", "roth"):
-            if matthew_prefunded:
-                prefunded_contrib_buckets[bucket] += matthew_contrib_buckets[bucket]
+            if person1_prefunded:
+                prefunded_contrib_buckets[bucket] += person1_contrib_buckets[bucket]
             else:
-                cash_required_contrib_buckets[bucket] += matthew_contrib_buckets[bucket]
+                cash_required_contrib_buckets[bucket] += person1_contrib_buckets[bucket]
 
-            if weny_prefunded:
-                prefunded_contrib_buckets[bucket] += weny_contrib_buckets[bucket]
+            if person2_prefunded:
+                prefunded_contrib_buckets[bucket] += person2_contrib_buckets[bucket]
             else:
-                cash_required_contrib_buckets[bucket] += weny_contrib_buckets[bucket]
+                cash_required_contrib_buckets[bucket] += person2_contrib_buckets[bucket]
 
         total_cash_required_contrib = sum(cash_required_contrib_buckets.values())
 
         # ── Net cash flow for the year ─────────────────────────────────────────
         target_spend = float(spending.get("retirement_annual", 0.0))
         survivor_spend = resolve_survivor_spending(spending)
-        both_retired = matthew_retired and weny_retired
-        one_deceased = matthew_deceased or weny_deceased
+        both_retired = person1_retired and person2_retired
+        one_deceased = person1_deceased or person2_deceased
 
         if both_retired:
             target_spend, survivor_spend = resolve_spending_shift_for_year(
@@ -1583,10 +1585,10 @@ def run_projection(
         rmd_required = calculate_household_rmd_required(
             year=year,
             trad_ira_balance=float(portfolio.get("trad_ira", 0.0)),
-            matthew=matthew,
-            weny=weny,
-            matthew_deceased=matthew_deceased,
-            weny_deceased=weny_deceased,
+            person1=person1,
+            person2=person2,
+            person1_deceased=person1_deceased,
+            person2_deceased=person2_deceased,
             rmd_settings=rmd_settings,
         )
 
@@ -1607,14 +1609,14 @@ def run_projection(
             filing_status=str(active_tax_system.get("filing_status", "married_joint")),
         )
         taxable_wage_income = (
-            matthew_parts["taxable_wage_income"] + weny_parts["taxable_wage_income"]
+            person1_parts["taxable_wage_income"] + person2_parts["taxable_wage_income"]
         )
         base_non_ss_taxable_income = taxable_event_income + taxable_wage_income
         total_social_security_income = (
-            matthew_parts["ss_income"] + weny_parts["ss_income"]
+            person1_parts["ss_income"] + person2_parts["ss_income"]
         )
         legacy_ss_taxable_income = (
-            matthew_parts["ss_taxable_income"] + weny_parts["ss_taxable_income"]
+            person1_parts["ss_taxable_income"] + person2_parts["ss_taxable_income"]
         )
 
         # Cash flow before any taxes or withdrawal sequencing
@@ -1771,8 +1773,8 @@ def run_projection(
             "mortgage":       mortgage_balance,
             "home_equity":    home_equity,
             "total_net_worth": total_portfolio + home_equity,
-            "matthew_income": matthew_income,
-            "weny_income":    weny_income,
+            "person1_income": person1_income,
+            "person2_income":    person2_income,
             "taxable_income": taxable_income,
             "taxable_wage_income": taxable_wage_income,
             "annual_taxes":   annual_taxes,
@@ -1808,6 +1810,7 @@ def _person_income_components(
     year: int,
     events: list,
     *,
+    person_key: str,
     assumptions: dict,
     simulation_start_year: int,
     deceased: bool = False,
@@ -1823,7 +1826,6 @@ def _person_income_components(
             "cash_income": 0.0,
         }
 
-    person_key = person["name"].lower()
     earned_income = _project_person_take_home(
         person,
         year=year,

@@ -30,6 +30,7 @@
 - Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a compatibility fallback
 - Pre-retirement take-home income can now grow annually from inflation plus person-level `annual_take_home_real_raise`, and 401(k) contributions can now grow from that same income path plus person-level `annual_401k_contribution_extra_increase`
 - Person-level 401(k) totals can now optionally split between `trad_ira` and `roth` via `annual_401k_contribution_split`, so bundled employer plans do not need to force the whole amount into one bucket
+- Household person schema is now generic and canonicalized as `[person1]` / `[person2]` with event references `person = "person1" | "person2"`; runtime `matthew`/`weny` compatibility paths were removed in favor of a full staged refactor
 - Person-level `annual_take_home_is_net_of_retirement_contributions` is now supported: when true, retirement contributions are treated as payroll-prefunded (still routed into IRA/Roth buckets) and are not subtracted again from implied pre-retirement spending cash
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math

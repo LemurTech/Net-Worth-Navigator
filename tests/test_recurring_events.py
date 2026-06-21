@@ -27,7 +27,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "enabled": True,
                     "type": "Education",
                     "label": "Certification",
-                    "person": "matthew",
+                    "person": "person1",
                     "start_year": 2027,
                     "end_year": 2028,
                     "annual_cost": 5000,
@@ -81,14 +81,14 @@ class RecurringEventsTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
-                "retirement_year": 2030,
+                "retirement_year": 2026,
                 "annual_take_home": 0,
                 "annual_401k_contribution": 0,
                 "annual_ira_contribution": 0,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "retirement_year": 9999,
                 "annual_take_home": 0,
@@ -104,7 +104,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "enabled": True,
                     "type": "Retire",
                     "label": "Retirement (M)",
-                    "person": "matthew",
+                    "person": "person1",
                     "year": 2026,
                 },
                 {
@@ -154,14 +154,14 @@ class RecurringEventsTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
                 "retirement_year": 9999,
                 "annual_take_home": 0,
                 "annual_401k_contribution": 0,
                 "annual_ira_contribution": 0,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "retirement_year": 9999,
                 "annual_take_home": 0,
@@ -208,14 +208,14 @@ class RecurringEventsTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
                 "retirement_year": 9999,
                 "annual_take_home": 0,
                 "annual_401k_contribution": 0,
                 "annual_ira_contribution": 0,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "retirement_year": 9999,
                 "annual_take_home": 0,
@@ -266,14 +266,14 @@ class RecurringEventsTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
                 "annual_401k_contribution": 0,
                 "annual_ira_contribution": 0,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
@@ -326,14 +326,14 @@ class RecurringEventsTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
                 "annual_401k_contribution": 0,
                 "annual_ira_contribution": 0,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
@@ -350,7 +350,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "enabled": True,
                     "type": "EndOfPlan",
                     "label": "End of Plan (M)",
-                    "person": "matthew",
+                    "person": "person1",
                     "year": 2026,
                 },
                 {
@@ -381,27 +381,27 @@ class RecurringEventsTests(unittest.TestCase):
     def test_resolve_runtime_config_syncs_end_of_plan_years_to_life_expectancy(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {"dob": "1967-04-23", "life_expectancy": 90},
-            "weny": {"dob": "1976-10-02", "life_expectancy": 90},
+            "person1": {"dob": "1967-04-23", "life_expectancy": 90},
+            "person2": {"dob": "1976-10-02", "life_expectancy": 90},
             "events": [
-                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "matthew", "year": 2054},
-                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "weny", "year": 2063},
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "person1", "year": 2054},
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "person2", "year": 2063},
             ],
         }
 
         resolved = model.resolve_runtime_config(config)
         years = {event["person"]: event["year"] for event in resolved["events"]}
 
-        self.assertEqual(years["matthew"], 2057)
-        self.assertEqual(years["weny"], 2066)
+        self.assertEqual(years["person1"], 2057)
+        self.assertEqual(years["person2"], 2066)
 
     def test_resolve_runtime_config_synthesizes_retirement_from_person_settings(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {
+            "person1": {
                 "retirement_year": 2035,
             },
-            "weny": {
+            "person2": {
                 "retirement_year": 2037,
             },
             "events": [],
@@ -414,15 +414,15 @@ class RecurringEventsTests(unittest.TestCase):
             if event["type"] == "Retire"
         }
 
-        self.assertEqual(retire_events["matthew"]["year"], 2035)
-        self.assertEqual(retire_events["matthew"]["label"], "Retirement (M)")
-        self.assertEqual(retire_events["weny"]["year"], 2037)
-        self.assertEqual(retire_events["weny"]["label"], "Retirement (W)")
+        self.assertEqual(retire_events["person1"]["year"], 2035)
+        self.assertEqual(retire_events["person1"]["label"], "Retirement (P)")
+        self.assertEqual(retire_events["person2"]["year"], 2037)
+        self.assertEqual(retire_events["person2"]["label"], "Retirement (P)")
 
     def test_resolve_runtime_config_retire_keeps_legacy_label_and_enabled(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {
+            "person1": {
                 "retirement_year": 2035,
             },
             "events": [
@@ -430,7 +430,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "enabled": False,
                     "type": "Retire",
                     "label": "Retire (Person 1 legacy)",
-                    "person": "matthew",
+                    "person": "person1",
                     "year": 2037,
                 },
             ],
@@ -446,13 +446,13 @@ class RecurringEventsTests(unittest.TestCase):
     def test_resolve_runtime_config_retire_falls_back_to_legacy_when_missing_person_year(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {},
+            "person1": {},
             "events": [
                 {
                     "enabled": True,
                     "type": "Retire",
                     "label": "Retirement (M)",
-                    "person": "matthew",
+                    "person": "person1",
                     "year": 2037,
                 },
             ],
@@ -466,7 +466,7 @@ class RecurringEventsTests(unittest.TestCase):
     def test_resolve_runtime_config_synthesizes_social_security_from_person_settings(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {
+            "person1": {
                 "dob": "1967-04-23",
                 "ss_start_age": 70,
                 "social_security_benefits": {
@@ -476,7 +476,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "70": 3698,
                 },
             },
-            "weny": {
+            "person2": {
                 "dob": "1976-10-02",
                 "ss_start_age": 67,
                 "social_security_benefits": {
@@ -495,23 +495,23 @@ class RecurringEventsTests(unittest.TestCase):
             if event["type"] == "SocialSecurity"
         }
 
-        self.assertEqual(ss_events["matthew"]["year"], 2037)
-        self.assertEqual(ss_events["matthew"]["monthly_benefit"], 3698.0)
-        self.assertEqual(ss_events["matthew"]["label"], "SS Begins (M)")
-        self.assertEqual(ss_events["weny"]["year"], 2043)
-        self.assertEqual(ss_events["weny"]["monthly_benefit"], 1000.0)
-        self.assertEqual(ss_events["weny"]["label"], "SS Begins (W)")
+        self.assertEqual(ss_events["person1"]["year"], 2037)
+        self.assertEqual(ss_events["person1"]["monthly_benefit"], 3698.0)
+        self.assertEqual(ss_events["person1"]["label"], "SS Begins (P)")
+        self.assertEqual(ss_events["person2"]["year"], 2043)
+        self.assertEqual(ss_events["person2"]["monthly_benefit"], 1000.0)
+        self.assertEqual(ss_events["person2"]["label"], "SS Begins (P)")
 
     def test_resolve_runtime_config_social_security_uses_legacy_fallback_when_schedule_missing(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {
+            "person1": {
                 "dob": "1967-04-23",
                 "ss_start_age": 70,
                 "ss_monthly_benefit": 3698,
             },
             "events": [
-                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (M)", "person": "matthew", "year": 2034, "monthly_benefit": 2691},
+                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (M)", "person": "person1", "year": 2034, "monthly_benefit": 2691},
             ],
         }
 
@@ -524,7 +524,7 @@ class RecurringEventsTests(unittest.TestCase):
     def test_resolve_runtime_config_ss_keeps_legacy_taxability_metadata(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "matthew": {
+            "person1": {
                 "dob": "1967-04-23",
                 "ss_start_age": 70,
                 "social_security_benefits": {
@@ -536,7 +536,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "enabled": False,
                     "type": "SocialSecurity",
                     "label": "SS (Person 1 legacy)",
-                    "person": "matthew",
+                    "person": "person1",
                     "year": 2034,
                     "monthly_benefit": 2691,
                     "taxable_fraction": 0.5,
@@ -567,8 +567,8 @@ class RecurringEventsTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {"name": "Person 1", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
-            "weny": {"name": "Person 2", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "person1": {"name": "Person 1", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "person2": {"name": "Person 2", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
             "spending": {"retirement_annual": 0, "survivor_annual": 0},
             "withdrawal_policy": {
                 "accumulation_cash_target": 0.0,
@@ -605,8 +605,8 @@ class RecurringEventsTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {"name": "Person 1", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
-            "weny": {"name": "Person 2", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "person1": {"name": "Person 1", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "person2": {"name": "Person 2", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
             "spending": {"retirement_annual": 0, "survivor_annual": 0},
             "withdrawal_policy": {
                 "accumulation_cash_target": 0.0,
@@ -634,8 +634,8 @@ class RecurringEventsTests(unittest.TestCase):
         df = pd.DataFrame([
             {
                 "year": 2026,
-                "matthew_income": 0.0,
-                "weny_income": 0.0,
+                "person1_income": 0.0,
+                "person2_income": 0.0,
                 "freed_payments": 0.0,
                 "annual_spend": 0.0,
                 "annual_taxes": 0.0,
@@ -668,8 +668,8 @@ class RecurringEventsTests(unittest.TestCase):
         df = pd.DataFrame([
             {
                 "year": 2035,
-                "matthew_income": 0.0,
-                "weny_income": 0.0,
+                "person1_income": 0.0,
+                "person2_income": 0.0,
                 "freed_payments": 0.0,
                 "annual_spend": 95000.0,
                 "annual_taxes": 5000.0,
@@ -692,11 +692,11 @@ class RecurringEventsTests(unittest.TestCase):
 
     def test_build_kpi_summary_uses_first_retirement_year_and_compact_values(self):
         config = {
-            "matthew": {"name": "Person 1", "dob": "1967-04-23"},
-            "weny": {"name": "Person 2", "dob": "1976-10-02"},
+            "person1": {"name": "Person 1", "dob": "1967-04-23"},
+            "person2": {"name": "Person 2", "dob": "1976-10-02"},
             "events": [
-                {"enabled": True, "type": "Retire", "person": "weny", "year": 2037, "label": "Retirement (W)"},
-                {"enabled": True, "type": "Retire", "person": "matthew", "year": 2035, "label": "Retirement (M)"},
+                {"enabled": True, "type": "Retire", "person": "person2", "year": 2037, "label": "Retirement (W)"},
+                {"enabled": True, "type": "Retire", "person": "person1", "year": 2035, "label": "Retirement (M)"},
             ],
         }
         df = pd.DataFrame([
@@ -719,22 +719,22 @@ class RecurringEventsTests(unittest.TestCase):
     def test_build_chart_writes_kpi_strip_above_chart(self):
         config = {
             "display": {"projection_title": "Casa Lemuria"},
-            "matthew": {"name": "Person 1", "dob": "1967-04-23"},
-            "weny": {"name": "Person 2", "dob": "1976-10-02"},
+            "person1": {"name": "Person 1", "dob": "1967-04-23"},
+            "person2": {"name": "Person 2", "dob": "1976-10-02"},
             "events": [
-                {"enabled": True, "type": "Retire", "person": "matthew", "year": 2035, "label": "Retirement (M)"},
+                {"enabled": True, "type": "Retire", "person": "person1", "year": 2035, "label": "Retirement (M)"},
             ],
             "simulation": {"start_year": 2026, "end_year": 2063},
         }
         df = pd.DataFrame([
             {"year": 2026, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
-             "total_net_worth": 305000.0, "survivor": False, "events_active": "", "matthew_income": 0.0, "weny_income": 0.0,
+             "total_net_worth": 305000.0, "survivor": False, "events_active": "", "person1_income": 0.0, "person2_income": 0.0,
              "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
             {"year": 2035, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
-             "total_net_worth": 1040000.0, "survivor": False, "events_active": "🎉 Retirement (M)", "matthew_income": 0.0, "weny_income": 0.0,
+             "total_net_worth": 1040000.0, "survivor": False, "events_active": "🎉 Retirement (M)", "person1_income": 0.0, "person2_income": 0.0,
              "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
             {"year": 2063, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
-             "total_net_worth": 1610000.0, "survivor": False, "events_active": "", "matthew_income": 0.0, "weny_income": 0.0,
+             "total_net_worth": 1610000.0, "survivor": False, "events_active": "", "person1_income": 0.0, "person2_income": 0.0,
              "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
         ])
 
@@ -807,6 +807,7 @@ class RecurringEventsTests(unittest.TestCase):
             home_value=0.0,
             liability_balances=None,
             property_values=None,
+            config=None,
         ):
             captured["balances"] = balances
             captured["home_value"] = home_value
@@ -825,8 +826,8 @@ class RecurringEventsTests(unittest.TestCase):
                     "total_net_worth": sum(balances.values()) + home_value - liability_balances.get("Mortgage (5156)", 0.0),
                     "survivor": False,
                     "events_active": "",
-                    "matthew_income": 0.0,
-                    "weny_income": 0.0,
+                    "person1_income": 0.0,
+                    "person2_income": 0.0,
                     "freed_payments": 0.0,
                     "annual_spend": 0.0,
                     "annual_taxes": 0.0,
@@ -845,14 +846,14 @@ class RecurringEventsTests(unittest.TestCase):
                                     run.main()
 
         self.assertEqual(captured["balances"]["cash"], 12000.0)
-        self.assertEqual(captured["home_value"], 0.0)
+        self.assertEqual(captured["home_value"], 454500.0)
         self.assertEqual(captured["liability_balances"], {"Mortgage (5156)": 125355.55})
-        self.assertEqual(captured["property_values"], {})
+        self.assertEqual(captured["property_values"], {"Casa Lemuria": 454500.0})
 
     def test_xaxis_tick_spec_includes_age_labels(self):
         config = {
-            "matthew": {"dob": "1967-04-23"},
-            "weny": {"dob": "1976-10-02"},
+            "person1": {"dob": "1967-04-23"},
+            "person2": {"dob": "1976-10-02"},
         }
 
         tickvals, ticktext = charts._xaxis_tick_spec(config, [2026, 2027, 2028, 2029])
@@ -863,8 +864,8 @@ class RecurringEventsTests(unittest.TestCase):
     def test_build_figure_keeps_negative_cash_trace_visible(self):
         config = {
             "display": {"projection_title": "Negative Cash Test"},
-            "matthew": {"dob": "1967-04-23"},
-            "weny": {"dob": "1976-10-02"},
+            "person1": {"dob": "1967-04-23"},
+            "person2": {"dob": "1976-10-02"},
         }
         df = pd.DataFrame([
             {
@@ -905,8 +906,8 @@ class RecurringEventsTests(unittest.TestCase):
 
     def test_event_annotations_are_right_anchored_and_drop_into_chart_body(self):
         config = {
-            "matthew": {"dob": "1967-04-23"},
-            "weny": {"dob": "1976-10-02"},
+            "person1": {"dob": "1967-04-23"},
+            "person2": {"dob": "1976-10-02"},
         }
         df = pd.DataFrame([
             {

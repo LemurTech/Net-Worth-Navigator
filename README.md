@@ -15,17 +15,21 @@ Net Worth Navigator projects household net worth forward over time, anchored to 
 ## Quick Start
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies into the local venv
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 
-# Edit assumptions
-nano config.toml
+# Edit assumptions/scenario inputs
+nano scenarios/default.toml
 
-# Run projection
-python run.py
+# Run projection (live Monarch)
+.venv/bin/python run.py
+
+# Fast offline rerender (uses cache)
+.venv/bin/python run.py --offline
 
 # View output
-open output/projection.html
+open /srv/web-projects/finances/projection.html
 # or visit http://casalemuria.lan/finances/ on the LAN
 ```
 
@@ -49,14 +53,22 @@ Net-Worth-Navigator/
 
 ## Configuration
 
-Scenario-specific parameters now live in `scenarios/*.toml`, starting with
+Scenario-specific parameters live in `scenarios/*.toml`, starting with
 `scenarios/default.toml`. Shared tax reference data loads from
-`config/tax_tables/` via `[taxes].table_set`. The root `config.toml` remains as
-a temporary compatibility fallback during the migration.
+`config/tax_tables/` via `[taxes].table_set`.
 
-- `[matthew]` / `[weny]` — personal parameters, income, retirement year
+### Person schema (current)
+
+Household members are modeled with generic keys:
+
+- `[person1]` / `[person2]` — personal parameters, income, retirement year
 - `[assumptions]` — growth rates, inflation, allocation
 - `[[events]]` — financial events with `enabled = true/false` toggle
+
+Event person references should use `person = "person1"` or `person = "person2"`.
+
+> Note: this is now the canonical schema for this codebase; the runtime no longer
+> carries `matthew`/`weny` compatibility paths.
 
 ## Web Output
 

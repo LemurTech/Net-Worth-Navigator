@@ -27,7 +27,7 @@ class EditorScenarioTests(unittest.TestCase):
         with patch("admin_app.get_scenario", side_effect=lambda slug=None: alt if slug == "alt" else default):
             self.assertEqual(admin_app._current_scenario("alt").slug, "alt")
             self.assertEqual(admin_app._config_path("alt"), Path("scenarios/alt.toml"))
-            self.assertTrue(str(admin_app._backup_dir("alt")).endswith("config-backups\\alt"))
+            self.assertTrue(str(admin_app._backup_dir("alt")).endswith(str(Path("config-backups") / "alt")))
 
     def test_render_all_scenarios_runs_each_discovered_slug(self):
         default = ScenarioRef(

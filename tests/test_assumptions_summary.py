@@ -6,14 +6,14 @@ from src.tables import build_assumptions_summary
 class AssumptionsSummaryTests(unittest.TestCase):
     def test_build_assumptions_summary_renders_current_config_inputs(self):
         config = {
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
                 "dob": "1967-04-23",
                 "life_expectancy": 90,
                 "retirement_year": 2034,
                 "ss_start_age": 70,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "dob": "1976-10-02",
                 "life_expectancy": 90,
@@ -65,8 +65,8 @@ class AssumptionsSummaryTests(unittest.TestCase):
             is_default = False
 
         baseline = {
-            "matthew": {"dob": "1967-04-23", "life_expectancy": 90, "retirement_year": 2035, "ss_start_age": 70},
-            "weny": {"dob": "1976-10-02", "life_expectancy": 90, "retirement_year": 2040, "ss_start_age": 67},
+            "person1": {"dob": "1967-04-23", "life_expectancy": 90, "retirement_year": 2035, "ss_start_age": 70},
+            "person2": {"dob": "1976-10-02", "life_expectancy": 90, "retirement_year": 2040, "ss_start_age": 67},
             "assumptions": {"stock_return": 0.07, "bond_return": 0.04, "inflation": 0.03},
             "spending": {"retirement_annual": 100000, "survivor_percent_of_retirement": 0.70},
             "withdrawal_policy": {"accumulation_cash_target": 64000, "retirement_cash_target": 95000, "survivor_cash_target": 66500},

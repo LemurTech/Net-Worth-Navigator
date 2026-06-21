@@ -450,6 +450,21 @@ def _person_display(config: dict, person_key: str | None) -> str:
     return config.get(person_key, {}).get("name", person_key.title())
 
 
+def _person_keys(config: dict) -> list[str]:
+    preferred = [
+        key for key in ("person1", "person2")
+        if isinstance(config.get(key), dict)
+        and any(field in config[key] for field in ("dob", "life_expectancy", "retirement_year", "ss_start_age"))
+    ]
+    extras = [
+        key for key, value in config.items()
+        if key not in preferred
+        and isinstance(value, dict)
+        and any(field in value for field in ("dob", "life_expectancy", "retirement_year", "ss_start_age"))
+    ]
+    return preferred + extras
+
+
 def _format_compact_currency(value: float) -> str:
     sign = "-" if value < 0 else ""
     amount = abs(float(value))
@@ -488,7 +503,7 @@ def _retirement_age(config: dict, event: dict | None) -> int | None:
 
 def _age_label_for_year(config: dict, year: int) -> str:
     ages = []
-    for person_key in ("matthew", "weny"):
+    for person_key in _person_keys(config):
         dob = config.get(person_key, {}).get("dob")
         if not dob:
             continue
@@ -639,8 +654,8 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         if e["type"] == "EndOfPlan" and e.get("person")
     }
     retirement_years = {
-        "matthew": config.get("matthew", {}).get("retirement_year", sim_end),
-        "weny": config.get("weny", {}).get("retirement_year", sim_end),
+        person_key: config.get(person_key, {}).get("retirement_year", sim_end)
+        for person_key in _person_keys(config)
     }
 
     items: list[dict] = []

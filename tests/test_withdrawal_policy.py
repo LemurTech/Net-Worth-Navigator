@@ -18,7 +18,7 @@ class WithdrawalPolicyTests(unittest.TestCase):
                 "taxable_withdrawal_taxable_fraction": 0.0,
                 "trad_ira_withdrawal_taxable_fraction": 0.0,
             },
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
@@ -27,7 +27,7 @@ class WithdrawalPolicyTests(unittest.TestCase):
                 "annual_401k_contribution_extra_increase": 0.0,
                 "annual_ira_contribution": 0,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "retirement_year": 2026,
                 "annual_take_home": 0,
@@ -55,8 +55,8 @@ class WithdrawalPolicyTests(unittest.TestCase):
                 ],
             },
             "events": [
-                {"enabled": True, "type": "Retire", "label": "Retirement (M)", "person": "matthew", "year": 2026},
-                {"enabled": True, "type": "Retire", "label": "Retirement (W)", "person": "weny", "year": 2026},
+                {"enabled": True, "type": "Retire", "label": "Retirement (M)", "person": "person1", "year": 2026},
+                {"enabled": True, "type": "Retire", "label": "Retirement (W)", "person": "person2", "year": 2026},
             ],
             "liabilities": [],
         }
@@ -287,11 +287,11 @@ class WithdrawalPolicyTests(unittest.TestCase):
 
     def test_take_home_net_of_retirement_contrib_does_not_reduce_implied_spending(self):
         config = self._base_config()
-        config["matthew"]["retirement_year"] = 2100
-        config["weny"]["retirement_year"] = 2100
-        config["matthew"]["annual_take_home"] = 100.0
-        config["matthew"]["annual_ira_contribution"] = 10.0
-        config["matthew"]["annual_take_home_is_net_of_retirement_contributions"] = True
+        config["person1"]["retirement_year"] = 2100
+        config["person2"]["retirement_year"] = 2100
+        config["person1"]["annual_take_home"] = 100.0
+        config["person1"]["annual_ira_contribution"] = 10.0
+        config["person1"]["annual_take_home_is_net_of_retirement_contributions"] = True
 
         with patch("src.model.load_config", return_value=config):
             df = model.run_projection(

@@ -64,7 +64,7 @@ class TaxModelTests(unittest.TestCase):
                     },
                 },
             },
-            "matthew": {
+            "person1": {
                 "name": "Person 1",
                 "retirement_year": 2026,
                 "annual_take_home": 0.0,
@@ -73,7 +73,7 @@ class TaxModelTests(unittest.TestCase):
                 "annual_401k_contribution_extra_increase": 0.0,
                 "annual_ira_contribution": 0.0,
             },
-            "weny": {
+            "person2": {
                 "name": "Person 2",
                 "retirement_year": 2026,
                 "annual_take_home": 0.0,
@@ -123,7 +123,7 @@ class TaxModelTests(unittest.TestCase):
                 "enabled": True,
                 "type": "SocialSecurity",
                 "label": "SS Begins (M)",
-                "person": "matthew",
+                "person": "person1",
                 "year": 2026,
                 "monthly_benefit": 2.0,
             }
@@ -163,7 +163,7 @@ class TaxModelTests(unittest.TestCase):
                 "enabled": True,
                 "type": "SocialSecurity",
                 "label": "SS Begins (M)",
-                "person": "matthew",
+                "person": "person1",
                 "year": 2026,
                 "monthly_benefit": 2_000.0,
             },
@@ -192,8 +192,8 @@ class TaxModelTests(unittest.TestCase):
         df = pd.DataFrame([
             {
                 "year": 2026,
-                "matthew_income": 0.0,
-                "weny_income": 0.0,
+                "person1_income": 0.0,
+                "person2_income": 0.0,
                 "freed_payments": 0.0,
                 "annual_spend": 0.0,
                 "annual_taxes": 1250.0,
@@ -263,10 +263,10 @@ class TaxModelTests(unittest.TestCase):
 
     def test_rmd_forces_trad_withdrawal_and_taxable_income(self):
         config = self._base_config()
-        config["matthew"]["dob"] = "1940-01-01"
-        config["weny"]["dob"] = "1980-01-01"
-        config["matthew"]["rmd_trad_ira_share"] = 1.0
-        config["weny"]["rmd_trad_ira_share"] = 0.0
+        config["person1"]["dob"] = "1940-01-01"
+        config["person2"]["dob"] = "1980-01-01"
+        config["person1"]["rmd_trad_ira_share"] = 1.0
+        config["person2"]["rmd_trad_ira_share"] = 0.0
         config["taxes"]["rmd"] = {"enabled": True, "start_age": 73}
 
         with patch("src.model.load_config", return_value=config):
@@ -285,10 +285,10 @@ class TaxModelTests(unittest.TestCase):
 
     def test_rmd_does_not_add_extra_when_voluntary_trad_withdrawals_already_higher(self):
         config = self._base_config()
-        config["matthew"]["dob"] = "1940-01-01"
-        config["weny"]["dob"] = "1980-01-01"
-        config["matthew"]["rmd_trad_ira_share"] = 1.0
-        config["weny"]["rmd_trad_ira_share"] = 0.0
+        config["person1"]["dob"] = "1940-01-01"
+        config["person2"]["dob"] = "1980-01-01"
+        config["person1"]["rmd_trad_ira_share"] = 1.0
+        config["person2"]["rmd_trad_ira_share"] = 0.0
         config["taxes"]["enabled"] = False
         config["taxes"]["rmd"] = {"enabled": True, "start_age": 73}
         config["assumptions"]["effective_tax_rate_post_retirement"] = 0.0
@@ -313,14 +313,14 @@ class TaxModelTests(unittest.TestCase):
     def test_build_chart_includes_tax_semantics_note(self):
         config = {
             "display": {"projection_title": "Casa Lemuria"},
-            "matthew": {"name": "Person 1", "dob": "1967-04-23"},
-            "weny": {"name": "Person 2", "dob": "1976-10-02"},
+            "person1": {"name": "Person 1", "dob": "1967-04-23"},
+            "person2": {"name": "Person 2", "dob": "1976-10-02"},
             "events": [],
             "simulation": {"start_year": 2026, "end_year": 2026},
         }
         df = pd.DataFrame([
             {"year": 2026, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0,
-             "total_net_worth": 100.0, "survivor": False, "events_active": "", "matthew_income": 0.0, "weny_income": 0.0,
+             "total_net_worth": 100.0, "survivor": False, "events_active": "", "person1_income": 0.0, "person2_income": 0.0,
              "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": [], "taxable_income": 0.0},
         ])
 

@@ -40,7 +40,7 @@ end_year = 2066
 [display]
 projection_title = "Sample Household Plan (Synthetic Demo)"
 
-[matthew]
+[person1]
 name = "Alex"
 dob = "1969-04-12"
 life_expectancy = 90
@@ -54,7 +54,7 @@ annual_ira_contribution = 0
 rmd_trad_ira_share = 0.6
 ss_start_age = 67
 
-[matthew.social_security_benefits]
+[person1.social_security_benefits]
 "62" = 1700
 "63" = 1840
 "64" = 1990
@@ -65,7 +65,11 @@ ss_start_age = 67
 "69" = 2910
 "70" = 3120
 
-[weny]
+[person1.annual_401k_contribution_split]
+trad_ira = 0.31
+roth     = 0.69
+
+[person2]
 name = "Sam"
 dob = "1974-10-03"
 life_expectancy = 92
@@ -80,7 +84,7 @@ annual_ira_contribution_bucket = "roth"
 rmd_trad_ira_share = 0.4
 ss_start_age = 67
 
-[weny.social_security_benefits]
+[person2.social_security_benefits]
 "62" = 1100
 "63" = 1180
 "64" = 1270
@@ -148,14 +152,14 @@ type = "mortgage"
 enabled = true
 type = "EndOfPlan"
 label = "End of Plan (Alex)"
-person = "matthew"
+person = "person1"
 year = 2059
 
 [[events]]
 enabled = true
 type = "EndOfPlan"
 label = "End of Plan (Sam)"
-person = "weny"
+person = "person2"
 year = 2066
 
 # Example recurring discretionary spending

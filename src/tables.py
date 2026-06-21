@@ -119,7 +119,7 @@ def _fmt_age_year(age, year) -> str:
 
 def _person_keys(config: dict) -> list[str]:
     preferred = [
-        key for key in ("matthew", "weny")
+        key for key in ("person1", "person2")
         if isinstance(config.get(key), dict)
         and any(field in config[key] for field in ("dob", "life_expectancy", "retirement_year", "ss_start_age"))
     ]
@@ -774,8 +774,16 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
 
     # ── Income ────────────────────────────────────────────────────────────────
     rows.append("<tr class='section'><th colspan='100'>Income</th></tr>")
-    rows.append(_data_row("Person 1 earned income",  col("matthew_income"), indent=True))
-    rows.append(_data_row("Person 2 earned income",     col("weny_income"),    indent=True))
+    person_income_columns = sorted(
+        [
+            field for field in subset.columns
+            if field.startswith("person") and field.endswith("_income")
+        ]
+    )
+    for field in person_income_columns:
+        person_key = field.removesuffix("_income")
+        label = person_key.replace("person", "Person ") + " earned income"
+        rows.append(_data_row(label, col(field), indent=True))
 
     # Freed liability payments as income-side items
     freed = col("freed_payments")
@@ -789,8 +797,7 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
 
     total_income = [
         (
-            subset.loc[y, "matthew_income"]
-            + subset.loc[y, "weny_income"]
+            sum(float(subset.loc[y, field]) for field in person_income_columns)
             + subset.loc[y, "freed_payments"]
             + sum(_event_item_parts(item)[1] for item in (subset.loc[y, "event_items"] or []) if _event_item_parts(item)[1] > 0)
         )
