@@ -27,6 +27,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Explicit pre-retirement spending precedence in `model.py`: `pre_retirement_spending` → `annual_savings_override` → implied `income - contributions`
 - Explicit retirement contribution routing in `model.py`: contributions deposit to `trad_ira`/`roth` before generic surplus allocation, with optional per-person bucket overrides
 - Optional `annual_401k_contribution_split` support in `model.py` and `scenarios/default.toml` so bundled employer retirement contributions can be routed proportionally between traditional and Roth buckets
+- Early-death survivor modeling improvements in `model.py`: survivor phase now begins immediately after death (not only after both partners retire), and widow/er Social Security can step up from the deceased partner's configured benefit once the survivor reaches `survivor_ss_start_age` (default 60)
 - Configurable wage tax treatment in `model.py` via `taxes.wage_tax_treatment = "net_cash" | "taxable_wages"`, including a tracked `taxable_wage_income` output column
 - Scenario shell iframe height increased by 25% across desktop/mobile breakpoints in `src/scenario_shell.py`
 - Shared config loader in `src/config_loader.py` for merged runtime config resolution across model, bridge, and editor

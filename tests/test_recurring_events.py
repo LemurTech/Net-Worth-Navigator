@@ -378,6 +378,143 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(float(by_year[2027].annual_spend), 30.0)
         self.assertEqual(float(by_year[2028].annual_spend), 30.0)
 
+    def test_survivor_phase_starts_immediately_after_death_even_if_survivor_still_working(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2027},
+            "assumptions": {
+                "stock_return": 0.0,
+                "bond_return": 0.0,
+                "inflation": 0.0,
+                "equity_allocation": 0.0,
+                "effective_tax_rate_pre_retirement": 0.0,
+                "effective_tax_rate_post_retirement": 0.0,
+                "taxable_withdrawal_taxable_fraction": 0.0,
+                "trad_ira_withdrawal_taxable_fraction": 0.0,
+            },
+            "person1": {
+                "name": "Person 1",
+                "dob": "1960-01-01",
+                "retirement_year": 2030,
+                "annual_take_home": 50.0,
+                "annual_401k_contribution": 0,
+                "annual_ira_contribution": 0,
+            },
+            "person2": {
+                "name": "Person 2",
+                "dob": "1966-01-01",
+                "retirement_year": 2040,
+                "annual_take_home": 80.0,
+                "annual_401k_contribution": 0,
+                "annual_ira_contribution": 0,
+            },
+            "spending": {
+                "retirement_annual": 100.0,
+                "survivor_percent_of_retirement": 0.5,
+                "spending_basis": "nominal",
+            },
+            "withdrawal_policy": {
+                "accumulation_cash_target": 0.0,
+                "retirement_cash_target": 0.0,
+                "survivor_cash_target": 0.0,
+                "accumulation_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "retirement_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "survivor_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+            },
+            "events": [
+                {
+                    "enabled": True,
+                    "type": "EndOfPlan",
+                    "label": "End of Plan (M)",
+                    "person": "person1",
+                    "year": 2026,
+                },
+            ],
+            "liabilities": [],
+        }
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        by_year = {int(row.year): row for row in df.itertuples()}
+        self.assertFalse(bool(by_year[2026].survivor))
+        self.assertTrue(bool(by_year[2027].survivor))
+        self.assertEqual(float(by_year[2027].annual_spend), 50.0)
+        self.assertEqual(float(by_year[2027].person2_income), 80.0)
+
+    def test_survivor_social_security_can_begin_before_survivor_own_claim_age(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2027},
+            "assumptions": {
+                "stock_return": 0.0,
+                "bond_return": 0.0,
+                "inflation": 0.0,
+                "equity_allocation": 0.0,
+                "effective_tax_rate_pre_retirement": 0.0,
+                "effective_tax_rate_post_retirement": 0.0,
+                "taxable_withdrawal_taxable_fraction": 0.0,
+                "trad_ira_withdrawal_taxable_fraction": 0.0,
+            },
+            "person1": {
+                "name": "Person 1",
+                "dob": "1960-01-01",
+                "retirement_year": 2020,
+                "annual_take_home": 0,
+                "annual_401k_contribution": 0,
+                "annual_ira_contribution": 0,
+                "ss_start_age": 67,
+                "social_security_benefits": {"67": 3000},
+            },
+            "person2": {
+                "name": "Person 2",
+                "dob": "1966-01-01",
+                "retirement_year": 2020,
+                "annual_take_home": 0,
+                "annual_401k_contribution": 0,
+                "annual_ira_contribution": 0,
+                "ss_start_age": 70,
+                "social_security_benefits": {"70": 1000},
+                "survivor_ss_start_age": 60,
+            },
+            "spending": {
+                "retirement_annual": 0,
+                "survivor_annual": 0,
+                "spending_basis": "nominal",
+            },
+            "withdrawal_policy": {
+                "accumulation_cash_target": 0.0,
+                "retirement_cash_target": 0.0,
+                "survivor_cash_target": 0.0,
+                "accumulation_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "retirement_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "survivor_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+            },
+            "events": [
+                {
+                    "enabled": True,
+                    "type": "EndOfPlan",
+                    "label": "End of Plan (M)",
+                    "person": "person1",
+                    "year": 2026,
+                },
+            ],
+            "liabilities": [],
+        }
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        by_year = {int(row.year): row for row in df.itertuples()}
+        self.assertEqual(float(by_year[2027].person1_income), 0.0)
+        self.assertEqual(float(by_year[2027].person2_income), 36000.0)
+
     def test_resolve_runtime_config_syncs_end_of_plan_years_to_life_expectancy(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},

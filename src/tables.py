@@ -698,6 +698,12 @@ def build_scenario_parameters_summary(
                 _fmt_currency,
             ),
             _diff_row(
+                "Survivor SS start age",
+                person.get("survivor_ss_start_age"),
+                baseline_person.get("survivor_ss_start_age"),
+                _fmt_text,
+            ),
+            _diff_row(
                 "401k contribution bucket override",
                 person.get("annual_401k_contribution_bucket"),
                 baseline_person.get("annual_401k_contribution_bucket"),

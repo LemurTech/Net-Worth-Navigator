@@ -1194,6 +1194,89 @@ def _birth_year(person: dict) -> int | None:
         return None
 
 
+def _person_age_in_year(person: dict, year: int) -> int | None:
+    """Return a person's age during the target year, else None."""
+    birth_year = _birth_year(person)
+    if birth_year is None:
+        return None
+    try:
+        return int(year) - birth_year
+    except (TypeError, ValueError):
+        return None
+
+
+def _death_year(events: list[dict], person_key: str) -> int | None:
+    """Return the person's modeled death year from EndOfPlan events, if any."""
+    death_years: list[int] = []
+    for event in events:
+        if event.get("type") != "EndOfPlan" or str(event.get("person")) != person_key:
+            continue
+        try:
+            death_years.append(int(event["year"]))
+        except (TypeError, ValueError, KeyError):
+            continue
+    return min(death_years) if death_years else None
+
+
+def _is_deceased_in_year(*, events: list[dict], person_key: str, year: int) -> bool:
+    """Return whether the person should be treated as deceased for the model year."""
+    death_year = _death_year(events, person_key)
+    return death_year is not None and int(year) > death_year
+
+
+def _social_security_event_for_person(events: list[dict], person_key: str) -> dict | None:
+    """Return the first SocialSecurity event for a person, if present."""
+    for event in events:
+        if event.get("type") == "SocialSecurity" and str(event.get("person")) == person_key:
+            return event
+    return None
+
+
+def _survivor_social_security_start_age(person: dict) -> int:
+    """Return the survivor-benefit eligibility age for the person."""
+    raw_age = person.get("survivor_ss_start_age", 60)
+    try:
+        return max(0, int(raw_age))
+    except (TypeError, ValueError):
+        return 60
+
+
+def _planned_social_security_monthly_benefit(
+    *,
+    person: dict,
+    person_key: str,
+    events: list[dict],
+) -> float:
+    """Return the person's configured or synthesized Social Security monthly benefit."""
+    event = _social_security_event_for_person(events, person_key)
+    if event is not None:
+        try:
+            return max(0.0, float(event.get("monthly_benefit", 0.0)))
+        except (TypeError, ValueError):
+            return 0.0
+
+    monthly_benefit = _resolve_social_security_monthly_benefit(
+        person,
+        ss_start_age=person.get("ss_start_age"),
+    )
+    try:
+        return max(0.0, float(monthly_benefit or 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _planned_social_security_taxable_fraction(
+    *,
+    person_key: str,
+    events: list[dict],
+) -> float:
+    """Return taxable fraction for the person's configured Social Security benefit."""
+    event = _social_security_event_for_person(events, person_key)
+    if event is None:
+        return 1.0
+    return _event_taxable_fraction(event, default=1.0)
+
+
 def _uniform_lifetime_factor(age: int, factors: dict[int, float]) -> float | None:
     """Return uniform-lifetime divisor for age, clamped to max known age."""
     if not factors:
@@ -1292,6 +1375,72 @@ def calculate_household_rmd_required(
         total_required += owned_balance / factor
 
     return max(0.0, total_required)
+
+
+def _apply_survivor_social_security(
+    *,
+    year: int,
+    events: list[dict],
+    person1: dict,
+    person2: dict,
+    person1_deceased: bool,
+    person2_deceased: bool,
+    person1_parts: dict[str, float],
+    person2_parts: dict[str, float],
+) -> tuple[dict[str, float], dict[str, float]]:
+    """Adjust income parts for widow/er survivor Social Security rules."""
+    if person1_deceased == person2_deceased:
+        return person1_parts, person2_parts
+
+    if person1_deceased:
+        survivor_key = "person2"
+        deceased_key = "person1"
+        survivor = person2
+        deceased = person1
+        survivor_parts = person2_parts.copy()
+        other_parts = person1_parts
+    else:
+        survivor_key = "person1"
+        deceased_key = "person2"
+        survivor = person1
+        deceased = person2
+        survivor_parts = person1_parts.copy()
+        other_parts = person2_parts
+
+    survivor_age = _person_age_in_year(survivor, year)
+    if survivor_age is None:
+        return person1_parts, person2_parts
+    if survivor_age < _survivor_social_security_start_age(survivor):
+        return person1_parts, person2_parts
+
+    death_year = _death_year(events, deceased_key)
+    if death_year is None or int(year) <= death_year:
+        return person1_parts, person2_parts
+
+    deceased_monthly = _planned_social_security_monthly_benefit(
+        person=deceased,
+        person_key=deceased_key,
+        events=events,
+    )
+    if deceased_monthly <= 0:
+        return person1_parts, person2_parts
+
+    deceased_annual = deceased_monthly * 12.0
+    deceased_taxable = deceased_annual * _planned_social_security_taxable_fraction(
+        person_key=deceased_key,
+        events=events,
+    )
+
+    if deceased_annual > survivor_parts["ss_income"]:
+        survivor_parts["ss_income"] = deceased_annual
+        survivor_parts["ss_taxable_income"] = deceased_taxable
+        survivor_parts["cash_income"] = (
+            survivor_parts["earned_income"] + survivor_parts["ss_income"]
+        )
+
+    if survivor_key == "person2":
+        return other_parts, survivor_parts
+    return survivor_parts, other_parts
 
 
 def _apply_forced_rmd_withdrawal(
@@ -1422,14 +1571,8 @@ def run_projection(
         )
 
         # ── Determine survivor state ───────────────────────────────────────────
-        person1_deceased = year > person1["retirement_year"] and any(
-            e["type"] == "EndOfPlan" and e.get("person") == "person1" and year > e["year"]
-            for e in events
-        )
-        person2_deceased = year > person2["retirement_year"] and any(
-            e["type"] == "EndOfPlan" and e.get("person") == "person2" and year > e["year"]
-            for e in events
-        )
+        person1_deceased = _is_deceased_in_year(events=events, person_key="person1", year=year)
+        person2_deceased = _is_deceased_in_year(events=events, person_key="person2", year=year)
 
         # ── Apply events for this year ─────────────────────────────────────────
         active_labels = []
@@ -1617,54 +1760,16 @@ def run_projection(
             include_taxable_wages=include_taxable_wages,
         )
 
-        # ── SS survivor benefit: survivor keeps the higher of the two checks ───
-        # If one person is deceased and both had started SS, the survivor's
-        # own benefit is already captured in _person_income. But if the deceased
-        # had the higher benefit, the survivor steps up — recalculate here.
-        if person1_deceased or person2_deceased:
-            person1_ss = sum(
-                e.get("monthly_benefit", 0) * 12
-                for e in events
-                if e["type"] == "SocialSecurity"
-                and e.get("person") == "person1"
-                and year >= e["year"]
-            )
-            person1_ss_taxable = sum(
-                (e.get("monthly_benefit", 0) * 12) * _event_taxable_fraction(e, default=1.0)
-                for e in events
-                if e["type"] == "SocialSecurity"
-                and e.get("person") == "person1"
-                and year >= e["year"]
-            )
-            person2_ss = sum(
-                e.get("monthly_benefit", 0) * 12
-                for e in events
-                if e["type"] == "SocialSecurity"
-                and e.get("person") == "person2"
-                and year >= e["year"]
-            )
-            person2_ss_taxable = sum(
-                (e.get("monthly_benefit", 0) * 12) * _event_taxable_fraction(e, default=1.0)
-                for e in events
-                if e["type"] == "SocialSecurity"
-                and e.get("person") == "person2"
-                and year >= e["year"]
-            )
-            higher_ss = max(person1_ss, person2_ss)
-            lower_ss  = min(person1_ss, person2_ss)
-
-            if person1_deceased and not person2_deceased and person2_ss > 0:
-                # Person 2 survives: receives higher of two checks (Person 1's if higher)
-                if person1_ss > person2_ss:
-                    # Step Person 2 up — replace her SS with Person 1's higher amount
-                    person2_parts["ss_income"] = person1_ss
-                    person2_parts["ss_taxable_income"] = person1_ss_taxable
-                    person2_parts["cash_income"] = (
-                        person2_parts["earned_income"] + person2_parts["ss_income"]
-                    )
-            elif person2_deceased and not person1_deceased and person1_ss > 0:
-                # Person 1 survives: already on higher check, no change needed
-                pass
+        person1_parts, person2_parts = _apply_survivor_social_security(
+            year=year,
+            events=events,
+            person1=person1,
+            person2=person2,
+            person1_deceased=person1_deceased,
+            person2_deceased=person2_deceased,
+            person1_parts=person1_parts,
+            person2_parts=person2_parts,
+        )
 
         person1_income = person1_parts["cash_income"]
         person2_income    = person2_parts["cash_income"]
@@ -1729,7 +1834,7 @@ def run_projection(
         both_retired = person1_retired and person2_retired
         one_deceased = person1_deceased or person2_deceased
 
-        if both_retired:
+        if one_deceased or both_retired:
             target_spend, survivor_spend = resolve_spending_shift_for_year(
                 base_retirement_spend=target_spend,
                 base_survivor_spend=survivor_spend,
@@ -2070,7 +2175,7 @@ def run_projection(
             "contribution_roth_person1": contribution_breakdown_by_person["person1"]["roth"],
             "contribution_roth_person2": contribution_breakdown_by_person["person2"]["roth"],
             "contribution_total": contribution_breakdown["trad_ira"] + contribution_breakdown["roth"],
-            "survivor":       one_deceased and both_retired,
+            "survivor":       one_deceased,
             "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",
             "taxable":        portfolio["taxable"],
