@@ -78,6 +78,32 @@ def fetch_raw_accounts() -> list[dict]:
     return json.loads(lines[-1])
 
 
+def _account_classification_entry(config: dict, account_name: str) -> object:
+    accounts = config.get("accounts", {}) if isinstance(config, dict) else {}
+    return accounts.get(account_name)
+
+
+def _account_category(config: dict, account_name: str) -> str | None:
+    entry = _account_classification_entry(config, account_name)
+    if isinstance(entry, str):
+        return entry
+    if isinstance(entry, dict):
+        raw_category = entry.get("category")
+        if raw_category is None:
+            return None
+        return str(raw_category)
+    return None
+
+
+def _account_owner(config: dict, account_name: str) -> str | None:
+    entry = _account_classification_entry(config, account_name)
+    if not isinstance(entry, dict):
+        return None
+    raw_owner = entry.get("owner")
+    owner = str(raw_owner).strip() if raw_owner is not None else ""
+    return owner if owner in {"person1", "person2"} else None
+
+
 def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict[str, float], dict[str, float]]:
     """
     Classify raw Monarch accounts per config.toml [accounts] and return totals.
@@ -92,8 +118,8 @@ def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict
     """
     if config is None:
         config = load_config()
-    classification_map: dict[str, str] = config.get("accounts", {})
-    disabled: set[str] = set(classification_map.get("disabled", []))
+    accounts_map: dict = config.get("accounts", {})
+    disabled: set[str] = set(accounts_map.get("disabled", []))
 
     portfolio = {"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0}
     extras = {"home_value": 0.0, "vehicles": 0.0, "other": 0.0}
@@ -106,7 +132,7 @@ def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict
         if name in disabled:
             continue
 
-        cat = classification_map.get(name)
+        cat = _account_category(config, name)
 
         if cat is None:
             unclassified.append((name, balance))
@@ -130,19 +156,47 @@ def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict
     return portfolio, extras
 
 
+def extract_retirement_owner_balances(
+    raw: list[dict],
+    config: dict | None = None,
+) -> dict[str, dict[str, float]]:
+    """Return owner-attributed retirement balances from raw account data."""
+    if config is None:
+        config = load_config()
+    accounts_map: dict = config.get("accounts", {})
+    disabled: set[str] = set(accounts_map.get("disabled", []))
+
+    owner_balances = {
+        "trad_ira": {"person1": 0.0, "person2": 0.0},
+        "roth": {"person1": 0.0, "person2": 0.0},
+    }
+
+    for acct in raw:
+        name = acct["name"]
+        if name in disabled:
+            continue
+        category = _account_category(config, name)
+        owner = _account_owner(config, name)
+        if category not in owner_balances or owner not in {"person1", "person2"}:
+            continue
+        owner_balances[category][owner] += float(acct["balance"])
+
+    return owner_balances
+
+
 def extract_real_estate_accounts(raw: list[dict], config: dict | None = None) -> dict[str, float]:
     """Return named real-estate accounts from raw Monarch data."""
     if config is None:
         config = load_config()
-    classification_map: dict[str, str] = config.get("accounts", {})
-    disabled: set[str] = set(classification_map.get("disabled", []))
+    accounts_map: dict = config.get("accounts", {})
+    disabled: set[str] = set(accounts_map.get("disabled", []))
 
     properties: dict[str, float] = {}
     for acct in raw:
         name = acct["name"]
         if name in disabled:
             continue
-        if classification_map.get(name) == "real_estate":
+        if _account_category(config, name) == "real_estate":
             properties[str(name)] = float(acct["balance"])
     return properties
 
@@ -209,7 +263,10 @@ def list_accounts():
         name  = acct["name"]
         bal   = acct["balance"]
         atype = acct["type"]
-        cat   = classified.get(name, "⚠ UNCLASSIFIED")
+        cat = _account_category(config, name) or "⚠ UNCLASSIFIED"
+        owner = _account_owner(config, name)
+        if owner:
+            cat = f"{cat} [{owner}]"
         if name in disabled:
             status = f"[disabled] ({cat})"
         else:

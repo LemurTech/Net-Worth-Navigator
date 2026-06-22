@@ -172,6 +172,7 @@ def _initial_retirement_owner_state(
     portfolio: dict[str, float],
     person1: dict,
     person2: dict,
+    seeded_owner_balances: dict[str, dict[str, float]] | None = None,
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
     trad_shares = _normalized_household_rmd_shares(
         person1=person1,
@@ -185,20 +186,56 @@ def _initial_retirement_owner_state(
     )
 
     owner_balances = {
-        "trad_ira": {
-            "person1": float(portfolio.get("trad_ira", 0.0)) * trad_shares["person1"],
-            "person2": float(portfolio.get("trad_ira", 0.0)) * trad_shares["person2"],
-        },
-        "roth": {
-            "person1": float(portfolio.get("roth", 0.0)) * roth_shares["person1"],
-            "person2": float(portfolio.get("roth", 0.0)) * roth_shares["person2"],
-        },
+        "trad_ira": _resolve_initial_owner_bucket(
+            total_balance=float(portfolio.get("trad_ira", 0.0)),
+            seeded_bucket=(seeded_owner_balances or {}).get("trad_ira"),
+            fallback_shares=trad_shares,
+        ),
+        "roth": _resolve_initial_owner_bucket(
+            total_balance=float(portfolio.get("roth", 0.0)),
+            seeded_bucket=(seeded_owner_balances or {}).get("roth"),
+            fallback_shares=roth_shares,
+        ),
     }
     defaults = {
         "trad_ira": dict(trad_shares),
         "roth": dict(roth_shares),
     }
     return owner_balances, defaults
+
+
+def _resolve_initial_owner_bucket(
+    *,
+    total_balance: float,
+    seeded_bucket: dict[str, float] | None,
+    fallback_shares: dict[str, float],
+) -> dict[str, float]:
+    """Return owner balances for a retirement bucket using seeded account owners first."""
+    total_balance = max(0.0, float(total_balance))
+    seeded_person1 = 0.0
+    seeded_person2 = 0.0
+    if isinstance(seeded_bucket, dict):
+        try:
+            seeded_person1 = max(0.0, float(seeded_bucket.get("person1", 0.0)))
+        except (TypeError, ValueError):
+            seeded_person1 = 0.0
+        try:
+            seeded_person2 = max(0.0, float(seeded_bucket.get("person2", 0.0)))
+        except (TypeError, ValueError):
+            seeded_person2 = 0.0
+
+    assigned = seeded_person1 + seeded_person2
+    if assigned > total_balance and assigned > 0.0:
+        scale = total_balance / assigned
+        seeded_person1 *= scale
+        seeded_person2 *= scale
+        assigned = total_balance
+
+    remainder = max(0.0, total_balance - assigned)
+    return {
+        "person1": seeded_person1 + (remainder * fallback_shares["person1"]),
+        "person2": seeded_person2 + (remainder * fallback_shares["person2"]),
+    }
 
 
 def _owner_split_for_bucket(
@@ -1540,6 +1577,7 @@ def run_projection(
     home_value: float = 0.0,
     liability_balances: dict[str, float] | None = None,
     property_values: dict[str, float] | None = None,
+    retirement_owner_balances: dict[str, dict[str, float]] | None = None,
     config: dict | None = None,
 ) -> pd.DataFrame:
     """
@@ -1575,6 +1613,7 @@ def run_projection(
         portfolio=portfolio,
         person1=person1,
         person2=person2,
+        seeded_owner_balances=retirement_owner_balances,
     )
 
     if liability_balances is None:

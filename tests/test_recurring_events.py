@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from pathlib import Path
 
 import pandas as pd
 
@@ -1058,6 +1059,69 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(extras["home_value"], 0.0)
         self.assertEqual(liabilities, {"Mortgage (5156)": 125355.55})
 
+    def test_extract_retirement_owner_balances_uses_account_level_owner_metadata(self):
+        config = {
+            "accounts": {
+                "disabled": [],
+                "401k Person 1 (6-01)": {"category": "trad_ira", "owner": "person1"},
+                "OregonSaves (4216)": {"category": "roth", "owner": "person2"},
+            }
+        }
+        raw = [
+            {"name": "401k Person 1 (6-01)", "balance": 120000.0, "type": "Retirement"},
+            {"name": "OregonSaves (4216)", "balance": 29773.22, "type": "Retirement"},
+        ]
+
+        owner_balances = monarch_bridge.extract_retirement_owner_balances(raw, config)
+
+        self.assertEqual(owner_balances["trad_ira"]["person1"], 120000.0)
+        self.assertEqual(owner_balances["trad_ira"]["person2"], 0.0)
+        self.assertEqual(owner_balances["roth"]["person1"], 0.0)
+        self.assertEqual(owner_balances["roth"]["person2"], 29773.22)
+
+    def test_run_projection_respects_seeded_retirement_owner_balances(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2026},
+            "assumptions": {
+                "stock_return": 0.0,
+                "bond_return": 0.0,
+                "inflation": 0.0,
+                "equity_allocation": 0.0,
+                "effective_tax_rate_pre_retirement": 0.0,
+                "effective_tax_rate_post_retirement": 0.0,
+                "taxable_withdrawal_taxable_fraction": 0.0,
+                "trad_ira_withdrawal_taxable_fraction": 0.0,
+            },
+            "person1": {"name": "Person 1", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "person2": {"name": "Person 2", "retirement_year": 9999, "annual_take_home": 0, "annual_401k_contribution": 0, "annual_ira_contribution": 0},
+            "spending": {"retirement_annual": 0, "survivor_annual": 0},
+            "withdrawal_policy": {
+                "accumulation_cash_target": 0.0,
+                "retirement_cash_target": 0.0,
+                "survivor_cash_target": 0.0,
+                "accumulation_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "retirement_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "survivor_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+            },
+            "events": [],
+            "liabilities": [],
+        }
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"taxable": 0.0, "trad_ira": 0.0, "roth": 29773.22, "cash": 0.0},
+                home_value=0.0,
+                liability_balances={},
+                retirement_owner_balances={
+                    "roth": {"person1": 0.0, "person2": 29773.22},
+                },
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(float(row["roth"]), 29773.22)
+        self.assertEqual(float(row["roth_person1"]), 0.0)
+        self.assertEqual(float(row["roth_person2"]), 29773.22)
+
     def test_offline_cache_with_raw_accounts_reclassifies_using_current_config(self):
         cached = {
             "timestamp": "2026-06-17T00:00:00",
@@ -1087,12 +1151,14 @@ class RecurringEventsTests(unittest.TestCase):
             home_value=0.0,
             liability_balances=None,
             property_values=None,
+            retirement_owner_balances=None,
             config=None,
         ):
             captured["balances"] = balances
             captured["home_value"] = home_value
             captured["liability_balances"] = liability_balances
             captured["property_values"] = property_values
+            captured["retirement_owner_balances"] = retirement_owner_balances
             return pd.DataFrame([
                 {
                     "year": 2026,
@@ -1117,18 +1183,23 @@ class RecurringEventsTests(unittest.TestCase):
             ])
 
         with patch.object(run, "OFFLINE", True):
-            with patch("run.load_cache", return_value=cached):
-                with patch("run.build_chart"):
-                    with patch("run.shutil.copy2"):
-                        with patch("pathlib.Path.chmod"):
-                            with patch("run.run_projection", side_effect=fake_run_projection):
-                                with patch("src.monarch_bridge.load_config", return_value=config):
-                                    run.main()
+            with patch.object(run, "DEPLOY_DIR", Path("output/test-deploy")):
+                with patch("run.load_cache", return_value=cached):
+                    with patch("run.build_chart"):
+                        with patch("run.shutil.copy2"):
+                            with patch("pathlib.Path.chmod"):
+                                with patch("run.run_projection", side_effect=fake_run_projection):
+                                    with patch("src.monarch_bridge.load_config", return_value=config):
+                                        run.main()
 
         self.assertEqual(captured["balances"]["cash"], 12000.0)
         self.assertEqual(captured["home_value"], 454500.0)
         self.assertEqual(captured["liability_balances"], {"Mortgage (5156)": 125355.55})
         self.assertEqual(captured["property_values"], {"Casa Lemuria": 454500.0})
+        self.assertEqual(captured["retirement_owner_balances"], {
+            "trad_ira": {"person1": 0.0, "person2": 0.0},
+            "roth": {"person1": 0.0, "person2": 0.0},
+        })
 
     def test_xaxis_tick_spec_includes_age_labels(self):
         config = {

@@ -19,6 +19,7 @@ from src.monarch_bridge import (
     classify_accounts,
     extract_liability_balances,
     extract_real_estate_accounts,
+    extract_retirement_owner_balances,
     fetch_raw_accounts,
 )
 from src.scenarios import (
@@ -83,7 +84,7 @@ def _f(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def _synthetic_inputs_from_config(config: dict) -> tuple[dict, dict, dict, dict]:
+def _synthetic_inputs_from_config(config: dict) -> tuple[dict, dict, dict, dict, dict]:
     synthetic = config.get("synthetic_start", {}) if isinstance(config.get("synthetic_start"), dict) else {}
 
     portfolio = {
@@ -112,10 +113,20 @@ def _synthetic_inputs_from_config(config: dict) -> tuple[dict, dict, dict, dict]
         if _f(value) != 0
     } if isinstance(raw_property_values, dict) else {}
 
+    raw_owner_balances = synthetic.get("retirement_owner_balances", {})
+    retirement_owner_balances = {
+        bucket: {
+            "person1": _f((bucket_values or {}).get("person1", 0.0)),
+            "person2": _f((bucket_values or {}).get("person2", 0.0)),
+        }
+        for bucket, bucket_values in raw_owner_balances.items()
+        if bucket in {"trad_ira", "roth"} and isinstance(bucket_values, dict)
+    }
+
     if not property_values and extras["home_value"] != 0:
         property_values = {"Primary Residence": extras["home_value"]}
 
-    return portfolio, extras, liability_balances, property_values
+    return portfolio, extras, liability_balances, property_values, retirement_owner_balances
 
 
 def main():
@@ -143,7 +154,7 @@ def main():
     # 1. Balances — synthetic, live, or cached
     cache_timestamp = None
     if use_synthetic:
-        portfolio, extras, liability_balances, property_values = _synthetic_inputs_from_config(config)
+        portfolio, extras, liability_balances, property_values, retirement_owner_seed = _synthetic_inputs_from_config(config)
         raw_accounts = []
     elif OFFLINE:
         cached = load_cache()
@@ -153,12 +164,14 @@ def main():
             portfolio, extras = classify_accounts(raw_accounts, config=config)
             liability_balances = extract_liability_balances(raw_accounts, config=config)
             property_values = extract_real_estate_accounts(raw_accounts, config=config)
+            retirement_owner_seed = extract_retirement_owner_balances(raw_accounts, config=config)
             print(f"  Reclassified cached raw accounts using {scenario.config_path.name}")
         else:
             portfolio = cached["portfolio"]
             extras = cached["extras"]
             liability_balances = cached["liability_balances"]
             property_values = {"Primary Residence": float(extras.get("home_value", 0.0))}
+            retirement_owner_seed = {}
             print("  WARNING: legacy cache lacks raw account data; config-only account changes require one full run")
     else:
         print("→ Fetching account balances from Monarch...")
@@ -166,6 +179,7 @@ def main():
         portfolio, extras = classify_accounts(raw_accounts, config=config)
         liability_balances = extract_liability_balances(raw_accounts, config=config)
         property_values = extract_real_estate_accounts(raw_accounts, config=config)
+        retirement_owner_seed = extract_retirement_owner_balances(raw_accounts, config=config)
         save_cache(portfolio, extras, liability_balances, raw_accounts=raw_accounts)
 
     home_value        = extras["home_value"]
@@ -182,6 +196,7 @@ def main():
         home_value=home_value,
         liability_balances=liability_balances,
         property_values=property_values,
+        retirement_owner_balances=retirement_owner_seed,
         config=config,
     )
     print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
