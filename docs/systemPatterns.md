@@ -48,6 +48,7 @@ run.py
 - **Bundled retirement accounts can split opening balances across buckets.** `[accounts]` inline entries may also define `opening_balance_split = { trad_ira = ..., roth = ... }`; the live/cached account balance is then apportioned across those investable buckets before the first projection year, and owner attribution is applied to each split slice.
 - **Gross-income wage migration is optional.** Unless NWN is explicitly re-scoped into a true household tax-return model, Monarch-style net-income wage inputs are acceptable and do not require forced gross-up migration.
 - **Cash reserves are protected in two stages.** `cash_above_target` spends only dollars above the reserve; `cash_below_target` taps the reserve itself only as a last resort.
+- **Specific emergency/sinking-fund expenses can override reserve protection.** `Expense` events may set `funding = "cash_reserve_first"` to let that event's deficit draw from cash below target before retirement buckets, while leaving the broader phase withdrawal order unchanged.
 - **Surplus refills cash before investing.** Positive net flow first restores the active cash target, then allocates the remainder across positive non-cash investable buckets.
 - **Output is always regenerated, never cached.** `python run.py` always produces a fresh chart.
 - **Recurring chart annotations can be decoupled from model recurrence.** `chart_first_occurrence_only = true` keeps repeated events active in the model and tables while suppressing later main-chart annotations for readability.
@@ -100,7 +101,7 @@ amount = -6000             # negative = cash outflow
 
 - `Retire`: sets `person.income = 0` from `year` onward
 - `SocialSecurity`: adds `monthly_benefit * 12` to income from `year` onward
-- `Expense`: subtracts `amount` from liquid assets in `year`
+- `Expense`: subtracts `amount` from liquid assets in `year`; optional `funding = "cash_reserve_first"` lets that expense break the cash target before Roth/traditional withdrawals if the year otherwise runs a deficit
 - `Income`: adds `amount` per year within `[year, end_year]` (or just `year` if no `end_year`)
 - `BuyHome`: subtracts `down_payment` in `year`; when `price` is provided it also creates/updates a tracked property (named by optional `property`, else the event label) so the purchase flows into `home_value` / `home_equity`; mortgage amortization from `BuyHome` fields is still future work
 - `SellHome`: converts the named property value into cash proceeds net of sale fees and linked mortgage payoff, then removes that property from future home-value growth

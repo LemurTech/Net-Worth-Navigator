@@ -29,6 +29,8 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Optional `annual_401k_contribution_split` support in `model.py` and `scenarios/default.toml` so bundled employer retirement contributions can be routed proportionally between traditional and Roth buckets
 - Account-level retirement owner attribution in `run.py`, `src/monarch_bridge.py`, and `src/model.py`: `[accounts]` entries can now be inline tables with `category` + `owner`, and live/offline raw-account reclassification seeds `trad_ira` / `roth` owner balances from exact accounts before fallback sharing logic
 - Opening-balance split support for bundled retirement accounts in `src/monarch_bridge.py` + scenario config: `[accounts]` inline entries can define `opening_balance_split` so one live account can seed both `trad_ira` and `roth` before the first projection year
+- Event-level reserve funding override in `src/model.py` + scenario TOMLs: `Expense` events may now set `funding = "cash_reserve_first"` so emergency/sinking-fund costs can draw from reserve cash before Roth/traditional buckets without weakening the default withdrawal policy
+- Scenario sweep across `scenarios/*.toml`: legacy household account mappings were upgraded to owner-aware `opening_balance_split` / `owner` metadata where needed, reserve-first funding flags were added to surgery/vacation/travel/car/home-repair expenses, and all scenarios were rerendered offline with refreshed sidecars
 - Early-death survivor modeling improvements in `model.py`: survivor phase now begins immediately after death (not only after both partners retire), and widow/er Social Security can step up from the deceased partner's configured benefit once the survivor reaches `survivor_ss_start_age` (default 60)
 - `BuyHome` events now add/update tracked real-estate property state when `price` is provided, so future home purchases flow into `home_value` / `home_equity` and can later be referenced by `SellHome`
 - Configurable wage tax treatment in `model.py` via `taxes.wage_tax_treatment = "net_cash" | "taxable_wages"`, including a tracked `taxable_wage_income` output column
@@ -62,6 +64,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Cash reserve targets for accumulation, retirement, and survivor periods
 - Configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` steps
 - Regression coverage for reserve-target preservation, phase-specific withdrawal order, and cash-target refill behavior under `tests/test_withdrawal_policy.py`
+- Regression coverage for reserve-first expense funding under `tests/test_withdrawal_policy.py`
 - Recurring events via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
 - Runtime event expansion shared by the projection model and Gantt timeline
 - Regression coverage for recurring event expansion and yearly application under `tests/test_recurring_events.py`

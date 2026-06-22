@@ -741,6 +741,12 @@ def normalize_expense_kind(event: dict | None) -> str:
     return "discretionary" if kind == "discretionary" else "mandatory"
 
 
+def normalize_expense_funding(event: dict | None) -> str | None:
+    """Return normalized special funding behavior for Expense events."""
+    funding = str((event or {}).get("funding", "")).strip().lower()
+    return "cash_reserve_first" if funding == "cash_reserve_first" else None
+
+
 def should_show_chart_label(event: dict) -> bool:
     """Return whether this event instance should annotate the main projection chart."""
     return bool(event.get("_show_chart_label", True))
@@ -1690,6 +1696,7 @@ def run_projection(
         cash_preserve_flow = 0.0
         pending_reinvestments: list[tuple[str, float]] = []
         taxable_event_income = 0.0
+        reserve_access_expense_total = 0.0
         event_items: list[dict[str, object]] = []   # normalized cash-flow items for tables
 
         for event in events:
@@ -1714,6 +1721,11 @@ def run_projection(
                 if event["year"] == year:
                     event_cash_flow += event["amount"]
                     expense_kind = normalize_expense_kind(event)
+                    if (
+                        event["amount"] < 0
+                        and normalize_expense_funding(event) == "cash_reserve_first"
+                    ):
+                        reserve_access_expense_total += abs(float(event["amount"]))
                     event_items.append(
                         make_event_item(
                             label=event["label"],
@@ -2161,6 +2173,19 @@ def run_projection(
                         fallback_shares=retirement_owner_defaults["roth"],
                     )
             else:
+                reserve_first_draw = min(
+                    max(0.0, reserve_access_expense_total),
+                    max(0.0, -post_tax_flow),
+                    max(0.0, working_portfolio.get("cash", 0.0)),
+                )
+                if reserve_first_draw > 0:
+                    working_portfolio["cash"] = max(
+                        0.0,
+                        working_portfolio.get("cash", 0.0) - reserve_first_draw,
+                    )
+                    withdrawal_breakdown["cash"] += reserve_first_draw
+                    post_tax_flow += reserve_first_draw
+
                 extra_taxable_income, unmet_deficit, extra_withdrawal_breakdown = _cover_deficit_with_policy(
                     working_portfolio,
                     deficit=-post_tax_flow,

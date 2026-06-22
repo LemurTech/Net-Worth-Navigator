@@ -99,6 +99,65 @@ class WithdrawalPolicyTests(unittest.TestCase):
         self.assertEqual(row["withdrawal_taxable"], 10.0)
         self.assertEqual(row["withdrawal_cash"], 0.0)
 
+    def test_accumulation_expense_can_draw_from_cash_reserve_before_roth(self):
+        config = self._base_config()
+        config["person1"]["retirement_year"] = 2100
+        config["person2"]["retirement_year"] = 2100
+        config["withdrawal_policy"]["accumulation_cash_target"] = 64.0
+        config["events"].append(
+            {
+                "enabled": True,
+                "type": "Expense",
+                "label": "Surgery",
+                "year": 2026,
+                "amount": -18.0,
+                "expense_kind": "mandatory",
+                "funding": "cash_reserve_first",
+            }
+        )
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 50.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 100.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["cash"], 32.0)
+        self.assertEqual(row["roth"], 100.0)
+        self.assertEqual(row["withdrawal_cash"], 18.0)
+        self.assertEqual(row["withdrawal_roth"], 0.0)
+
+    def test_accumulation_expense_without_reserve_override_still_preserves_cash_target(self):
+        config = self._base_config()
+        config["person1"]["retirement_year"] = 2100
+        config["person2"]["retirement_year"] = 2100
+        config["withdrawal_policy"]["accumulation_cash_target"] = 64.0
+        config["events"].append(
+            {
+                "enabled": True,
+                "type": "Expense",
+                "label": "Surgery",
+                "year": 2026,
+                "amount": -18.0,
+                "expense_kind": "mandatory",
+            }
+        )
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 50.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 100.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["cash"], 50.0)
+        self.assertEqual(row["roth"], 82.0)
+        self.assertEqual(row["withdrawal_cash"], 0.0)
+        self.assertEqual(row["withdrawal_roth"], 18.0)
+
     def test_surplus_refills_cash_target_before_investing_remainder(self):
         config = self._base_config()
         config["withdrawal_policy"]["retirement_cash_target"] = 50.0

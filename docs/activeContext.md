@@ -41,6 +41,7 @@
 - Accounts, Cash Flow, and Portfolio owner-split labels now use configured person display names (`person1.name` / `person2.name`) instead of hardcoded `Person 1` / `Person 2`
 - Person-level `annual_take_home_is_net_of_retirement_contributions` is now supported: when true, retirement contributions are treated as payroll-prefunded (still routed into IRA/Roth buckets) and are not subtracted again from implied pre-retirement spending cash
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
+- `Expense` events can now also opt into `funding = "cash_reserve_first"` so named emergency/sinking-fund expenses may tap reserve cash before Roth/traditional withdrawals, without changing the household's normal phase withdrawal order
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math
 - Gantt tab: enabled-event timeline derived from `config.toml`, with milestone vs span semantics by event type
 - Recurring events now expand at runtime for both the model and Gantt via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
@@ -136,6 +137,8 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - Decide whether V2 should stay with raw TOML editing only or add structured form sections for simple config fields
 - Extend the config editor toward scenario management only after per-scenario output paths and manifest generation are in place
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
+- Surgery events in the household scenarios are now marked `funding = "cash_reserve_first"` so 2026 reserve-cash funding matches intent
+- All current scenarios were batch-rerendered offline on 2026-06-21 via a local deploy-dir override; refreshed sidecars confirm reserve-first event funding is active across the scenario set
 
 ## Known Pitfalls
 

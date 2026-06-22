@@ -170,6 +170,7 @@ label = "Travel"
 year = 2027
 amount = -8000
 expense_kind = "discretionary"
+funding = "cash_reserve_first"
 repeat_every_years = 2
 repeat_until_year = 2055
 chart_first_occurrence_only = true
@@ -182,6 +183,7 @@ label = "Home maintenance reserve"
 year = 2026
 amount = -3500
 expense_kind = "mandatory"
+funding = "cash_reserve_first"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
@@ -192,6 +194,7 @@ label = "HVAC replacement"
 year = 2034
 amount = -12000
 expense_kind = "mandatory"
+funding = "cash_reserve_first"
 
 [[events]]
 enabled = true
@@ -200,6 +203,7 @@ label = "Roof replacement"
 year = 2043
 amount = -18000
 expense_kind = "mandatory"
+funding = "cash_reserve_first"
 
 # Vehicle lifecycle events
 [[events]]
@@ -209,6 +213,7 @@ label = "Vehicle purchase"
 year = 2032
 amount = -26000
 expense_kind = "mandatory"
+funding = "cash_reserve_first"
 
 [[events]]
 enabled = true
@@ -217,6 +222,7 @@ label = "Vehicle replacement"
 year = 2044
 amount = -30000
 expense_kind = "mandatory"
+funding = "cash_reserve_first"
 
 # Example bounded side income
 [[events]]
