@@ -690,6 +690,40 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Traditional IRA / 401k withdrawals", html)
         self.assertIn("Total Portfolio Funding", html)
 
+    def test_build_cashflow_table_uses_person_display_names(self):
+        df = pd.DataFrame([
+            {
+                "year": 2030,
+                "person1_income": 50000.0,
+                "person2_income": 20000.0,
+                "freed_payments": 0.0,
+                "annual_spend": 0.0,
+                "annual_taxes": 0.0,
+                "net_flow": 70000.0,
+                "event_items": [],
+                "contribution_total": 9000.0,
+                "contribution_trad_ira": 4000.0,
+                "contribution_roth": 5000.0,
+                "contribution_trad_ira_person1": 3000.0,
+                "contribution_trad_ira_person2": 1000.0,
+                "contribution_roth_person1": 2500.0,
+                "contribution_roth_person2": 2500.0,
+            }
+        ])
+        config = {
+            "person1": {"name": "Person 1"},
+            "person2": {"name": "Person 2"},
+        }
+
+        html = tables.build_cashflow_table(df, config=config)
+
+        self.assertIn("Person 1 earned income", html)
+        self.assertIn("Person 2 earned income", html)
+        self.assertIn("Traditional IRA / 401k contributions — Person 1", html)
+        self.assertIn("Traditional IRA / 401k contributions — Person 2", html)
+        self.assertIn("Roth contributions — Person 1", html)
+        self.assertIn("Roth contributions — Person 2", html)
+
     def test_build_accounts_table_shows_owner_split_rows_for_retirement_buckets(self):
         df = pd.DataFrame([
             {
@@ -708,8 +742,12 @@ class RecurringEventsTests(unittest.TestCase):
                 "total_net_worth": 650.0,
             }
         ])
+        config = {
+            "person1": {"name": "Person 1"},
+            "person2": {"name": "Person 2"},
+        }
 
-        html = tables.build_accounts_table(df)
+        html = tables.build_accounts_table(df, config=config)
 
         self.assertIn("Traditional IRA / 401k — Person 1", html)
         self.assertIn("Traditional IRA / 401k — Person 2", html)
@@ -740,7 +778,11 @@ class RecurringEventsTests(unittest.TestCase):
             },
         ])
 
-        html = charts._build_portfolio_chart(df)
+        config = {
+            "person1": {"name": "Person 1"},
+            "person2": {"name": "Person 2"},
+        }
+        html = charts._build_portfolio_chart(df, config=config)
 
         self.assertIn("Traditional IRA \\u002f 401k \\u2014 Person 1", html)
         self.assertIn("Traditional IRA \\u002f 401k \\u2014 Person 2", html)

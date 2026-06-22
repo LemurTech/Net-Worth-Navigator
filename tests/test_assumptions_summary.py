@@ -1,6 +1,8 @@
 import unittest
 
-from src.tables import build_assumptions_summary
+import pandas as pd
+
+from src.tables import build_assumptions_summary, build_scenario_parameters_summary
 
 
 class AssumptionsSummaryTests(unittest.TestCase):
@@ -82,6 +84,39 @@ class AssumptionsSummaryTests(unittest.TestCase):
         self.assertIn("checked", html)
         self.assertIn("param-diff", html)
         self.assertIn("differ from baseline default scenario", html)
+
+    def test_scenario_parameters_summary_includes_owner_share_snapshots(self):
+        config = {
+            "person1": {"retirement_year": 2030},
+            "person2": {"retirement_year": 2032},
+            "simulation": {"start_year": 2026, "end_year": 2034},
+            "withdrawal_policy": {},
+            "taxes": {},
+            "events": [],
+        }
+        projection_df = pd.DataFrame([
+            {
+                "year": 2030,
+                "trad_ira_person1": 120.0,
+                "trad_ira_person2": 80.0,
+                "roth_person1": 60.0,
+                "roth_person2": 40.0,
+            },
+            {
+                "year": 2034,
+                "trad_ira_person1": 180.0,
+                "trad_ira_person2": 120.0,
+                "roth_person1": 90.0,
+                "roth_person2": 60.0,
+            },
+        ])
+
+        html = build_scenario_parameters_summary(config, projection_df=projection_df)
+
+        self.assertIn("Retirement ownership snapshots", html)
+        self.assertIn("Retirement year (2030) — Combined retirement ownership", html)
+        self.assertIn("End year (2034) — Combined retirement ownership", html)
+        self.assertIn("Person 1 60.0% / Person 2 40.0%", html)
 
 
 if __name__ == "__main__":

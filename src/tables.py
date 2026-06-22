@@ -132,6 +132,18 @@ def _person_keys(config: dict) -> list[str]:
     return preferred + extras
 
 
+def _person_display_name(config: dict | None, person_key: str) -> str:
+    if isinstance(config, dict):
+        person = config.get(person_key, {})
+        if isinstance(person, dict):
+            name = str(person.get("name", "")).strip()
+            if name:
+                return name
+    if person_key.startswith("person") and person_key[6:].isdigit():
+        return f"Person {person_key[6:]}"
+    return person_key.replace("_", " ").title()
+
+
 def _kv_table(rows: list[tuple]) -> str:
     rendered_rows = []
     for row in rows:
@@ -369,6 +381,86 @@ def _fmt_list(values) -> str:
     return " → ".join(escape(str(v)) for v in values) if values else "(empty)"
 
 
+def _owner_share_text(person1_amount, person2_amount) -> str:
+    try:
+        person1 = max(0.0, float(person1_amount))
+        person2 = max(0.0, float(person2_amount))
+    except (TypeError, ValueError):
+        return "—"
+    total = person1 + person2
+    if total <= 0:
+        return "—"
+    person1_pct = (person1 / total) * 100.0
+    person2_pct = (person2 / total) * 100.0
+    return f"Person 1 {person1_pct:.1f}% / Person 2 {person2_pct:.1f}%"
+
+
+def _owner_share_snapshot_rows(config: dict, projection_df: pd.DataFrame | None) -> list[tuple[str, str, str]]:
+    if projection_df is None or projection_df.empty:
+        return []
+    required_cols = {
+        "year",
+        "trad_ira_person1",
+        "trad_ira_person2",
+        "roth_person1",
+        "roth_person2",
+    }
+    if not required_cols.issubset(set(projection_df.columns)):
+        return []
+
+    snapshot_years: list[tuple[str, int]] = []
+    retirement_years: list[int] = []
+    for person_key in _person_keys(config):
+        year = config.get(person_key, {}).get("retirement_year")
+        if year in (None, ""):
+            continue
+        try:
+            retirement_years.append(int(year))
+        except (TypeError, ValueError):
+            continue
+    if retirement_years:
+        snapshot_years.append((f"Retirement year ({min(retirement_years)})", min(retirement_years)))
+
+    try:
+        end_year = int(projection_df["year"].max())
+        snapshot_years.append((f"End year ({end_year})", end_year))
+    except (TypeError, ValueError):
+        pass
+
+    seen_years: set[int] = set()
+    rows: list[tuple[str, str, str]] = []
+    for label_prefix, year in snapshot_years:
+        if year in seen_years:
+            continue
+        seen_years.add(year)
+        match = projection_df[projection_df["year"] == year]
+        if match.empty:
+            continue
+        row = match.iloc[0]
+        trad_p1 = row.get("trad_ira_person1", 0.0)
+        trad_p2 = row.get("trad_ira_person2", 0.0)
+        roth_p1 = row.get("roth_person1", 0.0)
+        roth_p2 = row.get("roth_person2", 0.0)
+        rows.extend([
+            (
+                f"{label_prefix} — Combined retirement ownership",
+                _owner_share_text((trad_p1 or 0.0) + (roth_p1 or 0.0), (trad_p2 or 0.0) + (roth_p2 or 0.0)),
+                "param-diff",
+            ),
+            (
+                f"{label_prefix} — Traditional IRA / 401k ownership",
+                _owner_share_text(trad_p1, trad_p2),
+                "param-diff",
+            ),
+            (
+                f"{label_prefix} — Roth ownership",
+                _owner_share_text(roth_p1, roth_p2),
+                "param-diff",
+            ),
+        ])
+    return rows
+
+
 def _events_enabled_metrics(events) -> dict[str, int]:
     if not isinstance(events, list):
         return {"Enabled events": 0, "Recurring-enabled events": 0}
@@ -395,6 +487,7 @@ def build_scenario_parameters_summary(
     config: dict,
     scenario=None,
     baseline_config: dict | None = None,
+    projection_df: pd.DataFrame | None = None,
 ) -> str:
     """Return a detailed scenario-parameter summary for audit/comparison."""
     scenario_cfg = config.get("scenario", {}) if isinstance(config.get("scenario"), dict) else {}
@@ -628,6 +721,7 @@ def build_scenario_parameters_summary(
         _diff_row(label, value, baseline_event_metrics.get(label), lambda v: escape(str(v)))
         for label, value in event_metrics.items()
     ]
+    ownership_snapshot_rows = _owner_share_snapshot_rows(config, projection_df)
 
     person_cards_html = "".join(person_cards)
     baseline_note = (
@@ -646,6 +740,15 @@ def build_scenario_parameters_summary(
         f"<label><input type='checkbox' id='scenario-diff-only-toggle'{checked_attr} /> Show only differences</label>"
         "</div>"
         if baseline_config is not None
+        else ""
+    )
+    ownership_card_html = (
+        "<section class='assumption-card assumption-card-wide'>"
+        "<h3>Retirement ownership snapshots</h3>"
+        "<p class='assumption-subtitle'>Owner split at first retirement year and at end-of-plan.</p>"
+        f"{_kv_table(ownership_snapshot_rows)}"
+        "</section>"
+        if ownership_snapshot_rows
         else ""
     )
 
@@ -672,6 +775,7 @@ def build_scenario_parameters_summary(
         "<h3>Enabled events summary</h3>"
         f"{_kv_table(event_rows)}"
         "</section>"
+        f"{ownership_card_html}"
         "</div>"
         "</div>"
     )
@@ -696,7 +800,7 @@ def _data_row(label: str, values: list[float], indent: bool = False,
 
 # ── Accounts table ─────────────────────────────────────────────────────────────
 
-def build_accounts_table(df: pd.DataFrame) -> str:
+def build_accounts_table(df: pd.DataFrame, config: dict | None = None) -> str:
     """
     Net Worth table: assets at top, liabilities below, home equity and
     total net worth at the bottom.
@@ -708,17 +812,19 @@ def build_accounts_table(df: pd.DataFrame) -> str:
         return [subset.loc[y, field] if y in subset.index else 0.0 for y in years]
 
     rows = []
+    person1_name = _person_display_name(config, "person1")
+    person2_name = _person_display_name(config, "person2")
     rows.append("<tr class='section'><th colspan='100'>Assets</th></tr>")
     rows.append(_data_row("Traditional IRA / 401k", col("trad_ira"),  indent=True))
     if "trad_ira_person1" in subset.columns:
-        rows.append(_data_row("Traditional IRA / 401k — Person 1", col("trad_ira_person1"), indent=True))
+        rows.append(_data_row(f"Traditional IRA / 401k — {person1_name}", col("trad_ira_person1"), indent=True))
     if "trad_ira_person2" in subset.columns:
-        rows.append(_data_row("Traditional IRA / 401k — Person 2", col("trad_ira_person2"), indent=True))
+        rows.append(_data_row(f"Traditional IRA / 401k — {person2_name}", col("trad_ira_person2"), indent=True))
     rows.append(_data_row("Roth",                    col("roth"),      indent=True))
     if "roth_person1" in subset.columns:
-        rows.append(_data_row("Roth — Person 1", col("roth_person1"), indent=True))
+        rows.append(_data_row(f"Roth — {person1_name}", col("roth_person1"), indent=True))
     if "roth_person2" in subset.columns:
-        rows.append(_data_row("Roth — Person 2", col("roth_person2"), indent=True))
+        rows.append(_data_row(f"Roth — {person2_name}", col("roth_person2"), indent=True))
     rows.append(_data_row("Taxable",                 col("taxable"),   indent=True))
     rows.append(_data_row("Cash",                    col("cash"),      indent=True))
     rows.append(_data_row("Investable Portfolio",
@@ -744,7 +850,7 @@ def build_accounts_table(df: pd.DataFrame) -> str:
 
 # ── Cash Flow table ────────────────────────────────────────────────────────────
 
-def build_cashflow_table(df: pd.DataFrame) -> str:
+def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
     """
     Cash flow table: income sources at top, expenses below.
     Shows all modeled income and expense streams per year.
@@ -779,6 +885,8 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
                 event_map[label]["expense_kind"] = expense_kind
 
     rows = []
+    person1_name = _person_display_name(config, "person1")
+    person2_name = _person_display_name(config, "person2")
 
     # ── Income ────────────────────────────────────────────────────────────────
     rows.append("<tr class='section'><th colspan='100'>Income</th></tr>")
@@ -790,7 +898,13 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
     )
     for field in person_income_columns:
         person_key = field.removesuffix("_income")
-        label = person_key.replace("person", "Person ") + " earned income"
+        if person_key == "person1":
+            person_name = person1_name
+        elif person_key == "person2":
+            person_name = person2_name
+        else:
+            person_name = _person_display_name(config, person_key)
+        label = f"{person_name} earned income"
         rows.append(_data_row(label, col(field), indent=True))
 
     # Freed liability payments as income-side items
@@ -847,10 +961,10 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
     contribution_rows = [
         ("Traditional IRA / 401k contributions", col("contribution_trad_ira")),
         ("Roth contributions", col("contribution_roth")),
-        ("Traditional IRA / 401k contributions — Person 1", col("contribution_trad_ira_person1")),
-        ("Traditional IRA / 401k contributions — Person 2", col("contribution_trad_ira_person2")),
-        ("Roth contributions — Person 1", col("contribution_roth_person1")),
-        ("Roth contributions — Person 2", col("contribution_roth_person2")),
+        (f"Traditional IRA / 401k contributions — {person1_name}", col("contribution_trad_ira_person1")),
+        (f"Traditional IRA / 401k contributions — {person2_name}", col("contribution_trad_ira_person2")),
+        (f"Roth contributions — {person1_name}", col("contribution_roth_person1")),
+        (f"Roth contributions — {person2_name}", col("contribution_roth_person2")),
     ]
     shown_contribution_rows = [
         (label, amounts)

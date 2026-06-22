@@ -566,11 +566,13 @@ def _build_kpi_summary(config: dict, df: pd.DataFrame) -> str:
     return f"<div class='kpi-strip'>{boxes}</div>"
 
 
-def _build_portfolio_chart(df: pd.DataFrame) -> str:
+def _build_portfolio_chart(df: pd.DataFrame, config: dict | None = None) -> str:
     paper_bg = "#111827"
     plot_bg = "#0f1725"
     grid = "rgba(148,163,184,0.14)"
     font_color = "#e5edf7"
+    person1_name = str((config or {}).get("person1", {}).get("name", "")).strip() or "Person 1"
+    person2_name = str((config or {}).get("person2", {}).get("name", "")).strip() or "Person 2"
 
     fig = go.Figure()
     portfolio_series = [
@@ -578,16 +580,16 @@ def _build_portfolio_chart(df: pd.DataFrame) -> str:
     ]
     if {"trad_ira_person1", "trad_ira_person2"}.issubset(df.columns):
         portfolio_series.extend([
-            ("trad_ira_person1", "rgba(16,185,129,0.36)", "Traditional IRA / 401k — Person 1"),
-            ("trad_ira_person2", "rgba(74,222,128,0.32)", "Traditional IRA / 401k — Person 2"),
+            ("trad_ira_person1", "rgba(16,185,129,0.36)", f"Traditional IRA / 401k — {person1_name}"),
+            ("trad_ira_person2", "rgba(74,222,128,0.32)", f"Traditional IRA / 401k — {person2_name}"),
         ])
     else:
         portfolio_series.append(("trad_ira", "rgba(74,222,128,0.36)", "Traditional IRA / 401k"))
 
     if {"roth_person1", "roth_person2"}.issubset(df.columns):
         portfolio_series.extend([
-            ("roth_person1", "rgba(245,158,11,0.38)", "Roth — Person 1"),
-            ("roth_person2", "rgba(251,191,36,0.36)", "Roth — Person 2"),
+            ("roth_person1", "rgba(245,158,11,0.38)", f"Roth — {person1_name}"),
+            ("roth_person2", "rgba(251,191,36,0.36)", f"Roth — {person2_name}"),
         ])
     else:
         portfolio_series.append(("roth", "rgba(251,191,36,0.38)", "Roth"))
@@ -886,9 +888,9 @@ def build_chart(
     tax_note_html = _build_tax_semantics_note()
 
     # Build table HTML
-    accounts_html  = build_accounts_table(df)
-    cashflow_html  = build_cashflow_table(df)
-    portfolio_html = _build_portfolio_chart(df)
+    accounts_html  = build_accounts_table(df, config=config)
+    cashflow_html  = build_cashflow_table(df, config=config)
+    portfolio_html = _build_portfolio_chart(df, config=config)
     gantt_html     = _build_gantt_chart(config, df)
     assumptions_html = build_assumptions_summary(
         config,
@@ -899,6 +901,7 @@ def build_chart(
         config,
         scenario=scenario,
         baseline_config=baseline_config,
+        projection_df=df,
     )
 
     scenario_slug = getattr(scenario, "slug", None)
