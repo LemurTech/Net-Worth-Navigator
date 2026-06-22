@@ -381,18 +381,16 @@ def _fmt_list(values) -> str:
     return " → ".join(escape(str(v)) for v in values) if values else "(empty)"
 
 
-def _owner_share_text(person1_amount, person2_amount) -> str:
+def _owner_share_pair(person1_amount, person2_amount) -> tuple[str, str]:
     try:
         person1 = max(0.0, float(person1_amount))
         person2 = max(0.0, float(person2_amount))
     except (TypeError, ValueError):
-        return "—"
+        return ("—", "—")
     total = person1 + person2
     if total <= 0:
-        return "—"
-    person1_pct = (person1 / total) * 100.0
-    person2_pct = (person2 / total) * 100.0
-    return f"Person 1 {person1_pct:.1f}% / Person 2 {person2_pct:.1f}%"
+        return ("—", "—")
+    return (f"{(person1 / total) * 100.0:.1f}%", f"{(person2 / total) * 100.0:.1f}%")
 
 
 def _owner_share_snapshot_rows(config: dict, projection_df: pd.DataFrame | None) -> list[tuple[str, str, str]]:
@@ -441,24 +439,38 @@ def _owner_share_snapshot_rows(config: dict, projection_df: pd.DataFrame | None)
         trad_p2 = row.get("trad_ira_person2", 0.0)
         roth_p1 = row.get("roth_person1", 0.0)
         roth_p2 = row.get("roth_person2", 0.0)
+        combined_p1, combined_p2 = _owner_share_pair((trad_p1 or 0.0) + (roth_p1 or 0.0), (trad_p2 or 0.0) + (roth_p2 or 0.0))
+        trad_share_p1, trad_share_p2 = _owner_share_pair(trad_p1, trad_p2)
+        roth_share_p1, roth_share_p2 = _owner_share_pair(roth_p1, roth_p2)
         rows.extend([
-            (
-                f"{label_prefix} — Combined retirement ownership",
-                _owner_share_text((trad_p1 or 0.0) + (roth_p1 or 0.0), (trad_p2 or 0.0) + (roth_p2 or 0.0)),
-                "param-diff",
-            ),
-            (
-                f"{label_prefix} — Traditional IRA / 401k ownership",
-                _owner_share_text(trad_p1, trad_p2),
-                "param-diff",
-            ),
-            (
-                f"{label_prefix} — Roth ownership",
-                _owner_share_text(roth_p1, roth_p2),
-                "param-diff",
-            ),
+            (f"{label_prefix} — Combined retirement ownership", combined_p1, combined_p2),
+            (f"{label_prefix} — Traditional IRA / 401k ownership", trad_share_p1, trad_share_p2),
+            (f"{label_prefix} — Roth ownership", roth_share_p1, roth_share_p2),
         ])
     return rows
+
+
+def _owner_share_snapshot_table(config: dict, projection_df: pd.DataFrame | None) -> str:
+    rows = _owner_share_snapshot_rows(config, projection_df)
+    if not rows:
+        return ""
+
+    person1_name = _person_display_name(config, "person1")
+    person2_name = _person_display_name(config, "person2")
+    body = "".join(
+        f"<tr><th>{escape(label)}</th><td>{escape(person1_pct)}</td><td>{escape(person2_pct)}</td></tr>"
+        for label, person1_pct, person2_pct in rows
+    )
+    return (
+        "<table class='assumptions-table assumptions-people always-visible-table ownership-snapshot-table'>"
+        "<thead><tr>"
+        "<th>Snapshot</th>"
+        f"<th>{escape(person1_name)}</th>"
+        f"<th>{escape(person2_name)}</th>"
+        "</tr></thead>"
+        f"<tbody>{body}</tbody>"
+        "</table>"
+    )
 
 
 def _events_enabled_metrics(events) -> dict[str, int]:
@@ -721,7 +733,7 @@ def build_scenario_parameters_summary(
         _diff_row(label, value, baseline_event_metrics.get(label), lambda v: escape(str(v)))
         for label, value in event_metrics.items()
     ]
-    ownership_snapshot_rows = _owner_share_snapshot_rows(config, projection_df)
+    ownership_snapshot_table = _owner_share_snapshot_table(config, projection_df)
 
     person_cards_html = "".join(person_cards)
     baseline_note = (
@@ -743,12 +755,12 @@ def build_scenario_parameters_summary(
         else ""
     )
     ownership_card_html = (
-        "<section class='assumption-card assumption-card-wide'>"
+        "<section class='assumption-card assumption-card-wide keep-visible-in-diff'>"
         "<h3>Retirement ownership snapshots</h3>"
         "<p class='assumption-subtitle'>Owner split at first retirement year and at end-of-plan.</p>"
-        f"{_kv_table(ownership_snapshot_rows)}"
+        f"{ownership_snapshot_table}"
         "</section>"
-        if ownership_snapshot_rows
+        if ownership_snapshot_table
         else ""
     )
 

@@ -87,8 +87,8 @@ class AssumptionsSummaryTests(unittest.TestCase):
 
     def test_scenario_parameters_summary_includes_owner_share_snapshots(self):
         config = {
-            "person1": {"retirement_year": 2030},
-            "person2": {"retirement_year": 2032},
+            "person1": {"name": "Person 1", "retirement_year": 2030},
+            "person2": {"name": "Person 2", "retirement_year": 2032},
             "simulation": {"start_year": 2026, "end_year": 2034},
             "withdrawal_policy": {},
             "taxes": {},
@@ -114,9 +114,12 @@ class AssumptionsSummaryTests(unittest.TestCase):
         html = build_scenario_parameters_summary(config, projection_df=projection_df)
 
         self.assertIn("Retirement ownership snapshots", html)
+        self.assertIn("keep-visible-in-diff", html)
+        self.assertIn("<th>Person 1</th>", html)
+        self.assertIn("<th>Person 2</th>", html)
         self.assertIn("Retirement year (2030) — Combined retirement ownership", html)
         self.assertIn("End year (2034) — Combined retirement ownership", html)
-        self.assertIn("Person 1 60.0% / Person 2 40.0%", html)
+        self.assertIn(">60.0%</td>", html)
 
 
 if __name__ == "__main__":

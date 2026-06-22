@@ -122,7 +122,7 @@ _TABS_CSS = """
     box-shadow: inset 3px 0 0 rgba(45, 212, 191, 0.65);
   }
   table.assumptions-table tbody tr.param-diff th { color: #d1fae5; }
-  #panel-scenario-parameters.show-diffs-only table.assumptions-table tbody tr:not(.param-diff) {
+  #panel-scenario-parameters.show-diffs-only table.assumptions-table:not(.always-visible-table) tbody tr:not(.param-diff) {
     display: none;
   }
   #panel-assumptions.show-diffs-only table.assumptions-table tbody tr:not(.param-diff) {
@@ -324,7 +324,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       var hasDiffRow = !!card.querySelector('tr.param-diff');
-      card.classList.toggle('filtered-empty', !hasDiffRow);
+      var keepVisible = card.classList.contains('keep-visible-in-diff');
+      card.classList.toggle('filtered-empty', !(hasDiffRow || keepVisible));
     });
   }
 
@@ -347,7 +348,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       var hasDiffRow = !!card.querySelector('tr.param-diff');
-      card.classList.toggle('filtered-empty', !hasDiffRow);
+      var keepVisible = card.classList.contains('keep-visible-in-diff');
+      card.classList.toggle('filtered-empty', !(hasDiffRow || keepVisible));
     });
   }
 
