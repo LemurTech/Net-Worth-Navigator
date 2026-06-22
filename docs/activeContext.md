@@ -36,7 +36,7 @@
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
 - Retirement timing and Social Security timing/benefits are now synthesized at runtime from person settings (`retirement_year`, `ss_start_age`, and matching `social_security_benefits` with `ss_monthly_benefit` fallback), while preserving legacy event metadata overrides for compatibility
 - Survivor phase now starts immediately in the first full model year after a person's `EndOfPlan`, even if the surviving partner is still working; survivor spending, tax phase, and survivor chart state no longer wait for both partners to be retired
-- Survivor-period shading in the main chart and Gantt is now intentionally drawn one visual year earlier than the modeled survivor start to better match the way the transition reads on the chart
+- Survivor-period shading in the main chart and Gantt is now drawn from the deceased partner's `EndOfPlan` line through the surviving partner's `EndOfPlan` line, matching the visible lifecycle boundaries without changing model semantics
 - Survivor Social Security now supports widow/er-style step-up before the survivor's own claim year by using the deceased partner's configured SS benefit once the survivor reaches optional `survivor_ss_start_age` (default 60)
 - Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a compatibility fallback
 - Pre-retirement take-home income can now grow annually from inflation plus person-level `annual_take_home_real_raise`, and 401(k) contributions can now grow from that same income path plus person-level `annual_401k_contribution_extra_increase`
@@ -77,7 +77,7 @@
 - Assumptions tab now also supports baseline-vs-default diff emphasis and its own `Show only differences` toggle
 - Projection toolbar links are scenario-scoped: per-scenario projection pages now open editor as `/finances/config/?scenario=<slug>`
 - Scenario shell `Edit Scenarios` link now follows the currently selected scenario
-- Main projection chart event labels now wrap at 2 events per line, remain right-anchored from the top into the graph body, and use softer translucent label backgrounds
+- Main projection chart event labels now wrap at 2 events per line, sit to the right of their event line, and use softer translucent label backgrounds
 - Main projection chart now includes an in-chart event-label control strip (between graph and tax note) to: (a) show all labels, (b) hide non-key labels while keeping Retirement/Social Security/End-of-Plan, or (c) hide all labels
 - `run.py` now supports scenario-level synthetic start balances via `[data_source].mode = "synthetic"` and `[synthetic_start]` so shareable scenarios can bypass Monarch/cache entirely
 - Added a share-safe `scenarios/sample.toml` synthetic scenario with realistic recurring/one-time events (home maintenance, roof/HVAC replacement, vehicle purchase/replacement, travel, consulting)

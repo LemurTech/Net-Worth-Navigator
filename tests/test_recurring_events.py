@@ -974,14 +974,14 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Projected Balances", html)
         self.assertIn("Total Investable Portfolio", html)
 
-    def test_survivor_visual_start_year_shifts_back_one_year(self):
+    def test_survivor_visual_year_range_matches_end_of_plan_boundaries(self):
         df = pd.DataFrame([
             {"year": 2034, "survivor": False},
             {"year": 2035, "survivor": True},
             {"year": 2036, "survivor": True},
         ])
 
-        self.assertEqual(charts._survivor_visual_start_year(df), 2034)
+        self.assertEqual(charts._survivor_visual_year_range(df), (2034, 2036))
 
     def test_build_kpi_summary_uses_first_retirement_year_and_compact_values(self):
         config = {
@@ -1414,9 +1414,10 @@ class RecurringEventsTests(unittest.TestCase):
         annotation = fig.layout.annotations[0]
 
         self.assertEqual(annotation.align, "right")
-        self.assertEqual(annotation.xanchor, "right")
+        self.assertEqual(annotation.xanchor, "left")
         self.assertEqual(annotation.yanchor, "top")
         self.assertEqual(annotation.textangle, -90)
+        self.assertEqual(annotation.xshift, -2)
         self.assertEqual(annotation.text, "💸 One, 💸 Two<br>💸 Three")
 
 

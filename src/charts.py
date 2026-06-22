@@ -816,11 +816,13 @@ def _build_portfolio_chart(
     )
 
 
-def _survivor_visual_start_year(df: pd.DataFrame) -> int | None:
+def _survivor_visual_year_range(df: pd.DataFrame) -> tuple[int, int] | None:
     survivor_years = df[df["survivor"] == True]["year"]
     if len(survivor_years) == 0:
         return None
-    return int(survivor_years.iloc[0]) - 1
+    start_year = int(survivor_years.iloc[0]) - 1
+    end_year = int(df["year"].iloc[-1])
+    return start_year, end_year
 
 
 def _coerce_projection_result(
@@ -968,10 +970,9 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         shown_types.add(legend_name)
 
     survivor_years = df[df["survivor"] == True]["year"]
-    survivor_visual_start_year = _survivor_visual_start_year(df)
-    if len(survivor_years) > 0 and survivor_visual_start_year is not None:
-        x0 = survivor_visual_start_year - 0.5
-        x1 = df["year"].iloc[-1] + 0.5
+    survivor_visual_range = _survivor_visual_year_range(df)
+    if len(survivor_years) > 0 and survivor_visual_range is not None:
+        x0, x1 = survivor_visual_range
         fig.add_vrect(
             x0=x0,
             x1=x1,
@@ -980,7 +981,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
             layer="below",
         )
         fig.add_annotation(
-            x=(survivor_years.iloc[0] + df["year"].iloc[-1]) / 2,
+            x=(x0 + x1) / 2,
             y=1.0,
             xref="x",
             yref="paper",
@@ -1257,13 +1258,12 @@ def _build_figure(
 
     # ── Survivor period shading ────────────────────────────────────────────────
     survivor_years = df[df["survivor"] == True]["year"]
-    survivor_visual_start_year = _survivor_visual_start_year(df)
-    if len(survivor_years) > 0 and survivor_visual_start_year is not None:
-        x0 = survivor_visual_start_year - 0.5
-        x1 = df["year"].iloc[-1] + 0.5
+    survivor_visual_range = _survivor_visual_year_range(df)
+    if len(survivor_years) > 0 and survivor_visual_range is not None:
+        x0, x1 = survivor_visual_range
         fig.add_vrect(x0=x0, x1=x1, fillcolor="rgba(148,163,184,0.10)", line_width=0)
         fig.add_annotation(
-            x=(survivor_years.iloc[0] + df["year"].iloc[-1]) / 2,
+            x=(x0 + x1) / 2,
             y=1.0, xref="x", yref="paper",
             text="👤 Survivor period", showarrow=False,
             font=dict(size=10, color="rgba(226,232,240,0.84)"),
@@ -1287,8 +1287,9 @@ def _build_figure(
             annotation_bgcolor="rgba(15,23,37,0.60)",
             annotation_borderpad=3,
             annotation_align="right",
-            annotation_xanchor="right",
+            annotation_xanchor="left",
             annotation_yanchor="top",
+            annotation_xshift=-2,
         )
 
     title_text = config.get("display", {}).get("projection_title", "Household Projection")
