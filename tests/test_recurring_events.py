@@ -1079,6 +1079,52 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(owner_balances["roth"]["person1"], 0.0)
         self.assertEqual(owner_balances["roth"]["person2"], 29773.22)
 
+    def test_classify_accounts_applies_opening_balance_split_for_bundled_retirement_account(self):
+        config = {
+            "accounts": {
+                "disabled": [],
+                "401k Person 1 (6-01)": {
+                    "category": "trad_ira",
+                    "owner": "person1",
+                    "opening_balance_split": {"trad_ira": 0.95, "roth": 0.05},
+                },
+                "OregonSaves (4216)": {"category": "roth", "owner": "person2"},
+            }
+        }
+        raw = [
+            {"name": "401k Person 1 (6-01)", "balance": 294000.0, "type": "Retirement"},
+            {"name": "OregonSaves (4216)", "balance": 29773.22, "type": "Retirement"},
+        ]
+
+        portfolio, extras = monarch_bridge.classify_accounts(raw, config)
+
+        self.assertEqual(extras["home_value"], 0.0)
+        self.assertAlmostEqual(portfolio["trad_ira"], 279300.0, places=6)
+        self.assertAlmostEqual(portfolio["roth"], 44473.22, places=6)
+
+    def test_extract_retirement_owner_balances_applies_opening_balance_split(self):
+        config = {
+            "accounts": {
+                "disabled": [],
+                "401k Person 1 (6-01)": {
+                    "category": "trad_ira",
+                    "owner": "person1",
+                    "opening_balance_split": {"trad_ira": 0.95, "roth": 0.05},
+                },
+                "OregonSaves (4216)": {"category": "roth", "owner": "person2"},
+            }
+        }
+        raw = [
+            {"name": "401k Person 1 (6-01)", "balance": 294000.0, "type": "Retirement"},
+            {"name": "OregonSaves (4216)", "balance": 29773.22, "type": "Retirement"},
+        ]
+
+        owner_balances = monarch_bridge.extract_retirement_owner_balances(raw, config)
+
+        self.assertAlmostEqual(owner_balances["trad_ira"]["person1"], 279300.0, places=6)
+        self.assertAlmostEqual(owner_balances["roth"]["person1"], 14700.0, places=6)
+        self.assertAlmostEqual(owner_balances["roth"]["person2"], 29773.22, places=6)
+
     def test_run_projection_respects_seeded_retirement_owner_balances(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2026},
@@ -1121,6 +1167,74 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(float(row["roth"]), 29773.22)
         self.assertEqual(float(row["roth_person1"]), 0.0)
         self.assertEqual(float(row["roth_person2"]), 29773.22)
+
+    def test_run_projection_respects_seeded_opening_balance_split_and_new_contributions(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2026},
+            "assumptions": {
+                "stock_return": 0.0,
+                "bond_return": 0.0,
+                "inflation": 0.0,
+                "equity_allocation": 0.0,
+                "effective_tax_rate_pre_retirement": 0.0,
+                "effective_tax_rate_post_retirement": 0.0,
+                "taxable_withdrawal_taxable_fraction": 0.0,
+                "trad_ira_withdrawal_taxable_fraction": 0.0,
+            },
+            "person1": {
+                "name": "Person 1",
+                "retirement_year": 9999,
+                "annual_take_home": 0,
+                "annual_take_home_is_net_of_retirement_contributions": True,
+                "annual_take_home_real_raise": 0.0,
+                "annual_401k_contribution": 24225.0,
+                "annual_401k_contribution_extra_increase": 0.0,
+                "annual_ira_contribution": 0.0,
+                "annual_401k_contribution_split": {"trad_ira": 0.95, "roth": 0.05},
+            },
+            "person2": {
+                "name": "Person 2",
+                "retirement_year": 9999,
+                "annual_take_home": 0,
+                "annual_take_home_is_net_of_retirement_contributions": True,
+                "annual_take_home_real_raise": 0.0,
+                "annual_401k_contribution": 0.0,
+                "annual_401k_contribution_extra_increase": 0.0,
+                "annual_ira_contribution": 3600.0,
+            },
+            "spending": {"retirement_annual": 0, "survivor_annual": 0},
+            "withdrawal_policy": {
+                "accumulation_cash_target": 0.0,
+                "retirement_cash_target": 0.0,
+                "survivor_cash_target": 0.0,
+                "accumulation_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "retirement_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "survivor_withdrawal_order": ["cash_above_target", "taxable", "trad_ira", "roth", "cash_below_target"],
+                "accumulation_surplus_order": ["taxable", "roth", "trad_ira"],
+                "retirement_surplus_order": ["taxable", "roth", "trad_ira"],
+                "survivor_surplus_order": ["taxable", "roth", "trad_ira"],
+            },
+            "events": [],
+            "liabilities": [],
+        }
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"taxable": 0.0, "trad_ira": 279300.0, "roth": 44473.22, "cash": 0.0},
+                home_value=0.0,
+                liability_balances={},
+                retirement_owner_balances={
+                    "trad_ira": {"person1": 279300.0, "person2": 0.0},
+                    "roth": {"person1": 14700.0, "person2": 29773.22},
+                },
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(float(row["trad_ira_person1"]), 302313.75, places=6)
+        self.assertAlmostEqual(float(row["trad_ira_person2"]), 0.0, places=6)
+        self.assertAlmostEqual(float(row["roth_person1"]), 15911.25, places=6)
+        self.assertAlmostEqual(float(row["roth_person2"]), 33373.22, places=6)
+        self.assertAlmostEqual(float(row["roth"]), 49284.47, places=6)
 
     def test_offline_cache_with_raw_accounts_reclassifies_using_current_config(self):
         cached = {

@@ -104,6 +104,33 @@ def _account_owner(config: dict, account_name: str) -> str | None:
     return owner if owner in {"person1", "person2"} else None
 
 
+def _account_balance_split(config: dict, account_name: str) -> dict[str, float] | None:
+    """Return normalized starting-balance split weights for an account, if configured."""
+    entry = _account_classification_entry(config, account_name)
+    if not isinstance(entry, dict):
+        return None
+
+    raw_split = entry.get("opening_balance_split")
+    if not isinstance(raw_split, dict):
+        return None
+
+    allowed_buckets = {"taxable", "trad_ira", "roth", "cash"}
+    weights: dict[str, float] = {}
+    total = 0.0
+    for bucket in allowed_buckets:
+        try:
+            weight = max(0.0, float(raw_split.get(bucket, 0.0)))
+        except (TypeError, ValueError):
+            weight = 0.0
+        if weight > 0:
+            weights[bucket] = weight
+            total += weight
+
+    if total <= 0:
+        return None
+    return {bucket: weight / total for bucket, weight in weights.items()}
+
+
 def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict[str, float], dict[str, float]]:
     """
     Classify raw Monarch accounts per config.toml [accounts] and return totals.
@@ -134,7 +161,12 @@ def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict
 
         cat = _account_category(config, name)
 
-        if cat is None:
+        split = _account_balance_split(config, name)
+
+        if split is not None:
+            for bucket, ratio in split.items():
+                portfolio[bucket] += balance * ratio
+        elif cat is None:
             unclassified.append((name, balance))
         elif cat in ("ignore", "liability"):
             # liabilities excluded — tracked via [[liabilities]] amortization
@@ -175,9 +207,19 @@ def extract_retirement_owner_balances(
         name = acct["name"]
         if name in disabled:
             continue
-        category = _account_category(config, name)
         owner = _account_owner(config, name)
-        if category not in owner_balances or owner not in {"person1", "person2"}:
+        if owner not in {"person1", "person2"}:
+            continue
+        split = _account_balance_split(config, name)
+        if split is not None:
+            for bucket, ratio in split.items():
+                if bucket not in owner_balances:
+                    continue
+                owner_balances[bucket][owner] += float(acct["balance"]) * ratio
+            continue
+
+        category = _account_category(config, name)
+        if category not in owner_balances:
             continue
         owner_balances[category][owner] += float(acct["balance"])
 
@@ -265,6 +307,12 @@ def list_accounts():
         atype = acct["type"]
         cat = _account_category(config, name) or "⚠ UNCLASSIFIED"
         owner = _account_owner(config, name)
+        split = _account_balance_split(config, name)
+        if split:
+            split_label = ", ".join(
+                f"{bucket} {ratio:.0%}" for bucket, ratio in sorted(split.items())
+            )
+            cat = f"split({split_label})"
         if owner:
             cat = f"{cat} [{owner}]"
         if name in disabled:
