@@ -15,6 +15,7 @@
 - Historical mode is now turnkey with the bundled starter dataset at `config/return_sequences/us_balanced_returns.csv`; the default scenario can switch to `mode = "historical"` without requiring a user-supplied local file
 - `[monte_carlo.success]` now controls stochastic failure semantics, including `failure_mode`, `minimum_spending_funded_ratio`, home-equity/debt allowances, and `failure_grace_period_months`
 - Stochastic projection pages now show probability-band charts for total net worth and investable portfolio, stochastic KPI strips, and a `Simulation results` summary card in Scenario Parameters
+- The tax path now uses explicit yearly tax input/output contracts in `src/model.py`, with normalized federal/state tax-system objects and a dedicated `tax_breakdown_yearly.csv` sidecar for auditability
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view
@@ -29,6 +30,7 @@
 - Surplus cash flow now refills the active cash target first, then allocates the remainder into non-cash investable buckets
 - Deficit coverage now honors configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` semantics to preserve reserves when possible
 - Cash Flow tab now shows positive income events in Income and a `Modeled tax on retirement/event inflows` expense row
+- Cash Flow can now break modeled taxes into federal and state rows when those components are non-zero, and Scenario Parameters now includes a `Tax output snapshot` card sourced from the rendered projection
 - End-of-plan timing is now synced from each person's `dob` + `life_expectancy` at runtime so stale hardcoded event years do not skew the chart
 - `SellHome` proceeds are now preserved in cash in the sale year rather than being auto-invested into existing non-cash buckets
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
@@ -158,6 +160,10 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - deterministic mode remains default and backward-compatible
   - historical mode is now implemented via annual-return CSV windows, including a bundled illustrative starter dataset
   - primary open follow-on is deciding whether to replace the starter file with a more explicitly sourced canonical dataset or continue treating it as a convenience/demo series
+- Tax-engine refactor slice is now started
+  - yearly tax inputs/outputs are explicitly modeled instead of being passed around as loose float/dict bundles
+  - sidecars now include a dedicated yearly tax breakdown export
+  - the next natural tax step is to decide whether to extract the new typed tax helpers into a dedicated module or continue iterating inside `src/model.py` first
 
 ## Known Pitfalls
 

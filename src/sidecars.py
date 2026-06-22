@@ -19,6 +19,7 @@ SCENARIO_MANIFEST_JSON = "scenario_manifest.json"
 ACCOUNTS_SNAPSHOT_JSON = "accounts_snapshot.json"
 PROJECTION_BANDS_CSV = "projection_bands_yearly.csv"
 SIMULATION_SUMMARY_JSON = "simulation_summary.json"
+TAX_BREAKDOWN_CSV = "tax_breakdown_yearly.csv"
 
 
 def _person_keys(config: dict) -> list[str]:
@@ -72,12 +73,16 @@ def write_sidecars(
     accounts_path = output_dir / ACCOUNTS_SNAPSHOT_JSON
     bands_path = output_dir / PROJECTION_BANDS_CSV
     summary_path = output_dir / SIMULATION_SUMMARY_JSON
+    tax_breakdown_path = output_dir / TAX_BREAKDOWN_CSV
 
     projection_df = _projection_sidecar_frame(df)
     projection_df.to_csv(projection_path, index=False)
 
     event_flows_df = _event_flows_frame(df)
     event_flows_df.to_csv(event_flows_path, index=False)
+
+    tax_breakdown_df = _tax_breakdown_frame(df)
+    tax_breakdown_df.to_csv(tax_breakdown_path, index=False)
 
     if projection_result.band_df is not None and not projection_result.band_df.empty:
         projection_result.band_df.to_csv(bands_path, index=False)
@@ -115,6 +120,7 @@ def write_sidecars(
     return {
         "projection_yearly_csv": projection_path,
         "event_flows_csv": event_flows_path,
+        "tax_breakdown_yearly_csv": tax_breakdown_path,
         "scenario_manifest_json": manifest_path,
         "accounts_snapshot_json": accounts_path,
         "simulation_summary_json": summary_path,
@@ -161,6 +167,29 @@ def _event_flows_frame(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["year", "label", "event_type", "expense_kind", "amount"])
 
 
+def _tax_breakdown_frame(df: pd.DataFrame) -> pd.DataFrame:
+    columns = [
+        "year",
+        "tax_phase",
+        "tax_mode",
+        "tax_filing_status",
+        "taxable_wage_income",
+        "non_ss_taxable_income",
+        "withdrawal_taxable_income",
+        "taxable_social_security_income",
+        "taxable_income",
+        "annual_federal_taxes",
+        "annual_state_taxes",
+        "annual_taxes",
+        "state_tax_enabled",
+        "state_tax_name",
+        "state_tax_filing_status",
+        "state_taxable_income",
+    ]
+    available_columns = [column for column in columns if column in df.columns]
+    return df[available_columns].copy()
+
+
 def _scenario_manifest(
     *,
     generated_at: str,
@@ -196,6 +225,7 @@ def _scenario_manifest(
         "sidecars": {
             "projection_yearly_csv": PROJECTION_CSV,
             "event_flows_csv": EVENT_FLOWS_CSV,
+            "tax_breakdown_yearly_csv": TAX_BREAKDOWN_CSV,
             "scenario_manifest_json": SCENARIO_MANIFEST_JSON,
             "accounts_snapshot_json": ACCOUNTS_SNAPSHOT_JSON,
             "simulation_summary_json": SIMULATION_SUMMARY_JSON,

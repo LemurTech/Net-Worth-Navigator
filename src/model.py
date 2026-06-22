@@ -138,6 +138,60 @@ class ProjectionResult:
     display_path_kind: str = "deterministic"
 
 
+@dataclass
+class FederalTaxSystem:
+    """Normalized federal tax configuration for a single projection year."""
+
+    mode: str
+    phase: str
+    filing_status: str | None = None
+    standard_deduction: float = 0.0
+    brackets: list[dict] = field(default_factory=list)
+    social_security: dict[str, object] = field(default_factory=dict)
+    rate: float = 0.0
+
+
+@dataclass
+class StateTaxSystem:
+    """Normalized state tax configuration for a single projection year."""
+
+    enabled: bool = False
+    name: str = ""
+    filing_status: str = "married_joint"
+    standard_deduction: float = 0.0
+    tax_social_security: bool = False
+
+
+@dataclass
+class YearlyTaxInputs:
+    """Structured taxable-flow inputs for one modeled year."""
+
+    non_ss_taxable_income: float
+    social_security_income: float
+    withdrawal_taxable_income: float
+    legacy_ss_taxable_income: float
+    federal_system: FederalTaxSystem
+    state_system: StateTaxSystem
+
+    @property
+    def other_taxable_income(self) -> float:
+        return max(0.0, float(self.non_ss_taxable_income) + float(self.withdrawal_taxable_income))
+
+
+@dataclass
+class YearlyTaxOutputs:
+    """Structured tax outputs for one modeled year."""
+
+    total_taxes: float
+    taxable_income: float
+    federal_taxes: float
+    state_taxes: float
+    taxable_social_security_income: float
+    state_taxable_income: float
+    non_ss_taxable_income: float
+    withdrawal_taxable_income: float
+
+
 def _empty_withdrawal_breakdown() -> dict[str, float]:
     return {bucket: 0.0 for bucket in WITHDRAWAL_BUCKETS}
 
@@ -2597,7 +2651,7 @@ def _run_projection_yearly(
         )
         active_state_tax_system = resolve_state_tax_system(
             config,
-            filing_status=str(active_tax_system.get("filing_status", "married_joint")),
+            filing_status=str(active_tax_system.filing_status or "married_joint"),
         )
         taxable_wage_income = (
             person1_parts["taxable_wage_income"] + person2_parts["taxable_wage_income"]
@@ -2640,14 +2694,20 @@ def _run_projection_yearly(
             grown_portfolio = portfolio.copy()
             grown_retirement_owner_balances = _clone_retirement_owner_balances(retirement_owner_balances)
 
-        annual_taxes, taxable_income, federal_taxes, state_taxes = estimate_annual_taxes(
-            non_ss_taxable_income=base_non_ss_taxable_income,
-            social_security_income=total_social_security_income,
-            withdrawal_taxable_income=0.0,
-            tax_system=active_tax_system,
-            state_tax_system=active_state_tax_system,
-            legacy_ss_taxable_income=legacy_ss_taxable_income,
+        tax_outputs = estimate_annual_taxes(
+            inputs=YearlyTaxInputs(
+                non_ss_taxable_income=base_non_ss_taxable_income,
+                social_security_income=total_social_security_income,
+                withdrawal_taxable_income=0.0,
+                legacy_ss_taxable_income=legacy_ss_taxable_income,
+                federal_system=active_tax_system,
+                state_system=active_state_tax_system,
+            )
         )
+        annual_taxes = tax_outputs.total_taxes
+        taxable_income = tax_outputs.taxable_income
+        federal_taxes = tax_outputs.federal_taxes
+        state_taxes = tax_outputs.state_taxes
         withdrawal_taxable_income = 0.0
         withdrawal_breakdown = _empty_withdrawal_breakdown()
         withdrawal_breakdown_by_person = _empty_retirement_owner_breakdown()
@@ -2824,14 +2884,20 @@ def _run_projection_yearly(
 
             _sync_retirement_bucket_totals(working_portfolio, working_retirement_owner_balances)
 
-            new_annual_taxes, taxable_income, federal_taxes, state_taxes = estimate_annual_taxes(
-                non_ss_taxable_income=base_non_ss_taxable_income,
-                social_security_income=total_social_security_income,
-                withdrawal_taxable_income=withdrawal_taxable_income,
-                tax_system=active_tax_system,
-                state_tax_system=active_state_tax_system,
-                legacy_ss_taxable_income=legacy_ss_taxable_income,
+            tax_outputs = estimate_annual_taxes(
+                inputs=YearlyTaxInputs(
+                    non_ss_taxable_income=base_non_ss_taxable_income,
+                    social_security_income=total_social_security_income,
+                    withdrawal_taxable_income=withdrawal_taxable_income,
+                    legacy_ss_taxable_income=legacy_ss_taxable_income,
+                    federal_system=active_tax_system,
+                    state_system=active_state_tax_system,
+                )
             )
+            new_annual_taxes = tax_outputs.total_taxes
+            taxable_income = tax_outputs.taxable_income
+            federal_taxes = tax_outputs.federal_taxes
+            state_taxes = tax_outputs.state_taxes
             if abs(new_annual_taxes - annual_taxes) < 0.01:
                 annual_taxes = new_annual_taxes
                 break
@@ -2886,9 +2952,19 @@ def _run_projection_yearly(
             "person2_income":    person2_income,
             "taxable_income": taxable_income,
             "taxable_wage_income": taxable_wage_income,
+            "non_ss_taxable_income": tax_outputs.non_ss_taxable_income,
+            "withdrawal_taxable_income": tax_outputs.withdrawal_taxable_income,
+            "taxable_social_security_income": tax_outputs.taxable_social_security_income,
+            "tax_phase": active_tax_system.phase,
+            "tax_mode": active_tax_system.mode,
+            "tax_filing_status": active_tax_system.filing_status or "",
             "annual_taxes":   annual_taxes,
             "annual_federal_taxes": federal_taxes,
             "annual_state_taxes": state_taxes,
+            "state_tax_enabled": active_state_tax_system.enabled,
+            "state_tax_name": active_state_tax_system.name,
+            "state_tax_filing_status": active_state_tax_system.filing_status if active_state_tax_system.enabled else "",
+            "state_taxable_income": tax_outputs.state_taxable_income,
             "annual_spend":   annual_spend,
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
@@ -3029,7 +3105,7 @@ def resolve_tax_system(
     assumptions: dict,
     both_retired: bool,
     one_deceased: bool,
-) -> dict[str, object]:
+) -> FederalTaxSystem:
     """Return the active tax system for the current simulation phase."""
     taxes = config.get("taxes", {})
     phase = _tax_phase(both_retired=both_retired, one_deceased=one_deceased)
@@ -3046,46 +3122,48 @@ def resolve_tax_system(
     brackets = list(taxes.get("brackets", {}).get(filing_status, []))
 
     if taxes.get("enabled") and brackets:
-        return {
-            "mode": "brackets",
-            "filing_status": filing_status,
-            "standard_deduction": standard_deduction,
-            "brackets": brackets,
-            "social_security": dict(taxes.get("social_security", {})),
-        }
+        return FederalTaxSystem(
+            mode="brackets",
+            phase=phase,
+            filing_status=filing_status,
+            standard_deduction=standard_deduction,
+            brackets=brackets,
+            social_security=dict(taxes.get("social_security", {})),
+        )
 
-    return {
-        "mode": "effective_rate",
-        "rate": float(
+    return FederalTaxSystem(
+        mode="effective_rate",
+        phase=phase,
+        rate=float(
             assumptions["effective_tax_rate_post_retirement"]
             if both_retired else assumptions["effective_tax_rate_pre_retirement"]
         ),
-    }
+    )
 
 
 def resolve_state_tax_system(
     config: dict,
     *,
     filing_status: str,
-) -> dict[str, object]:
+) -> StateTaxSystem:
     """Return the active state tax system, if any."""
     state = config.get("taxes", {}).get("state", {})
     if not state.get("enabled"):
-        return {"enabled": False}
+        return StateTaxSystem()
 
     state_name = str(state.get("name", "")).strip().lower()
     filing_status = filing_status if filing_status in VALID_FILING_STATUSES else "married_joint"
 
     if state_name == "oregon":
-        return {
-            "enabled": True,
-            "name": "oregon",
-            "filing_status": filing_status,
-            "standard_deduction": float(state.get("standard_deduction", {}).get(filing_status, 0.0)),
-            "tax_social_security": bool(state.get("tax_social_security", False)),
-        }
+        return StateTaxSystem(
+            enabled=True,
+            name="oregon",
+            filing_status=filing_status,
+            standard_deduction=float(state.get("standard_deduction", {}).get(filing_status, 0.0)),
+            tax_social_security=bool(state.get("tax_social_security", False)),
+        )
 
-    return {"enabled": False}
+    return StateTaxSystem()
 
 
 def _tax_phase(*, both_retired: bool, one_deceased: bool) -> str:
@@ -3125,65 +3203,74 @@ def calculate_progressive_tax(
     return total_tax
 
 
-def estimate_annual_taxes(
-    *,
-    non_ss_taxable_income: float,
-    social_security_income: float,
-    withdrawal_taxable_income: float,
-    tax_system: dict[str, object],
-    state_tax_system: dict[str, object],
-    legacy_ss_taxable_income: float = 0.0,
-) -> tuple[float, float, float, float]:
-    """Estimate annual federal+state taxes and total modeled taxable income."""
-    other_taxable_income = max(0.0, non_ss_taxable_income + withdrawal_taxable_income)
+def _estimate_federal_taxes(inputs: YearlyTaxInputs) -> tuple[float, float, float]:
+    """Return federal taxes, taxable income, and taxable Social Security income."""
+    other_taxable_income = inputs.other_taxable_income
     taxable_ss_income = 0.0
-    if tax_system.get("mode") == "brackets":
+    if inputs.federal_system.mode == "brackets":
         taxable_ss_income = calculate_social_security_taxable_income(
-            social_security_income=max(0.0, social_security_income),
+            social_security_income=max(0.0, inputs.social_security_income),
             other_taxable_income=other_taxable_income,
-            filing_status=str(tax_system.get("filing_status", "married_joint")),
-            social_security_config=dict(tax_system.get("social_security", {})),
+            filing_status=str(inputs.federal_system.filing_status or "married_joint"),
+            social_security_config=dict(inputs.federal_system.social_security),
         )
         taxable_income = other_taxable_income + taxable_ss_income
         federal_taxes = calculate_progressive_tax(
             taxable_income=taxable_income,
-            standard_deduction=float(tax_system.get("standard_deduction", 0.0)),
-            brackets=list(tax_system.get("brackets", [])),
+            standard_deduction=float(inputs.federal_system.standard_deduction),
+            brackets=list(inputs.federal_system.brackets),
         )
     else:
-        taxable_income = max(0.0, other_taxable_income + legacy_ss_taxable_income)
-        federal_taxes = taxable_income * float(tax_system.get("rate", 0.0))
-        taxable_ss_income = legacy_ss_taxable_income
+        taxable_income = max(0.0, other_taxable_income + inputs.legacy_ss_taxable_income)
+        federal_taxes = taxable_income * float(inputs.federal_system.rate)
+        taxable_ss_income = inputs.legacy_ss_taxable_income
+    return federal_taxes, taxable_income, taxable_ss_income
 
-    state_taxes = estimate_state_taxes(
-        non_ss_taxable_income=other_taxable_income,
+
+def estimate_annual_taxes(*, inputs: YearlyTaxInputs) -> YearlyTaxOutputs:
+    """Estimate annual federal+state taxes and return a structured yearly result."""
+    federal_taxes, taxable_income, taxable_ss_income = _estimate_federal_taxes(inputs)
+    state_taxes, state_taxable_income = estimate_state_taxes(
+        non_ss_taxable_income=inputs.other_taxable_income,
         social_security_taxable_income=taxable_ss_income,
-        state_tax_system=state_tax_system,
+        state_tax_system=inputs.state_system,
     )
     total_taxes = federal_taxes + state_taxes
-    return total_taxes, taxable_income, federal_taxes, state_taxes
+    return YearlyTaxOutputs(
+        total_taxes=total_taxes,
+        taxable_income=taxable_income,
+        federal_taxes=federal_taxes,
+        state_taxes=state_taxes,
+        taxable_social_security_income=taxable_ss_income,
+        state_taxable_income=state_taxable_income,
+        non_ss_taxable_income=max(0.0, float(inputs.non_ss_taxable_income)),
+        withdrawal_taxable_income=max(0.0, float(inputs.withdrawal_taxable_income)),
+    )
 
 
 def estimate_state_taxes(
     *,
     non_ss_taxable_income: float,
     social_security_taxable_income: float,
-    state_tax_system: dict[str, object],
-) -> float:
+    state_tax_system: StateTaxSystem,
+) -> tuple[float, float]:
     """Estimate state tax from modeled taxable inflows."""
-    if not state_tax_system.get("enabled"):
-        return 0.0
-    if state_tax_system.get("name") != "oregon":
-        return 0.0
+    if not state_tax_system.enabled:
+        return 0.0, 0.0
+    if state_tax_system.name != "oregon":
+        return 0.0, 0.0
 
-    filing_status = str(state_tax_system.get("filing_status", "married_joint"))
+    filing_status = str(state_tax_system.filing_status or "married_joint")
     state_taxable_income = max(0.0, non_ss_taxable_income)
-    if state_tax_system.get("tax_social_security", False):
+    if state_tax_system.tax_social_security:
         state_taxable_income += max(0.0, social_security_taxable_income)
-    state_taxable_income = max(0.0, state_taxable_income - float(state_tax_system.get("standard_deduction", 0.0)))
-    return calculate_oregon_state_tax(
-        taxable_income=state_taxable_income,
-        filing_status=filing_status,
+    state_taxable_income = max(0.0, state_taxable_income - float(state_tax_system.standard_deduction))
+    return (
+        calculate_oregon_state_tax(
+            taxable_income=state_taxable_income,
+            filing_status=filing_status,
+        ),
+        state_taxable_income,
     )
 
 

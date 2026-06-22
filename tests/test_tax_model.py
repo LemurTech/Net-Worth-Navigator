@@ -197,11 +197,15 @@ class TaxModelTests(unittest.TestCase):
                 "freed_payments": 0.0,
                 "annual_spend": 0.0,
                 "annual_taxes": 1250.0,
+                "annual_federal_taxes": 1000.0,
+                "annual_state_taxes": 250.0,
                 "net_flow": -1250.0,
                 "event_items": [],
             }
         ])
         html = tables.build_cashflow_table(df)
+        self.assertIn("Federal ordinary-income tax", html)
+        self.assertIn("State income tax", html)
         self.assertIn("Modeled tax on retirement/event inflows", html)
         self.assertNotIn(">Estimated taxes<", html)
 

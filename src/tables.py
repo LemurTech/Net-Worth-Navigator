@@ -818,6 +818,28 @@ def build_scenario_parameters_summary(
             "</section>"
         )
 
+    tax_result_card = ""
+    if projection_df is not None and not projection_df.empty and "annual_taxes" in projection_df.columns:
+        peak_tax_row = projection_df.loc[projection_df["annual_taxes"].idxmax()]
+        latest_tax_row = projection_df.iloc[-1]
+        tax_rows = [
+            ("Peak total modeled tax", _fmt_currency(peak_tax_row.get("annual_taxes"))),
+            ("Peak tax year", escape(str(int(peak_tax_row.get("year", 0)))) if pd.notna(peak_tax_row.get("year")) else "—"),
+            ("Peak federal tax", _fmt_currency(peak_tax_row.get("annual_federal_taxes"))),
+            ("Peak state tax", _fmt_currency(peak_tax_row.get("annual_state_taxes"))),
+            ("Latest tax phase", escape(str(latest_tax_row.get("tax_phase", "—")))),
+            ("Latest filing status", escape(str(latest_tax_row.get("tax_filing_status", "—")))),
+            ("Latest taxable income", _fmt_currency(latest_tax_row.get("taxable_income"))),
+            ("Latest taxable Social Security", _fmt_currency(latest_tax_row.get("taxable_social_security_income"))),
+        ]
+        tax_result_card = (
+            "<section class='assumption-card'>"
+            "<h3>Tax output snapshot</h3>"
+            "<p class='assumption-subtitle'>Modeled tax outputs from the current rendered path.</p>"
+            f"{_kv_table(tax_rows)}"
+            "</section>"
+        )
+
     person_cards_html = "".join(person_cards)
     baseline_note = (
         f" <strong>{changed_count}</strong> field(s) differ from baseline default scenario."
@@ -874,6 +896,7 @@ def build_scenario_parameters_summary(
         "<h3>Stochastic success rules</h3>"
         f"{_kv_table(success_rows)}"
         "</section>"
+        f"{tax_result_card}"
         f"{simulation_result_card}"
         f"{ownership_card_html}"
         "</div>"
@@ -1089,6 +1112,20 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
         for y in years
     ]
     if any(v != 0 for v in taxes):
+        federal_taxes = [
+            -subset.loc[y, "annual_federal_taxes"]
+            if (y in subset.index and "annual_federal_taxes" in subset.columns) else 0.0
+            for y in years
+        ]
+        state_taxes = [
+            -subset.loc[y, "annual_state_taxes"]
+            if (y in subset.index and "annual_state_taxes" in subset.columns) else 0.0
+            for y in years
+        ]
+        if any(v != 0 for v in federal_taxes):
+            rows.append(_data_row("Federal ordinary-income tax", federal_taxes, indent=True))
+        if any(v != 0 for v in state_taxes):
+            rows.append(_data_row("State income tax", state_taxes, indent=True))
         rows.append(_data_row("Modeled tax on retirement/event inflows", taxes, indent=True))
 
     mandatory_expense_events = []

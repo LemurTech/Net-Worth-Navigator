@@ -6,6 +6,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Typed yearly tax contracts in `src/model.py` (`FederalTaxSystem`, `StateTaxSystem`, `YearlyTaxInputs`, `YearlyTaxOutputs`) plus a dedicated `tax_breakdown_yearly.csv` sidecar for per-year tax audit data
 - Bundled illustrative historical return dataset at `config/return_sequences/us_balanced_returns.csv` plus usage guidance in `docs/historical-return-sequences.md`, making historical mode turnkey for repo-local scenarios
 - Historical-sequence simulation mode in `src/model.py`, driven by rolling windows from `simulation.historical_returns_path` CSV data (`year`, `return`)
 - Configurable stochastic success/failure settings via `[monte_carlo.success]`, including named `failure_mode`, spending-funded threshold, home-equity/debt allowances, grace-period months, and a basic custom-threshold comparator
@@ -116,6 +117,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Changed
 
+- Cash Flow now surfaces federal/state modeled tax rows when present, and Scenario Parameters now includes a `Tax output snapshot` card driven by the rendered projection path
 - Survivor-period shading on the main chart and Gantt now spans exactly from the first `EndOfPlan` boundary through the surviving partner's `EndOfPlan` boundary for clearer visual alignment with the event markers
 - Main-chart event annotations now wrap at two events per line, sit to the right of each event line, and use softer translucent backgrounds (`rgba(15,23,37,0.60)`) for improved readability with multiline labels
 - Synthesized `Retirement (...)` and `SS Begins (...)` labels now use configured person-name initials instead of person-key initials, so sample scenarios render A/S (etc.) instead of M/W

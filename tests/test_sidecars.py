@@ -23,9 +23,20 @@ class SidecarTests(unittest.TestCase):
                 "person1_income": 10.0,
                 "person2_income": 20.0,
                 "taxable_income": 5.0,
+                "tax_phase": "retirement",
+                "tax_mode": "brackets",
+                "tax_filing_status": "married_joint",
+                "taxable_wage_income": 0.0,
+                "non_ss_taxable_income": 5.0,
+                "withdrawal_taxable_income": 0.0,
+                "taxable_social_security_income": 0.0,
                 "annual_taxes": 1.0,
                 "annual_federal_taxes": 1.0,
                 "annual_state_taxes": 0.0,
+                "state_tax_enabled": False,
+                "state_tax_name": "",
+                "state_tax_filing_status": "",
+                "state_taxable_income": 0.0,
                 "annual_spend": 15.0,
                 "freed_payments": 0.0,
                 "net_flow": 14.0,
@@ -100,6 +111,12 @@ class SidecarTests(unittest.TestCase):
             self.assertEqual(len(event_flows_df), 2)
             self.assertEqual(set(event_flows_df["label"].tolist()), {"Sell Casa Lemuria", "Vacation"})
 
+            tax_breakdown_csv = sidecar_dir / "tax_breakdown_yearly.csv"
+            tax_breakdown_df = pd.read_csv(tax_breakdown_csv)
+            self.assertIn("tax_phase", tax_breakdown_df.columns)
+            self.assertIn("annual_federal_taxes", tax_breakdown_df.columns)
+            self.assertEqual(str(tax_breakdown_df.iloc[0]["tax_mode"]), "brackets")
+
             manifest = json.loads((sidecar_dir / "scenario_manifest.json").read_text())
             self.assertEqual(manifest["mode"], "offline")
             self.assertEqual(manifest["scenario"]["slug"], "default")
@@ -107,6 +124,7 @@ class SidecarTests(unittest.TestCase):
             self.assertEqual(manifest["resolved_end_of_plan_years"]["person2"], 2066)
             self.assertEqual(manifest["projection_summary"]["row_count"], 1)
             self.assertEqual(manifest["simulation"]["result_mode"], "deterministic")
+            self.assertEqual(manifest["sidecars"]["tax_breakdown_yearly_csv"], "tax_breakdown_yearly.csv")
 
             accounts = json.loads((sidecar_dir / "accounts_snapshot.json").read_text())
             self.assertEqual(accounts["property_values"]["Casa Lemuria"], 500.0)
@@ -127,9 +145,20 @@ class SidecarTests(unittest.TestCase):
                 "person1_income": 0.0,
                 "person2_income": 0.0,
                 "taxable_income": 0.0,
+                "tax_phase": "retirement",
+                "tax_mode": "brackets",
+                "tax_filing_status": "married_joint",
+                "taxable_wage_income": 0.0,
+                "non_ss_taxable_income": 0.0,
+                "withdrawal_taxable_income": 0.0,
+                "taxable_social_security_income": 0.0,
                 "annual_taxes": 0.0,
                 "annual_federal_taxes": 0.0,
                 "annual_state_taxes": 0.0,
+                "state_tax_enabled": False,
+                "state_tax_name": "",
+                "state_tax_filing_status": "",
+                "state_taxable_income": 0.0,
                 "annual_spend": 0.0,
                 "freed_payments": 0.0,
                 "net_flow": 0.0,
