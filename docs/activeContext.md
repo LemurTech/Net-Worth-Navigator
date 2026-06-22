@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Iteration Window:** 2026-06-19 → 2026-06-21
-**Current Status:** Scenario-driven V1 is stable and actively polished for projection UX: assumptions/parameter diff review, scenario context propagation between shell/editor/projection, event-label readability controls, and portfolio/survivor visual refinements are now implemented and validated with offline rerenders.
+**Iteration Window:** 2026-06-19 → 2026-06-22
+**Current Status:** Scenario-driven V1 is stable and actively polished for projection UX: assumptions/parameter diff review, scenario context propagation between shell/editor/projection, event-label readability controls, and portfolio/survivor visual refinements are now implemented and validated with offline rerenders. A repo-to-repo comparison memo now documents where ignidash is stronger, where NWN remains the better household-planning fit, and what bridge/port opportunities are realistic.
 
 ## Current State
 
@@ -141,6 +141,13 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
 - Surgery events in the household scenarios are now marked `funding = "cash_reserve_first"` so 2026 reserve-cash funding matches intent
 - All current scenarios were batch-rerendered offline on 2026-06-21 via a local deploy-dir override; refreshed sidecars confirm reserve-first event funding is active across the scenario set
+- Comparative analysis doc added at `docs/ignidash-comparative-analysis.md`
+  - key conclusion: NWN remains the better primary planner for Person 1/Person 2 household semantics, while ignidash is the richer general simulation engine
+  - most promising cross-pollination targets from ignidash into NWN are Monte Carlo/historical stress-testing, richer account mechanics, and more modular tax internals
+  - if exploring a bridge, start with Monarch -> ignidash finances/account sync or a reduced NWN -> ignidash JSON export, not a full scenario migration
+- High-level feature-port roadmap added at `docs/ignidash-feature-port-plan.md`
+  - recommended order: result/data-contract cleanup -> Monte Carlo/historical modes -> tax refactor -> richer account mechanics -> contribution rules -> comparison UX
+  - immediate best slice: make NWN stochastic-ready, then add a Monte Carlo MVP with summary metrics and probability bands
 
 ## Known Pitfalls
 

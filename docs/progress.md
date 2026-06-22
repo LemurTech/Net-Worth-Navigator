@@ -6,6 +6,9 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Comparative analysis doc at `docs/ignidash-comparative-analysis.md`, covering NWN vs. ignidash strengths, replacement-fit assessment, Monarch-bridge feasibility, partial scenario-port feasibility, and recommended cross-pollination targets
+- High-level feature-port roadmap at `docs/ignidash-feature-port-plan.md`, defining a phased plan to bring ignidash-inspired capabilities into NWN while preserving TOML-first household planning and avoiding SaaS-style infrastructure creep
+
 - Portfolio tab now includes a projected-balances table below the chart, using the shared datatable styling and owner-split retirement rows when present
 - Scenario Parameters now includes a compact `Retirement ownership snapshots` card (first retirement year + end year; combined/traditional/Roth shares) sourced from projection owner-split columns
 - Accounts, Cash Flow, and Portfolio owner-split labels now resolve from configured person display names (`person1.name` / `person2.name`) instead of hardcoded `Person 1` / `Person 2`
