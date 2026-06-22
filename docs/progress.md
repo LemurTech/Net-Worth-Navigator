@@ -6,6 +6,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Bundled illustrative historical return dataset at `config/return_sequences/us_balanced_returns.csv` plus usage guidance in `docs/historical-return-sequences.md`, making historical mode turnkey for repo-local scenarios
 - Historical-sequence simulation mode in `src/model.py`, driven by rolling windows from `simulation.historical_returns_path` CSV data (`year`, `return`)
 - Configurable stochastic success/failure settings via `[monte_carlo.success]`, including named `failure_mode`, spending-funded threshold, home-equity/debt allowances, grace-period months, and a basic custom-threshold comparator
 - Additional stochastic summary and UI coverage: Scenario Parameters now includes `Stochastic success rules`, simulation summaries now report generic first-failure metrics, and historical runs reuse the same probability-band result surfaces

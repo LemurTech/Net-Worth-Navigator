@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-19 → 2026-06-22
-**Current Status:** NWN now has both a seeded Monte Carlo MVP and a first historical-sequence mode on top of the shared projection-result contract. Stochastic success/failure semantics are no longer hardcoded to investable depletion; they are scenario-configurable via `[monte_carlo.success]`, and deterministic runs remain the unchanged default path.
+**Current Status:** NWN now has both a seeded Monte Carlo MVP and a turnkey historical-sequence mode on top of the shared projection-result contract. Stochastic success/failure semantics are no longer hardcoded to investable depletion; they are scenario-configurable via `[monte_carlo.success]`, deterministic runs remain the unchanged default path, and the repo now ships a bundled illustrative return series for immediate historical-mode use.
 
 ## Current State
 
@@ -12,6 +12,7 @@
 - Projection outputs now flow through a normalized `ProjectionResult` contract in `src/model.py`, with deterministic runs exposing a single yearly path and Monte Carlo runs exposing a median display path plus percentile bands
 - `[simulation]` now supports `mode`, `num_runs`, `seed`, and `portfolio_return_volatility` so scenarios can opt into seeded Monte Carlo without changing other config semantics
 - `[simulation]` historical mode is now supported via `historical_returns_path`, using rolling annual-return windows from a CSV with `year` and `return` columns
+- Historical mode is now turnkey with the bundled starter dataset at `config/return_sequences/us_balanced_returns.csv`; the default scenario can switch to `mode = "historical"` without requiring a user-supplied local file
 - `[monte_carlo.success]` now controls stochastic failure semantics, including `failure_mode`, `minimum_spending_funded_ratio`, home-equity/debt allowances, and `failure_grace_period_months`
 - Stochastic projection pages now show probability-band charts for total net worth and investable portfolio, stochastic KPI strips, and a `Simulation results` summary card in Scenario Parameters
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
@@ -155,8 +156,8 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - immediate best slice: make NWN stochastic-ready, then add a Monte Carlo MVP with summary metrics and probability bands
 - Monte Carlo MVP is now implemented for seeded blended-return variation
   - deterministic mode remains default and backward-compatible
-  - historical mode is now implemented via external annual-return CSV windows
-  - primary open follow-on is deciding whether to ship a canonical historical return dataset in-repo or keep datasets user-supplied/local-only
+  - historical mode is now implemented via annual-return CSV windows, including a bundled illustrative starter dataset
+  - primary open follow-on is deciding whether to replace the starter file with a more explicitly sourced canonical dataset or continue treating it as a convenience/demo series
 
 ## Known Pitfalls
 

@@ -166,6 +166,20 @@ class SimulationModeTests(unittest.TestCase):
         self.assertEqual(result.summary["run_labels"], ["2000-2002", "2001-2003", "2002-2004"])
         self.assertIn("total_net_worth_p50", result.band_df.columns)
 
+    def test_historical_mode_accepts_bundled_dataset_path(self):
+        config = self._base_config(mode="historical")
+        config["simulation"]["historical_returns_path"] = "config/return_sequences/us_balanced_returns.csv"
+        result = model.run_projection_result(
+            balances={"cash": 500.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+            home_value=0.0,
+            liability_balances={},
+            config=config,
+        )
+
+        self.assertEqual(result.mode, "historical")
+        self.assertGreater(result.run_count, 1)
+        self.assertEqual(result.summary["run_labels"][0], "1970-1972")
+
 
 if __name__ == "__main__":
     unittest.main()
