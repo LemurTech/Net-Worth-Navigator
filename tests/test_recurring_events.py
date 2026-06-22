@@ -639,6 +639,50 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(ss_events["person2"]["monthly_benefit"], 1000.0)
         self.assertEqual(ss_events["person2"]["label"], "SS Begins (P)")
 
+    def test_resolve_runtime_config_skips_posthumous_retirement_and_social_security_events(self):
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2066},
+            "person1": {
+                "name": "Person 1",
+                "dob": "1967-04-23",
+                "life_expectancy": 65,
+                "retirement_year": 2035,
+                "ss_start_age": 70,
+                "social_security_benefits": {
+                    "70": 3698,
+                },
+            },
+            "person2": {
+                "name": "Person 2",
+                "dob": "1976-10-02",
+                "life_expectancy": 90,
+                "retirement_year": 2040,
+                "ss_start_age": 67,
+                "social_security_benefits": {
+                    "67": 1000,
+                },
+            },
+            "events": [
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "person1", "year": 2057},
+                {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "person2", "year": 2066},
+            ],
+        }
+
+        resolved = model.resolve_runtime_config(config)
+        person1_events = [
+            event
+            for event in resolved["events"]
+            if event.get("person") == "person1" and event["type"] in {"Retire", "SocialSecurity"}
+        ]
+        person2_events = [
+            event
+            for event in resolved["events"]
+            if event.get("person") == "person2" and event["type"] in {"Retire", "SocialSecurity"}
+        ]
+
+        self.assertEqual(person1_events, [])
+        self.assertEqual({event["type"] for event in person2_events}, {"Retire", "SocialSecurity"})
+
     def test_resolve_runtime_config_social_security_uses_legacy_fallback_when_schedule_missing(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},

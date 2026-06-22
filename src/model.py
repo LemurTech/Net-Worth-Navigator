@@ -331,6 +331,31 @@ def _person_event_initial(config: dict, person_key: str) -> str:
     return person_key[:1].upper()
 
 
+def _person_end_of_plan_year(config: dict, person_key: str) -> int | None:
+    """Return synced EndOfPlan year for a person from the current runtime config."""
+    for event in config.get("events", []):
+        if event.get("type") != "EndOfPlan":
+            continue
+        if str(event.get("person", "")).lower() != person_key:
+            continue
+        try:
+            return int(event["year"])
+        except (TypeError, ValueError, KeyError):
+            return None
+    return None
+
+
+def _person_event_is_posthumous(event: dict | None, *, death_year: int | None) -> bool:
+    """Return whether a person-scoped event falls strictly after EndOfPlan year."""
+    if event is None or death_year is None:
+        return False
+    try:
+        event_year = int(event["year"])
+    except (TypeError, ValueError, KeyError):
+        return False
+    return event_year > death_year
+
+
 def _resolve_retirement_events(config: dict) -> list[dict]:
     """Return events with Retire derived from person-level retirement settings.
 
@@ -357,8 +382,15 @@ def _resolve_retirement_events(config: dict) -> list[dict]:
     for person_key in ("person1", "person2"):
         handled_person_keys.add(person_key)
         person = config.get(person_key)
+        death_year = _person_end_of_plan_year(config, person_key)
         if not isinstance(person, dict):
-            if person_key in legacy_retire_by_person:
+            if (
+                person_key in legacy_retire_by_person
+                and not _person_event_is_posthumous(
+                    legacy_retire_by_person[person_key],
+                    death_year=death_year,
+                )
+            ):
                 resolved_events.append(dict(legacy_retire_by_person[person_key]))
             continue
 
@@ -367,6 +399,7 @@ def _resolve_retirement_events(config: dict) -> list[dict]:
             person=person,
             person_initial=_person_event_initial(config, person_key),
             legacy_event=legacy_retire_by_person.get(person_key),
+            death_year=death_year,
         )
         if synthesized is not None:
             resolved_events.append(synthesized)
@@ -374,7 +407,13 @@ def _resolve_retirement_events(config: dict) -> list[dict]:
 
         # Fallback compatibility path: keep a legacy Retire event when
         # person-level fields are incomplete and synthesis is not possible.
-        if person_key in legacy_retire_by_person:
+        if (
+            person_key in legacy_retire_by_person
+            and not _person_event_is_posthumous(
+                legacy_retire_by_person[person_key],
+                death_year=death_year,
+            )
+        ):
             resolved_events.append(dict(legacy_retire_by_person[person_key]))
 
     # Preserve any Retire events for non-default person keys untouched.
@@ -391,6 +430,7 @@ def _synthesize_retire_event(
     person: dict,
     person_initial: str,
     legacy_event: dict | None,
+    death_year: int | None,
 ) -> dict | None:
     retirement_year = person.get("retirement_year")
     if retirement_year is None:
@@ -408,6 +448,9 @@ def _synthesize_retire_event(
         "person": person_key,
         "year": retirement_year,
     }
+
+    if _person_event_is_posthumous(event, death_year=death_year):
+        return None
 
     if legacy_event:
         if "enabled" in legacy_event:
@@ -448,8 +491,15 @@ def _resolve_social_security_events(config: dict) -> list[dict]:
     for person_key in ("person1", "person2"):
         handled_person_keys.add(person_key)
         person = config.get(person_key)
+        death_year = _person_end_of_plan_year(config, person_key)
         if not isinstance(person, dict):
-            if person_key in legacy_ss_by_person:
+            if (
+                person_key in legacy_ss_by_person
+                and not _person_event_is_posthumous(
+                    legacy_ss_by_person[person_key],
+                    death_year=death_year,
+                )
+            ):
                 resolved_events.append(dict(legacy_ss_by_person[person_key]))
             continue
 
@@ -458,6 +508,7 @@ def _resolve_social_security_events(config: dict) -> list[dict]:
             person=person,
             person_initial=_person_event_initial(config, person_key),
             legacy_event=legacy_ss_by_person.get(person_key),
+            death_year=death_year,
         )
         if synthesized is not None:
             resolved_events.append(synthesized)
@@ -465,7 +516,13 @@ def _resolve_social_security_events(config: dict) -> list[dict]:
 
         # Fallback compatibility path: keep a legacy SocialSecurity event when
         # person-level fields are incomplete and synthesis is not possible.
-        if person_key in legacy_ss_by_person:
+        if (
+            person_key in legacy_ss_by_person
+            and not _person_event_is_posthumous(
+                legacy_ss_by_person[person_key],
+                death_year=death_year,
+            )
+        ):
             resolved_events.append(dict(legacy_ss_by_person[person_key]))
 
     # Preserve any SocialSecurity events for non-default person keys untouched.
@@ -482,6 +539,7 @@ def _synthesize_social_security_event(
     person: dict,
     person_initial: str,
     legacy_event: dict | None,
+    death_year: int | None,
 ) -> dict | None:
     dob = person.get("dob")
     ss_start_age = person.get("ss_start_age")
@@ -514,6 +572,9 @@ def _synthesize_social_security_event(
         "year": start_year,
         "monthly_benefit": monthly_benefit,
     }
+
+    if _person_event_is_posthumous(event, death_year=death_year):
+        return None
 
     if legacy_event:
         if "enabled" in legacy_event:
