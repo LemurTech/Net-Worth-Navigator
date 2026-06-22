@@ -573,8 +573,27 @@ def _build_portfolio_chart(df: pd.DataFrame) -> str:
     font_color = "#e5edf7"
 
     fig = go.Figure()
-    for category, color, label in INVESTABLE_SERIES:
-        if (df[category] != 0).any():
+    portfolio_series = [
+        ("taxable", "rgba(96,165,250,0.42)", "Taxable"),
+    ]
+    if {"trad_ira_person1", "trad_ira_person2"}.issubset(df.columns):
+        portfolio_series.extend([
+            ("trad_ira_person1", "rgba(16,185,129,0.36)", "Traditional IRA / 401k — Person 1"),
+            ("trad_ira_person2", "rgba(74,222,128,0.32)", "Traditional IRA / 401k — Person 2"),
+        ])
+    else:
+        portfolio_series.append(("trad_ira", "rgba(74,222,128,0.36)", "Traditional IRA / 401k"))
+
+    if {"roth_person1", "roth_person2"}.issubset(df.columns):
+        portfolio_series.extend([
+            ("roth_person1", "rgba(245,158,11,0.38)", "Roth — Person 1"),
+            ("roth_person2", "rgba(251,191,36,0.36)", "Roth — Person 2"),
+        ])
+    else:
+        portfolio_series.append(("roth", "rgba(251,191,36,0.38)", "Roth"))
+
+    for category, color, label in portfolio_series:
+        if category in df.columns and (df[category] != 0).any():
             fig.add_trace(go.Scatter(
                 x=df["year"], y=df[category],
                 mode="lines", name=label,

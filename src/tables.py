@@ -710,7 +710,15 @@ def build_accounts_table(df: pd.DataFrame) -> str:
     rows = []
     rows.append("<tr class='section'><th colspan='100'>Assets</th></tr>")
     rows.append(_data_row("Traditional IRA / 401k", col("trad_ira"),  indent=True))
+    if "trad_ira_person1" in subset.columns:
+        rows.append(_data_row("Traditional IRA / 401k — Person 1", col("trad_ira_person1"), indent=True))
+    if "trad_ira_person2" in subset.columns:
+        rows.append(_data_row("Traditional IRA / 401k — Person 2", col("trad_ira_person2"), indent=True))
     rows.append(_data_row("Roth",                    col("roth"),      indent=True))
+    if "roth_person1" in subset.columns:
+        rows.append(_data_row("Roth — Person 1", col("roth_person1"), indent=True))
+    if "roth_person2" in subset.columns:
+        rows.append(_data_row("Roth — Person 2", col("roth_person2"), indent=True))
     rows.append(_data_row("Taxable",                 col("taxable"),   indent=True))
     rows.append(_data_row("Cash",                    col("cash"),      indent=True))
     rows.append(_data_row("Investable Portfolio",
@@ -834,6 +842,26 @@ def build_cashflow_table(df: pd.DataFrame) -> str:
             for y in years
         ]
         rows.append(_data_row("Total Portfolio Funding", total_portfolio_funding, bold=True))
+
+    # ── Retirement contributions (owner split when available) ─────────────────
+    contribution_rows = [
+        ("Traditional IRA / 401k contributions", col("contribution_trad_ira")),
+        ("Roth contributions", col("contribution_roth")),
+        ("Traditional IRA / 401k contributions — Person 1", col("contribution_trad_ira_person1")),
+        ("Traditional IRA / 401k contributions — Person 2", col("contribution_trad_ira_person2")),
+        ("Roth contributions — Person 1", col("contribution_roth_person1")),
+        ("Roth contributions — Person 2", col("contribution_roth_person2")),
+    ]
+    shown_contribution_rows = [
+        (label, amounts)
+        for label, amounts in contribution_rows
+        if any(v != 0 for v in amounts)
+    ]
+    if shown_contribution_rows:
+        rows.append("<tr class='section sep'><th colspan='100'>Retirement Contributions</th></tr>")
+        for label, amounts in shown_contribution_rows:
+            rows.append(_data_row(label, amounts, indent=True))
+        rows.append(_data_row("Total Retirement Contributions", col("contribution_total"), bold=True))
 
     # ── Expenses ──────────────────────────────────────────────────────────────
     rows.append("<tr class='section sep'><th colspan='100'>Expenses</th></tr>")

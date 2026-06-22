@@ -690,6 +690,63 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Traditional IRA / 401k withdrawals", html)
         self.assertIn("Total Portfolio Funding", html)
 
+    def test_build_accounts_table_shows_owner_split_rows_for_retirement_buckets(self):
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "trad_ira": 300.0,
+                "trad_ira_person1": 120.0,
+                "trad_ira_person2": 180.0,
+                "roth": 200.0,
+                "roth_person1": 80.0,
+                "roth_person2": 120.0,
+                "taxable": 100.0,
+                "cash": 50.0,
+                "home_value": 0.0,
+                "mortgage": 0.0,
+                "home_equity": 0.0,
+                "total_net_worth": 650.0,
+            }
+        ])
+
+        html = tables.build_accounts_table(df)
+
+        self.assertIn("Traditional IRA / 401k — Person 1", html)
+        self.assertIn("Traditional IRA / 401k — Person 2", html)
+        self.assertIn("Roth — Person 1", html)
+        self.assertIn("Roth — Person 2", html)
+
+    def test_build_portfolio_chart_shows_owner_split_traces_when_columns_present(self):
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "taxable": 100.0,
+                "trad_ira": 300.0,
+                "trad_ira_person1": 120.0,
+                "trad_ira_person2": 180.0,
+                "roth": 200.0,
+                "roth_person1": 80.0,
+                "roth_person2": 120.0,
+            },
+            {
+                "year": 2027,
+                "taxable": 110.0,
+                "trad_ira": 315.0,
+                "trad_ira_person1": 126.0,
+                "trad_ira_person2": 189.0,
+                "roth": 210.0,
+                "roth_person1": 84.0,
+                "roth_person2": 126.0,
+            },
+        ])
+
+        html = charts._build_portfolio_chart(df)
+
+        self.assertIn("Traditional IRA \\u002f 401k \\u2014 Person 1", html)
+        self.assertIn("Traditional IRA \\u002f 401k \\u2014 Person 2", html)
+        self.assertIn("Roth \\u2014 Person 1", html)
+        self.assertIn("Roth \\u2014 Person 2", html)
+
     def test_build_kpi_summary_uses_first_retirement_year_and_compact_values(self):
         config = {
             "person1": {"name": "Person 1", "dob": "1967-04-23"},

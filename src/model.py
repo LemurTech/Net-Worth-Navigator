@@ -65,6 +65,7 @@ DEFAULT_TAX_FILING_STATUS = {
 
 VALID_FILING_STATUSES = {"single", "married_joint", "head_of_household"}
 WITHDRAWAL_BUCKETS = ("cash", "taxable", "trad_ira", "roth")
+RETIREMENT_OWNER_KEYS = ("person1", "person2")
 
 # IRS Uniform Lifetime Table factors (2022+), used for RMD calculation.
 # Applies to account owners age 72+; 120+ reuses age-120 factor.
@@ -123,6 +124,164 @@ UNIFORM_LIFETIME_FACTORS = {
 
 def _empty_withdrawal_breakdown() -> dict[str, float]:
     return {bucket: 0.0 for bucket in WITHDRAWAL_BUCKETS}
+
+
+def _empty_retirement_owner_breakdown() -> dict[str, dict[str, float]]:
+    return {
+        key: {"trad_ira": 0.0, "roth": 0.0}
+        for key in RETIREMENT_OWNER_KEYS
+    }
+
+
+def _clone_retirement_owner_balances(
+    owner_balances: dict[str, dict[str, float]],
+) -> dict[str, dict[str, float]]:
+    return {
+        "trad_ira": {
+            "person1": float(owner_balances.get("trad_ira", {}).get("person1", 0.0)),
+            "person2": float(owner_balances.get("trad_ira", {}).get("person2", 0.0)),
+        },
+        "roth": {
+            "person1": float(owner_balances.get("roth", {}).get("person1", 0.0)),
+            "person2": float(owner_balances.get("roth", {}).get("person2", 0.0)),
+        },
+    }
+
+
+def _normalize_two_person_shares(raw_1, raw_2) -> dict[str, float]:
+    try:
+        share_1 = max(0.0, float(raw_1)) if raw_1 is not None else 0.0
+    except (TypeError, ValueError):
+        share_1 = 0.0
+    try:
+        share_2 = max(0.0, float(raw_2)) if raw_2 is not None else 0.0
+    except (TypeError, ValueError):
+        share_2 = 0.0
+
+    total = share_1 + share_2
+    if total > 0:
+        return {
+            "person1": share_1 / total,
+            "person2": share_2 / total,
+        }
+    return {"person1": 0.5, "person2": 0.5}
+
+
+def _initial_retirement_owner_state(
+    *,
+    portfolio: dict[str, float],
+    person1: dict,
+    person2: dict,
+) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
+    trad_shares = _normalized_household_rmd_shares(
+        person1=person1,
+        person2=person2,
+        person1_deceased=False,
+        person2_deceased=False,
+    )
+    roth_shares = _normalize_two_person_shares(
+        person1.get("roth_share"),
+        person2.get("roth_share"),
+    )
+
+    owner_balances = {
+        "trad_ira": {
+            "person1": float(portfolio.get("trad_ira", 0.0)) * trad_shares["person1"],
+            "person2": float(portfolio.get("trad_ira", 0.0)) * trad_shares["person2"],
+        },
+        "roth": {
+            "person1": float(portfolio.get("roth", 0.0)) * roth_shares["person1"],
+            "person2": float(portfolio.get("roth", 0.0)) * roth_shares["person2"],
+        },
+    }
+    defaults = {
+        "trad_ira": dict(trad_shares),
+        "roth": dict(roth_shares),
+    }
+    return owner_balances, defaults
+
+
+def _owner_split_for_bucket(
+    owner_bucket: dict[str, float],
+    fallback_shares: dict[str, float],
+) -> dict[str, float]:
+    person1_balance = max(0.0, float(owner_bucket.get("person1", 0.0)))
+    person2_balance = max(0.0, float(owner_bucket.get("person2", 0.0)))
+    total = person1_balance + person2_balance
+    if total > 0:
+        return {
+            "person1": person1_balance / total,
+            "person2": person2_balance / total,
+        }
+    return dict(fallback_shares)
+
+
+def _apply_owner_bucket_withdrawal(
+    owner_balances: dict[str, dict[str, float]],
+    *,
+    bucket: str,
+    amount: float,
+    fallback_shares: dict[str, float],
+) -> dict[str, float]:
+    if bucket not in {"trad_ira", "roth"}:
+        return {"person1": 0.0, "person2": 0.0}
+
+    owner_bucket = owner_balances[bucket]
+    available = max(0.0, float(owner_bucket.get("person1", 0.0))) + max(
+        0.0, float(owner_bucket.get("person2", 0.0))
+    )
+    withdrawn = min(max(0.0, float(amount)), available)
+    if withdrawn <= 0:
+        return {"person1": 0.0, "person2": 0.0}
+
+    split = _owner_split_for_bucket(owner_bucket, fallback_shares)
+    person1_withdrawn = min(
+        max(0.0, float(owner_bucket.get("person1", 0.0))),
+        withdrawn * split["person1"],
+    )
+    person2_withdrawn = max(0.0, withdrawn - person1_withdrawn)
+    person2_withdrawn = min(
+        max(0.0, float(owner_bucket.get("person2", 0.0))),
+        person2_withdrawn,
+    )
+    person1_withdrawn = max(0.0, withdrawn - person2_withdrawn)
+
+    owner_bucket["person1"] = max(0.0, float(owner_bucket.get("person1", 0.0)) - person1_withdrawn)
+    owner_bucket["person2"] = max(0.0, float(owner_bucket.get("person2", 0.0)) - person2_withdrawn)
+    return {"person1": person1_withdrawn, "person2": person2_withdrawn}
+
+
+def _apply_owner_bucket_addition(
+    owner_balances: dict[str, dict[str, float]],
+    *,
+    bucket: str,
+    amount: float,
+    fallback_shares: dict[str, float],
+) -> dict[str, float]:
+    if bucket not in {"trad_ira", "roth"}:
+        return {"person1": 0.0, "person2": 0.0}
+    added = max(0.0, float(amount))
+    if added <= 0:
+        return {"person1": 0.0, "person2": 0.0}
+
+    split = _owner_split_for_bucket(owner_balances[bucket], fallback_shares)
+    person1_added = added * split["person1"]
+    person2_added = max(0.0, added - person1_added)
+    owner_balances[bucket]["person1"] = float(owner_balances[bucket].get("person1", 0.0)) + person1_added
+    owner_balances[bucket]["person2"] = float(owner_balances[bucket].get("person2", 0.0)) + person2_added
+    return {"person1": person1_added, "person2": person2_added}
+
+
+def _sync_retirement_bucket_totals(
+    portfolio: dict[str, float],
+    owner_balances: dict[str, dict[str, float]],
+) -> None:
+    portfolio["trad_ira"] = float(owner_balances["trad_ira"].get("person1", 0.0)) + float(
+        owner_balances["trad_ira"].get("person2", 0.0)
+    )
+    portfolio["roth"] = float(owner_balances["roth"].get("person1", 0.0)) + float(
+        owner_balances["roth"].get("person2", 0.0)
+    )
 
 
 def load_config(config_path: Path | None = None) -> dict:
@@ -1192,6 +1351,11 @@ def run_projection(
     spending = config["spending"]
     liability_configs = config.get("liabilities", [])
     rmd_settings = resolve_rmd_settings(config)
+    retirement_owner_balances, retirement_owner_defaults = _initial_retirement_owner_state(
+        portfolio=portfolio,
+        person1=person1,
+        person2=person2,
+    )
 
     if liability_balances is None:
         liability_balances = {}
@@ -1531,22 +1695,31 @@ def run_projection(
             )
         )
 
-        prefunded_contrib_buckets = {"trad_ira": 0.0, "roth": 0.0}
-        cash_required_contrib_buckets = {"trad_ira": 0.0, "roth": 0.0}
+        prefunded_contrib_by_person = _empty_retirement_owner_breakdown()
+        cash_required_contrib_by_person = _empty_retirement_owner_breakdown()
 
         person1_prefunded = _take_home_is_net_of_retirement_contributions(person1)
         person2_prefunded = _take_home_is_net_of_retirement_contributions(person2)
 
         for bucket in ("trad_ira", "roth"):
             if person1_prefunded:
-                prefunded_contrib_buckets[bucket] += person1_contrib_buckets[bucket]
+                prefunded_contrib_by_person["person1"][bucket] += person1_contrib_buckets[bucket]
             else:
-                cash_required_contrib_buckets[bucket] += person1_contrib_buckets[bucket]
+                cash_required_contrib_by_person["person1"][bucket] += person1_contrib_buckets[bucket]
 
             if person2_prefunded:
-                prefunded_contrib_buckets[bucket] += person2_contrib_buckets[bucket]
+                prefunded_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
             else:
-                cash_required_contrib_buckets[bucket] += person2_contrib_buckets[bucket]
+                cash_required_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
+
+        prefunded_contrib_buckets = {
+            bucket: prefunded_contrib_by_person["person1"][bucket] + prefunded_contrib_by_person["person2"][bucket]
+            for bucket in ("trad_ira", "roth")
+        }
+        cash_required_contrib_buckets = {
+            bucket: cash_required_contrib_by_person["person1"][bucket] + cash_required_contrib_by_person["person2"][bucket]
+            for bucket in ("trad_ira", "roth")
+        }
 
         total_cash_required_contrib = sum(cash_required_contrib_buckets.values())
 
@@ -1636,8 +1809,16 @@ def run_projection(
                 )
                 for cat, balance in portfolio.items()
             }
+            grown_retirement_owner_balances = {
+                bucket: {
+                    person_key: float(retirement_owner_balances[bucket][person_key]) * (1 + invested_growth_rate)
+                    for person_key in RETIREMENT_OWNER_KEYS
+                }
+                for bucket in ("trad_ira", "roth")
+            }
         else:
             grown_portfolio = portfolio.copy()
+            grown_retirement_owner_balances = _clone_retirement_owner_balances(retirement_owner_balances)
 
         annual_taxes, taxable_income, federal_taxes, state_taxes = estimate_annual_taxes(
             non_ss_taxable_income=base_non_ss_taxable_income,
@@ -1649,18 +1830,29 @@ def run_projection(
         )
         withdrawal_taxable_income = 0.0
         withdrawal_breakdown = _empty_withdrawal_breakdown()
+        withdrawal_breakdown_by_person = _empty_retirement_owner_breakdown()
         contribution_breakdown = prefunded_contrib_buckets.copy()
+        contribution_breakdown_by_person = deepcopy(prefunded_contrib_by_person)
         working_portfolio = grown_portfolio.copy()
+        working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances)
         rmd_withdrawn = 0.0
         rmd_shortfall = 0.0
 
         # Iterate because taxable withdrawals themselves increase taxes.
         for _ in range(12):
             working_portfolio = grown_portfolio.copy()
+            working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances)
             contribution_breakdown = prefunded_contrib_buckets.copy()
-            for bucket, amount in prefunded_contrib_buckets.items():
-                if amount > 0:
+            contribution_breakdown_by_person = deepcopy(prefunded_contrib_by_person)
+            for person_key in RETIREMENT_OWNER_KEYS:
+                for bucket in ("trad_ira", "roth"):
+                    amount = prefunded_contrib_by_person[person_key][bucket]
+                    if amount <= 0:
+                        continue
                     working_portfolio[bucket] = working_portfolio.get(bucket, 0.0) + amount
+                    working_retirement_owner_balances[bucket][person_key] = (
+                        working_retirement_owner_balances[bucket].get(person_key, 0.0) + amount
+                    )
 
             forced_rmd_withdrawn, forced_rmd_taxable_income, forced_rmd_shortfall = _apply_forced_rmd_withdrawal(
                 working_portfolio,
@@ -1673,7 +1865,16 @@ def run_projection(
             post_tax_flow = base_net_flow + forced_rmd_withdrawn - annual_taxes
 
             withdrawal_breakdown = _empty_withdrawal_breakdown()
+            withdrawal_breakdown_by_person = _empty_retirement_owner_breakdown()
             withdrawal_breakdown["trad_ira"] += forced_rmd_withdrawn
+            forced_rmd_owner_withdrawals = _apply_owner_bucket_withdrawal(
+                working_retirement_owner_balances,
+                bucket="trad_ira",
+                amount=forced_rmd_withdrawn,
+                fallback_shares=retirement_owner_defaults["trad_ira"],
+            )
+            for person_key in RETIREMENT_OWNER_KEYS:
+                withdrawal_breakdown_by_person[person_key]["trad_ira"] += forced_rmd_owner_withdrawals[person_key]
             withdrawal_taxable_income = forced_rmd_taxable_income
 
             if post_tax_flow >= 0:
@@ -1682,17 +1883,36 @@ def run_projection(
                     working_portfolio["cash"] = working_portfolio.get("cash", 0.0) + preserved_cash
 
                 available_for_contrib = max(0.0, post_tax_flow - preserved_cash)
-                trad_contrib = min(cash_required_contrib_buckets["trad_ira"], available_for_contrib)
-                available_for_contrib -= trad_contrib
-                roth_contrib = min(cash_required_contrib_buckets["roth"], available_for_contrib)
-                available_for_contrib -= roth_contrib
-                if trad_contrib > 0:
-                    working_portfolio["trad_ira"] = working_portfolio.get("trad_ira", 0.0) + trad_contrib
-                if roth_contrib > 0:
-                    working_portfolio["roth"] = working_portfolio.get("roth", 0.0) + roth_contrib
-                contribution_breakdown["trad_ira"] += trad_contrib
-                contribution_breakdown["roth"] += roth_contrib
+                contribution_target_by_bucket: dict[str, float] = {}
+                for bucket in ("trad_ira", "roth"):
+                    target_amount = min(cash_required_contrib_buckets[bucket], available_for_contrib)
+                    contribution_target_by_bucket[bucket] = target_amount
+                    available_for_contrib -= target_amount
 
+                for bucket in ("trad_ira", "roth"):
+                    bucket_total = contribution_target_by_bucket[bucket]
+                    if bucket_total <= 0:
+                        continue
+                    requested_by_person = {
+                        person_key: cash_required_contrib_by_person[person_key][bucket]
+                        for person_key in RETIREMENT_OWNER_KEYS
+                    }
+                    requested_total = sum(requested_by_person.values())
+                    if requested_total <= 0:
+                        continue
+                    for person_key in RETIREMENT_OWNER_KEYS:
+                        person_amount = bucket_total * (requested_by_person[person_key] / requested_total)
+                        if person_amount <= 0:
+                            continue
+                        working_portfolio[bucket] = working_portfolio.get(bucket, 0.0) + person_amount
+                        working_retirement_owner_balances[bucket][person_key] = (
+                            working_retirement_owner_balances[bucket].get(person_key, 0.0) + person_amount
+                        )
+                        contribution_breakdown[bucket] += person_amount
+                        contribution_breakdown_by_person[person_key][bucket] += person_amount
+
+                trad_before_surplus = working_portfolio.get("trad_ira", 0.0)
+                roth_before_surplus = working_portfolio.get("roth", 0.0)
                 _apply_surplus_with_reserve_target(
                     working_portfolio,
                     surplus=available_for_contrib,
@@ -1702,6 +1922,22 @@ def run_projection(
                     withdrawal_order=withdrawal_order,
                     protected_cash=preserved_cash,
                 )
+                trad_surplus_delta = working_portfolio.get("trad_ira", 0.0) - trad_before_surplus
+                roth_surplus_delta = working_portfolio.get("roth", 0.0) - roth_before_surplus
+                if trad_surplus_delta > 0:
+                    _apply_owner_bucket_addition(
+                        working_retirement_owner_balances,
+                        bucket="trad_ira",
+                        amount=trad_surplus_delta,
+                        fallback_shares=retirement_owner_defaults["trad_ira"],
+                    )
+                if roth_surplus_delta > 0:
+                    _apply_owner_bucket_addition(
+                        working_retirement_owner_balances,
+                        bucket="roth",
+                        amount=roth_surplus_delta,
+                        fallback_shares=retirement_owner_defaults["roth"],
+                    )
             else:
                 extra_taxable_income, unmet_deficit, extra_withdrawal_breakdown = _cover_deficit_with_policy(
                     working_portfolio,
@@ -1713,10 +1949,32 @@ def run_projection(
                 withdrawal_taxable_income += extra_taxable_income
                 for bucket in WITHDRAWAL_BUCKETS:
                     withdrawal_breakdown[bucket] += extra_withdrawal_breakdown[bucket]
+                if extra_withdrawal_breakdown.get("trad_ira", 0.0) > 0:
+                    owner_trad_withdrawals = _apply_owner_bucket_withdrawal(
+                        working_retirement_owner_balances,
+                        bucket="trad_ira",
+                        amount=extra_withdrawal_breakdown["trad_ira"],
+                        fallback_shares=retirement_owner_defaults["trad_ira"],
+                    )
+                    for person_key in RETIREMENT_OWNER_KEYS:
+                        withdrawal_breakdown_by_person[person_key]["trad_ira"] += owner_trad_withdrawals[person_key]
+                if extra_withdrawal_breakdown.get("roth", 0.0) > 0:
+                    owner_roth_withdrawals = _apply_owner_bucket_withdrawal(
+                        working_retirement_owner_balances,
+                        bucket="roth",
+                        amount=extra_withdrawal_breakdown["roth"],
+                        fallback_shares=retirement_owner_defaults["roth"],
+                    )
+                    for person_key in RETIREMENT_OWNER_KEYS:
+                        withdrawal_breakdown_by_person[person_key]["roth"] += owner_roth_withdrawals[person_key]
                 if unmet_deficit > 0:
                     for cat in working_portfolio:
                         working_portfolio[cat] = 0.0
                     working_portfolio["cash"] = -unmet_deficit
+                    working_retirement_owner_balances["trad_ira"]["person1"] = 0.0
+                    working_retirement_owner_balances["trad_ira"]["person2"] = 0.0
+                    working_retirement_owner_balances["roth"]["person1"] = 0.0
+                    working_retirement_owner_balances["roth"]["person2"] = 0.0
                 else:
                     _apply_surplus_with_reserve_target(
                         working_portfolio,
@@ -1727,6 +1985,8 @@ def run_projection(
                         withdrawal_order=withdrawal_order,
                         protected_cash=0.0,
                     )
+
+            _sync_retirement_bucket_totals(working_portfolio, working_retirement_owner_balances)
 
             new_annual_taxes, taxable_income, federal_taxes, state_taxes = estimate_annual_taxes(
                 non_ss_taxable_income=base_non_ss_taxable_income,
@@ -1742,6 +2002,7 @@ def run_projection(
             annual_taxes = new_annual_taxes
 
         portfolio = working_portfolio
+        retirement_owner_balances = _clone_retirement_owner_balances(working_retirement_owner_balances)
         for reinvest_target, requested_amount in pending_reinvestments:
             move_amount = min(
                 max(0.0, portfolio.get("cash", 0.0)),
@@ -1751,6 +2012,14 @@ def run_projection(
                 continue
             portfolio["cash"] = portfolio.get("cash", 0.0) - move_amount
             portfolio[reinvest_target] = portfolio.get(reinvest_target, 0.0) + move_amount
+            if reinvest_target in {"trad_ira", "roth"}:
+                _apply_owner_bucket_addition(
+                    retirement_owner_balances,
+                    bucket=reinvest_target,
+                    amount=move_amount,
+                    fallback_shares=retirement_owner_defaults[reinvest_target],
+                )
+        _sync_retirement_bucket_totals(portfolio, retirement_owner_balances)
         net_flow = base_net_flow - annual_taxes
 
         # ── Grow home value at configured real-estate appreciation; compute equity ──
@@ -1790,15 +2059,27 @@ def run_projection(
             "withdrawal_taxable": withdrawal_breakdown["taxable"],
             "withdrawal_trad_ira": withdrawal_breakdown["trad_ira"],
             "withdrawal_roth": withdrawal_breakdown["roth"],
+            "withdrawal_trad_ira_person1": withdrawal_breakdown_by_person["person1"]["trad_ira"],
+            "withdrawal_trad_ira_person2": withdrawal_breakdown_by_person["person2"]["trad_ira"],
+            "withdrawal_roth_person1": withdrawal_breakdown_by_person["person1"]["roth"],
+            "withdrawal_roth_person2": withdrawal_breakdown_by_person["person2"]["roth"],
             "contribution_trad_ira": contribution_breakdown["trad_ira"],
             "contribution_roth": contribution_breakdown["roth"],
+            "contribution_trad_ira_person1": contribution_breakdown_by_person["person1"]["trad_ira"],
+            "contribution_trad_ira_person2": contribution_breakdown_by_person["person2"]["trad_ira"],
+            "contribution_roth_person1": contribution_breakdown_by_person["person1"]["roth"],
+            "contribution_roth_person2": contribution_breakdown_by_person["person2"]["roth"],
             "contribution_total": contribution_breakdown["trad_ira"] + contribution_breakdown["roth"],
             "survivor":       one_deceased and both_retired,
             "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",
             "taxable":        portfolio["taxable"],
             "trad_ira":       portfolio["trad_ira"],
+            "trad_ira_person1": retirement_owner_balances["trad_ira"]["person1"],
+            "trad_ira_person2": retirement_owner_balances["trad_ira"]["person2"],
             "roth":           portfolio["roth"],
+            "roth_person1": retirement_owner_balances["roth"]["person1"],
+            "roth_person2": retirement_owner_balances["roth"]["person2"],
             "cash":           portfolio["cash"],
         })
 
