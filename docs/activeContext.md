@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-19 → 2026-06-21
-**Current Status:** Scenario-driven V1 is stable and actively polished for projection UX: assumptions/parameter diff review, scenario context propagation between shell/editor/projection, and event-label readability controls are now implemented and validated with offline rerenders.
+**Current Status:** Scenario-driven V1 is stable and actively polished for projection UX: assumptions/parameter diff review, scenario context propagation between shell/editor/projection, event-label readability controls, and portfolio/survivor visual refinements are now implemented and validated with offline rerenders.
 
 ## Current State
 
@@ -12,6 +12,7 @@
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view
+- Portfolio tab now also includes a projected-balances table directly below the chart, with owner-split retirement rows when available
 - First-pass tax modeling is now active: job income remains net cash; Social Security and positive income events are taxed via the 2025 federal ordinary-income bracket schedule plus standard deduction, with effective-rate fallback retained only for compatibility
 - Required Minimum Distribution (RMD) modeling is now supported via optional `taxes.rmd` settings: forced annual traditional-account withdrawals based on IRS life-expectancy factors feed modeled cash flow and taxable income
 - Ordinary-income tax brackets, standard deductions, simplified Social Security provisional-income thresholds, and Oregon state tax reference data now load from shared tax-table TOML under `config/tax_tables/`, while scenario-specific tax toggles remain in `config.toml [taxes]`
@@ -29,6 +30,7 @@
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
 - Retirement timing and Social Security timing/benefits are now synthesized at runtime from person settings (`retirement_year`, `ss_start_age`, and matching `social_security_benefits` with `ss_monthly_benefit` fallback), while preserving legacy event metadata overrides for compatibility
 - Survivor phase now starts immediately in the first full model year after a person's `EndOfPlan`, even if the surviving partner is still working; survivor spending, tax phase, and survivor chart state no longer wait for both partners to be retired
+- Survivor-period shading in the main chart and Gantt is now intentionally drawn one visual year earlier than the modeled survivor start to better match the way the transition reads on the chart
 - Survivor Social Security now supports widow/er-style step-up before the survivor's own claim year by using the deceased partner's configured SS benefit once the survivor reaches optional `survivor_ss_start_age` (default 60)
 - Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a compatibility fallback
 - Pre-retirement take-home income can now grow annually from inflation plus person-level `annual_take_home_real_raise`, and 401(k) contributions can now grow from that same income path plus person-level `annual_401k_contribution_extra_increase`

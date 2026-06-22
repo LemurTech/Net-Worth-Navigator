@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from src.tables import (
     build_accounts_table,
     build_cashflow_table,
+    build_portfolio_table,
     build_assumptions_summary,
     build_scenario_parameters_summary,
 )
@@ -94,6 +95,7 @@ _TABS_CSS = """
   table.datatable tr:hover td, table.datatable tr:hover th { background: #162234; }
   .gantt-wrap { background: #111827; border-radius: 6px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+  .portfolio-table-panel { margin-top: 12px; }
   .gantt-empty { color: #93a4ba; padding: 16px; }
   .assumptions-wrap { background: #111827; border-radius: 6px; padding: 12px;
                       box-shadow: 0 8px 24px rgba(0,0,0,.28); }
@@ -657,7 +659,19 @@ def _build_portfolio_chart(df: pd.DataFrame, config: dict | None = None) -> str:
             "$0 in every year of this scenario.</div>"
         )
 
-    return f"<div class='gantt-wrap'>{portfolio_div}</div>{taxable_hidden_note}"
+    portfolio_table_html = build_portfolio_table(df, config=config)
+    return (
+        f"<div class='gantt-wrap'>{portfolio_div}</div>"
+        f"{taxable_hidden_note}"
+        f"<div class='table-panel portfolio-table-panel'>{portfolio_table_html}</div>"
+    )
+
+
+def _survivor_visual_start_year(df: pd.DataFrame) -> int | None:
+    survivor_years = df[df["survivor"] == True]["year"]
+    if len(survivor_years) == 0:
+        return None
+    return int(survivor_years.iloc[0]) - 1
 
 
 def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
@@ -792,8 +806,9 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         shown_types.add(legend_name)
 
     survivor_years = df[df["survivor"] == True]["year"]
-    if len(survivor_years) > 0:
-        x0 = survivor_years.iloc[0] - 0.5
+    survivor_visual_start_year = _survivor_visual_start_year(df)
+    if len(survivor_years) > 0 and survivor_visual_start_year is not None:
+        x0 = survivor_visual_start_year - 0.5
         x1 = df["year"].iloc[-1] + 0.5
         fig.add_vrect(
             x0=x0,
@@ -1021,8 +1036,9 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
 
     # ── Survivor period shading ────────────────────────────────────────────────
     survivor_years = df[df["survivor"] == True]["year"]
-    if len(survivor_years) > 0:
-        x0 = survivor_years.iloc[0] - 0.5
+    survivor_visual_start_year = _survivor_visual_start_year(df)
+    if len(survivor_years) > 0 and survivor_visual_start_year is not None:
+        x0 = survivor_visual_start_year - 0.5
         x1 = df["year"].iloc[-1] + 0.5
         fig.add_vrect(x0=x0, x1=x1, fillcolor="rgba(148,163,184,0.10)", line_width=0)
         fig.add_annotation(

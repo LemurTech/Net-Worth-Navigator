@@ -970,6 +970,17 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertIn("Traditional IRA \\u002f 401k \\u2014 Person 2", html)
         self.assertIn("Roth \\u2014 Person 1", html)
         self.assertIn("Roth \\u2014 Person 2", html)
+        self.assertIn("Projected Balances", html)
+        self.assertIn("Total Investable Portfolio", html)
+
+    def test_survivor_visual_start_year_shifts_back_one_year(self):
+        df = pd.DataFrame([
+            {"year": 2034, "survivor": False},
+            {"year": 2035, "survivor": True},
+            {"year": 2036, "survivor": True},
+        ])
+
+        self.assertEqual(charts._survivor_visual_start_year(df), 2034)
 
     def test_build_kpi_summary_uses_first_retirement_year_and_compact_values(self):
         config = {

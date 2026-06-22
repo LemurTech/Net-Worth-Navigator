@@ -1057,3 +1057,52 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
     header = _header_row(years)
     body   = "\n".join(rows)
     return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
+
+
+def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
+    """Projected investable-portfolio balances for the Portfolio tab."""
+    years = _display_years(df)
+    subset = df[df["year"].isin(years)].set_index("year")
+
+    def col(field: str) -> list[float]:
+        return [
+            subset.loc[y, field] if (y in subset.index and field in subset.columns) else 0.0
+            for y in years
+        ]
+
+    rows = []
+    person1_name = _person_display_name(config, "person1")
+    person2_name = _person_display_name(config, "person2")
+
+    rows.append("<tr class='section'><th colspan='100'>Projected Balances</th></tr>")
+    rows.append(_data_row("Taxable", col("taxable"), indent=True))
+    rows.append(_data_row("Traditional IRA / 401k", col("trad_ira"), indent=True))
+    if "trad_ira_person1" in subset.columns:
+        rows.append(_data_row(f"Traditional IRA / 401k — {person1_name}", col("trad_ira_person1"), indent=True))
+    if "trad_ira_person2" in subset.columns:
+        rows.append(_data_row(f"Traditional IRA / 401k — {person2_name}", col("trad_ira_person2"), indent=True))
+    rows.append(_data_row("Roth", col("roth"), indent=True))
+    if "roth_person1" in subset.columns:
+        rows.append(_data_row(f"Roth — {person1_name}", col("roth_person1"), indent=True))
+    if "roth_person2" in subset.columns:
+        rows.append(_data_row(f"Roth — {person2_name}", col("roth_person2"), indent=True))
+    rows.append(
+        _data_row(
+            "Total Investable Portfolio",
+            [
+                sum(
+                    float(subset.loc[y, field])
+                    for field in ("taxable", "trad_ira", "roth")
+                    if field in subset.columns
+                )
+                if y in subset.index else 0.0
+                for y in years
+            ],
+            bold=True,
+            separator=True,
+        )
+    )
+
+    header = _header_row(years)
+    body = "\n".join(rows)
+    return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"

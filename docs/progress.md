@@ -6,6 +6,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Portfolio tab now includes a projected-balances table below the chart, using the shared datatable styling and owner-split retirement rows when present
 - Scenario Parameters now includes a compact `Retirement ownership snapshots` card (first retirement year + end year; combined/traditional/Roth shares) sourced from projection owner-split columns
 - Accounts, Cash Flow, and Portfolio owner-split labels now resolve from configured person display names (`person1.name` / `person2.name`) instead of hardcoded `Person 1` / `Person 2`
 - Assumptions tab baseline-diff support in `src/tables.py` + `src/charts.py`: changed rows now use `param-diff`, includes changed-field count and `Show only differences` filtering parity with Scenario Parameters
@@ -101,6 +102,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Changed
 
+- Survivor-period shading on the main chart and Gantt now starts one visual year earlier than the modeled survivor phase for better readability at the death-to-survivor transition
 - Main-chart event annotations now wrap at two events per line, use right-anchored top-down placement into the graph body, and use softer translucent backgrounds (`rgba(15,23,37,0.60)`) for improved readability with multiline labels
 - Synthesized `Retirement (...)` and `SS Begins (...)` labels now use configured person-name initials instead of person-key initials, so sample scenarios render A/S (etc.) instead of M/W
 - `config.toml [taxes]` now points to shared tax reference data via `table_set = "2025_us_federal_oregon"` instead of inlining the large bracket/deduction tables
