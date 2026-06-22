@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.model import resolve_runtime_config
+from src.model import ProjectionResult, resolve_runtime_config
 from src.scenarios import ScenarioRef
 
 
@@ -17,6 +17,8 @@ PROJECTION_CSV = "projection_yearly.csv"
 EVENT_FLOWS_CSV = "event_flows.csv"
 SCENARIO_MANIFEST_JSON = "scenario_manifest.json"
 ACCOUNTS_SNAPSHOT_JSON = "accounts_snapshot.json"
+PROJECTION_BANDS_CSV = "projection_bands_yearly.csv"
+SIMULATION_SUMMARY_JSON = "simulation_summary.json"
 
 
 def _person_keys(config: dict) -> list[str]:
@@ -37,7 +39,8 @@ def _person_keys(config: dict) -> list[str]:
 def write_sidecars(
     *,
     output_dir: Path,
-    df: pd.DataFrame,
+    df: pd.DataFrame | None = None,
+    projection_result: ProjectionResult | None = None,
     config: dict,
     scenario: ScenarioRef | None,
     mode: str,
@@ -52,17 +55,37 @@ def write_sidecars(
     output_dir.mkdir(parents=True, exist_ok=True)
     generated_at = datetime.now().isoformat()
     runtime_config = resolve_runtime_config(config)
+    if projection_result is None:
+        if df is None:
+            raise ValueError("write_sidecars requires either df or projection_result")
+        projection_result = ProjectionResult(
+            mode="deterministic",
+            yearly_df=df,
+            summary={},
+            simulation={"mode": "deterministic"},
+        )
+    df = projection_result.yearly_df
 
     projection_path = output_dir / PROJECTION_CSV
     event_flows_path = output_dir / EVENT_FLOWS_CSV
     manifest_path = output_dir / SCENARIO_MANIFEST_JSON
     accounts_path = output_dir / ACCOUNTS_SNAPSHOT_JSON
+    bands_path = output_dir / PROJECTION_BANDS_CSV
+    summary_path = output_dir / SIMULATION_SUMMARY_JSON
 
     projection_df = _projection_sidecar_frame(df)
     projection_df.to_csv(projection_path, index=False)
 
     event_flows_df = _event_flows_frame(df)
     event_flows_df.to_csv(event_flows_path, index=False)
+
+    if projection_result.band_df is not None and not projection_result.band_df.empty:
+        projection_result.band_df.to_csv(bands_path, index=False)
+
+    summary_path.write_text(
+        json.dumps(projection_result.summary, indent=2),
+        encoding="utf-8",
+    )
 
     manifest = _scenario_manifest(
         generated_at=generated_at,
@@ -72,6 +95,7 @@ def write_sidecars(
         config=config,
         runtime_config=runtime_config,
         df=df,
+        projection_result=projection_result,
         raw_accounts=raw_accounts,
     )
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -93,6 +117,12 @@ def write_sidecars(
         "event_flows_csv": event_flows_path,
         "scenario_manifest_json": manifest_path,
         "accounts_snapshot_json": accounts_path,
+        "simulation_summary_json": summary_path,
+        **(
+            {"projection_bands_yearly_csv": bands_path}
+            if projection_result.band_df is not None and not projection_result.band_df.empty
+            else {}
+        ),
     }
 
 
@@ -140,6 +170,7 @@ def _scenario_manifest(
     config: dict,
     runtime_config: dict,
     df: pd.DataFrame,
+    projection_result: ProjectionResult,
     raw_accounts: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
     enabled_events_config = [e for e in config.get("events", []) if e.get("enabled", False)]
@@ -152,6 +183,7 @@ def _scenario_manifest(
     }
 
     return {
+        "schema_version": 1,
         "generated_at": generated_at,
         "mode": mode,
         "cache_timestamp": cache_timestamp,
@@ -166,8 +198,19 @@ def _scenario_manifest(
             "event_flows_csv": EVENT_FLOWS_CSV,
             "scenario_manifest_json": SCENARIO_MANIFEST_JSON,
             "accounts_snapshot_json": ACCOUNTS_SNAPSHOT_JSON,
+            "simulation_summary_json": SIMULATION_SUMMARY_JSON,
+            **(
+                {"projection_bands_yearly_csv": PROJECTION_BANDS_CSV}
+                if projection_result.band_df is not None and not projection_result.band_df.empty
+                else {}
+            ),
         },
-        "simulation": dict(config.get("simulation", {})),
+        "simulation": {
+            **dict(config.get("simulation", {})),
+            "result_mode": projection_result.mode,
+            "run_count": projection_result.run_count,
+            "display_path_kind": projection_result.display_path_kind,
+        },
         "people": {
             person_key: {
                 key: config.get(person_key, {}).get(key)
@@ -186,4 +229,5 @@ def _scenario_manifest(
             "row_count": int(len(df)),
             "raw_account_count": int(len(raw_accounts or [])),
         },
+        "simulation_summary": projection_result.summary,
     }

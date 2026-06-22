@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 from pathlib import Path
+import tempfile
 
 import pandas as pd
 
@@ -1031,12 +1032,12 @@ class RecurringEventsTests(unittest.TestCase):
         ])
 
         with patch("src.charts.load_config", return_value=config):
-            with patch("src.charts.resolve_runtime_config", side_effect=lambda c: c):
-                with patch("src.charts._build_gantt_chart", return_value="<div>gantt</div>"):
-                    from pathlib import Path
-                    out = Path("/tmp/nwn-kpi-test.html")
-                    charts.build_chart(df, out)
-                    html = out.read_text(encoding="utf-8")
+                with patch("src.charts.resolve_runtime_config", side_effect=lambda c: c):
+                    with patch("src.charts._build_gantt_chart", return_value="<div>gantt</div>"):
+                        with tempfile.TemporaryDirectory() as tmp:
+                            out = Path(tmp) / "nwn-kpi-test.html"
+                            charts.build_chart(df, out)
+                            html = out.read_text(encoding="utf-8")
 
         self.assertIn("kpi-strip", html)
         self.assertIn("Net Worth (EOY)", html)
@@ -1271,7 +1272,7 @@ class RecurringEventsTests(unittest.TestCase):
 
         captured = {}
 
-        def fake_run_projection(
+        def fake_run_projection_result(
             balances,
             home_value=0.0,
             liability_balances=None,
@@ -1284,7 +1285,7 @@ class RecurringEventsTests(unittest.TestCase):
             captured["liability_balances"] = liability_balances
             captured["property_values"] = property_values
             captured["retirement_owner_balances"] = retirement_owner_balances
-            return pd.DataFrame([
+            df = pd.DataFrame([
                 {
                     "year": 2026,
                     "home_value": home_value,
@@ -1295,6 +1296,7 @@ class RecurringEventsTests(unittest.TestCase):
                     "trad_ira": balances.get("trad_ira", 0.0),
                     "roth": balances.get("roth", 0.0),
                     "total_net_worth": sum(balances.values()) + home_value - liability_balances.get("Mortgage (5156)", 0.0),
+                    "net_worth": sum(balances.values()),
                     "survivor": False,
                     "events_active": "",
                     "person1_income": 0.0,
@@ -1302,20 +1304,29 @@ class RecurringEventsTests(unittest.TestCase):
                     "freed_payments": 0.0,
                     "annual_spend": 0.0,
                     "annual_taxes": 0.0,
+                    "annual_federal_taxes": 0.0,
+                    "annual_state_taxes": 0.0,
                     "net_flow": 0.0,
                     "event_items": [],
                 }
             ])
+            return model.ProjectionResult(
+                mode="deterministic",
+                yearly_df=df,
+                summary={},
+                simulation={"mode": "deterministic"},
+            )
 
         with patch.object(run, "OFFLINE", True):
             with patch.object(run, "DEPLOY_DIR", Path("output/test-deploy")):
                 with patch("run.load_cache", return_value=cached):
                     with patch("run.build_chart"):
                         with patch("run.shutil.copy2"):
-                            with patch("pathlib.Path.chmod"):
-                                with patch("run.run_projection", side_effect=fake_run_projection):
-                                    with patch("src.monarch_bridge.load_config", return_value=config):
-                                        run.main()
+                                with patch("pathlib.Path.chmod"):
+                                    with patch("run.run_projection_result", side_effect=fake_run_projection_result):
+                                        with patch("src.monarch_bridge.load_config", return_value=config):
+                                            with patch("builtins.print"):
+                                                run.main()
 
         self.assertEqual(captured["balances"]["cash"], 12000.0)
         self.assertEqual(captured["home_value"], 454500.0)

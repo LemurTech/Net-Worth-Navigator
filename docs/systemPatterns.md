@@ -1,6 +1,6 @@
 # System Patterns — Net Worth Navigator
 
-**Last Review:** 2026-06-21
+**Last Review:** 2026-06-22
 
 ## Architectural Overview
 
@@ -14,13 +14,13 @@ monarch_bridge.py
 model.py (simulation engine)
   → reads config.toml via tomllib
   → anchors year-0 balances from monarch_bridge
-  → iterates year by year from simulation_start to max(life_expectancy)
+  → deterministic core iterates year by year from simulation_start to max(life_expectancy)
   → applies: income, contributions, growth, events, retirement transitions, SS income
-  → returns: DataFrame of {year: net_worth, account_balances, events_active}
+  → wraps outputs in ProjectionResult: deterministic yearly path or Monte Carlo median path + percentile bands + summary metrics
         ↓
 charts.py
-  → receives DataFrame
-  → produces Plotly figure with net worth line + event annotations
+  → receives ProjectionResult-compatible output
+  → produces deterministic charts or Monte Carlo probability-band charts
   → writes self-contained output/projection.html
         ↓
 run.py
@@ -51,6 +51,9 @@ run.py
 - **Specific emergency/sinking-fund expenses can override reserve protection.** `Expense` events may set `funding = "cash_reserve_first"` to let that event's deficit draw from cash below target before retirement buckets, while leaving the broader phase withdrawal order unchanged.
 - **Surplus refills cash before investing.** Positive net flow first restores the active cash target, then allocates the remainder across positive non-cash investable buckets.
 - **Output is always regenerated, never cached.** `python run.py` always produces a fresh chart.
+- **Result consumers should prefer the normalized projection contract.** `ProjectionResult` is now the stable boundary between the simulation engine and downstream chart/sidecar layers; plain `DataFrame` callers remain supported as a compatibility wrapper.
+- **Monte Carlo reuses the deterministic engine instead of forking semantics.** Stochastic runs vary the blended investable return sequence only; events, withdrawal policy, survivor behavior, taxes, and account routing stay on the same deterministic code path.
+- **Monte Carlo display surfaces use a median path plus percentile bands.** Tables and most non-chart summaries read from the median yearly path, while charts and sidecars can also consume yearly percentile bands (`p10/p25/p50/p75/p90`) from the same run bundle.
 - **Recurring chart annotations can be decoupled from model recurrence.** `chart_first_occurrence_only = true` keeps repeated events active in the model and tables while suppressing later main-chart annotations for readability.
 - **Portfolio funding is now explicit in the data model.** Deficit coverage records bucket-level withdrawals (`cash`, `taxable`, `trad_ira`, `roth`) so the Cash Flow tab can show how retirement spending is funded.
 - **Main-chart age labels are responsive UI, not model truth.** The parenthetical ages below year ticks are shown on larger screens but suppressed on narrow viewports so the x-axis remains legible.
@@ -134,3 +137,4 @@ amount = -6000             # negative = cash outflow
 - **Survivor period vrect label:** do NOT use `annotation_text` on `add_vrect` — Plotly places it top-left in data space and it collides with vline annotations at the same x. Use a separate `add_annotation` with `yref="paper"` instead.
 - **Annotation overlap:** alternate `annotation_position` ("top right" / "top left") by index for consecutive vlines. EndOfPlan events use "bottom right" to stay clear of the survivor label.
 - **Gantt density tuning must move bar width and chart height deliberately.** Slimmer bars alone leave airy rows; reduce the height formula to compress row pitch, then re-check the served page with a real offline render.
+- **Stochastic sidecars should preserve one normalized bundle shape.** `projection_yearly.csv` remains the primary display-path export, `simulation_summary.json` carries result-mode metrics, and Monte Carlo runs add `projection_bands_yearly.csv` instead of replacing the deterministic files.

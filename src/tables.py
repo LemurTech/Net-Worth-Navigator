@@ -500,6 +500,7 @@ def build_scenario_parameters_summary(
     scenario=None,
     baseline_config: dict | None = None,
     projection_df: pd.DataFrame | None = None,
+    projection_result=None,
 ) -> str:
     """Return a detailed scenario-parameter summary for audit/comparison."""
     scenario_cfg = config.get("scenario", {}) if isinstance(config.get("scenario"), dict) else {}
@@ -555,6 +556,15 @@ def build_scenario_parameters_summary(
         ),
         _diff_row("Start year", simulation.get("start_year"), baseline_simulation.get("start_year"), _fmt_text),
         _diff_row("End year", simulation.get("end_year"), baseline_simulation.get("end_year"), _fmt_text),
+        _diff_row("Simulation mode", simulation.get("mode", "deterministic"), baseline_simulation.get("mode", "deterministic"), _fmt_text),
+        _diff_row("Simulation runs", simulation.get("num_runs", 250), baseline_simulation.get("num_runs", 250), _fmt_text),
+        _diff_row("Simulation seed", simulation.get("seed"), baseline_simulation.get("seed"), _fmt_text),
+        _diff_row(
+            "Portfolio return volatility",
+            simulation.get("portfolio_return_volatility", 0.15),
+            baseline_simulation.get("portfolio_return_volatility", 0.15),
+            _fmt_percent,
+        ),
     ]
     if scenario is not None:
         scenario_rows.extend([
@@ -740,6 +750,26 @@ def build_scenario_parameters_summary(
         for label, value in event_metrics.items()
     ]
     ownership_snapshot_table = _owner_share_snapshot_table(config, projection_df)
+    simulation_result_card = ""
+    if projection_result is not None and getattr(projection_result, "mode", "deterministic") == "monte_carlo":
+        summary = getattr(projection_result, "summary", {}) or {}
+        simulation_rows = [
+            ("Display path", escape(str(summary.get("display_path_kind", "median")))),
+            ("Run count", escape(str(summary.get("run_count", "—")))),
+            ("Success rate", _fmt_percent(summary.get("success_rate", 0.0))),
+            ("Median end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p50"))),
+            ("P10 end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p10"))),
+            ("P90 end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p90"))),
+            ("Median first depletion year", escape(str(summary.get("first_depletion_year_p50", "No depletion")))),
+            ("Retirement P50 net worth", _fmt_currency(summary.get("retirement_total_net_worth_p50"))),
+        ]
+        simulation_result_card = (
+            "<section class='assumption-card'>"
+            "<h3>Simulation results</h3>"
+            "<p class='assumption-subtitle'>Monte Carlo summary metrics from the current rendered run.</p>"
+            f"{_kv_table(simulation_rows)}"
+            "</section>"
+        )
 
     person_cards_html = "".join(person_cards)
     baseline_note = (
@@ -793,6 +823,7 @@ def build_scenario_parameters_summary(
         "<h3>Enabled events summary</h3>"
         f"{_kv_table(event_rows)}"
         "</section>"
+        f"{simulation_result_card}"
         f"{ownership_card_html}"
         "</div>"
         "</div>"

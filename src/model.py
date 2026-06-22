@@ -10,6 +10,7 @@ Returns a pandas DataFrame with one row per year:
 from copy import deepcopy
 from pathlib import Path
 from dataclasses import dataclass, field
+import random
 
 import pandas as pd
 
@@ -66,6 +67,7 @@ DEFAULT_TAX_FILING_STATUS = {
 VALID_FILING_STATUSES = {"single", "married_joint", "head_of_household"}
 WITHDRAWAL_BUCKETS = ("cash", "taxable", "trad_ira", "roth")
 RETIREMENT_OWNER_KEYS = ("person1", "person2")
+PROJECTION_RESULT_SCHEMA_VERSION = 1
 
 # IRS Uniform Lifetime Table factors (2022+), used for RMD calculation.
 # Applies to account owners age 72+; 120+ reuses age-120 factor.
@@ -120,6 +122,19 @@ UNIFORM_LIFETIME_FACTORS = {
     119: 2.3,
     120: 2.0,
 }
+
+
+@dataclass
+class ProjectionResult:
+    """Normalized projection output for deterministic and stochastic modes."""
+
+    mode: str
+    yearly_df: pd.DataFrame
+    summary: dict[str, object]
+    simulation: dict[str, object]
+    band_df: pd.DataFrame | None = None
+    run_count: int = 1
+    display_path_kind: str = "deterministic"
 
 
 def _empty_withdrawal_breakdown() -> dict[str, float]:
@@ -1578,6 +1593,255 @@ def _apply_forced_rmd_withdrawal(
     return withdrawn, taxable_income, shortfall
 
 
+def _normalize_simulation_settings(config: dict) -> dict[str, object]:
+    sim = dict(config.get("simulation", {}))
+    mode = str(sim.get("mode", "deterministic")).strip().lower() or "deterministic"
+    if mode not in {"deterministic", "monte_carlo"}:
+        mode = "deterministic"
+
+    try:
+        num_runs = max(1, int(sim.get("num_runs", 250)))
+    except (TypeError, ValueError):
+        num_runs = 250
+
+    seed = sim.get("seed")
+    try:
+        seed = int(seed) if seed not in (None, "") else None
+    except (TypeError, ValueError):
+        seed = None
+
+    try:
+        return_volatility = max(0.0, float(sim.get("portfolio_return_volatility", 0.15)))
+    except (TypeError, ValueError):
+        return_volatility = 0.15
+
+    return {
+        "mode": mode,
+        "num_runs": num_runs,
+        "seed": seed,
+        "portfolio_return_volatility": return_volatility,
+    }
+
+
+def _sample_monte_carlo_return_overrides(
+    *,
+    start_year: int,
+    end_year: int,
+    mean_return: float,
+    volatility: float,
+    rng: random.Random,
+) -> dict[int, float]:
+    overrides: dict[int, float] = {}
+    for year in range(start_year, end_year + 1):
+        sampled = rng.gauss(mean_return, volatility)
+        overrides[year] = max(-0.99, sampled)
+    return overrides
+
+
+def _build_primary_path_from_runs(run_frames: list[pd.DataFrame]) -> pd.DataFrame:
+    primary = run_frames[0].copy(deep=True)
+    numeric_columns = [
+        column for column in primary.columns
+        if pd.api.types.is_numeric_dtype(primary[column]) and column != "year"
+    ]
+    for column in numeric_columns:
+        joined = pd.concat(
+            [frame[column].reset_index(drop=True) for frame in run_frames],
+            axis=1,
+        )
+        primary[column] = joined.median(axis=1)
+
+    if "year" in primary.columns:
+        primary["year"] = run_frames[0]["year"].astype(int)
+    return primary
+
+
+def _build_band_frame(
+    run_frames: list[pd.DataFrame],
+    *,
+    value_columns: tuple[str, ...] = ("total_net_worth", "net_worth"),
+    percentiles: tuple[int, ...] = (10, 25, 50, 75, 90),
+) -> pd.DataFrame:
+    band_df = pd.DataFrame({"year": run_frames[0]["year"].astype(int).tolist()})
+    for column in value_columns:
+        if column not in run_frames[0].columns:
+            continue
+        joined = pd.concat(
+            [frame[column].reset_index(drop=True) for frame in run_frames],
+            axis=1,
+        )
+        for percentile in percentiles:
+            band_df[f"{column}_p{percentile}"] = joined.quantile(
+                percentile / 100.0,
+                axis=1,
+                interpolation="linear",
+            )
+    return band_df
+
+
+def _first_depletion_year(df: pd.DataFrame) -> int | None:
+    depleted = df[df["net_worth"] < 0]
+    if depleted.empty:
+        return None
+    return int(depleted.iloc[0]["year"])
+
+
+def _first_retirement_year(config: dict) -> int | None:
+    retirement_years: list[int] = []
+    for event in config.get("events", []):
+        if event.get("type") != "Retire" or not event.get("enabled", False):
+            continue
+        try:
+            retirement_years.append(int(event["year"]))
+        except (TypeError, ValueError, KeyError):
+            continue
+    return min(retirement_years) if retirement_years else None
+
+
+def _projection_summary(
+    *,
+    config: dict,
+    simulation_settings: dict[str, object],
+    primary_df: pd.DataFrame,
+    run_frames: list[pd.DataFrame],
+    band_df: pd.DataFrame | None,
+) -> dict[str, object]:
+    retirement_year = _first_retirement_year(config)
+    summary: dict[str, object] = {
+        "schema_version": PROJECTION_RESULT_SCHEMA_VERSION,
+        "mode": simulation_settings["mode"],
+        "run_count": len(run_frames),
+        "display_path_kind": "deterministic" if len(run_frames) == 1 else "median",
+        "start_year": int(primary_df["year"].min()) if not primary_df.empty else None,
+        "end_year": int(primary_df["year"].max()) if not primary_df.empty else None,
+        "retirement_year": retirement_year,
+    }
+
+    if primary_df.empty:
+        return summary
+
+    last_row = primary_df.iloc[-1]
+    summary["terminal_total_net_worth"] = float(last_row["total_net_worth"])
+    summary["terminal_investable_net_worth"] = float(last_row["net_worth"])
+
+    if len(run_frames) == 1:
+        return summary
+
+    terminal_values = sorted(float(frame.iloc[-1]["total_net_worth"]) for frame in run_frames)
+    depletion_years = [year for year in (_first_depletion_year(frame) for frame in run_frames) if year is not None]
+    success_count = sum(1 for frame in run_frames if _first_depletion_year(frame) is None)
+    summary["success_rate"] = success_count / len(run_frames)
+    summary["failure_rate"] = 1.0 - summary["success_rate"]
+    summary["terminal_total_net_worth_p10"] = float(pd.Series(terminal_values).quantile(0.10))
+    summary["terminal_total_net_worth_p50"] = float(pd.Series(terminal_values).quantile(0.50))
+    summary["terminal_total_net_worth_p90"] = float(pd.Series(terminal_values).quantile(0.90))
+    summary["depletion_run_count"] = len(depletion_years)
+    if depletion_years:
+        depletion_series = pd.Series(sorted(depletion_years))
+        summary["first_depletion_year_p10"] = int(round(float(depletion_series.quantile(0.10))))
+        summary["first_depletion_year_p50"] = int(round(float(depletion_series.quantile(0.50))))
+        summary["first_depletion_year_p90"] = int(round(float(depletion_series.quantile(0.90))))
+    else:
+        summary["first_depletion_year_p10"] = None
+        summary["first_depletion_year_p50"] = None
+        summary["first_depletion_year_p90"] = None
+
+    if retirement_year is not None and band_df is not None:
+        match = band_df[band_df["year"] == retirement_year]
+        if not match.empty:
+            row = match.iloc[0]
+            for percentile in (10, 50, 90):
+                key = f"total_net_worth_p{percentile}"
+                if key in row:
+                    summary[f"retirement_total_net_worth_p{percentile}"] = float(row[key])
+
+    return summary
+
+
+def run_projection_result(
+    balances: dict[str, float],
+    home_value: float = 0.0,
+    liability_balances: dict[str, float] | None = None,
+    property_values: dict[str, float] | None = None,
+    retirement_owner_balances: dict[str, dict[str, float]] | None = None,
+    config: dict | None = None,
+) -> ProjectionResult:
+    config = resolve_runtime_config(config or load_config())
+    simulation_settings = _normalize_simulation_settings(config)
+    if simulation_settings["mode"] != "monte_carlo":
+        yearly_df = _run_projection_yearly(
+            balances,
+            home_value=home_value,
+            liability_balances=liability_balances,
+            property_values=property_values,
+            retirement_owner_balances=retirement_owner_balances,
+            config=config,
+        )
+        summary = _projection_summary(
+            config=config,
+            simulation_settings=simulation_settings,
+            primary_df=yearly_df,
+            run_frames=[yearly_df],
+            band_df=None,
+        )
+        return ProjectionResult(
+            mode="deterministic",
+            yearly_df=yearly_df,
+            summary=summary,
+            simulation=simulation_settings,
+            band_df=None,
+            run_count=1,
+            display_path_kind="deterministic",
+        )
+
+    sim = config["simulation"]
+    assumptions = config["assumptions"]
+    mean_return = (
+        assumptions["stock_return"] * assumptions["equity_allocation"] +
+        assumptions["bond_return"] * (1 - assumptions["equity_allocation"])
+    )
+    rng = random.Random(simulation_settings["seed"])
+    run_frames: list[pd.DataFrame] = []
+    for _ in range(int(simulation_settings["num_runs"])):
+        overrides = _sample_monte_carlo_return_overrides(
+            start_year=int(sim["start_year"]),
+            end_year=int(sim["end_year"]),
+            mean_return=float(mean_return),
+            volatility=float(simulation_settings["portfolio_return_volatility"]),
+            rng=rng,
+        )
+        run_frames.append(
+            _run_projection_yearly(
+                balances,
+                home_value=home_value,
+                liability_balances=liability_balances,
+                property_values=property_values,
+                retirement_owner_balances=retirement_owner_balances,
+                config=config,
+                annual_return_overrides=overrides,
+            )
+        )
+
+    primary_df = _build_primary_path_from_runs(run_frames)
+    band_df = _build_band_frame(run_frames)
+    summary = _projection_summary(
+        config=config,
+        simulation_settings=simulation_settings,
+        primary_df=primary_df,
+        run_frames=run_frames,
+        band_df=band_df,
+    )
+    return ProjectionResult(
+        mode="monte_carlo",
+        yearly_df=primary_df,
+        summary=summary,
+        simulation=simulation_settings,
+        band_df=band_df,
+        run_count=len(run_frames),
+        display_path_kind="median",
+    )
+
+
 def run_projection(
     balances: dict[str, float],
     home_value: float = 0.0,
@@ -1585,6 +1849,25 @@ def run_projection(
     property_values: dict[str, float] | None = None,
     retirement_owner_balances: dict[str, dict[str, float]] | None = None,
     config: dict | None = None,
+) -> pd.DataFrame:
+    return run_projection_result(
+        balances,
+        home_value=home_value,
+        liability_balances=liability_balances,
+        property_values=property_values,
+        retirement_owner_balances=retirement_owner_balances,
+        config=config,
+    ).yearly_df
+
+
+def _run_projection_yearly(
+    balances: dict[str, float],
+    home_value: float = 0.0,
+    liability_balances: dict[str, float] | None = None,
+    property_values: dict[str, float] | None = None,
+    retirement_owner_balances: dict[str, dict[str, float]] | None = None,
+    config: dict | None = None,
+    annual_return_overrides: dict[int, float] | None = None,
 ) -> pd.DataFrame:
     """
     Run the year-by-year net worth projection.
@@ -2034,6 +2317,8 @@ def run_projection(
             assumptions["stock_return"] * assumptions["equity_allocation"] +
             assumptions["bond_return"] * (1 - assumptions["equity_allocation"])
         )
+        if annual_return_overrides and year in annual_return_overrides:
+            invested_growth_rate = float(annual_return_overrides[year])
         cash_growth_rate = resolve_cash_growth_rate(assumptions)
         current_total = sum(portfolio.values())
         if current_total > 0:

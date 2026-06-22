@@ -1,14 +1,17 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-19 → 2026-06-22
-**Current Status:** Scenario-driven V1 is stable and actively polished for projection UX: assumptions/parameter diff review, scenario context propagation between shell/editor/projection, event-label readability controls, and portfolio/survivor visual refinements are now implemented and validated with offline rerenders. A repo-to-repo comparison memo now documents where ignidash is stronger, where NWN remains the better household-planning fit, and what bridge/port opportunities are realistic.
+**Current Status:** NWN is now stochastic-ready at the result-contract layer and has a seeded Monte Carlo MVP on top of the existing deterministic engine. Deterministic runs remain the default, while Monte Carlo scenarios now produce a median display path, summary risk metrics, and probability-band charts/sidecars without changing household/event semantics.
 
 ## Current State
 
 - `python run.py` — full run (live Monarch), deploys chart
 - `python run.py --offline` — offline run (cached), fast re-render
 - Chart: http://casalemuria.lan/finances/projection.html
-- Analysis sidecars now emit per scenario under `output/scenarios/<slug>/sidecars/`: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, and `accounts_snapshot.json`
+- Analysis sidecars now emit per scenario under `output/scenarios/<slug>/sidecars/`: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, `accounts_snapshot.json`, and `simulation_summary.json`; Monte Carlo runs also emit `projection_bands_yearly.csv`
+- Projection outputs now flow through a normalized `ProjectionResult` contract in `src/model.py`, with deterministic runs exposing a single yearly path and Monte Carlo runs exposing a median display path plus percentile bands
+- `[simulation]` now supports `mode`, `num_runs`, `seed`, and `portfolio_return_volatility` so scenarios can opt into seeded Monte Carlo without changing other config semantics
+- Monte Carlo projection pages now show probability-band charts for total net worth and investable portfolio, Monte Carlo KPIs, and a `Simulation results` summary card in Scenario Parameters
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view
@@ -148,6 +151,9 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - High-level feature-port roadmap added at `docs/ignidash-feature-port-plan.md`
   - recommended order: result/data-contract cleanup -> Monte Carlo/historical modes -> tax refactor -> richer account mechanics -> contribution rules -> comparison UX
   - immediate best slice: make NWN stochastic-ready, then add a Monte Carlo MVP with summary metrics and probability bands
+- Monte Carlo MVP is now implemented for seeded blended-return variation
+  - deterministic mode remains default and backward-compatible
+  - primary open follow-on is a historical-sequence mode and a decision on whether Monte Carlo success/depletion semantics should stay tied to investable depletion (`net_worth < 0`) or become more configurable
 
 ## Known Pitfalls
 

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from src.charts import build_chart
-from src.model import load_config, run_projection
+from src.model import load_config, run_projection_result
 from src.monarch_bridge import (
     classify_accounts,
     extract_liability_balances,
@@ -191,7 +191,7 @@ def main():
 
     # 2. Run projection
     print("→ Running projection...")
-    df = run_projection(
+    projection_result = run_projection_result(
         portfolio,
         home_value=home_value,
         liability_balances=liability_balances,
@@ -199,7 +199,9 @@ def main():
         retirement_owner_balances=retirement_owner_seed,
         config=config,
     )
+    df = projection_result.yearly_df
     print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
+    print(f"  Simulation mode: {projection_result.mode} ({projection_result.run_count} run{'s' if projection_result.run_count != 1 else ''})")
 
     # 3. Generate chart and sidecars
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -208,7 +210,7 @@ def main():
     output_path = scenario_dir / "projection.html"
     print(f"→ Generating chart → {output_path}")
     build_chart(
-        df,
+        projection_result,
         output_path,
         config=config,
         scenario=scenario,
@@ -218,6 +220,7 @@ def main():
     sidecars = write_sidecars(
         output_dir=sidecar_dir,
         df=df,
+        projection_result=projection_result,
         config=config,
         scenario=scenario,
         mode=mode,

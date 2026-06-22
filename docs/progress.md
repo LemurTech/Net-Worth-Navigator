@@ -6,6 +6,12 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Normalized projection-result contract in `src/model.py`: deterministic and stochastic runs now share a `ProjectionResult` boundary carrying the primary yearly path, simulation summary, and optional yearly percentile bands
+- Seeded Monte Carlo MVP in `src/model.py` + `src/charts.py`: `[simulation]` now supports `mode`, `num_runs`, `seed`, and `portfolio_return_volatility`, with stochastic runs varying blended investable returns while preserving existing household/event semantics
+- Monte Carlo presentation surfaces: KPI strip, total-net-worth probability-band chart, investable-portfolio probability-band chart, and a `Simulation results` card in Scenario Parameters
+- Stochastic-ready sidecar bundle in `src/sidecars.py`: `simulation_summary.json` now ships for every run, and Monte Carlo runs additionally emit `projection_bands_yearly.csv` with yearly percentile bands
+- Regression coverage for simulation modes and stochastic sidecars in `tests/test_simulation_modes.py`, `tests/test_sidecars.py`, and `tests/test_recurring_events.py`
+
 - Comparative analysis doc at `docs/ignidash-comparative-analysis.md`, covering NWN vs. ignidash strengths, replacement-fit assessment, Monarch-bridge feasibility, partial scenario-port feasibility, and recommended cross-pollination targets
 - High-level feature-port roadmap at `docs/ignidash-feature-port-plan.md`, defining a phased plan to bring ignidash-inspired capabilities into NWN while preserving TOML-first household planning and avoiding SaaS-style infrastructure creep
 

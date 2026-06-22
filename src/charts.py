@@ -17,7 +17,14 @@ from src.tables import (
     build_assumptions_summary,
     build_scenario_parameters_summary,
 )
-from src.model import load_config, resolve_runtime_config, get_event_icon, EVENT_ICONS, LIABILITY_ICONS
+from src.model import (
+    EVENT_ICONS,
+    LIABILITY_ICONS,
+    ProjectionResult,
+    get_event_icon,
+    load_config,
+    resolve_runtime_config,
+)
 
 # ── CSS + JS for the tabbed layout ────────────────────────────────────────────
 _TABS_CSS = """
@@ -481,6 +488,10 @@ def _format_compact_currency(value: float) -> str:
     return f"{sign}${amount:,.0f}"
 
 
+def _format_percent(value: float) -> str:
+    return f"{float(value) * 100.0:.1f}%"
+
+
 def _first_retirement_event(config: dict) -> dict | None:
     events = [
         e for e in config.get("events", [])
@@ -539,7 +550,12 @@ def _xaxis_tick_spec(config: dict, years: list[int]) -> tuple[list[int], list[st
     return tickvals, ticktext
 
 
-def _build_kpi_summary(config: dict, df: pd.DataFrame) -> str:
+def _build_kpi_summary(
+    config: dict,
+    projection: pd.DataFrame | ProjectionResult,
+) -> str:
+    projection_result = _coerce_projection_result(projection)
+    df = projection_result.yearly_df
     first_row = df.iloc[0]
     last_row = df.iloc[-1]
     first_retire = _first_retirement_event(config)
@@ -550,18 +566,38 @@ def _build_kpi_summary(config: dict, df: pd.DataFrame) -> str:
         if not match.empty:
             retirement_row = match.iloc[0]
 
-    cards = [
-        ("Net Worth (EOY)", _format_compact_currency(first_row["total_net_worth"])),
-        (
-            "Net Worth at Retirement",
-            _format_compact_currency(retirement_row["total_net_worth"]) if retirement_row is not None else "—",
-        ),
-        (
-            "Retirement Age",
-            str(_retirement_age(config, first_retire)) if _retirement_age(config, first_retire) is not None else "—",
-        ),
-        ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"])),
-    ]
+    if projection_result.mode == "monte_carlo":
+        summary = projection_result.summary
+        cards = [
+            ("Monte Carlo Success Rate", _format_percent(float(summary.get("success_rate", 0.0)))),
+            (
+                "Median Net Worth at Retirement",
+                _format_compact_currency(float(summary.get("retirement_total_net_worth_p50", retirement_row["total_net_worth"] if retirement_row is not None else 0.0)))
+                if retirement_row is not None or summary.get("retirement_total_net_worth_p50") is not None
+                else "—",
+            ),
+            (
+                "Median First Depletion Year",
+                str(summary.get("first_depletion_year_p50")) if summary.get("first_depletion_year_p50") is not None else "No depletion",
+            ),
+            (
+                "Median Net Worth at End",
+                _format_compact_currency(float(summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"]))),
+            ),
+        ]
+    else:
+        cards = [
+            ("Net Worth (EOY)", _format_compact_currency(first_row["total_net_worth"])),
+            (
+                "Net Worth at Retirement",
+                _format_compact_currency(retirement_row["total_net_worth"]) if retirement_row is not None else "—",
+            ),
+            (
+                "Retirement Age",
+                str(_retirement_age(config, first_retire)) if _retirement_age(config, first_retire) is not None else "—",
+            ),
+            ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"])),
+        ]
 
     boxes = "".join(
         f"<div class='kpi-box'><div class='kpi-label'>{label}</div><div class='kpi-value'>{value}</div></div>"
@@ -570,7 +606,11 @@ def _build_kpi_summary(config: dict, df: pd.DataFrame) -> str:
     return f"<div class='kpi-strip'>{boxes}</div>"
 
 
-def _build_portfolio_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+def _build_portfolio_chart(
+    df: pd.DataFrame,
+    config: dict | None = None,
+    projection_result: ProjectionResult | None = None,
+) -> str:
     paper_bg = "#111827"
     plot_bg = "#0f1725"
     grid = "rgba(148,163,184,0.14)"
@@ -579,6 +619,96 @@ def _build_portfolio_chart(df: pd.DataFrame, config: dict | None = None) -> str:
     person2_name = str((config or {}).get("person2", {}).get("name", "")).strip() or "Person 2"
 
     fig = go.Figure()
+    if (
+        projection_result is not None
+        and projection_result.mode == "monte_carlo"
+        and projection_result.band_df is not None
+        and not projection_result.band_df.empty
+    ):
+        bands = projection_result.band_df
+        years = bands["year"]
+        inner_low = bands.get("net_worth_p25")
+        inner_high = bands.get("net_worth_p75")
+        outer_low = bands.get("net_worth_p10")
+        outer_high = bands.get("net_worth_p90")
+        median = bands.get("net_worth_p50")
+
+        if outer_low is not None and outer_high is not None:
+            fig.add_trace(go.Scatter(
+                x=years, y=outer_low, mode="lines", line=dict(width=0),
+                hoverinfo="skip", showlegend=False,
+            ))
+            fig.add_trace(go.Scatter(
+                x=years, y=outer_high, mode="lines",
+                fill="tonexty", fillcolor="rgba(56,189,248,0.16)",
+                line=dict(width=0), name="P10-P90 range",
+                hovertemplate="<b>%{x}</b><br>P90 portfolio: $%{y:,.0f}<extra></extra>",
+            ))
+        if inner_low is not None and inner_high is not None:
+            fig.add_trace(go.Scatter(
+                x=years, y=inner_low, mode="lines", line=dict(width=0),
+                hoverinfo="skip", showlegend=False,
+            ))
+            fig.add_trace(go.Scatter(
+                x=years, y=inner_high, mode="lines",
+                fill="tonexty", fillcolor="rgba(125,211,252,0.28)",
+                line=dict(width=0), name="P25-P75 range",
+                hovertemplate="<b>%{x}</b><br>P75 portfolio: $%{y:,.0f}<extra></extra>",
+            ))
+        if median is not None:
+            fig.add_trace(go.Scatter(
+                x=years, y=median,
+                mode="lines", name="Median portfolio",
+                line=dict(color="#e5edf7", width=2.6),
+                hovertemplate="<b>%{x}</b><br>Median portfolio: $%{y:,.0f}<extra></extra>",
+            ))
+
+        fig.update_layout(
+            font=dict(color=font_color),
+            title=dict(text="Projected Investment Portfolio Range", font=dict(size=16)),
+            xaxis=dict(
+                title="Year",
+                tickmode="linear",
+                dtick=2,
+                ticklabelstandoff=6,
+                gridcolor=grid,
+                zerolinecolor=grid,
+                color=font_color,
+            ),
+            yaxis=dict(
+                title="Portfolio Value (USD)",
+                tickformat="$,.0f",
+                ticklabelstandoff=6,
+                automargin=True,
+                gridcolor=grid,
+                zerolinecolor=grid,
+                color=font_color,
+            ),
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
+            hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
+            plot_bgcolor=plot_bg,
+            paper_bgcolor=paper_bg,
+            height=420,
+            margin=dict(l=76, r=24, t=78, b=48),
+        )
+
+        portfolio_div = fig.to_html(
+            full_html=False,
+            include_plotlyjs=False,
+            div_id="nwn-portfolio",
+        )
+        portfolio_note = (
+            "<div class='modeling-note'><strong>Portfolio range note:</strong> "
+            "Bands show Monte Carlo portfolio ranges by year. The table below reflects the median simulated path.</div>"
+        )
+        portfolio_table_html = build_portfolio_table(df, config=config)
+        return (
+            f"<div class='gantt-wrap'>{portfolio_div}</div>"
+            f"{portfolio_note}"
+            f"<div class='table-panel portfolio-table-panel'>{portfolio_table_html}</div>"
+        )
+
     portfolio_series = [
         ("taxable", "rgba(96,165,250,0.42)", "Taxable"),
     ]
@@ -672,6 +802,19 @@ def _survivor_visual_start_year(df: pd.DataFrame) -> int | None:
     if len(survivor_years) == 0:
         return None
     return int(survivor_years.iloc[0]) - 1
+
+
+def _coerce_projection_result(
+    projection: pd.DataFrame | ProjectionResult,
+) -> ProjectionResult:
+    if isinstance(projection, ProjectionResult):
+        return projection
+    return ProjectionResult(
+        mode="deterministic",
+        yearly_df=projection,
+        summary={},
+        simulation={"mode": "deterministic"},
+    )
 
 
 def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
@@ -881,7 +1024,7 @@ def _build_tax_semantics_note() -> str:
 
 
 def build_chart(
-    df: pd.DataFrame,
+    projection: pd.DataFrame | ProjectionResult,
     output_path: Path,
     config: dict | None = None,
     scenario=None,
@@ -891,9 +1034,11 @@ def build_chart(
     Generate the Plotly chart figure, build HTML tables, and write
     a single self-contained tabbed HTML page to output_path.
     """
+    projection_result = _coerce_projection_result(projection)
+    df = projection_result.yearly_df
     config = resolve_runtime_config(config or load_config())
     baseline_config = resolve_runtime_config(baseline_config) if baseline_config is not None else None
-    fig = _build_figure(df, config)
+    fig = _build_figure(df, config, projection_result=projection_result)
 
     # Export figure as a standalone div (no full HTML, no duplicate Plotly JS)
     chart_div = fig.to_html(
@@ -901,13 +1046,13 @@ def build_chart(
         include_plotlyjs="cdn",
         div_id="nwn-chart",
     )
-    kpi_html = _build_kpi_summary(config, df)
+    kpi_html = _build_kpi_summary(config, projection_result)
     tax_note_html = _build_tax_semantics_note()
 
     # Build table HTML
     accounts_html  = build_accounts_table(df, config=config)
     cashflow_html  = build_cashflow_table(df, config=config)
-    portfolio_html = _build_portfolio_chart(df, config=config)
+    portfolio_html = _build_portfolio_chart(df, config=config, projection_result=projection_result)
     gantt_html     = _build_gantt_chart(config, df)
     assumptions_html = build_assumptions_summary(
         config,
@@ -919,6 +1064,7 @@ def build_chart(
         scenario=scenario,
         baseline_config=baseline_config,
         projection_df=df,
+        projection_result=projection_result,
     )
 
     scenario_slug = getattr(scenario, "slug", None)
@@ -993,7 +1139,11 @@ def build_chart(
 
 # ── Figure builder ─────────────────────────────────────────────────────────────
 
-def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
+def _build_figure(
+    df: pd.DataFrame,
+    config: dict,
+    projection_result: ProjectionResult | None = None,
+) -> go.Figure:
     fig = go.Figure()
     paper_bg = "#111827"
     plot_bg = "#0f1725"
@@ -1001,38 +1151,90 @@ def _build_figure(df: pd.DataFrame, config: dict) -> go.Figure:
     font_color = "#e5edf7"
     tickvals, ticktext = _xaxis_tick_spec(config, df["year"].astype(int).tolist())
 
-    # ── Home equity band (non-liquid) ──────────────────────────────────────────
-    if (df["home_equity"] != 0).any():
-        fig.add_trace(go.Scatter(
-            x=df["year"], y=df["home_equity"],
-            mode="lines", name="Home Equity (non-liquid)",
-            fill="tozeroy", fillcolor="rgba(217,168,120,0.30)",
-            line=dict(color="rgba(237,194,148,0.88)", width=1.8, dash="dot"),
-            hovertemplate="<b>%{x}</b><br>Home Equity: $%{y:,.0f}<extra></extra>",
-        ))
+    if (
+        projection_result is not None
+        and projection_result.mode == "monte_carlo"
+        and projection_result.band_df is not None
+        and not projection_result.band_df.empty
+    ):
+        bands = projection_result.band_df
+        years = bands["year"]
+        total_outer_low = bands.get("total_net_worth_p10")
+        total_outer_high = bands.get("total_net_worth_p90")
+        total_inner_low = bands.get("total_net_worth_p25")
+        total_inner_high = bands.get("total_net_worth_p75")
+        total_median = bands.get("total_net_worth_p50")
 
-    # ── Investable stacked area ────────────────────────────────────────────────
-    for category, color, label in [
-        ("cash",     "rgba(191,219,254,0.42)", "Cash"),
-        ("taxable",  "rgba(96,165,250,0.42)",  "Taxable"),
-        ("trad_ira", "rgba(74,222,128,0.36)",  "Traditional IRA / 401k"),
-        ("roth",     "rgba(251,191,36,0.38)",  "Roth"),
-    ]:
-        if (df[category] != 0).any():
+        if total_outer_low is not None and total_outer_high is not None:
             fig.add_trace(go.Scatter(
-                x=df["year"], y=df[category],
-                mode="lines", name=label,
-                stackgroup="investable", fillcolor=color, line=dict(width=0),
-                hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
+                x=years, y=total_outer_low, mode="lines", line=dict(width=0),
+                hoverinfo="skip", showlegend=False,
+            ))
+            fig.add_trace(go.Scatter(
+                x=years, y=total_outer_high, mode="lines",
+                fill="tonexty", fillcolor="rgba(45,212,191,0.14)",
+                line=dict(width=0), name="P10-P90 range",
+                hovertemplate="<b>%{x}</b><br>P90 net worth: $%{y:,.0f}<extra></extra>",
+            ))
+        if total_inner_low is not None and total_inner_high is not None:
+            fig.add_trace(go.Scatter(
+                x=years, y=total_inner_low, mode="lines", line=dict(width=0),
+                hoverinfo="skip", showlegend=False,
+            ))
+            fig.add_trace(go.Scatter(
+                x=years, y=total_inner_high, mode="lines",
+                fill="tonexty", fillcolor="rgba(45,212,191,0.28)",
+                line=dict(width=0), name="P25-P75 range",
+                hovertemplate="<b>%{x}</b><br>P75 net worth: $%{y:,.0f}<extra></extra>",
+            ))
+        if total_median is not None:
+            fig.add_trace(go.Scatter(
+                x=years, y=total_median,
+                mode="lines", name="Median total net worth",
+                line=dict(color="#f8fafc", width=2.8),
+                hovertemplate="<b>%{x}</b><br>Median total net worth: $%{y:,.0f}<extra></extra>",
+            ))
+        if (df["home_equity"] != 0).any():
+            fig.add_trace(go.Scatter(
+                x=df["year"], y=df["home_equity"],
+                mode="lines", name="Median home equity",
+                line=dict(color="rgba(237,194,148,0.88)", width=1.8, dash="dot"),
+                hovertemplate="<b>%{x}</b><br>Median home equity: $%{y:,.0f}<extra></extra>",
+            ))
+    else:
+
+        # ── Home equity band (non-liquid) ──────────────────────────────────────────
+        if (df["home_equity"] != 0).any():
+            fig.add_trace(go.Scatter(
+                x=df["year"], y=df["home_equity"],
+                mode="lines", name="Home Equity (non-liquid)",
+                fill="tozeroy", fillcolor="rgba(217,168,120,0.30)",
+                line=dict(color="rgba(237,194,148,0.88)", width=1.8, dash="dot"),
+                hovertemplate="<b>%{x}</b><br>Home Equity: $%{y:,.0f}<extra></extra>",
             ))
 
-    # ── Total net worth line ───────────────────────────────────────────────────
-    fig.add_trace(go.Scatter(
-        x=df["year"], y=df["total_net_worth"],
-        mode="lines", name="Total Net Worth",
-        line=dict(color="#f8fafc", width=2.5, dash="dash"),
-        hovertemplate="<b>%{x}</b><br>Total Net Worth: $%{y:,.0f}<extra></extra>",
-    ))
+        # ── Investable stacked area ────────────────────────────────────────────────
+        for category, color, label in [
+            ("cash",     "rgba(191,219,254,0.42)", "Cash"),
+            ("taxable",  "rgba(96,165,250,0.42)",  "Taxable"),
+            ("trad_ira", "rgba(74,222,128,0.36)",  "Traditional IRA / 401k"),
+            ("roth",     "rgba(251,191,36,0.38)",  "Roth"),
+        ]:
+            if (df[category] != 0).any():
+                fig.add_trace(go.Scatter(
+                    x=df["year"], y=df[category],
+                    mode="lines", name=label,
+                    stackgroup="investable", fillcolor=color, line=dict(width=0),
+                    hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
+                ))
+
+        # ── Total net worth line ───────────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=df["year"], y=df["total_net_worth"],
+            mode="lines", name="Total Net Worth",
+            line=dict(color="#f8fafc", width=2.5, dash="dash"),
+            hovertemplate="<b>%{x}</b><br>Total Net Worth: $%{y:,.0f}<extra></extra>",
+        ))
 
     # ── Survivor period shading ────────────────────────────────────────────────
     survivor_years = df[df["survivor"] == True]["year"]
