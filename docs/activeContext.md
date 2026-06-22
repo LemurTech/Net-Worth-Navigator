@@ -32,6 +32,8 @@
 - Person-level 401(k) totals can now optionally split between `trad_ira` and `roth` via `annual_401k_contribution_split`, so bundled employer plans do not need to force the whole amount into one bucket
 - Household person schema is now generic and canonicalized as `[person1]` / `[person2]` with event references `person = "person1" | "person2"`; runtime `matthew`/`weny` compatibility paths were removed in favor of a full staged refactor
 - Retirement buckets now retain owner-level breakdown columns (`trad_ira_person1/person2`, `roth_person1/person2`) through the projection pipeline; Accounts and Portfolio views expose the split, and Cash Flow shows owner-level retirement contributions/withdrawals where present
+- Scenario Parameters now includes a compact `Retirement ownership snapshots` card (first retirement year + end year) and keeps it visible under non-default `Show only differences` filtering
+- Accounts, Cash Flow, and Portfolio owner-split labels now use configured person display names (`person1.name` / `person2.name`) instead of hardcoded `Person 1` / `Person 2`
 - Person-level `annual_take_home_is_net_of_retirement_contributions` is now supported: when true, retirement contributions are treated as payroll-prefunded (still routed into IRA/Roth buckets) and are not subtracted again from implied pre-retirement spending cash
 - `Expense` events now support optional `expense_kind = "mandatory" | "discretionary"`; discretionary expenses use 🏖️, mandatory expenses keep 💸, and retirement events now use 🎉
 - Cash Flow tab now separates mandatory event expenses from discretionary event expenses while preserving total-expense math

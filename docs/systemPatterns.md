@@ -52,6 +52,7 @@ run.py
 - **Portfolio funding is now explicit in the data model.** Deficit coverage records bucket-level withdrawals (`cash`, `taxable`, `trad_ira`, `roth`) so the Cash Flow tab can show how retirement spending is funded.
 - **Main-chart age labels are responsive UI, not model truth.** The parenthetical ages below year ticks are shown on larger screens but suppressed on narrow viewports so the x-axis remains legible.
 - **Scenario comparison is baseline-driven.** Scenario Parameters compares the active scenario against resolved default-scenario config and marks changed rows with `param-diff`; this is presentation-only and never changes model math.
+- **Owner-split display labels come from config names, not internal keys.** UI labels/traces should render `person1.name`/`person2.name` in Accounts, Cash Flow, and Portfolio views while model/config internals continue to use stable keys (`person1`, `person2`).
 - **Diff filtering is client-side only.** `Show only differences` toggles row/card visibility in the Scenario Parameters tab (`show-diffs-only`, `filtered-empty`) without recomputing data.
 - **Assumptions and Scenario Parameters share the same diff UX contract.** Both tabs mark changed rows with `param-diff`, both can hide unchanged rows/cards client-side, and both default to diff-only mode on non-default scenarios.
 - **Projection/editor scenario handoff is URL-driven.** Scenario context is preserved through explicit `?scenario=<slug>` query params for shell → editor and editor → projection links.

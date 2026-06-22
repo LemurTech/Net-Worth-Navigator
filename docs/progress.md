@@ -6,6 +6,8 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Scenario Parameters now includes a compact `Retirement ownership snapshots` card (first retirement year + end year; combined/traditional/Roth shares) sourced from projection owner-split columns
+- Accounts, Cash Flow, and Portfolio owner-split labels now resolve from configured person display names (`person1.name` / `person2.name`) instead of hardcoded `Person 1` / `Person 2`
 - Assumptions tab baseline-diff support in `src/tables.py` + `src/charts.py`: changed rows now use `param-diff`, includes changed-field count and `Show only differences` filtering parity with Scenario Parameters
 - Scenario-aware projection/editor URL propagation updates in `admin_app.py`, `src/charts.py`, and `src/scenario_shell.py` so shell/editor/projection navigation preserves `?scenario=<slug>`
 - Config editor render-progress overlay spinner (`templates/config_editor.html`) shown during render-triggering submit actions
@@ -109,6 +111,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Fixed
 
+- Scenario Parameters `Retirement ownership snapshots` rows now remain visible when non-default scenarios open with `Show only differences` enabled
 - Frozen first-column table labels and section bands now work reliably via JS `translateX(scrollLeft)`
 - Gantt no longer renders condensed from hidden-tab Plotly sizing
 
