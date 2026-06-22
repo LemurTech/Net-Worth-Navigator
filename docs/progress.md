@@ -28,6 +28,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Explicit retirement contribution routing in `model.py`: contributions deposit to `trad_ira`/`roth` before generic surplus allocation, with optional per-person bucket overrides
 - Optional `annual_401k_contribution_split` support in `model.py` and `scenarios/default.toml` so bundled employer retirement contributions can be routed proportionally between traditional and Roth buckets
 - Early-death survivor modeling improvements in `model.py`: survivor phase now begins immediately after death (not only after both partners retire), and widow/er Social Security can step up from the deceased partner's configured benefit once the survivor reaches `survivor_ss_start_age` (default 60)
+- `BuyHome` events now add/update tracked real-estate property state when `price` is provided, so future home purchases flow into `home_value` / `home_equity` and can later be referenced by `SellHome`
 - Configurable wage tax treatment in `model.py` via `taxes.wage_tax_treatment = "net_cash" | "taxable_wages"`, including a tracked `taxable_wage_income` output column
 - Scenario shell iframe height increased by 25% across desktop/mobile breakpoints in `src/scenario_shell.py`
 - Shared config loader in `src/config_loader.py` for merged runtime config resolution across model, bridge, and editor
@@ -102,6 +103,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - The default runtime/editor scenario now comes from `scenarios/default.toml`; root `config.toml` remains only as a fallback during migration
 - Negative-only liquid series now remain visible on the main chart instead of being suppressed when the series sum is below zero
 - Offline/full projection runs now pass named real-estate accounts into the model so `SellHome` can target a specific property
+- `BuyHome` docs/examples now document optional `property` naming and the requirement to provide `price` if the purchase should create tracked equity
 - Projection config schema and sample config now include `real_estate_sale_fee_rate` plus `SellHome` event examples
 - Projection page moved to a cohesive dark theme across chrome, tables, and both Plotly charts
 - Main chart x-axis uses 2-year ticks with 6px tick-label standoff on both axes

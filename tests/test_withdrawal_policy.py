@@ -452,6 +452,39 @@ class WithdrawalPolicyTests(unittest.TestCase):
         self.assertEqual(row["taxable"], 42_500.0)
         self.assertEqual(row["trad_ira"], 100.0)
 
+    def test_buy_home_adds_tracked_property_to_home_value(self):
+        config = self._base_config()
+        config["assumptions"]["real_estate_appreciation"] = 0.0
+        config["events"].append(
+            {
+                "enabled": True,
+                "type": "BuyHome",
+                "label": "Indonesia Home Purchase",
+                "property": "Indonesia House",
+                "year": 2026,
+                "price": 350_000.0,
+                "down_payment": 100_000.0,
+            }
+        )
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 500_000.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+                property_values=None,
+            )
+
+        row = df.iloc[0]
+        self.assertEqual(row["cash"], 0.0)
+        self.assertEqual(row["taxable"], 400_000.0)
+        self.assertEqual(row["home_value"], 350_000.0)
+        self.assertEqual(row["home_equity"], 350_000.0)
+        self.assertEqual(row["total_net_worth"], 750_000.0)
+        self.assertEqual(row["event_items"][0]["event_type"], "BuyHome")
+        self.assertEqual(row["event_items"][0]["amount"], -100_000.0)
+        self.assertIn("🏠 Indonesia Home Purchase", row["events_active"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -25,6 +25,7 @@
 - End-of-plan timing is now synced from each person's `dob` + `life_expectancy` at runtime so stale hardcoded event years do not skew the chart
 - `SellHome` proceeds are now preserved in cash in the sale year rather than being auto-invested into existing non-cash buckets
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
+- `BuyHome` now creates/updates tracked property state when `price` is provided, so future home purchases feed `home_value` / `home_equity` instead of only reducing cash
 - Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`, with inflation retained as the backward-compatible fallback when older configs omit the new field
 - Retirement timing and Social Security timing/benefits are now synthesized at runtime from person settings (`retirement_year`, `ss_start_age`, and matching `social_security_benefits` with `ss_monthly_benefit` fallback), while preserving legacy event metadata overrides for compatibility
 - Survivor phase now starts immediately in the first full model year after a person's `EndOfPlan`, even if the surviving partner is still working; survivor spending, tax phase, and survivor chart state no longer wait for both partners to be retired

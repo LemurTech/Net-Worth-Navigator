@@ -752,6 +752,16 @@ def _sell_home_property_name(event: dict) -> str:
     return str(property_name)
 
 
+def _buy_home_property_name(event: dict) -> str:
+    """Return the tracked property name created by a BuyHome event."""
+    property_name = event.get("property") or event.get("account") or event.get("label")
+    if not property_name:
+        raise ValueError(
+            f"BuyHome event '{event.get('label', '?')}' must define property/account or label"
+        )
+    return str(property_name)
+
+
 def _sell_home_fee_rate(event: dict, assumptions: dict) -> float:
     """Return the sale-fee rate for a SellHome event."""
     raw_rate = event.get(
@@ -1699,6 +1709,13 @@ def run_projection(
             elif etype == "BuyHome":
                 if event["year"] == year:
                     event_cash_flow -= event["down_payment"]
+                    try:
+                        purchase_price = float(event.get("price", 0.0))
+                    except (TypeError, ValueError):
+                        purchase_price = 0.0
+                    if purchase_price > 0.0:
+                        property_name = _buy_home_property_name(event)
+                        property_state[property_name] = purchase_price
                     event_items.append(
                         make_event_item(
                             label=event["label"],

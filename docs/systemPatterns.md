@@ -86,7 +86,7 @@ amount = -6000             # negative = cash outflow
 | `SocialSecurity` | Permanent start | `person`, `year`, `monthly_benefit` — adds SS income |
 | `Expense` | Singular | `year`, `amount` — one-time cash outflow |
 | `Income` | Singular or bounded | `year`, `amount`, `end_year` (optional) |
-| `BuyHome` | Singular (down payment) + ongoing (mortgage) | `year`, `down_payment`, `price`, `mortgage_rate`, `term_years` |
+| `BuyHome` | Singular (down payment) + ongoing (mortgage) | `year`, `down_payment`, `price`, optional `property`, `mortgage_rate`, `term_years` |
 | `SellHome` | Singular | `year`, `property`, optional `liability_names`, optional `sale_fee_rate`, optional `reinvest_to`, optional `reinvest_fraction` |
 | `NewJob` | Permanent start | `person`, `year`, `annual_income` — replaces income |
 | `CareerBreak` | Bounded | `person`, `start_year`, `end_year` — zeroes earned income |
@@ -100,7 +100,7 @@ amount = -6000             # negative = cash outflow
 - `SocialSecurity`: adds `monthly_benefit * 12` to income from `year` onward
 - `Expense`: subtracts `amount` from liquid assets in `year`
 - `Income`: adds `amount` per year within `[year, end_year]` (or just `year` if no `end_year`)
-- `BuyHome`: subtracts `down_payment` in `year`, adds mortgage payment as annual expense, increases net worth via home equity (property growth now follows `real_estate_appreciation`, with inflation as fallback)
+- `BuyHome`: subtracts `down_payment` in `year`; when `price` is provided it also creates/updates a tracked property (named by optional `property`, else the event label) so the purchase flows into `home_value` / `home_equity`; mortgage amortization from `BuyHome` fields is still future work
 - `SellHome`: converts the named property value into cash proceeds net of sale fees and linked mortgage payoff, then removes that property from future home-value growth
 - `NewJob`: replaces `person.income` from `year` onward
 - `CareerBreak`: zeroes `person.income` for `[start_year, end_year]`
