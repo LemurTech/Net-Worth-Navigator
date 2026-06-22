@@ -2,6 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pandas as pd
+
 from src import charts, model, tables
 
 
@@ -15,6 +17,15 @@ class SimulationModeTests(unittest.TestCase):
                 "num_runs": 12,
                 "seed": 12345,
                 "portfolio_return_volatility": 0.10,
+            },
+            "monte_carlo": {
+                "success": {
+                    "failure_mode": "liquid_depletion",
+                    "minimum_spending_funded_ratio": 1.0,
+                    "allow_home_equity_for_spending": False,
+                    "allow_debt_for_spending": False,
+                    "failure_grace_period_months": 0,
+                }
             },
             "assumptions": {
                 "stock_return": 0.07,
@@ -73,6 +84,7 @@ class SimulationModeTests(unittest.TestCase):
         self.assertIsNotNone(result.band_df)
         self.assertIn("total_net_worth_p10", result.band_df.columns)
         self.assertIn("success_rate", result.summary)
+        self.assertEqual(result.summary["failure_mode"], "liquid_depletion")
 
     def test_build_chart_renders_monte_carlo_copy(self):
         config = self._base_config(mode="monte_carlo")
@@ -111,6 +123,48 @@ class SimulationModeTests(unittest.TestCase):
         self.assertIn("Simulation runs", html)
         self.assertIn("Portfolio return volatility", html)
         self.assertIn("Simulation results", html)
+        self.assertIn("Stochastic success rules", html)
+
+    def test_spending_shortfall_failure_mode_is_configurable(self):
+        config = self._base_config(mode="monte_carlo")
+        config["spending"]["retirement_annual"] = 5_000.0
+        config["spending"]["pre_retirement_spending"] = 5_000.0
+        config["monte_carlo"]["success"]["failure_mode"] = "spending_shortfall"
+        result = model.run_projection_result(
+            balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+            home_value=0.0,
+            liability_balances={},
+            config=config,
+        )
+
+        self.assertEqual(result.summary["success_rate"], 0.0)
+        self.assertEqual(result.summary["first_failure_year_p50"], 2026)
+
+    def test_historical_mode_uses_rolling_windows_from_csv(self):
+        config = self._base_config(mode="historical")
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = Path(tmp) / "returns.csv"
+            pd.DataFrame(
+                [
+                    {"year": 2000, "return": 0.10},
+                    {"year": 2001, "return": -0.05},
+                    {"year": 2002, "return": 0.08},
+                    {"year": 2003, "return": 0.04},
+                    {"year": 2004, "return": 0.12},
+                ]
+            ).to_csv(csv_path, index=False)
+            config["simulation"]["historical_returns_path"] = str(csv_path)
+            result = model.run_projection_result(
+                balances={"cash": 500.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+                config=config,
+            )
+
+        self.assertEqual(result.mode, "historical")
+        self.assertEqual(result.run_count, 3)
+        self.assertEqual(result.summary["run_labels"], ["2000-2002", "2001-2003", "2002-2004"])
+        self.assertIn("total_net_worth_p50", result.band_df.columns)
 
 
 if __name__ == "__main__":

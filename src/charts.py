@@ -577,8 +577,27 @@ def _build_kpi_summary(
                 else "—",
             ),
             (
-                "Median First Depletion Year",
-                str(summary.get("first_depletion_year_p50")) if summary.get("first_depletion_year_p50") is not None else "No depletion",
+                "Median First Failure Year",
+                str(summary.get("first_failure_year_p50")) if summary.get("first_failure_year_p50") is not None else "No failure",
+            ),
+            (
+                "Median Net Worth at End",
+                _format_compact_currency(float(summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"]))),
+            ),
+        ]
+    elif projection_result.mode == "historical":
+        summary = projection_result.summary
+        cards = [
+            ("Historical Success Rate", _format_percent(float(summary.get("success_rate", 0.0)))),
+            (
+                "Median Net Worth at Retirement",
+                _format_compact_currency(float(summary.get("retirement_total_net_worth_p50", retirement_row["total_net_worth"] if retirement_row is not None else 0.0)))
+                if retirement_row is not None or summary.get("retirement_total_net_worth_p50") is not None
+                else "—",
+            ),
+            (
+                "Median First Failure Year",
+                str(summary.get("first_failure_year_p50")) if summary.get("first_failure_year_p50") is not None else "No failure",
             ),
             (
                 "Median Net Worth at End",
@@ -700,7 +719,7 @@ def _build_portfolio_chart(
         )
         portfolio_note = (
             "<div class='modeling-note'><strong>Portfolio range note:</strong> "
-            "Bands show Monte Carlo portfolio ranges by year. The table below reflects the median simulated path.</div>"
+            "Bands show stochastic portfolio ranges by year. The table below reflects the median simulated path.</div>"
         )
         portfolio_table_html = build_portfolio_table(df, config=config)
         return (

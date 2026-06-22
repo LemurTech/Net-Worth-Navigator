@@ -18,6 +18,7 @@ from src.config_loader import load_config as shared_load_config
 from src.oregon_tax_2025 import OREGON_2025_TAX_TABLE, OREGON_2025_RATE_CHARTS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # ── Event type → emoji icon ────────────────────────────────────────────────────
 EVENT_ICONS = {
@@ -1596,7 +1597,7 @@ def _apply_forced_rmd_withdrawal(
 def _normalize_simulation_settings(config: dict) -> dict[str, object]:
     sim = dict(config.get("simulation", {}))
     mode = str(sim.get("mode", "deterministic")).strip().lower() or "deterministic"
-    if mode not in {"deterministic", "monte_carlo"}:
+    if mode not in {"deterministic", "monte_carlo", "historical"}:
         mode = "deterministic"
 
     try:
@@ -1615,11 +1616,72 @@ def _normalize_simulation_settings(config: dict) -> dict[str, object]:
     except (TypeError, ValueError):
         return_volatility = 0.15
 
+    historical_returns_path = sim.get("historical_returns_path")
+    historical_returns_path = (
+        str(historical_returns_path).strip()
+        if historical_returns_path not in (None, "")
+        else None
+    )
+
     return {
         "mode": mode,
         "num_runs": num_runs,
         "seed": seed,
         "portfolio_return_volatility": return_volatility,
+        "historical_returns_path": historical_returns_path,
+    }
+
+
+def _normalize_success_settings(config: dict) -> dict[str, object]:
+    monte_carlo_cfg = config.get("monte_carlo", {})
+    if not isinstance(monte_carlo_cfg, dict):
+        monte_carlo_cfg = {}
+    raw_success = monte_carlo_cfg.get("success", {})
+    if not isinstance(raw_success, dict):
+        raw_success = {}
+
+    failure_mode = str(raw_success.get("failure_mode", "liquid_depletion")).strip().lower()
+    if failure_mode not in {
+        "net_worth_below_zero",
+        "liquid_depletion",
+        "spending_shortfall",
+        "preserve_home_equity",
+        "custom",
+    }:
+        failure_mode = "liquid_depletion"
+
+    try:
+        minimum_spending_funded_ratio = float(raw_success.get("minimum_spending_funded_ratio", 1.0))
+    except (TypeError, ValueError):
+        minimum_spending_funded_ratio = 1.0
+    minimum_spending_funded_ratio = min(1.0, max(0.0, minimum_spending_funded_ratio))
+
+    try:
+        failure_grace_period_months = max(0.0, float(raw_success.get("failure_grace_period_months", 0)))
+    except (TypeError, ValueError):
+        failure_grace_period_months = 0.0
+
+    custom_failure_column = raw_success.get("custom_failure_column")
+    custom_failure_column = (
+        str(custom_failure_column).strip()
+        if custom_failure_column not in (None, "")
+        else None
+    )
+    custom_failure_operator = str(raw_success.get("custom_failure_operator", "<")).strip()
+    try:
+        custom_failure_threshold = float(raw_success.get("custom_failure_threshold", 0.0))
+    except (TypeError, ValueError):
+        custom_failure_threshold = 0.0
+
+    return {
+        "failure_mode": failure_mode,
+        "minimum_spending_funded_ratio": minimum_spending_funded_ratio,
+        "allow_home_equity_for_spending": bool(raw_success.get("allow_home_equity_for_spending", False)),
+        "allow_debt_for_spending": bool(raw_success.get("allow_debt_for_spending", False)),
+        "failure_grace_period_months": failure_grace_period_months,
+        "custom_failure_column": custom_failure_column,
+        "custom_failure_operator": custom_failure_operator,
+        "custom_failure_threshold": custom_failure_threshold,
     }
 
 
@@ -1698,23 +1760,212 @@ def _first_retirement_year(config: dict) -> int | None:
     return min(retirement_years) if retirement_years else None
 
 
+def _load_historical_returns(path_str: str) -> pd.DataFrame:
+    path = Path(path_str)
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    if not path.exists():
+        raise FileNotFoundError(f"Historical returns dataset not found at {path}")
+
+    df = pd.read_csv(path)
+    columns = {str(column).strip().lower(): column for column in df.columns}
+    year_col = columns.get("year")
+    return_col = (
+        columns.get("return")
+        or columns.get("portfolio_return")
+        or columns.get("annual_return")
+    )
+    if year_col is None or return_col is None:
+        raise ValueError(
+            f"Historical returns dataset {path} must include 'year' and 'return' columns."
+        )
+
+    normalized = (
+        df[[year_col, return_col]]
+        .rename(columns={year_col: "year", return_col: "return"})
+        .dropna()
+        .copy()
+    )
+    normalized["year"] = normalized["year"].astype(int)
+    normalized["return"] = normalized["return"].astype(float)
+    normalized = normalized.sort_values("year").reset_index(drop=True)
+    return normalized
+
+
+def _historical_return_sequences(
+    *,
+    start_year: int,
+    end_year: int,
+    path_str: str,
+) -> list[tuple[str, dict[int, float]]]:
+    historical = _load_historical_returns(path_str)
+    horizon_years = end_year - start_year + 1
+    if len(historical) < horizon_years:
+        raise ValueError(
+            f"Historical dataset has {len(historical)} rows but scenario horizon needs {horizon_years} years."
+        )
+
+    sequences: list[tuple[str, dict[int, float]]] = []
+    for start_idx in range(0, len(historical) - horizon_years + 1):
+        window = historical.iloc[start_idx:start_idx + horizon_years]
+        dataset_start_year = int(window.iloc[0]["year"])
+        dataset_end_year = int(window.iloc[-1]["year"])
+        overrides = {
+            projection_year: float(return_value)
+            for projection_year, return_value in zip(
+                range(start_year, end_year + 1),
+                window["return"].tolist(),
+            )
+        }
+        sequences.append((f"{dataset_start_year}-{dataset_end_year}", overrides))
+    return sequences
+
+
+def _adjusted_funding_shortfall(
+    row: pd.Series | dict,
+    success_settings: dict[str, object],
+) -> float:
+    try:
+        shortfall = max(0.0, float(row.get("funding_shortfall", 0.0)))
+    except (TypeError, ValueError):
+        shortfall = 0.0
+    if shortfall <= 0:
+        return 0.0
+    if success_settings.get("allow_debt_for_spending"):
+        return 0.0
+    if success_settings.get("allow_home_equity_for_spending"):
+        try:
+            home_equity = max(0.0, float(row.get("home_equity", 0.0)))
+        except (TypeError, ValueError):
+            home_equity = 0.0
+        shortfall = max(0.0, shortfall - home_equity)
+    return shortfall
+
+
+def _spending_funded_ratio_for_failure(
+    row: pd.Series | dict,
+    success_settings: dict[str, object],
+) -> float:
+    try:
+        required_outflows = max(0.0, float(row.get("required_outflows", 0.0)))
+    except (TypeError, ValueError):
+        required_outflows = 0.0
+    adjusted_shortfall = _adjusted_funding_shortfall(row, success_settings)
+    if required_outflows <= 0:
+        return 1.0 if adjusted_shortfall <= 0 else 0.0
+    return max(0.0, min(1.0, (required_outflows - adjusted_shortfall) / required_outflows))
+
+
+def _liquid_resources_for_failure(
+    row: pd.Series | dict,
+    success_settings: dict[str, object],
+) -> float:
+    try:
+        resources = float(row.get("net_worth", 0.0))
+    except (TypeError, ValueError):
+        resources = 0.0
+    if success_settings.get("allow_home_equity_for_spending"):
+        try:
+            resources += float(row.get("home_equity", 0.0))
+        except (TypeError, ValueError):
+            pass
+    return resources
+
+
+def _custom_failure_triggered(
+    row: pd.Series | dict,
+    success_settings: dict[str, object],
+) -> bool:
+    column = success_settings.get("custom_failure_column")
+    if not column:
+        raise ValueError("failure_mode='custom' requires monte_carlo.success.custom_failure_column")
+    try:
+        value = float(row.get(str(column), 0.0))
+    except (TypeError, ValueError):
+        return False
+    threshold = float(success_settings.get("custom_failure_threshold", 0.0))
+    operator = str(success_settings.get("custom_failure_operator", "<")).strip()
+    if operator == "<":
+        return value < threshold
+    if operator == "<=":
+        return value <= threshold
+    if operator == ">":
+        return value > threshold
+    if operator == ">=":
+        return value >= threshold
+    if operator == "==":
+        return value == threshold
+    if operator == "!=":
+        return value != threshold
+    raise ValueError(f"Unsupported custom failure operator: {operator}")
+
+
+def _run_failure_year(
+    df: pd.DataFrame,
+    success_settings: dict[str, object],
+) -> int | None:
+    failure_mode = str(success_settings.get("failure_mode", "liquid_depletion"))
+    minimum_ratio = float(success_settings.get("minimum_spending_funded_ratio", 1.0))
+    grace_months = float(success_settings.get("failure_grace_period_months", 0.0))
+    consecutive_failure_months = 0.0
+
+    for _, row in df.iterrows():
+        funded_ratio = _spending_funded_ratio_for_failure(row, success_settings)
+        row_failure = False
+
+        if failure_mode == "net_worth_below_zero":
+            row_failure = float(row.get("total_net_worth", 0.0)) < 0.0
+        elif failure_mode == "liquid_depletion":
+            row_failure = _liquid_resources_for_failure(row, success_settings) <= 0.0
+        elif failure_mode == "spending_shortfall":
+            row_failure = funded_ratio < minimum_ratio
+        elif failure_mode == "preserve_home_equity":
+            liquid_resources = float(row.get("net_worth", 0.0))
+            if success_settings.get("allow_home_equity_for_spending"):
+                row_failure = funded_ratio < minimum_ratio
+            else:
+                row_failure = (
+                    liquid_resources <= 0.0 and float(row.get("home_equity", 0.0)) > 0.0
+                ) or float(row.get("total_net_worth", 0.0)) < 0.0
+        elif failure_mode == "custom":
+            row_failure = _custom_failure_triggered(row, success_settings)
+
+        if failure_mode in {"spending_shortfall", "preserve_home_equity"}:
+            if row_failure:
+                threshold_gap_ratio = max(0.0, minimum_ratio - funded_ratio)
+                failure_months = 12.0 * (threshold_gap_ratio if minimum_ratio > 0 else (1.0 - funded_ratio))
+                consecutive_failure_months += max(1.0, failure_months)
+            else:
+                consecutive_failure_months = 0.0
+            if consecutive_failure_months > grace_months:
+                return int(row["year"])
+        elif row_failure:
+            return int(row["year"])
+
+    return None
+
+
 def _projection_summary(
     *,
     config: dict,
     simulation_settings: dict[str, object],
+    success_settings: dict[str, object],
     primary_df: pd.DataFrame,
     run_frames: list[pd.DataFrame],
     band_df: pd.DataFrame | None,
+    run_labels: list[str] | None = None,
 ) -> dict[str, object]:
     retirement_year = _first_retirement_year(config)
     summary: dict[str, object] = {
         "schema_version": PROJECTION_RESULT_SCHEMA_VERSION,
         "mode": simulation_settings["mode"],
+        "failure_mode": success_settings["failure_mode"],
         "run_count": len(run_frames),
         "display_path_kind": "deterministic" if len(run_frames) == 1 else "median",
         "start_year": int(primary_df["year"].min()) if not primary_df.empty else None,
         "end_year": int(primary_df["year"].max()) if not primary_df.empty else None,
         "retirement_year": retirement_year,
+        "success_settings": dict(success_settings),
     }
 
     if primary_df.empty:
@@ -1725,26 +1976,37 @@ def _projection_summary(
     summary["terminal_investable_net_worth"] = float(last_row["net_worth"])
 
     if len(run_frames) == 1:
+        summary["success"] = _run_failure_year(run_frames[0], success_settings) is None
         return summary
 
     terminal_values = sorted(float(frame.iloc[-1]["total_net_worth"]) for frame in run_frames)
-    depletion_years = [year for year in (_first_depletion_year(frame) for frame in run_frames) if year is not None]
-    success_count = sum(1 for frame in run_frames if _first_depletion_year(frame) is None)
+    failure_years = [year for year in (_run_failure_year(frame, success_settings) for frame in run_frames) if year is not None]
+    success_count = sum(1 for frame in run_frames if _run_failure_year(frame, success_settings) is None)
     summary["success_rate"] = success_count / len(run_frames)
     summary["failure_rate"] = 1.0 - summary["success_rate"]
     summary["terminal_total_net_worth_p10"] = float(pd.Series(terminal_values).quantile(0.10))
     summary["terminal_total_net_worth_p50"] = float(pd.Series(terminal_values).quantile(0.50))
     summary["terminal_total_net_worth_p90"] = float(pd.Series(terminal_values).quantile(0.90))
-    summary["depletion_run_count"] = len(depletion_years)
-    if depletion_years:
-        depletion_series = pd.Series(sorted(depletion_years))
-        summary["first_depletion_year_p10"] = int(round(float(depletion_series.quantile(0.10))))
-        summary["first_depletion_year_p50"] = int(round(float(depletion_series.quantile(0.50))))
-        summary["first_depletion_year_p90"] = int(round(float(depletion_series.quantile(0.90))))
+    summary["failed_run_count"] = len(failure_years)
+    summary["successful_run_count"] = success_count
+    if failure_years:
+        failure_series = pd.Series(sorted(failure_years))
+        summary["first_failure_year_p10"] = int(round(float(failure_series.quantile(0.10))))
+        summary["first_failure_year_p50"] = int(round(float(failure_series.quantile(0.50))))
+        summary["first_failure_year_p90"] = int(round(float(failure_series.quantile(0.90))))
     else:
-        summary["first_depletion_year_p10"] = None
-        summary["first_depletion_year_p50"] = None
-        summary["first_depletion_year_p90"] = None
+        summary["first_failure_year_p10"] = None
+        summary["first_failure_year_p50"] = None
+        summary["first_failure_year_p90"] = None
+
+    if success_settings["failure_mode"] in {"liquid_depletion", "net_worth_below_zero"}:
+        summary["depletion_run_count"] = summary["failed_run_count"]
+        summary["first_depletion_year_p10"] = summary["first_failure_year_p10"]
+        summary["first_depletion_year_p50"] = summary["first_failure_year_p50"]
+        summary["first_depletion_year_p90"] = summary["first_failure_year_p90"]
+
+    if run_labels:
+        summary["run_labels"] = list(run_labels)
 
     if retirement_year is not None and band_df is not None:
         match = band_df[band_df["year"] == retirement_year]
@@ -1768,7 +2030,8 @@ def run_projection_result(
 ) -> ProjectionResult:
     config = resolve_runtime_config(config or load_config())
     simulation_settings = _normalize_simulation_settings(config)
-    if simulation_settings["mode"] != "monte_carlo":
+    success_settings = _normalize_success_settings(config)
+    if simulation_settings["mode"] == "deterministic":
         yearly_df = _run_projection_yearly(
             balances,
             home_value=home_value,
@@ -1780,6 +2043,7 @@ def run_projection_result(
         summary = _projection_summary(
             config=config,
             simulation_settings=simulation_settings,
+            success_settings=success_settings,
             primary_df=yearly_df,
             run_frames=[yearly_df],
             band_df=None,
@@ -1794,45 +2058,73 @@ def run_projection_result(
             display_path_kind="deterministic",
         )
 
+    run_frames: list[pd.DataFrame] = []
+    run_labels: list[str] = []
     sim = config["simulation"]
     assumptions = config["assumptions"]
-    mean_return = (
-        assumptions["stock_return"] * assumptions["equity_allocation"] +
-        assumptions["bond_return"] * (1 - assumptions["equity_allocation"])
-    )
-    rng = random.Random(simulation_settings["seed"])
-    run_frames: list[pd.DataFrame] = []
-    for _ in range(int(simulation_settings["num_runs"])):
-        overrides = _sample_monte_carlo_return_overrides(
+    if simulation_settings["mode"] == "monte_carlo":
+        mean_return = (
+            assumptions["stock_return"] * assumptions["equity_allocation"] +
+            assumptions["bond_return"] * (1 - assumptions["equity_allocation"])
+        )
+        rng = random.Random(simulation_settings["seed"])
+        for run_index in range(int(simulation_settings["num_runs"])):
+            overrides = _sample_monte_carlo_return_overrides(
+                start_year=int(sim["start_year"]),
+                end_year=int(sim["end_year"]),
+                mean_return=float(mean_return),
+                volatility=float(simulation_settings["portfolio_return_volatility"]),
+                rng=rng,
+            )
+            run_frames.append(
+                _run_projection_yearly(
+                    balances,
+                    home_value=home_value,
+                    liability_balances=liability_balances,
+                    property_values=property_values,
+                    retirement_owner_balances=retirement_owner_balances,
+                    config=config,
+                    annual_return_overrides=overrides,
+                )
+            )
+            run_labels.append(f"run_{run_index + 1}")
+    elif simulation_settings["mode"] == "historical":
+        dataset_path = simulation_settings.get("historical_returns_path")
+        if not dataset_path:
+            raise ValueError(
+                "simulation.mode='historical' requires simulation.historical_returns_path"
+            )
+        for label, overrides in _historical_return_sequences(
             start_year=int(sim["start_year"]),
             end_year=int(sim["end_year"]),
-            mean_return=float(mean_return),
-            volatility=float(simulation_settings["portfolio_return_volatility"]),
-            rng=rng,
-        )
-        run_frames.append(
-            _run_projection_yearly(
-                balances,
-                home_value=home_value,
-                liability_balances=liability_balances,
-                property_values=property_values,
-                retirement_owner_balances=retirement_owner_balances,
-                config=config,
-                annual_return_overrides=overrides,
+            path_str=str(dataset_path),
+        ):
+            run_frames.append(
+                _run_projection_yearly(
+                    balances,
+                    home_value=home_value,
+                    liability_balances=liability_balances,
+                    property_values=property_values,
+                    retirement_owner_balances=retirement_owner_balances,
+                    config=config,
+                    annual_return_overrides=overrides,
+                )
             )
-        )
+            run_labels.append(label)
 
     primary_df = _build_primary_path_from_runs(run_frames)
     band_df = _build_band_frame(run_frames)
     summary = _projection_summary(
         config=config,
         simulation_settings=simulation_settings,
+        success_settings=success_settings,
         primary_df=primary_df,
         run_frames=run_frames,
         band_df=band_df,
+        run_labels=run_labels,
     )
     return ProjectionResult(
-        mode="monte_carlo",
+        mode=str(simulation_settings["mode"]),
         yearly_df=primary_df,
         summary=summary,
         simulation=simulation_settings,
@@ -1980,6 +2272,7 @@ def _run_projection_yearly(
         pending_reinvestments: list[tuple[str, float]] = []
         taxable_event_income = 0.0
         reserve_access_expense_total = 0.0
+        event_outflow_total = 0.0
         event_items: list[dict[str, object]] = []   # normalized cash-flow items for tables
 
         for event in events:
@@ -2003,6 +2296,8 @@ def _run_projection_yearly(
             elif etype == "Expense":
                 if event["year"] == year:
                     event_cash_flow += event["amount"]
+                    if event["amount"] < 0:
+                        event_outflow_total += abs(float(event["amount"]))
                     expense_kind = normalize_expense_kind(event)
                     if (
                         event["amount"] < 0
@@ -2025,6 +2320,8 @@ def _run_projection_yearly(
                 end = event.get("end_year", event["year"])
                 if event["year"] <= year <= end:
                     event_cash_flow += event["amount"]
+                    if event["amount"] < 0:
+                        event_outflow_total += abs(float(event["amount"]))
                     event_items.append(
                         make_event_item(
                             label=event["label"],
@@ -2043,6 +2340,7 @@ def _run_projection_yearly(
             elif etype == "BuyHome":
                 if event["year"] == year:
                     event_cash_flow -= event["down_payment"]
+                    event_outflow_total += abs(float(event["down_payment"]))
                     try:
                         purchase_price = float(event.get("price", 0.0))
                     except (TypeError, ValueError):
@@ -2084,6 +2382,8 @@ def _run_projection_yearly(
                     net_proceeds = property_value - sale_fees - mortgage_payoff
 
                     event_cash_flow += net_proceeds
+                    if net_proceeds < 0:
+                        event_outflow_total += abs(float(net_proceeds))
                     cash_preserve_flow += max(0.0, net_proceeds)
                     reinvest_target = _sell_home_reinvest_target(event)
                     if reinvest_target and net_proceeds > 0:
@@ -2131,6 +2431,7 @@ def _run_projection_yearly(
             elif etype == "Education":
                 if event["start_year"] <= year <= event["end_year"]:
                     event_cash_flow -= event["annual_cost"]
+                    event_outflow_total += abs(float(event["annual_cost"]))
                     if event["start_year"] == year and should_show_chart_label(event):
                         icon = EVENT_ICONS["Education"]
                         active_labels.append(f"{icon} {event['label']}")
@@ -2356,6 +2657,7 @@ def _run_projection_yearly(
         working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances)
         rmd_withdrawn = 0.0
         rmd_shortfall = 0.0
+        funding_shortfall = 0.0
 
         # Iterate because taxable withdrawals themselves increase taxes.
         for _ in range(12):
@@ -2500,6 +2802,7 @@ def _run_projection_yearly(
                     for person_key in RETIREMENT_OWNER_KEYS:
                         withdrawal_breakdown_by_person[person_key]["roth"] += owner_roth_withdrawals[person_key]
                 if unmet_deficit > 0:
+                    funding_shortfall = max(0.0, float(unmet_deficit))
                     for cat in working_portfolio:
                         working_portfolio[cat] = 0.0
                     working_portfolio["cash"] = -unmet_deficit
@@ -2508,6 +2811,7 @@ def _run_projection_yearly(
                     working_retirement_owner_balances["roth"]["person1"] = 0.0
                     working_retirement_owner_balances["roth"]["person2"] = 0.0
                 else:
+                    funding_shortfall = 0.0
                     _apply_surplus_with_reserve_target(
                         working_portfolio,
                         surplus=0.0,
@@ -2553,6 +2857,10 @@ def _run_projection_yearly(
                 )
         _sync_retirement_bucket_totals(portfolio, retirement_owner_balances)
         net_flow = base_net_flow - annual_taxes
+        required_outflows = max(0.0, annual_spend) + max(0.0, annual_taxes) + max(0.0, event_outflow_total)
+        spending_funded_ratio = (
+            1.0 if required_outflows <= 0 else max(0.0, min(1.0, (required_outflows - funding_shortfall) / required_outflows))
+        )
 
         # ── Grow home value at configured real-estate appreciation; compute equity ──
         total_portfolio = sum(portfolio.values())
@@ -2584,6 +2892,10 @@ def _run_projection_yearly(
             "annual_spend":   annual_spend,
             "freed_payments": freed_this_year,
             "net_flow":       net_flow,
+            "required_outflows": required_outflows,
+            "event_outflow_total": event_outflow_total,
+            "funding_shortfall": funding_shortfall,
+            "spending_funded_ratio": spending_funded_ratio,
             "rmd_required":   rmd_required,
             "rmd_withdrawn":  rmd_withdrawn,
             "rmd_shortfall":  rmd_shortfall,

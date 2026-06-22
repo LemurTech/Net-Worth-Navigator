@@ -565,6 +565,12 @@ def build_scenario_parameters_summary(
             baseline_simulation.get("portfolio_return_volatility", 0.15),
             _fmt_percent,
         ),
+        _diff_row(
+            "Historical returns path",
+            simulation.get("historical_returns_path"),
+            baseline_simulation.get("historical_returns_path"),
+            _fmt_text,
+        ),
     ]
     if scenario is not None:
         scenario_rows.extend([
@@ -750,23 +756,64 @@ def build_scenario_parameters_summary(
         for label, value in event_metrics.items()
     ]
     ownership_snapshot_table = _owner_share_snapshot_table(config, projection_df)
+    monte_carlo_cfg = config.get("monte_carlo", {}) if isinstance(config.get("monte_carlo"), dict) else {}
+    success_cfg = monte_carlo_cfg.get("success", {}) if isinstance(monte_carlo_cfg.get("success"), dict) else {}
+    baseline_monte_carlo_cfg = (
+        baseline_config.get("monte_carlo", {})
+        if isinstance(baseline_config, dict) and isinstance(baseline_config.get("monte_carlo"), dict)
+        else {}
+    )
+    baseline_success_cfg = (
+        baseline_monte_carlo_cfg.get("success", {})
+        if isinstance(baseline_monte_carlo_cfg.get("success"), dict)
+        else {}
+    )
+    success_rows = [
+        _diff_row("Failure mode", success_cfg.get("failure_mode"), baseline_success_cfg.get("failure_mode"), _fmt_text),
+        _diff_row(
+            "Minimum spending funded ratio",
+            success_cfg.get("minimum_spending_funded_ratio", 1.0),
+            baseline_success_cfg.get("minimum_spending_funded_ratio", 1.0),
+            _fmt_percent,
+        ),
+        _diff_row(
+            "Allow home equity for spending",
+            success_cfg.get("allow_home_equity_for_spending", False),
+            baseline_success_cfg.get("allow_home_equity_for_spending", False),
+            _fmt_bool,
+        ),
+        _diff_row(
+            "Allow debt for spending",
+            success_cfg.get("allow_debt_for_spending", False),
+            baseline_success_cfg.get("allow_debt_for_spending", False),
+            _fmt_bool,
+        ),
+        _diff_row(
+            "Failure grace period (months)",
+            success_cfg.get("failure_grace_period_months", 0),
+            baseline_success_cfg.get("failure_grace_period_months", 0),
+            _fmt_text,
+        ),
+    ]
     simulation_result_card = ""
-    if projection_result is not None and getattr(projection_result, "mode", "deterministic") == "monte_carlo":
+    if projection_result is not None and getattr(projection_result, "mode", "deterministic") in {"monte_carlo", "historical"}:
         summary = getattr(projection_result, "summary", {}) or {}
+        mode_label = "Monte Carlo" if getattr(projection_result, "mode", "deterministic") == "monte_carlo" else "Historical sequence"
         simulation_rows = [
             ("Display path", escape(str(summary.get("display_path_kind", "median")))),
             ("Run count", escape(str(summary.get("run_count", "—")))),
+            ("Failure mode", escape(str(summary.get("failure_mode", "—")))),
             ("Success rate", _fmt_percent(summary.get("success_rate", 0.0))),
             ("Median end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p50"))),
             ("P10 end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p10"))),
             ("P90 end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p90"))),
-            ("Median first depletion year", escape(str(summary.get("first_depletion_year_p50", "No depletion")))),
+            ("Median first failure year", escape(str(summary.get("first_failure_year_p50", "No failure")))),
             ("Retirement P50 net worth", _fmt_currency(summary.get("retirement_total_net_worth_p50"))),
         ]
         simulation_result_card = (
             "<section class='assumption-card'>"
             "<h3>Simulation results</h3>"
-            "<p class='assumption-subtitle'>Monte Carlo summary metrics from the current rendered run.</p>"
+            f"<p class='assumption-subtitle'>{escape(mode_label)} summary metrics from the current rendered run.</p>"
             f"{_kv_table(simulation_rows)}"
             "</section>"
         )
@@ -822,6 +869,10 @@ def build_scenario_parameters_summary(
         "<section class='assumption-card'>"
         "<h3>Enabled events summary</h3>"
         f"{_kv_table(event_rows)}"
+        "</section>"
+        "<section class='assumption-card'>"
+        "<h3>Stochastic success rules</h3>"
+        f"{_kv_table(success_rows)}"
         "</section>"
         f"{simulation_result_card}"
         f"{ownership_card_html}"

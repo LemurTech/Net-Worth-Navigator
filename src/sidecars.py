@@ -211,6 +211,9 @@ def _scenario_manifest(
             "run_count": projection_result.run_count,
             "display_path_kind": projection_result.display_path_kind,
         },
+        "stochastic_success": dict(
+            (config.get("monte_carlo", {}) if isinstance(config.get("monte_carlo"), dict) else {}).get("success", {})
+        ),
         "people": {
             person_key: {
                 key: config.get(person_key, {}).get(key)
