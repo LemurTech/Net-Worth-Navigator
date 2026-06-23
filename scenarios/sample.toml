@@ -40,6 +40,37 @@ end_year = 2066
 [display]
 projection_title = "Sample Household Plan (Synthetic Demo)"
 
+render_modes = ["deterministic", "historical", "monte_carlo"]   # shell/render pipeline outputs these mode variants
+mode = "deterministic"   # compatibility/default single-run mode; per-mode renders override this automatically
+# num_runs = 250
+# seed = 12345
+# portfolio_return_volatility = 0.15   # annual stdev for blended investable return in Monte Carlo mode
+# historical_returns_path = "config/return_sequences/us_balanced_returns.csv"  # bundled illustrative starter dataset; columns: year, return
+
+[monte_carlo.success]    # success/failure rules for all stochastic modes: monte_carlo and historical
+failure_mode = "spending_shortfall"
+
+# Possible values:
+# - "net_worth_below_zero"
+# - "liquid_depletion"
+# - "spending_shortfall"
+# - "preserve_home_equity"
+# - "custom"
+
+minimum_spending_funded_ratio = 1.0
+allow_home_equity_for_spending = false
+allow_debt_for_spending = false
+failure_grace_period_months = 0
+
+# Additional stochastic risk metrics shown in the UI/sidecars
+# (for example Probability of Home Equity Required) are derived
+# from these rules and do not require extra TOML fields.
+
+# Optional custom mode controls:
+# custom_failure_column = "spending_funded_ratio"
+# custom_failure_operator = "<"
+# custom_failure_threshold = 1.0
+
 [person1]
 name = "Alex"
 dob = "1969-04-12"
