@@ -533,17 +533,16 @@
         if (renderHint) renderHint.textContent = hint;
       }
 
-      function beginOverlayProgress(stages) {
+      function clearOverlayTimers() {
         if (progressTimer) window.clearInterval(progressTimer);
         if (elapsedTimer) window.clearInterval(elapsedTimer);
-        overlayStartedAt = Date.now();
-        let stageIndex = 0;
+        progressTimer = null;
+        elapsedTimer = null;
+      }
 
-        function updateStage() {
-          if (!renderProgress || !Array.isArray(stages) || stages.length === 0) return;
-          renderProgress.textContent = stages[stageIndex % stages.length];
-          stageIndex += 1;
-        }
+      function beginOverlayElapsed() {
+        clearOverlayTimers();
+        overlayStartedAt = Date.now();
 
         function updateElapsed() {
           if (!renderHint || overlayStartedAt === null) return;
@@ -551,36 +550,8 @@
           renderHint.textContent = `Elapsed: ${elapsed}s. This page will refresh when the render completes.`;
         }
 
-        updateStage();
         updateElapsed();
-        progressTimer = window.setInterval(updateStage, 2200);
         elapsedTimer = window.setInterval(updateElapsed, 1000);
-      }
-
-      function renderModeStages(currentPlan) {
-        const stages = ["Validating TOML and saving backup…"];
-        currentPlan.render_modes.forEach(function (mode, index) {
-          stages.push(
-            `Mode page ${index + 1} of ${currentPlan.render_count}: ${modeLabel(mode)} for ${currentPlan.name}…`
-          );
-        });
-        stages.push("Writing chart sidecars, shell manifest, and deploy artifacts…");
-        return stages;
-      }
-
-      function renderAllStages(plan) {
-        const stages = ["Saving current scenario and validating all configs…"];
-        let pageIndex = 0;
-        plan.scenarios.forEach(function (scenario, scenarioIndex) {
-          scenario.render_modes.forEach(function (mode) {
-            pageIndex += 1;
-            stages.push(
-              `Scenario ${scenarioIndex + 1} of ${plan.scenarioCount}, mode page ${pageIndex} of ${plan.totalRenderCount}: ${scenario.name} — ${modeLabel(mode)}…`
-            );
-          });
-        });
-        stages.push("Refreshing shell manifest, scenario index, and deploy output…");
-        return stages;
       }
 
       function showRenderOverlay(action) {
@@ -593,45 +564,161 @@
           setOverlayCopy(
             `Rendering ${currentPlan.name}`,
             `${currentPlan.render_count} mode page${currentPlan.render_count === 1 ? "" : "s"}: ${joinModes(currentModes)}`,
-            "Preparing render stages…"
+            "Preparing background render job…"
           );
-          beginOverlayProgress(renderModeStages(currentPlan));
+          if (renderProgress) renderProgress.textContent = "Queuing render job…";
         } else if (action === "save_render_all") {
           setOverlayCopy(
             "Rendering All Scenarios",
             `${plan.scenarioCount || 0} scenarios, ${plan.totalRenderCount || 0} mode pages`,
-            "Preparing batch render stages…"
+            "Preparing background batch render job…"
           );
-          beginOverlayProgress(renderAllStages(plan));
-        } else if (action === "clone") {
-          setOverlayCopy(
-            "Cloning Scenario",
-            `Creating a new scenario and rendering ${currentPlan.render_count} mode page${currentPlan.render_count === 1 ? "" : "s"}`,
-            "Preparing clone and initial render…"
-          );
-          beginOverlayProgress([
-            "Validating current TOML…",
-            "Creating scenario file and metadata…",
-            ...renderModeStages(currentPlan).slice(1),
-          ]);
+          if (renderProgress) renderProgress.textContent = "Queuing batch render job…";
         } else {
           setOverlayCopy("Rendering projection…", "Preparing render plan…", "This page will update while the server works.");
-          beginOverlayProgress(["Starting render…"]);
+          if (renderProgress) renderProgress.textContent = "Starting render…";
         }
+        beginOverlayElapsed();
         renderOverlay.classList.add("active");
         renderOverlay.setAttribute("aria-hidden", "false");
       }
 
+      function hideRenderOverlay() {
+        if (!renderOverlay) return;
+        clearOverlayTimers();
+        renderOverlay.classList.remove("active");
+        renderOverlay.setAttribute("aria-hidden", "true");
+      }
+
+      let currentJobId = null;
+      let jobPollTimer = null;
+
+      function buildEditorUrl(jobId) {
+        const url = new URL(window.location.href);
+        const slug = scenarioSelect && scenarioSelect.value ? scenarioSelect.value : "";
+        if (slug) {
+          url.searchParams.set("scenario", slug);
+        }
+        if (jobId) {
+          url.searchParams.set("job", jobId);
+        } else {
+          url.searchParams.delete("job");
+        }
+        return url.toString();
+      }
+
+      function updateOverlayFromJob(job) {
+        if (!job) return;
+        const scenarioCount = Number(job.scenario_count || 0);
+        const totalRenderCount = Number(job.total_render_count || 0);
+        const currentScenarioIndex = Number(job.current_scenario_index || 0);
+        const currentScenarioName = job.current_scenario_name || "";
+        const currentModeIndex = Number(job.current_mode_index || 0);
+        const currentMode = job.current_mode ? modeLabel(job.current_mode) : "";
+        const completedRenderCount = Number(job.completed_render_count || 0);
+        const title = job.action === "save_render_all"
+          ? "Rendering All Scenarios"
+          : "Rendering Scenario";
+        const detail = totalRenderCount > 0
+          ? `${scenarioCount} scenario${scenarioCount === 1 ? "" : "s"}, ${totalRenderCount} mode page${totalRenderCount === 1 ? "" : "s"}`
+          : (job.detail || "Preparing render plan…");
+        let progress = job.progress || job.detail || "Waiting for progress update…";
+        if (job.state === "running" && totalRenderCount > 0) {
+          if (currentScenarioName && currentMode) {
+            progress = `Scenario ${Math.max(1, currentScenarioIndex)} of ${Math.max(1, scenarioCount)}, mode page ${Math.min(totalRenderCount, Math.max(1, completedRenderCount + 1))} of ${totalRenderCount}: ${currentScenarioName} — ${currentMode}`;
+          } else {
+            progress = `${completedRenderCount} of ${totalRenderCount} mode pages complete…`;
+          }
+        }
+        setOverlayCopy(title, detail, "This page will refresh when the render completes.");
+        if (renderProgress) renderProgress.textContent = progress;
+      }
+
+      async function pollRenderJob(jobId) {
+        const response = await fetch(`jobs/${encodeURIComponent(jobId)}`, {
+          headers: { "Accept": "application/json" }
+        });
+        if (!response.ok) {
+          throw new Error(`Unable to load render job ${jobId}.`);
+        }
+        const payload = await response.json();
+        if (!payload.ok) {
+          throw new Error(payload.error || "Render job lookup failed.");
+        }
+        updateOverlayFromJob(payload);
+        if (payload.state === "completed" || payload.state === "failed") {
+          if (jobPollTimer) window.clearInterval(jobPollTimer);
+          jobPollTimer = null;
+          currentJobId = null;
+          window.location.href = payload.redirect_url || buildEditorUrl(jobId);
+        }
+      }
+
+      function startJobPolling(jobId, action) {
+        currentJobId = jobId;
+        if (jobPollTimer) window.clearInterval(jobPollTimer);
+        showRenderOverlay(action);
+        pollRenderJob(jobId).catch(function (err) {
+          if (renderProgress) renderProgress.textContent = String(err);
+        });
+        jobPollTimer = window.setInterval(function () {
+          pollRenderJob(jobId).catch(function (err) {
+            if (renderProgress) renderProgress.textContent = String(err);
+          });
+        }, 1000);
+      }
+
+      async function startAsyncRenderAction(action) {
+        if (!configForm) return;
+        showRenderOverlay(action);
+        const formData = new FormData(configForm);
+        formData.set("action", action);
+        const body = new URLSearchParams();
+        formData.forEach(function (value, key) {
+          body.append(key, String(value));
+        });
+        const response = await fetch(configForm.getAttribute("action") || window.location.pathname, {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "X-Requested-With": "fetch",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+          },
+          body: body.toString()
+        });
+        if (!response.ok) {
+          hideRenderOverlay();
+          window.location.reload();
+          return;
+        }
+        const payload = await response.json();
+        if (!payload.job_id) {
+          hideRenderOverlay();
+          window.location.reload();
+          return;
+        }
+        history.replaceState(null, "", buildEditorUrl(payload.job_id));
+        startJobPolling(payload.job_id, action);
+      }
+
       function installRenderProgress() {
         if (!configForm) return;
+        const asyncActions = new Set(["save_render", "save_render_all"]);
         configForm.querySelectorAll("button[name='action']").forEach(function (btn) {
           btn.addEventListener("click", function () {
             lastAction = btn.value || "";
           });
         });
-        configForm.addEventListener("submit", function () {
-          if (lastAction === "save_render" || lastAction === "save_render_all" || lastAction === "clone") {
-            showRenderOverlay(lastAction);
+        configForm.addEventListener("submit", function (evt) {
+          if (asyncActions.has(lastAction)) {
+            evt.preventDefault();
+            startAsyncRenderAction(lastAction).catch(function (err) {
+              hideRenderOverlay();
+              if (statusPanel) {
+                statusPanel.scrollIntoView({ block: "start", behavior: "smooth" });
+              }
+              window.alert(String(err));
+            });
           }
         });
       }
@@ -678,8 +765,13 @@
 
       installRenderProgress();
       syncAllProjectionHrefs();
-        installProjectionLink("open-projection-btn");
+      installProjectionLink("open-projection-btn");
       installProjectionLink("projection-link");
+
+      const existingJobId = new URLSearchParams(window.location.search).get("job");
+      if (existingJobId && !lastActionFromServer) {
+        startJobPolling(existingJobId, "save_render");
+      }
 
       if (lastActionFromServer === "save") {
         window.requestAnimationFrame(function () {
@@ -688,6 +780,8 @@
             statusPanel.scrollIntoView({ block: "start", behavior: "smooth" });
           }
         });
+      } else if (lastActionFromServer === "save_render" || lastActionFromServer === "save_render_all") {
+        history.replaceState(null, "", buildEditorUrl(""));
       }
     })();
   </script>

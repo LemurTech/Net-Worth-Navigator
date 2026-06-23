@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import html
 import json
+import os
+import re
 import subprocess
 import sys
+import threading
 import tomllib
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs
+from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -26,6 +30,8 @@ PUBLIC_EDITOR_URL = "http://casalemuria.lan/finances/config/"
 
 app = FastAPI(title="Net Worth Navigator Config Editor")
 templates = Jinja2Templates(directory=str(APP_ROOT / "templates"))
+RENDER_JOBS: dict[str, dict] = {}
+RENDER_JOBS_LOCK = threading.Lock()
 
 
 def _current_scenario(scenario_slug: str | None = None):
@@ -82,6 +88,42 @@ def _render_projection_offline(scenario_slug: str | None = None) -> subprocess.C
         capture_output=True,
         text=True,
         timeout=300,
+    )
+
+
+def _render_projection_offline_streaming(
+    scenario_slug: str | None = None,
+    *,
+    line_callback=None,
+) -> subprocess.CompletedProcess[str]:
+    command = [str(PYTHON_BIN), str(RUN_SCRIPT), "--offline"]
+    if scenario_slug:
+        command.extend(["--scenario", scenario_slug])
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    process = subprocess.Popen(
+        command,
+        cwd=str(APP_ROOT),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+        env=env,
+    )
+    stdout_lines: list[str] = []
+    if process.stdout is not None:
+        for raw_line in process.stdout:
+            line = raw_line.rstrip("\r\n")
+            stdout_lines.append(line)
+            if line_callback is not None:
+                line_callback(line)
+    stderr_text = process.stderr.read() if process.stderr is not None else ""
+    returncode = process.wait(timeout=300)
+    return subprocess.CompletedProcess(
+        args=command,
+        returncode=returncode,
+        stdout="\n".join(stdout_lines),
+        stderr=stderr_text,
     )
 
 
@@ -202,6 +244,281 @@ def _render_plan_snapshot(
     }
 
 
+def _store_render_job(job: dict) -> dict:
+    with RENDER_JOBS_LOCK:
+        RENDER_JOBS[job["id"]] = job
+    return job
+
+
+def _get_render_job(job_id: str) -> dict | None:
+    with RENDER_JOBS_LOCK:
+        job = RENDER_JOBS.get(job_id)
+        return dict(job) if job is not None else None
+
+
+def _update_render_job(job_id: str, **fields) -> dict | None:
+    with RENDER_JOBS_LOCK:
+        job = RENDER_JOBS.get(job_id)
+        if job is None:
+            return None
+        job.update(fields)
+        job["updated_at"] = datetime.now().isoformat()
+        return dict(job)
+
+
+def _job_redirect_url(scenario_slug: str, job_id: str) -> str:
+    return f"{PUBLIC_EDITOR_URL}?scenario={scenario_slug}&job={job_id}"
+
+
+def _job_status_payload(job: dict) -> dict:
+    return {
+        "job_id": job["id"],
+        "action": job["action"],
+        "state": job["state"],
+        "scenario_slug": job["scenario_slug"],
+        "scenario_count": job["scenario_count"],
+        "total_render_count": job["total_render_count"],
+        "current_scenario_index": job.get("current_scenario_index", 0),
+        "current_scenario_name": job.get("current_scenario_name", ""),
+        "current_mode_index": job.get("current_mode_index", 0),
+        "current_mode": job.get("current_mode", ""),
+        "completed_render_count": job.get("completed_render_count", 0),
+        "title": job.get("title", ""),
+        "detail": job.get("detail", ""),
+        "progress": job.get("progress", ""),
+        "status_kind": job.get("status_kind", "info"),
+        "status_title": job.get("status_title"),
+        "status_message": job.get("status_message"),
+        "details": job.get("details"),
+        "backup_path": job.get("backup_path"),
+        "last_action": job.get("last_action", ""),
+        "redirect_url": _job_redirect_url(job["scenario_slug"], job["id"]),
+        "started_at": job.get("started_at"),
+        "completed_at": job.get("completed_at"),
+    }
+
+
+def _create_render_job(
+    *,
+    action: str,
+    scenario_slug: str,
+    scenario_count: int,
+    total_render_count: int,
+    backup_path: str | None = None,
+) -> dict:
+    now = datetime.now().isoformat()
+    return _store_render_job(
+        {
+            "id": uuid4().hex,
+            "action": action,
+            "state": "queued",
+            "scenario_slug": scenario_slug,
+            "scenario_count": scenario_count,
+            "total_render_count": total_render_count,
+            "current_scenario_index": 0,
+            "current_scenario_name": "",
+            "current_mode_index": 0,
+            "current_mode": "",
+            "completed_render_count": 0,
+            "title": "Queued render job",
+            "detail": f"{scenario_count} scenario(s), {total_render_count} mode page(s)",
+            "progress": "Waiting for background worker…",
+            "status_kind": "info",
+            "status_title": None,
+            "status_message": None,
+            "details": None,
+            "backup_path": backup_path,
+            "last_action": action,
+            "started_at": now,
+            "updated_at": now,
+            "completed_at": None,
+        }
+    )
+
+
+def _job_context_from_completed_job(job_id: str) -> dict | None:
+    job = _get_render_job(job_id)
+    if job is None or job.get("state") not in {"completed", "failed"}:
+        return None
+    return {
+        "status_kind": job.get("status_kind", "info"),
+        "status_title": job.get("status_title"),
+        "status_message": job.get("status_message"),
+        "details": job.get("details"),
+        "backup_path": job.get("backup_path"),
+        "last_action": job.get("last_action", ""),
+    }
+
+
+def _planned_modes_for_scenario(slug: str) -> list[str]:
+    return _render_modes_from_content(None, fallback_slug=slug)
+
+
+def _run_single_scenario_job(
+    *,
+    job_id: str,
+    scenario_slug: str,
+    scenario_name: str,
+    scenario_index: int,
+    scenario_count: int,
+    planned_modes: list[str],
+    page_offset: int,
+) -> subprocess.CompletedProcess[str]:
+    total_render_count = int(_get_render_job(job_id).get("total_render_count", len(planned_modes))) if _get_render_job(job_id) else len(planned_modes)
+    mode_lookup = {mode: index + 1 for index, mode in enumerate(planned_modes)}
+    mode_line_re = re.compile(r"Running projection \[(?P<mode>[^\]]+)\]")
+
+    def on_line(line: str) -> None:
+        match = mode_line_re.search(line)
+        if match:
+            mode = str(match.group("mode")).strip().lower()
+            mode_index = mode_lookup.get(mode)
+            if mode_index is not None:
+                completed_render_count = page_offset + mode_index - 1
+                _update_render_job(
+                    job_id,
+                    current_scenario_index=scenario_index,
+                    current_scenario_name=scenario_name,
+                    current_mode_index=mode_index,
+                    current_mode=mode,
+                    completed_render_count=completed_render_count,
+                    title="Rendering projections",
+                    detail=(
+                        f"Scenario {scenario_index} of {scenario_count}, "
+                        f"mode page {completed_render_count + 1} of "
+                        f"{total_render_count}"
+                    ),
+                    progress=f"{scenario_name} — {mode.replace('_', ' ').title()}",
+                )
+
+    result = _render_projection_offline_streaming(scenario_slug, line_callback=on_line)
+    _update_render_job(
+        job_id,
+        current_scenario_index=scenario_index,
+        current_scenario_name=scenario_name,
+        current_mode_index=len(planned_modes),
+        current_mode=planned_modes[-1] if planned_modes else "",
+        completed_render_count=page_offset + len(planned_modes),
+    )
+    return result
+
+
+def _complete_render_job(
+    job_id: str,
+    *,
+    state: str,
+    status_kind: str,
+    status_title: str,
+    status_message: str,
+    details: str | None,
+) -> None:
+    _update_render_job(
+        job_id,
+        state=state,
+        status_kind=status_kind,
+        status_title=status_title,
+        status_message=status_message,
+        details=details,
+        title=status_title,
+        detail=status_message,
+        progress="Complete." if state == "completed" else "Finished with errors.",
+        completed_at=datetime.now().isoformat(),
+    )
+
+
+def _run_save_render_job(job_id: str, scenario_slug: str) -> None:
+    scenario = _current_scenario(scenario_slug)
+    planned_modes = _planned_modes_for_scenario(scenario.slug)
+    _update_render_job(
+        job_id,
+        state="running",
+        title="Rendering projections",
+        detail=f"Scenario 1 of 1, 0 of {len(planned_modes)} mode pages complete",
+        progress="Preparing render process…",
+    )
+    result = _run_single_scenario_job(
+        job_id=job_id,
+        scenario_slug=scenario.slug,
+        scenario_name=scenario.name,
+        scenario_index=1,
+        scenario_count=1,
+        planned_modes=planned_modes,
+        page_offset=0,
+    )
+    if result.returncode == 0:
+        _complete_render_job(
+            job_id,
+            state="completed",
+            status_kind="success",
+            status_title="Saved and re-rendered",
+            status_message="Configuration saved and offline projection rebuilt successfully.",
+            details=(result.stdout or "").strip() or None,
+        )
+        return
+    details = "\n".join(part for part in [(result.stdout or "").strip(), (result.stderr or "").strip()] if part).strip()
+    _complete_render_job(
+        job_id,
+        state="failed",
+        status_kind="error",
+        status_title="Render failed after save",
+        status_message="The config was saved, but the offline projection rebuild failed.",
+        details=details or "No process output captured.",
+    )
+
+
+def _run_save_render_all_job(job_id: str, current_scenario_slug: str) -> None:
+    scenarios = discover_scenarios()
+    total_render_count = sum(len(_planned_modes_for_scenario(scenario.slug)) for scenario in scenarios)
+    _update_render_job(
+        job_id,
+        state="running",
+        scenario_count=len(scenarios),
+        total_render_count=total_render_count,
+        title="Rendering all scenarios",
+        detail=f"0 of {total_render_count} mode pages complete",
+        progress="Preparing batch render process…",
+    )
+    results: list[tuple[str, subprocess.CompletedProcess[str]]] = []
+    page_offset = 0
+    for scenario_index, scenario in enumerate(scenarios, start=1):
+        planned_modes = _planned_modes_for_scenario(scenario.slug)
+        result = _run_single_scenario_job(
+            job_id=job_id,
+            scenario_slug=scenario.slug,
+            scenario_name=scenario.name,
+            scenario_index=scenario_index,
+            scenario_count=len(scenarios),
+            planned_modes=planned_modes,
+            page_offset=page_offset,
+        )
+        results.append((scenario.slug, result))
+        page_offset += len(planned_modes)
+
+    failures = [(slug, result) for slug, result in results if result.returncode != 0]
+    details_lines: list[str] = []
+    for slug, result in results:
+        details_lines.append(f"[{slug}] exit={result.returncode}")
+        stdout = (result.stdout or "").strip()
+        stderr = (result.stderr or "").strip()
+        if stdout:
+            details_lines.append(stdout)
+        if stderr:
+            details_lines.append(stderr)
+    _update_render_job(job_id, scenario_slug=current_scenario_slug)
+    _complete_render_job(
+        job_id,
+        state="failed" if failures else "completed",
+        status_kind="error" if failures else "success",
+        status_title="Render all completed with errors" if failures else "Render all complete",
+        status_message=(
+            f"Saved current scenario and rendered {len(results)} scenario(s), with {len(failures)} failure(s)."
+            if failures
+            else f"Saved current scenario and rendered {len(results)} scenario(s) successfully."
+        ),
+        details="\n\n".join(details_lines),
+    )
+
+
 async def _parse_form(request: Request) -> dict[str, str]:
     body = (await request.body()).decode("utf-8")
     parsed = parse_qs(body, keep_blank_values=True)
@@ -211,15 +528,19 @@ async def _parse_form(request: Request) -> dict[str, str]:
 @app.get("/", response_class=HTMLResponse)
 async def editor_home(request: Request) -> HTMLResponse:
     scenario_slug = request.query_params.get("scenario")
+    job_id = request.query_params.get("job")
     content = _read_config_text(scenario_slug)
+    completed_job_context = _job_context_from_completed_job(job_id) if job_id else None
     context = _build_context(
         request,
         content=content,
-        status_kind="info",
-        status_title="Ready",
-        status_message="Load, edit, validate, save, or save and re-render the offline projection.",
+        status_kind=(completed_job_context or {}).get("status_kind", "info"),
+        status_title=(completed_job_context or {}).get("status_title", "Ready"),
+        status_message=(completed_job_context or {}).get("status_message", "Load, edit, validate, save, or save and re-render the offline projection."),
+        details=(completed_job_context or {}).get("details"),
+        backup_path=(completed_job_context or {}).get("backup_path"),
         scenario_slug=scenario_slug,
-        last_action="",
+        last_action=(completed_job_context or {}).get("last_action", ""),
         clone_name="",
         clone_slug="",
         clone_description="",
@@ -236,6 +557,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
     clone_name = form.get("clone_name", "")
     clone_slug = form.get("clone_slug", "")
     clone_description = form.get("clone_description", "")
+    wants_json = request.headers.get("x-requested-with", "").lower() == "fetch"
 
     try:
         parsed = _validate_config_text(content)
@@ -325,6 +647,22 @@ async def editor_submit(request: Request) -> HTMLResponse:
             return templates.TemplateResponse(request, "config_editor.html", context)
 
         if action == "save_render":
+            if wants_json:
+                scenario = _current_scenario(scenario_slug)
+                planned_modes = _planned_modes_for_scenario(scenario.slug)
+                job = _create_render_job(
+                    action=action,
+                    scenario_slug=scenario.slug,
+                    scenario_count=1,
+                    total_render_count=len(planned_modes),
+                    backup_path=str(backup_path),
+                )
+                threading.Thread(
+                    target=_run_save_render_job,
+                    args=(job["id"], scenario.slug),
+                    daemon=True,
+                ).start()
+                return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
             result = _render_projection_offline(scenario_slug)
             if result.returncode == 0:
                 details = (result.stdout or "").strip()
@@ -362,6 +700,23 @@ async def editor_submit(request: Request) -> HTMLResponse:
             return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
 
         if action == "save_render_all":
+            if wants_json:
+                scenario = _current_scenario(scenario_slug)
+                scenarios = discover_scenarios()
+                total_render_count = sum(len(_planned_modes_for_scenario(item.slug)) for item in scenarios)
+                job = _create_render_job(
+                    action=action,
+                    scenario_slug=scenario.slug,
+                    scenario_count=len(scenarios),
+                    total_render_count=total_render_count,
+                    backup_path=str(backup_path),
+                )
+                threading.Thread(
+                    target=_run_save_render_all_job,
+                    args=(job["id"], scenario.slug),
+                    daemon=True,
+                ).start()
+                return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
             results = _render_all_scenarios()
             failures = [
                 (slug, result) for slug, result in results if result.returncode != 0
@@ -454,6 +809,14 @@ async def health() -> JSONResponse:
         "projection_url": f"{PUBLIC_PROJECTION_URL}?scenario={scenario.slug}",
         "editor_url": f"{PUBLIC_EDITOR_URL}?scenario={scenario.slug}",
     })
+
+
+@app.get("/jobs/{job_id}")
+async def render_job_status(job_id: str) -> JSONResponse:
+    job = _get_render_job(job_id)
+    if job is None:
+        return JSONResponse({"ok": False, "error": "Job not found."}, status_code=404)
+    return JSONResponse({"ok": True, **_job_status_payload(job)})
 
 
 if __name__ == "__main__":
