@@ -245,6 +245,8 @@
       display: none;
       align-items: center;
       justify-content: center;
+      padding: 24px 16px;
+      overflow-y: auto;
       z-index: 9999;
       backdrop-filter: blur(1px);
     }
@@ -259,7 +261,9 @@
       background: #0f1725;
       box-shadow: 0 10px 28px rgba(0,0,0,.24);
       color: #e5edf7;
-      min-width: min(560px, calc(100vw - 32px));
+      width: min(560px, calc(100vw - 32px));
+      max-width: 100%;
+      margin: auto;
     }
     .render-copy {
       min-width: 0;
@@ -372,7 +376,7 @@
       </div>
     </div>
 
-    <div class="status {{ status_kind }}">
+    <div class="status {{ status_kind }}" id="status-panel">
       <h2>{{ status_title }}</h2>
       <p>{{ status_message }}</p>
       {% if backup_path %}
@@ -400,7 +404,7 @@
           <input id="clone_description" name="clone_description" value="{{ clone_description }}" placeholder="Higher returns, later home sale.">
         </div>
       </div>
-      <textarea name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
+      <textarea id="content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
       <div class="actions">
         <button type="submit" name="action" value="validate">Validate</button>
         <button type="submit" name="action" value="save">Save</button>
@@ -427,13 +431,16 @@
     (function () {
       const scenarioSelect = document.getElementById("scenario");
       const configForm = document.getElementById("config-form");
+      const contentField = document.getElementById("content");
       const renderOverlay = document.getElementById("render-overlay");
       const renderTitle = document.getElementById("render-title");
       const renderDetail = document.getElementById("render-detail");
       const renderProgress = document.getElementById("render-progress");
       const renderHint = document.getElementById("render-hint");
+      const statusPanel = document.getElementById("status-panel");
       const renderPlanData = document.getElementById("render-plan-data");
       const renderPlan = renderPlanData ? JSON.parse(renderPlanData.textContent || "{}") : {};
+      const lastActionFromServer = "{{ last_action }}";
       let lastAction = "";
       let progressTimer = null;
       let elapsedTimer = null;
@@ -450,12 +457,63 @@
         return (modes || []).map(modeLabel).join(", ");
       }
 
-      function scenarioRenderPlan(slug) {
+      function normalizeRenderModes(modes) {
+        const available = ["deterministic", "historical", "monte_carlo"];
+        const normalized = [];
+        (Array.isArray(modes) ? modes : []).forEach(function (mode) {
+          const lowered = String(mode || "").trim().toLowerCase();
+          if (available.includes(lowered) && !normalized.includes(lowered)) {
+            normalized.push(lowered);
+          }
+        });
+        if (!normalized.includes("deterministic")) {
+          normalized.unshift("deterministic");
+        }
+        return normalized.length ? normalized : available.slice();
+      }
+
+      function extractRenderModesFromContent(content) {
+        if (!content) return null;
+        const simulationMatch = String(content).match(/^\[simulation\]\s*([\s\S]*?)(?=^\[[^\]]+\]|\s*$)/m);
+        if (!simulationMatch) return null;
+        const simulationBlock = simulationMatch[1];
+        const renderModesMatch = simulationBlock.match(/^\s*render_modes\s*=\s*\[([^\]]*)\]/m);
+        if (renderModesMatch) {
+          const quoted = renderModesMatch[1].match(/"([^"]+)"/g) || [];
+          const parsed = quoted.map(function (value) { return value.slice(1, -1); });
+          return normalizeRenderModes(parsed);
+        }
+        const modeMatch = simulationBlock.match(/^\s*mode\s*=\s*"([^"]+)"/m);
+        if (modeMatch) {
+          return normalizeRenderModes([modeMatch[1]]);
+        }
+        return null;
+      }
+
+      function computedRenderPlan(slug) {
         const scenarios = Array.isArray(renderPlan.scenarios) ? renderPlan.scenarios : [];
-        return scenarios.find(function (item) { return item.slug === slug; }) || {
+        const current = scenarios.find(function (item) { return item.slug === slug; }) || {
           name: renderPlan.current_scenario_name || "Current scenario",
           render_modes: renderPlan.current_render_modes || ["deterministic"],
-          render_count: renderPlan.current_render_count || 1
+          render_count: renderPlan.current_render_count || 1,
+          slug: slug || renderPlan.current_scenario_slug || ""
+        };
+        const editedModes = extractRenderModesFromContent(contentField ? contentField.value : "");
+        const renderModes = current.slug === (slug || "") && Array.isArray(editedModes) ? editedModes : normalizeRenderModes(current.render_modes);
+        const currentRenderCount = renderModes.length;
+        const baseTotal = Number(renderPlan.total_render_count || 0);
+        const baseCurrentCount = Number(current.render_count || renderPlan.current_render_count || currentRenderCount);
+        const totalRenderCount = Math.max(currentRenderCount, baseTotal - baseCurrentCount + currentRenderCount);
+        return {
+          current: {
+            slug: current.slug,
+            name: current.name || renderPlan.current_scenario_name || "Current scenario",
+            render_modes: renderModes,
+            render_count: currentRenderCount
+          },
+          scenarioCount: Number(renderPlan.scenario_count || scenarios.length || 0),
+          totalRenderCount: totalRenderCount,
+          scenarioNames: Array.isArray(renderPlan.scenario_names) ? renderPlan.scenario_names : []
         };
       }
 
@@ -492,8 +550,9 @@
       function showRenderOverlay(action) {
         if (!renderOverlay) return;
         const selectedSlug = scenarioSelect && scenarioSelect.value ? scenarioSelect.value : (renderPlan.current_scenario_slug || "");
-        const currentPlan = scenarioRenderPlan(selectedSlug);
-        const currentModes = Array.isArray(currentPlan.render_modes) ? currentPlan.render_modes : ["deterministic"];
+        const plan = computedRenderPlan(selectedSlug);
+        const currentPlan = plan.current;
+        const currentModes = currentPlan.render_modes;
         if (action === "save_render") {
           setOverlayCopy(
             `Rendering ${currentPlan.name}`,
@@ -509,10 +568,10 @@
         } else if (action === "save_render_all") {
           setOverlayCopy(
             "Rendering All Scenarios",
-            `${renderPlan.scenario_count || 0} scenarios, ${renderPlan.total_render_count || 0} mode pages`,
+            `${plan.scenarioCount || 0} scenarios, ${plan.totalRenderCount || 0} mode pages`,
             "Preparing batch render stages…"
           );
-          const scenarioNames = Array.isArray(renderPlan.scenario_names) ? renderPlan.scenario_names : [];
+          const scenarioNames = plan.scenarioNames;
           beginOverlayProgress([
             "Saving current scenario and validating all configs…",
             scenarioNames[0] ? `Rendering ${scenarioNames[0]}…` : "Rendering first scenario…",
@@ -595,8 +654,17 @@
 
       installRenderProgress();
       syncAllProjectionHrefs();
-      installProjectionLink("open-projection-btn");
+        installProjectionLink("open-projection-btn");
       installProjectionLink("projection-link");
+
+      if (lastActionFromServer === "save") {
+        window.requestAnimationFrame(function () {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          if (statusPanel) {
+            statusPanel.scrollIntoView({ block: "start", behavior: "smooth" });
+          }
+        });
+      }
     })();
   </script>
 </body>

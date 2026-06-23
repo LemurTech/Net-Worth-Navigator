@@ -115,9 +115,11 @@ class EditorScenarioTests(unittest.TestCase):
                     object(),
                     content="[scenario]\nname='Alt'\n",
                     scenario_slug="alt",
+                    last_action="save",
                 )
 
         self.assertTrue(context["projection_url"].endswith("?scenario=alt"))
         self.assertTrue(context["editor_url"].endswith("?scenario=alt"))
         self.assertIn('"current_scenario_slug": "alt"', context["render_plan_json"])
         self.assertIn('"current_render_count": 3', context["render_plan_json"])
+        self.assertEqual(context["last_action"], "save")
