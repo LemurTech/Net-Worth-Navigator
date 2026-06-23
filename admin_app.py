@@ -555,6 +555,41 @@ async def _parse_form(request: Request) -> dict[str, str]:
     return {key: values[-1] if values else "" for key, values in parsed.items()}
 
 
+def _start_render_job_response(
+    *,
+    action: str,
+    scenario_slug: str | None,
+    backup_path: Path,
+) -> JSONResponse:
+    scenario = _current_scenario(scenario_slug)
+    if action == "save_render":
+        planned_modes = _planned_modes_for_scenario(scenario.slug)
+        job = _create_render_job(
+            action=action,
+            scenario_slug=scenario.slug,
+            scenario_count=1,
+            total_render_count=len(planned_modes),
+            backup_path=str(backup_path),
+        )
+        _start_render_job_thread(job["id"], _run_save_render_job, scenario.slug)
+        return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
+
+    if action == "save_render_all":
+        scenarios = discover_scenarios()
+        total_render_count = sum(len(_planned_modes_for_scenario(item.slug)) for item in scenarios)
+        job = _create_render_job(
+            action=action,
+            scenario_slug=scenario.slug,
+            scenario_count=len(scenarios),
+            total_render_count=total_render_count,
+            backup_path=str(backup_path),
+        )
+        _start_render_job_thread(job["id"], _run_save_render_all_job, scenario.slug)
+        return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
+
+    return JSONResponse({"ok": False, "error": f"Unsupported render action: {action}"}, status_code=400)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def editor_home(request: Request) -> HTMLResponse:
     scenario_slug = request.query_params.get("scenario")
@@ -681,17 +716,11 @@ async def editor_submit(request: Request) -> HTMLResponse:
 
         if action == "save_render":
             if wants_json:
-                scenario = _current_scenario(scenario_slug)
-                planned_modes = _planned_modes_for_scenario(scenario.slug)
-                job = _create_render_job(
+                return _start_render_job_response(
                     action=action,
-                    scenario_slug=scenario.slug,
-                    scenario_count=1,
-                    total_render_count=len(planned_modes),
-                    backup_path=str(backup_path),
+                    scenario_slug=scenario_slug,
+                    backup_path=backup_path,
                 )
-                _start_render_job_thread(job["id"], _run_save_render_job, scenario.slug)
-                return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
             result = _render_projection_offline(scenario_slug)
             if result.returncode == 0:
                 details = (result.stdout or "").strip()
@@ -730,18 +759,11 @@ async def editor_submit(request: Request) -> HTMLResponse:
 
         if action == "save_render_all":
             if wants_json:
-                scenario = _current_scenario(scenario_slug)
-                scenarios = discover_scenarios()
-                total_render_count = sum(len(_planned_modes_for_scenario(item.slug)) for item in scenarios)
-                job = _create_render_job(
+                return _start_render_job_response(
                     action=action,
-                    scenario_slug=scenario.slug,
-                    scenario_count=len(scenarios),
-                    total_render_count=total_render_count,
-                    backup_path=str(backup_path),
+                    scenario_slug=scenario_slug,
+                    backup_path=backup_path,
                 )
-                _start_render_job_thread(job["id"], _run_save_render_all_job, scenario.slug)
-                return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
             results = _render_all_scenarios()
             failures = [
                 (slug, result) for slug, result in results if result.returncode != 0
@@ -842,6 +864,30 @@ async def render_job_status(job_id: str) -> JSONResponse:
     if job is None:
         return JSONResponse({"ok": False, "error": "Job not found."}, status_code=404)
     return JSONResponse({"ok": True, **_job_status_payload(job)})
+
+
+@app.post("/render-jobs")
+async def start_render_job(request: Request) -> JSONResponse:
+    form = await _parse_form(request)
+    action = form.get("action", "")
+    content = form.get("content", "")
+    scenario_slug = form.get("scenario_slug") or None
+
+    if action not in {"save_render", "save_render_all"}:
+        return JSONResponse({"ok": False, "error": f"Unsupported render action: {action}"}, status_code=400)
+
+    try:
+        _validate_config_text(content)
+        backup_path = _backup_and_write(content, scenario_slug)
+        return _start_render_job_response(
+            action=action,
+            scenario_slug=scenario_slug,
+            backup_path=backup_path,
+        )
+    except tomllib.TOMLDecodeError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
 if __name__ == "__main__":
