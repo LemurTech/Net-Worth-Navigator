@@ -6,7 +6,18 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
-- **Scenario comparison page** (`compare.html`) built and deployed to `/finances/compare.html`; fetches sidecar CSVs and `simulation_summary.json` at runtime so it always reflects latest renders without a Python rebuild. Features: scenario chip toggles (stable colour per scenario, minimum 2 active), mode selector (deterministic/historical/monte_carlo), multi-line Total Net Worth trajectory chart, multi-line Investable Portfolio trajectory chart, and a KPI metrics table with delta highlighting vs the default scenario. In Monte Carlo mode the KPI table adds probability of success, worst-decile terminal NW, P10/P90, median first failure year, and peak pressure rate. "Compare Scenarios" button added to the shell page.
+- **Phase 4 — Employer match and IRS cap modeling** (`src/model.py`, `src/tables.py`):
+  - IRS 401(k) employee deferral limits enforced at runtime: $23,500 base (2025), +$7,500 catch-up at age ≥ 50. Constants in `_IRS_401K_LIMIT_BASE` / `_IRS_401K_CATCHUP_EXTRA` — update annually. Contributions above the limit are silently capped and flagged in the projection row.
+  - Employer match modeled via new per-person config field `annual_401k_employer_match` (flat annual dollar amount). Match is always prefunded (never a cash outflow), routes into the same `annual_401k_contribution_split` as the employee contribution.
+  - New projection DataFrame columns: `employer_match_total`, `employer_match_person1`, `employer_match_person2`, `person1_401k_over_irs_cap`, `person2_401k_over_irs_cap` — all present in `projection_yearly.csv` sidecar.
+  - Cash Flow tab: employer match shown as a dedicated indented row under Retirement Contributions when non-zero; amber ⚠ warning banner when any year exceeds the IRS cap.
+  - Scenario Parameters tab: `401k employer match (annual)` row added to per-person contribution section with diff highlighting.
+  - `scenarios/default.toml` updated with `annual_401k_employer_match = 0` comment placeholder.
+  - `scenarios/sample-b.toml` demonstrates the feature with a $6,000/yr employer match for person1.
+
+- **Compare page improvements** (`src/scenario_shell.py`): deep-linking via `?a=slug&b=slug` URL params; shell "Compare Scenarios" button dynamically scopes to active vs default; Net Worth Delta chart (scenario − baseline per year).
+- **Scenario rename** (`admin_app.py`, `templates/config_editor.html`): `POST /rename-scenario` rewrites `[scenario]` block, moves TOML file on slug change, triggers render, redirects. Rename fields + button added to config editor (disabled on default).
+
 - **Two share-safe synthetic demo scenarios** for showcasing the comparison feature: `scenarios/sample-a.toml` (moderate/conservative: 7% equity, retirement 2038/2043, $82K/yr spending) and `scenarios/sample-b.toml` (growth-oriented: 8.5% equity, retirement 2035/2037, $98K/yr spending, delayed SS to 70, more Roth concentration). Both use Alex & Sam personas from the original sample scenario.
 - **Scenario deletion** in the config editor: `POST /delete-scenario` endpoint in `admin_app.py` validates a slug-confirmation, blocks deletion of the default scenario, removes the TOML and rendered output, and triggers an offline render of default to refresh shell/compare manifests. Red "Delete Scenario" button in the actions row, separated right; opens a confirmation dialog requiring the user to type the exact scenario slug before "Delete Permanently" becomes enabled. Escape/backdrop-click dismiss safely.
 

@@ -130,69 +130,36 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 
 ## Open Items for Next Session
 
+## Open Items for Next Session
+
 ### Model Accuracy Findings (2026-06-19, ordered by impact)
 
-1. **Cash bucket currently overstates growth** when modeled with blended invested return. Started fix: cash now has a dedicated `assumptions.cash_return` path (fallback to inflation) instead of inheriting the stock/bond blend.
-2. **Wage tax treatment is now configurable and set to net-cash in default scenario.** `taxes.wage_tax_treatment` supports `net_cash` (current default) and `taxable_wages`; with `net_cash`, wages remain cashflow-only and do not enter ordinary-income tax or Social Security provisional-income calculations.
-3. **Retirement/survivor spending was flat nominal despite “today’s dollars” comments.** Started fix: `[spending].spending_basis = "real"` now inflates retirement/survivor targets by CPI; `nominal` remains available as an explicit mode.
-4. **401(k)/IRA contributions now route to explicit destination buckets** (`trad_ira` / `roth`) before generic surplus allocation, with optional per-person bucket overrides (`annual_401k_contribution_bucket`, `annual_ira_contribution_bucket`). IRS caps/employer match logic is still pending.
-5. **Pre-retirement spending control is now implemented with explicit precedence.** The model now applies: `pre_retirement_spending` (highest) → `annual_savings_override` → implied `total_income - cash_required_total_contrib`, with real-dollar inflation handling when `spending_basis = "real"` and support for payroll-prefunded contributions via `annual_take_home_is_net_of_retirement_contributions`.
+1. **Cash bucket growth** — `assumptions.cash_return` path now in place (fallback to inflation).
+2. **Wage tax treatment** — `taxes.wage_tax_treatment = "net_cash"` is the active default.
+3. **Retirement/survivor spending basis** — `[spending].spending_basis = "real"` inflates targets by CPI.
+4. **Contribution routing + caps** — IRS 401(k) cap enforcement and employer match now implemented (Phase 4 done). IRS caps hardcoded at 2025 values — update `_IRS_401K_LIMIT_BASE` in `src/model.py` annually.
+5. **Pre-retirement spending** — explicit precedence chain active.
 
-### Next implementation slices after current in-progress fixes
+### Next implementation slices
 
-
-- Execute the next scenario-transition slice in [scenario-transition-plan.md](scenario-transition-plan.md)
-  - retire the root `config.toml` fallback once the scenario workflow is fully in place
-  - decide whether to add scenario deletion/rename management or keep clone-plus-manual-edit as the supported workflow
-- Design the scenario manifest and default-scenario source of truth before wiring the shell projections page
-- Decide whether root `config.toml` gets a short compatibility window or a one-cut migration into `scenarios/default.toml`
-- Confirm the survivor spending percentage feels right (currently 70% of retirement spending)
+- **Phase 4 contribution follow-ons:**
+  - Rate-based employer match (`annual_401k_employer_match_rate` as % of salary proxy)
+  - IRS cap year-over-year indexing (currently fixed at 2025 limits: $23,500 base / $31,000 catch-up at 50+)
+  - HSA modeling (optional later slice)
+- **Phase 5 deeper tax (ongoing):**
+  - Oregon state tax refinement/validation
+  - Gross-income migration for wages is optional unless targeting a full household tax return
+- Confirm survivor spending percentage (currently 70% of retirement spending)
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available
-- Validate the new `[withdrawal_policy]` defaults against Person 1's intent
-  - accumulation cash target = $64,000 (roughly current liquid reserve)
-  - retirement cash target = $95,000 (roughly one year of planned retirement spending)
-  - survivor cash target = $66,500 (roughly one year of planned survivor spending)
-- Decide whether retirement / survivor withdrawal order should stay `cash_above_target → taxable → trad_ira → roth → cash_below_target` or be tuned further
-- Current build target: deeper tax realism
-  - bracket-based federal ordinary-income tax model is now the active implementation path
-  - simplified Social Security provisional-income banding is now active, but wages still do not enter the provisional-income test because employment income remains net cash in the model
-  - Oregon state tax treatment is now active; next state-tax work is refinement/validation rather than first implementation
-    - official-source confirmation of Oregon Social Security treatment can be saved for a later pass
-    - breaking Cash Flow taxes into separate federal/state rows can also wait for a later pass
-  - Gross-income migration for wages is optional, not required, unless the project later aims to model a true full household tax return instead of Monarch-style net-income cash flow
-  - route taxable withdrawals and Social Security through the richer tax model without changing current net-income semantics for job income
-
-- Decide whether V2 should stay with raw TOML editing only or add structured form sections for simple config fields
-- Extend the config editor toward scenario management only after per-scenario output paths and manifest generation are in place
-- Surgery event amount is $18,000 in config — Person 1 confirmed this is correct
-- Surgery events in the household scenarios are now marked `funding = "cash_reserve_first"` so 2026 reserve-cash funding matches intent
-- All current scenarios were batch-rerendered offline on 2026-06-21 via a local deploy-dir override; refreshed sidecars confirm reserve-first event funding is active across the scenario set
-- Comparative analysis doc added at `docs/ignidash-comparative-analysis.md`
-  - key conclusion: NWN remains the better primary planner for Person 1/Person 2 household semantics, while ignidash is the richer general simulation engine
-  - most promising cross-pollination targets from ignidash into NWN are Monte Carlo/historical stress-testing, richer account mechanics, and more modular tax internals
-  - if exploring a bridge, start with Monarch -> ignidash finances/account sync or a reduced NWN -> ignidash JSON export, not a full scenario migration
-- High-level feature-port roadmap added at `docs/ignidash-feature-port-plan.md`
-  - recommended order: result/data-contract cleanup -> Monte Carlo/historical modes -> tax refactor -> richer account mechanics -> contribution rules -> comparison UX
-  - immediate best slice: make NWN stochastic-ready, then add a Monte Carlo MVP with summary metrics and probability bands
-- Monte Carlo MVP is now implemented for seeded blended-return variation
-  - deterministic mode remains default and backward-compatible
-  - historical mode is now implemented via annual-return CSV windows, including a bundled illustrative starter dataset
-  - primary open follow-on is deciding whether to replace the starter file with a more explicitly sourced canonical dataset or continue treating it as a convenience/demo series
-- Tax-engine refactor slice is now started
-  - yearly tax inputs/outputs are explicitly modeled instead of being passed around as loose float/dict bundles
-  - the reusable tax contracts/calculators now live in `src/tax_model.py`, while `src/model.py` stays focused on projection orchestration
-  - sidecars now include a dedicated yearly tax breakdown export
-  - the extracted module now also feeds a dedicated yearly `Tax` UI tab; the next natural step is to keep deepening tax semantics/coverage inside `src/tax_model.py`, not by reintroducing inline tax branching inside `src/model.py`
-- Stochastic UI/data slice is now expanded beyond summary cards
-  - `ProjectionResult` now carries a yearly stochastic outcomes frame in addition to the median path, summary metrics, and percentile bands
-  - sidecars persist that frame as `simulation_outcomes_yearly.csv`
-  - the next natural follow-on is richer stochastic comparison UX or scenario-to-scenario mode comparisons, not another round of ad hoc Monte Carlo copy inside Scenario Parameters
+- Validate `[withdrawal_policy]` defaults against Person 1's intent
 
 ## Known Pitfalls
 
 - Monarch auth expires periodically → re-auth: `cd /opt/monarch-mcp-server && uv run python login_setup.py`
 - Plotly `add_vrect` annotation_text collides with vline labels — use separate `add_annotation` with `yref="paper"` instead
-- `annotation_textangle=-90` + `annotation_position="top right"` is the correct vertical label approach
 - `output/` is gitignored — do not commit generated HTML or cache
-- For routine NWN UI/layout tweaks, prefer targeted checks plus a real `python run.py --offline` render; reserve the full test suite for broader model or semantic changes
-- **nwn-config-editor container must be restarted after any code change to `admin_app.py`.** It runs `python admin_app.py` directly with no `--reload`; the running process will serve stale routes until restarted. Command: `cd /opt/hal-pages && docker compose restart nwn-config-editor`. Symptom of staleness: `{"detail":"Not Found"}` from `/render-jobs` or `/jobs/{id}`.
+- For routine NWN UI/layout tweaks, prefer targeted checks plus a real `python run.py --offline` render
+- **nwn-config-editor container must be restarted after any code change to `admin_app.py`.** Command: `cd /opt/hal-pages && docker compose restart nwn-config-editor`.
+- **Plotly y-axis title standoff** requires both `automargin: true` and `margin.l >= 80` for `$X.XXM`-format labels. `standoff` alone clips when margin is too narrow.
+- **IRS 401(k) cap constants hardcoded at 2025 values** — update `_IRS_401K_LIMIT_BASE` / `_IRS_401K_CATCHUP_EXTRA` in `src/model.py` when IRS adjusts annually.
+- **Employer match is always prefunded** — never reduces take-home cash. Routes into same `annual_401k_contribution_split` as employee. Do not double-count as income.

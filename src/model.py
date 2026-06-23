@@ -1242,6 +1242,28 @@ def _project_person_401k_contribution(
     )
 
 
+# ── IRS 401(k) contribution limits (2025 baseline) ────────────────────────────
+# Employee-only elective deferral limits.  Catch-up applies at age 50+.
+# These are intentionally not config-driven — they are IRS-determined floors,
+# not household choices.  Update when the IRS adjusts them.
+_IRS_401K_LIMIT_BASE = 23_500      # 2025 employee deferral limit
+_IRS_401K_CATCHUP_EXTRA = 7_500    # 2025 catch-up add-on (age ≥ 50)
+_IRS_401K_CATCHUP_AGE = 50
+
+
+def _irs_401k_limit(person: dict, year: int) -> float:
+    """Return the IRS employee elective deferral limit for this person and year."""
+    try:
+        dob_year = int(str(person.get("dob", "1970-01-01")).split("-")[0])
+    except (ValueError, TypeError):
+        dob_year = year - 40  # safe fallback — assume under catch-up age
+    age = year - dob_year
+    base = float(_IRS_401K_LIMIT_BASE)
+    if age >= _IRS_401K_CATCHUP_AGE:
+        base += float(_IRS_401K_CATCHUP_EXTRA)
+    return base
+
+
 def _normalize_contribution_bucket(raw_bucket: object, *, default: str) -> str:
     """Return a valid portfolio bucket for contribution routing."""
     bucket = str(raw_bucket or default).strip().lower()
@@ -1303,13 +1325,24 @@ def _person_retirement_contribution_breakdown(
     Defaults:
     - 401(k) -> trad_ira unless annual_401k_contribution_split is configured
     - IRA -> roth
+
+    Returns a dict with keys:
+      "trad_ira", "roth"          — employee + IRA contributions
+      "employer_match_trad_ira",  — employer match (always prefunded, never a cash outflow)
+      "employer_match_roth"
+      "employee_401k_uncapped"    — raw configured amount before cap (for warnings)
+      "employee_401k_capped"      — post-cap employee amount
+      "irs_401k_limit"            — limit that was applied
     """
-    annual_401k = _project_person_401k_contribution(
+    raw_401k = _project_person_401k_contribution(
         person,
         year=year,
         simulation_start_year=simulation_start_year,
         assumptions=assumptions,
     )
+    irs_limit = _irs_401k_limit(person, year)
+    annual_401k = min(max(0.0, raw_401k), irs_limit)
+
     try:
         annual_ira = float(person.get("annual_ira_contribution", 0.0))
     except (TypeError, ValueError):
@@ -1328,14 +1361,39 @@ def _person_retirement_contribution_breakdown(
     )
 
     breakdown = {"trad_ira": 0.0, "roth": 0.0}
-    annual_401k = max(0.0, annual_401k)
     if split_401k is not None:
         for bucket, ratio in split_401k.items():
             breakdown[bucket] += annual_401k * ratio
     else:
         breakdown[bucket_401k] += annual_401k
     breakdown[bucket_ira] += max(0.0, annual_ira)
-    return breakdown
+
+    # ── Employer match ────────────────────────────────────────────────────────
+    # Flat annual dollar amount, always deposited as an additional prefunded
+    # contribution.  Routes into the same split as the employee 401(k).
+    # Config field: annual_401k_employer_match (default: 0)
+    try:
+        employer_match = max(0.0, float(person.get("annual_401k_employer_match", 0.0)))
+    except (TypeError, ValueError):
+        employer_match = 0.0
+
+    match_breakdown = {"trad_ira": 0.0, "roth": 0.0}
+    if employer_match > 0.0:
+        if split_401k is not None:
+            for bucket, ratio in split_401k.items():
+                match_breakdown[bucket] += employer_match * ratio
+        else:
+            match_breakdown[bucket_401k] += employer_match
+
+    return {
+        "trad_ira": breakdown["trad_ira"],
+        "roth": breakdown["roth"],
+        "employer_match_trad_ira": match_breakdown["trad_ira"],
+        "employer_match_roth": match_breakdown["roth"],
+        "employee_401k_uncapped": max(0.0, raw_401k),
+        "employee_401k_capped": annual_401k,
+        "irs_401k_limit": irs_limit,
+    }
 
 
 def get_phase_withdrawal_settings(
@@ -2820,7 +2878,9 @@ def _run_projection_yearly(
         person2_retired = year >= person2["retirement_year"]
 
         person1_contrib_buckets = (
-            {"trad_ira": 0.0, "roth": 0.0}
+            {"trad_ira": 0.0, "roth": 0.0,
+             "employer_match_trad_ira": 0.0, "employer_match_roth": 0.0,
+             "employee_401k_uncapped": 0.0, "employee_401k_capped": 0.0, "irs_401k_limit": 0.0}
             if person1_retired
             else _person_retirement_contribution_breakdown(
                 person1,
@@ -2830,7 +2890,9 @@ def _run_projection_yearly(
             )
         )
         person2_contrib_buckets = (
-            {"trad_ira": 0.0, "roth": 0.0}
+            {"trad_ira": 0.0, "roth": 0.0,
+             "employer_match_trad_ira": 0.0, "employer_match_roth": 0.0,
+             "employee_401k_uncapped": 0.0, "employee_401k_capped": 0.0, "irs_401k_limit": 0.0}
             if person2_retired
             else _person_retirement_contribution_breakdown(
                 person2,
@@ -2839,6 +2901,27 @@ def _run_projection_yearly(
                 assumptions=assumptions,
             )
         )
+
+        # IRS cap warning flags (non-blocking — model continues with capped amount)
+        person1_over_cap = (
+            not person1_retired
+            and person1_contrib_buckets["employee_401k_uncapped"] > person1_contrib_buckets["irs_401k_limit"] + 0.01
+        )
+        person2_over_cap = (
+            not person2_retired
+            and person2_contrib_buckets["employee_401k_uncapped"] > person2_contrib_buckets["irs_401k_limit"] + 0.01
+        )
+
+        # Employer match totals for this year (always prefunded — never a cash outflow)
+        employer_match_person1 = (
+            person1_contrib_buckets["employer_match_trad_ira"]
+            + person1_contrib_buckets["employer_match_roth"]
+        )
+        employer_match_person2 = (
+            person2_contrib_buckets["employer_match_trad_ira"]
+            + person2_contrib_buckets["employer_match_roth"]
+        )
+        total_employer_match = employer_match_person1 + employer_match_person2
 
         prefunded_contrib_by_person = _empty_retirement_owner_breakdown()
         cash_required_contrib_by_person = _empty_retirement_owner_breakdown()
@@ -2856,6 +2939,10 @@ def _run_projection_yearly(
                 prefunded_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
             else:
                 cash_required_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
+
+            # Employer match is always prefunded (never reduces take-home cash)
+            prefunded_contrib_by_person["person1"][bucket] += person1_contrib_buckets[f"employer_match_{bucket}"]
+            prefunded_contrib_by_person["person2"][bucket] += person2_contrib_buckets[f"employer_match_{bucket}"]
 
         prefunded_contrib_buckets = {
             bucket: prefunded_contrib_by_person["person1"][bucket] + prefunded_contrib_by_person["person2"][bucket]
@@ -3321,6 +3408,11 @@ def _run_projection_yearly(
             "contribution_roth_person1": contribution_breakdown_by_person["person1"]["roth"],
             "contribution_roth_person2": contribution_breakdown_by_person["person2"]["roth"],
             "contribution_total": contribution_breakdown["trad_ira"] + contribution_breakdown["roth"],
+            "employer_match_total": total_employer_match,
+            "employer_match_person1": employer_match_person1,
+            "employer_match_person2": employer_match_person2,
+            "person1_401k_over_irs_cap": person1_over_cap,
+            "person2_401k_over_irs_cap": person2_over_cap,
             "survivor":       one_deceased,
             "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",

@@ -711,6 +711,12 @@ def build_scenario_parameters_summary(
                 _fmt_currency,
             ),
             _diff_row(
+                "401k employer match (annual)",
+                person.get("annual_401k_employer_match"),
+                baseline_person.get("annual_401k_employer_match"),
+                _fmt_currency,
+            ),
+            _diff_row(
                 "401k extra increase",
                 person.get("annual_401k_contribution_extra_increase"),
                 baseline_person.get("annual_401k_contribution_extra_increase"),
@@ -1124,11 +1130,39 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
         for label, amounts in contribution_rows
         if any(v != 0 for v in amounts)
     ]
-    if shown_contribution_rows:
+
+    # Employer match rows — only shown when non-zero
+    employer_match_total = col("employer_match_total") if "employer_match_total" in df.columns else []
+    employer_match_p1 = col("employer_match_person1") if "employer_match_person1" in df.columns else []
+    employer_match_p2 = col("employer_match_person2") if "employer_match_person2" in df.columns else []
+    has_match = any(v != 0 for v in employer_match_total)
+
+    if shown_contribution_rows or has_match:
         rows.append("<tr class='section sep'><th colspan='100'>Retirement Contributions</th></tr>")
         for label, amounts in shown_contribution_rows:
             rows.append(_data_row(label, amounts, indent=True))
+        if has_match:
+            if any(v != 0 for v in employer_match_p1) and any(v != 0 for v in employer_match_p2):
+                rows.append(_data_row(f"Employer match — {person1_name}", employer_match_p1, indent=True))
+                rows.append(_data_row(f"Employer match — {person2_name}", employer_match_p2, indent=True))
+            rows.append(_data_row("Employer match (total, prefunded)", employer_match_total, indent=True))
         rows.append(_data_row("Total Retirement Contributions", col("contribution_total"), bold=True))
+
+    # IRS cap warnings — emit a note row when any year exceeds the cap
+    cap_p1_col = col("person1_401k_over_irs_cap") if "person1_401k_over_irs_cap" in df.columns else []
+    cap_p2_col = col("person2_401k_over_irs_cap") if "person2_401k_over_irs_cap" in df.columns else []
+    over_cap_years_p1 = [years[i] for i, v in enumerate(cap_p1_col) if v]
+    over_cap_years_p2 = [years[i] for i, v in enumerate(cap_p2_col) if v]
+    if over_cap_years_p1 or over_cap_years_p2:
+        names_flagged = []
+        if over_cap_years_p1:
+            names_flagged.append(f"{person1_name} ({', '.join(str(y) for y in over_cap_years_p1[:3])}{'…' if len(over_cap_years_p1) > 3 else ''})")
+        if over_cap_years_p2:
+            names_flagged.append(f"{person2_name} ({', '.join(str(y) for y in over_cap_years_p2[:3])}{'…' if len(over_cap_years_p2) > 3 else ''})")
+        warning_msg = "⚠ IRS 401(k) limit exceeded — contribution capped: " + "; ".join(names_flagged)
+        rows.append(
+            f"<tr class='section'><th colspan='100' style='color:#fbbf24;background:rgba(251,191,36,0.08);font-weight:500;font-size:12px'>{warning_msg}</th></tr>"
+        )
 
     # ── Expenses ──────────────────────────────────────────────────────────────
     rows.append("<tr class='section sep'><th colspan='100'>Expenses</th></tr>")
