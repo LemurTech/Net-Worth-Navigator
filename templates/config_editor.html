@@ -504,6 +504,15 @@
         const baseTotal = Number(renderPlan.total_render_count || 0);
         const baseCurrentCount = Number(current.render_count || renderPlan.current_render_count || currentRenderCount);
         const totalRenderCount = Math.max(currentRenderCount, baseTotal - baseCurrentCount + currentRenderCount);
+        const scenarioSummaries = scenarios.map(function (item) {
+          const itemModes = item.slug === current.slug ? renderModes : normalizeRenderModes(item.render_modes);
+          return {
+            slug: item.slug,
+            name: item.name,
+            render_modes: itemModes,
+            render_count: itemModes.length
+          };
+        });
         return {
           current: {
             slug: current.slug,
@@ -513,7 +522,8 @@
           },
           scenarioCount: Number(renderPlan.scenario_count || scenarios.length || 0),
           totalRenderCount: totalRenderCount,
-          scenarioNames: Array.isArray(renderPlan.scenario_names) ? renderPlan.scenario_names : []
+          scenarioNames: Array.isArray(renderPlan.scenario_names) ? renderPlan.scenario_names : [],
+          scenarios: scenarioSummaries
         };
       }
 
@@ -547,6 +557,32 @@
         elapsedTimer = window.setInterval(updateElapsed, 1000);
       }
 
+      function renderModeStages(currentPlan) {
+        const stages = ["Validating TOML and saving backup…"];
+        currentPlan.render_modes.forEach(function (mode, index) {
+          stages.push(
+            `Mode page ${index + 1} of ${currentPlan.render_count}: ${modeLabel(mode)} for ${currentPlan.name}…`
+          );
+        });
+        stages.push("Writing chart sidecars, shell manifest, and deploy artifacts…");
+        return stages;
+      }
+
+      function renderAllStages(plan) {
+        const stages = ["Saving current scenario and validating all configs…"];
+        let pageIndex = 0;
+        plan.scenarios.forEach(function (scenario, scenarioIndex) {
+          scenario.render_modes.forEach(function (mode) {
+            pageIndex += 1;
+            stages.push(
+              `Scenario ${scenarioIndex + 1} of ${plan.scenarioCount}, mode page ${pageIndex} of ${plan.totalRenderCount}: ${scenario.name} — ${modeLabel(mode)}…`
+            );
+          });
+        });
+        stages.push("Refreshing shell manifest, scenario index, and deploy output…");
+        return stages;
+      }
+
       function showRenderOverlay(action) {
         if (!renderOverlay) return;
         const selectedSlug = scenarioSelect && scenarioSelect.value ? scenarioSelect.value : (renderPlan.current_scenario_slug || "");
@@ -559,25 +595,14 @@
             `${currentPlan.render_count} mode page${currentPlan.render_count === 1 ? "" : "s"}: ${joinModes(currentModes)}`,
             "Preparing render stages…"
           );
-          beginOverlayProgress([
-            "Validating TOML and saving backup…",
-            `Running ${modeLabel(currentModes[0])} projection…`,
-            currentModes.length > 1 ? `Continuing with ${joinModes(currentModes.slice(1))}…` : "Writing chart and sidecars…",
-            "Refreshing shell manifest and deploy artifacts…",
-          ]);
+          beginOverlayProgress(renderModeStages(currentPlan));
         } else if (action === "save_render_all") {
           setOverlayCopy(
             "Rendering All Scenarios",
             `${plan.scenarioCount || 0} scenarios, ${plan.totalRenderCount || 0} mode pages`,
             "Preparing batch render stages…"
           );
-          const scenarioNames = plan.scenarioNames;
-          beginOverlayProgress([
-            "Saving current scenario and validating all configs…",
-            scenarioNames[0] ? `Rendering ${scenarioNames[0]}…` : "Rendering first scenario…",
-            scenarioNames[1] ? `Moving on to ${scenarioNames[1]}…` : "Continuing through remaining scenarios…",
-            "Updating shell manifest, indexes, and deploy output…",
-          ]);
+          beginOverlayProgress(renderAllStages(plan));
         } else if (action === "clone") {
           setOverlayCopy(
             "Cloning Scenario",
@@ -587,8 +612,7 @@
           beginOverlayProgress([
             "Validating current TOML…",
             "Creating scenario file and metadata…",
-            `Rendering ${joinModes(currentModes)}…`,
-            "Refreshing shell manifest and deploy output…",
+            ...renderModeStages(currentPlan).slice(1),
           ]);
         } else {
           setOverlayCopy("Rendering projection…", "Preparing render plan…", "This page will update while the server works.");
