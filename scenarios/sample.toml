@@ -17,6 +17,9 @@ taxable = 120000
 trad_ira = 380000
 roth = 95000
 cash = 45000
+# Optional explicit basis seeds for synthetic scenarios:
+# taxable_cost_basis = 84000
+# roth_contribution_basis = 70000
 
 # Starting non-investable balances (synthetic)
 home_value = 520000
@@ -156,8 +159,11 @@ real_estate_sale_fee_rate = 0.06
 effective_tax_rate_pre_retirement = 0.22
 effective_tax_rate_post_retirement = 0.15
 
-taxable_withdrawal_taxable_fraction = 0.50
+taxable_withdrawal_taxable_fraction = 0.50   # legacy fallback only; omitted basis seeds imply 50% starting cost basis
 trad_ira_withdrawal_taxable_fraction = 1.00
+# Optional account-mechanics defaults:
+# initial_taxable_cost_basis_fraction = 0.50
+# initial_roth_contribution_basis_fraction = 1.00
 
 [taxes]
 enabled = true

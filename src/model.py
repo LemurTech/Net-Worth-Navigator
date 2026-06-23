@@ -144,6 +144,28 @@ class ProjectionResult:
     display_path_kind: str = "deterministic"
 
 
+def _clamp_amount(value: object, *, default: float = 0.0) -> float:
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _clamp_fraction(value: object, *, default: float) -> float:
+    try:
+        fraction = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(0.0, min(1.0, fraction))
+
+
+def _clone_basis_state(basis_state: dict[str, float]) -> dict[str, float]:
+    return {
+        "taxable_cost_basis": max(0.0, float(basis_state.get("taxable_cost_basis", 0.0))),
+        "roth_contribution_basis": max(0.0, float(basis_state.get("roth_contribution_basis", 0.0))),
+    }
+
+
 def _empty_withdrawal_breakdown() -> dict[str, float]:
     return {bucket: 0.0 for bucket in WITHDRAWAL_BUCKETS}
 
@@ -341,6 +363,54 @@ def _sync_retirement_bucket_totals(
     portfolio["roth"] = float(owner_balances["roth"].get("person1", 0.0)) + float(
         owner_balances["roth"].get("person2", 0.0)
     )
+
+
+def _initial_taxable_cost_basis_fraction(assumptions: dict) -> float:
+    if "initial_taxable_cost_basis_fraction" in assumptions:
+        return _clamp_fraction(
+            assumptions.get("initial_taxable_cost_basis_fraction"),
+            default=0.5,
+        )
+    fallback_taxable_fraction = _clamp_fraction(
+        assumptions.get("taxable_withdrawal_taxable_fraction", 0.5),
+        default=0.5,
+    )
+    return max(0.0, min(1.0, 1.0 - fallback_taxable_fraction))
+
+
+def _initial_roth_contribution_basis_fraction(assumptions: dict) -> float:
+    return _clamp_fraction(
+        assumptions.get("initial_roth_contribution_basis_fraction", 1.0),
+        default=1.0,
+    )
+
+
+def _initial_basis_state(
+    *,
+    portfolio: dict[str, float],
+    assumptions: dict,
+    basis_seeds: dict[str, float] | None = None,
+) -> dict[str, float]:
+    basis_seeds = basis_seeds or {}
+    taxable_balance = max(0.0, float(portfolio.get("taxable", 0.0)))
+    roth_balance = max(0.0, float(portfolio.get("roth", 0.0)))
+
+    explicit_taxable_basis = basis_seeds.get("taxable_cost_basis")
+    if explicit_taxable_basis is None:
+        taxable_cost_basis = taxable_balance * _initial_taxable_cost_basis_fraction(assumptions)
+    else:
+        taxable_cost_basis = _clamp_amount(explicit_taxable_basis)
+
+    explicit_roth_basis = basis_seeds.get("roth_contribution_basis")
+    if explicit_roth_basis is None:
+        roth_contribution_basis = roth_balance * _initial_roth_contribution_basis_fraction(assumptions)
+    else:
+        roth_contribution_basis = _clamp_amount(explicit_roth_basis)
+
+    return {
+        "taxable_cost_basis": min(taxable_balance, taxable_cost_basis),
+        "roth_contribution_basis": min(roth_balance, roth_contribution_basis),
+    }
 
 
 def load_config(config_path: Path | None = None) -> dict:
@@ -2266,6 +2336,7 @@ def run_projection_result(
     liability_balances: dict[str, float] | None = None,
     property_values: dict[str, float] | None = None,
     retirement_owner_balances: dict[str, dict[str, float]] | None = None,
+    basis_seeds: dict[str, float] | None = None,
     config: dict | None = None,
 ) -> ProjectionResult:
     config = resolve_runtime_config(config or load_config())
@@ -2278,6 +2349,7 @@ def run_projection_result(
             liability_balances=liability_balances,
             property_values=property_values,
             retirement_owner_balances=retirement_owner_balances,
+            basis_seeds=basis_seeds,
             config=config,
         )
         summary = _projection_summary(
@@ -2325,6 +2397,7 @@ def run_projection_result(
                     liability_balances=liability_balances,
                     property_values=property_values,
                     retirement_owner_balances=retirement_owner_balances,
+                    basis_seeds=basis_seeds,
                     config=config,
                     annual_return_overrides=overrides,
                 )
@@ -2348,6 +2421,7 @@ def run_projection_result(
                     liability_balances=liability_balances,
                     property_values=property_values,
                     retirement_owner_balances=retirement_owner_balances,
+                    basis_seeds=basis_seeds,
                     config=config,
                     annual_return_overrides=overrides,
                 )
@@ -2385,6 +2459,7 @@ def run_projection(
     liability_balances: dict[str, float] | None = None,
     property_values: dict[str, float] | None = None,
     retirement_owner_balances: dict[str, dict[str, float]] | None = None,
+    basis_seeds: dict[str, float] | None = None,
     config: dict | None = None,
 ) -> pd.DataFrame:
     return run_projection_result(
@@ -2393,6 +2468,7 @@ def run_projection(
         liability_balances=liability_balances,
         property_values=property_values,
         retirement_owner_balances=retirement_owner_balances,
+        basis_seeds=basis_seeds,
         config=config,
     ).yearly_df
 
@@ -2403,6 +2479,7 @@ def _run_projection_yearly(
     liability_balances: dict[str, float] | None = None,
     property_values: dict[str, float] | None = None,
     retirement_owner_balances: dict[str, dict[str, float]] | None = None,
+    basis_seeds: dict[str, float] | None = None,
     config: dict | None = None,
     annual_return_overrides: dict[int, float] | None = None,
 ) -> pd.DataFrame:
@@ -2440,6 +2517,11 @@ def _run_projection_yearly(
         person1=person1,
         person2=person2,
         seeded_owner_balances=retirement_owner_balances,
+    )
+    basis_state = _initial_basis_state(
+        portfolio=portfolio,
+        assumptions=assumptions,
+        basis_seeds=basis_seeds,
     )
 
     if liability_balances is None:
@@ -2884,6 +2966,7 @@ def _run_projection_yearly(
         else:
             grown_portfolio = portfolio.copy()
             grown_retirement_owner_balances = _clone_retirement_owner_balances(retirement_owner_balances)
+        grown_basis_state = _clone_basis_state(basis_state)
 
         tax_outputs = estimate_annual_taxes(
             inputs=YearlyTaxInputs(
@@ -2906,14 +2989,20 @@ def _run_projection_yearly(
         contribution_breakdown_by_person = deepcopy(prefunded_contrib_by_person)
         working_portfolio = grown_portfolio.copy()
         working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances)
+        working_basis_state = _clone_basis_state(grown_basis_state)
         rmd_withdrawn = 0.0
         rmd_shortfall = 0.0
         funding_shortfall = 0.0
+        taxable_withdrawal_basis_portion = 0.0
+        taxable_withdrawal_gain_portion = 0.0
+        roth_withdrawal_basis_portion = 0.0
+        roth_withdrawal_earnings_portion = 0.0
 
         # Iterate because taxable withdrawals themselves increase taxes.
         for _ in range(12):
             working_portfolio = grown_portfolio.copy()
             working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances)
+            working_basis_state = _clone_basis_state(grown_basis_state)
             contribution_breakdown = prefunded_contrib_buckets.copy()
             contribution_breakdown_by_person = deepcopy(prefunded_contrib_by_person)
             for person_key in RETIREMENT_OWNER_KEYS:
@@ -2924,6 +3013,11 @@ def _run_projection_yearly(
                     working_portfolio[bucket] = working_portfolio.get(bucket, 0.0) + amount
                     working_retirement_owner_balances[bucket][person_key] = (
                         working_retirement_owner_balances[bucket].get(person_key, 0.0) + amount
+                    )
+                    _apply_basis_addition(
+                        working_basis_state,
+                        bucket=bucket,
+                        amount=amount,
                     )
 
             forced_rmd_withdrawn, forced_rmd_taxable_income, forced_rmd_shortfall = _apply_forced_rmd_withdrawal(
@@ -2948,6 +3042,10 @@ def _run_projection_yearly(
             for person_key in RETIREMENT_OWNER_KEYS:
                 withdrawal_breakdown_by_person[person_key]["trad_ira"] += forced_rmd_owner_withdrawals[person_key]
             withdrawal_taxable_income = forced_rmd_taxable_income
+            taxable_withdrawal_basis_portion = 0.0
+            taxable_withdrawal_gain_portion = 0.0
+            roth_withdrawal_basis_portion = 0.0
+            roth_withdrawal_earnings_portion = 0.0
 
             if post_tax_flow >= 0:
                 preserved_cash = min(post_tax_flow, cash_preserve_flow)
@@ -2982,10 +3080,13 @@ def _run_projection_yearly(
                         )
                         contribution_breakdown[bucket] += person_amount
                         contribution_breakdown_by_person[person_key][bucket] += person_amount
+                        _apply_basis_addition(
+                            working_basis_state,
+                            bucket=bucket,
+                            amount=person_amount,
+                        )
 
-                trad_before_surplus = working_portfolio.get("trad_ira", 0.0)
-                roth_before_surplus = working_portfolio.get("roth", 0.0)
-                _apply_surplus_with_reserve_target(
+                surplus_additions = _apply_surplus_with_reserve_target(
                     working_portfolio,
                     surplus=available_for_contrib,
                     cash_target=cash_target,
@@ -2994,8 +3095,8 @@ def _run_projection_yearly(
                     withdrawal_order=withdrawal_order,
                     protected_cash=preserved_cash,
                 )
-                trad_surplus_delta = working_portfolio.get("trad_ira", 0.0) - trad_before_surplus
-                roth_surplus_delta = working_portfolio.get("roth", 0.0) - roth_before_surplus
+                trad_surplus_delta = surplus_additions.get("trad_ira", 0.0)
+                roth_surplus_delta = surplus_additions.get("roth", 0.0)
                 if trad_surplus_delta > 0:
                     _apply_owner_bucket_addition(
                         working_retirement_owner_balances,
@@ -3009,6 +3110,12 @@ def _run_projection_yearly(
                         bucket="roth",
                         amount=roth_surplus_delta,
                         fallback_shares=retirement_owner_defaults["roth"],
+                    )
+                for bucket, added in surplus_additions.items():
+                    _apply_basis_addition(
+                        working_basis_state,
+                        bucket=bucket,
+                        amount=added,
                     )
             else:
                 reserve_first_draw = min(
@@ -3024,14 +3131,19 @@ def _run_projection_yearly(
                     withdrawal_breakdown["cash"] += reserve_first_draw
                     post_tax_flow += reserve_first_draw
 
-                extra_taxable_income, unmet_deficit, extra_withdrawal_breakdown = _cover_deficit_with_policy(
+                extra_taxable_income, unmet_deficit, extra_withdrawal_breakdown, withdrawal_character = _cover_deficit_with_policy(
                     working_portfolio,
                     deficit=-post_tax_flow,
                     assumptions=assumptions,
                     withdrawal_order=withdrawal_order,
                     cash_target=cash_target,
+                    basis_state=working_basis_state,
                 )
                 withdrawal_taxable_income += extra_taxable_income
+                taxable_withdrawal_basis_portion += withdrawal_character["taxable_basis_portion"]
+                taxable_withdrawal_gain_portion += withdrawal_character["taxable_gain_portion"]
+                roth_withdrawal_basis_portion += withdrawal_character["roth_basis_portion"]
+                roth_withdrawal_earnings_portion += withdrawal_character["roth_earnings_portion"]
                 for bucket in WITHDRAWAL_BUCKETS:
                     withdrawal_breakdown[bucket] += extra_withdrawal_breakdown[bucket]
                 if extra_withdrawal_breakdown.get("trad_ira", 0.0) > 0:
@@ -3061,9 +3173,11 @@ def _run_projection_yearly(
                     working_retirement_owner_balances["trad_ira"]["person2"] = 0.0
                     working_retirement_owner_balances["roth"]["person1"] = 0.0
                     working_retirement_owner_balances["roth"]["person2"] = 0.0
+                    working_basis_state["taxable_cost_basis"] = 0.0
+                    working_basis_state["roth_contribution_basis"] = 0.0
                 else:
                     funding_shortfall = 0.0
-                    _apply_surplus_with_reserve_target(
+                    zero_surplus_additions = _apply_surplus_with_reserve_target(
                         working_portfolio,
                         surplus=0.0,
                         cash_target=cash_target,
@@ -3072,6 +3186,12 @@ def _run_projection_yearly(
                         withdrawal_order=withdrawal_order,
                         protected_cash=0.0,
                     )
+                    for bucket, added in zero_surplus_additions.items():
+                        _apply_basis_addition(
+                            working_basis_state,
+                            bucket=bucket,
+                            amount=added,
+                        )
 
             _sync_retirement_bucket_totals(working_portfolio, working_retirement_owner_balances)
 
@@ -3096,6 +3216,7 @@ def _run_projection_yearly(
 
         portfolio = working_portfolio
         retirement_owner_balances = _clone_retirement_owner_balances(working_retirement_owner_balances)
+        basis_state = _clone_basis_state(working_basis_state)
         for reinvest_target, requested_amount in pending_reinvestments:
             move_amount = min(
                 max(0.0, portfolio.get("cash", 0.0)),
@@ -3105,6 +3226,11 @@ def _run_projection_yearly(
                 continue
             portfolio["cash"] = portfolio.get("cash", 0.0) - move_amount
             portfolio[reinvest_target] = portfolio.get(reinvest_target, 0.0) + move_amount
+            _apply_basis_addition(
+                basis_state,
+                bucket=reinvest_target,
+                amount=move_amount,
+            )
             if reinvest_target in {"trad_ira", "roth"}:
                 _apply_owner_bucket_addition(
                     retirement_owner_balances,
@@ -3145,6 +3271,10 @@ def _run_projection_yearly(
             "taxable_wage_income": taxable_wage_income,
             "non_ss_taxable_income": tax_outputs.non_ss_taxable_income,
             "withdrawal_taxable_income": tax_outputs.withdrawal_taxable_income,
+            "taxable_withdrawal_basis_portion": taxable_withdrawal_basis_portion,
+            "taxable_withdrawal_gain_portion": taxable_withdrawal_gain_portion,
+            "roth_withdrawal_basis_portion": roth_withdrawal_basis_portion,
+            "roth_withdrawal_earnings_portion": roth_withdrawal_earnings_portion,
             "other_taxable_income": tax_outputs.other_taxable_income,
             "taxable_social_security_income": tax_outputs.taxable_social_security_income,
             "social_security_taxable_fraction": tax_outputs.social_security_taxable_fraction,
@@ -3195,10 +3325,14 @@ def _run_projection_yearly(
             "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",
             "taxable":        portfolio["taxable"],
+            "taxable_cost_basis": min(portfolio["taxable"], basis_state["taxable_cost_basis"]),
+            "taxable_unrealized_gain": max(0.0, portfolio["taxable"] - basis_state["taxable_cost_basis"]),
             "trad_ira":       portfolio["trad_ira"],
             "trad_ira_person1": retirement_owner_balances["trad_ira"]["person1"],
             "trad_ira_person2": retirement_owner_balances["trad_ira"]["person2"],
             "roth":           portfolio["roth"],
+            "roth_contribution_basis": min(portfolio["roth"], basis_state["roth_contribution_basis"]),
+            "roth_earnings": max(0.0, portfolio["roth"] - basis_state["roth_contribution_basis"]),
             "roth_person1": retirement_owner_balances["roth"]["person1"],
             "roth_person2": retirement_owner_balances["roth"]["person2"],
             "cash":           portfolio["cash"],
@@ -3300,6 +3434,68 @@ def _withdrawal_taxable_fraction(category: str, assumptions: dict) -> float:
     return 0.0
 
 
+def _apply_basis_addition(
+    basis_state: dict[str, float],
+    *,
+    bucket: str,
+    amount: float,
+) -> None:
+    added = max(0.0, float(amount))
+    if added <= 0:
+        return
+    if bucket == "taxable":
+        basis_state["taxable_cost_basis"] = max(
+            0.0,
+            float(basis_state.get("taxable_cost_basis", 0.0)) + added,
+        )
+    elif bucket == "roth":
+        basis_state["roth_contribution_basis"] = max(
+            0.0,
+            float(basis_state.get("roth_contribution_basis", 0.0)) + added,
+        )
+
+
+def _apply_bucket_withdrawal(
+    portfolio: dict[str, float],
+    *,
+    bucket: str,
+    amount: float,
+    assumptions: dict,
+    basis_state: dict[str, float],
+) -> tuple[float, float, float]:
+    """Withdraw from one bucket and return (taken, taxable_income, basis_portion)."""
+    available = max(0.0, float(portfolio.get(bucket, 0.0)))
+    taken = min(available, max(0.0, float(amount)))
+    if taken <= 0:
+        return 0.0, 0.0, 0.0
+
+    portfolio[bucket] = available - taken
+
+    if bucket == "taxable":
+        taxable_cost_basis = min(
+            available,
+            max(0.0, float(basis_state.get("taxable_cost_basis", 0.0))),
+        )
+        cost_basis_ratio = 0.0 if available <= 0 else min(1.0, taxable_cost_basis / available)
+        basis_portion = taken * cost_basis_ratio
+        taxable_income = max(0.0, taken - basis_portion)
+        basis_state["taxable_cost_basis"] = max(0.0, taxable_cost_basis - basis_portion)
+        return taken, taxable_income, basis_portion
+
+    if bucket == "roth":
+        roth_basis = min(
+            available,
+            max(0.0, float(basis_state.get("roth_contribution_basis", 0.0))),
+        )
+        contribution_basis_ratio = 0.0 if available <= 0 else min(1.0, roth_basis / available)
+        basis_portion = taken * contribution_basis_ratio
+        basis_state["roth_contribution_basis"] = max(0.0, roth_basis - basis_portion)
+        return taken, 0.0, basis_portion
+
+    taxable_income = taken * _withdrawal_taxable_fraction(bucket, assumptions)
+    return taken, taxable_income, 0.0
+
+
 def _normalize_withdrawal_order(order) -> list[str]:
     """Return a validated withdrawal order list."""
     valid_steps = set(DEFAULT_WITHDRAWAL_ORDER)
@@ -3336,11 +3532,18 @@ def _cover_deficit_with_policy(
     assumptions: dict,
     withdrawal_order: list[str],
     cash_target: float,
-) -> tuple[float, float, dict[str, float]]:
+    basis_state: dict[str, float],
+) -> tuple[float, float, dict[str, float], dict[str, float]]:
     """Cover a deficit using the configured withdrawal policy."""
     remaining = max(0.0, deficit)
     taxable_withdrawals = 0.0
     breakdown = _empty_withdrawal_breakdown()
+    withdrawal_character = {
+        "taxable_basis_portion": 0.0,
+        "taxable_gain_portion": 0.0,
+        "roth_basis_portion": 0.0,
+        "roth_earnings_portion": 0.0,
+    }
 
     for step in withdrawal_order:
         if remaining <= 0:
@@ -3357,15 +3560,25 @@ def _cover_deficit_with_policy(
             portfolio["cash"] = portfolio.get("cash", 0.0) - take
             breakdown["cash"] += take
         else:
-            available = max(0.0, portfolio.get(step, 0.0))
-            take = min(available, remaining)
-            portfolio[step] = portfolio.get(step, 0.0) - take
+            take, taxable_income, basis_portion = _apply_bucket_withdrawal(
+                portfolio,
+                bucket=step,
+                amount=remaining,
+                assumptions=assumptions,
+                basis_state=basis_state,
+            )
             breakdown[step] += take
-            taxable_withdrawals += take * _withdrawal_taxable_fraction(step, assumptions)
+            taxable_withdrawals += taxable_income
+            if step == "taxable":
+                withdrawal_character["taxable_basis_portion"] += basis_portion
+                withdrawal_character["taxable_gain_portion"] += max(0.0, take - basis_portion)
+            elif step == "roth":
+                withdrawal_character["roth_basis_portion"] += basis_portion
+                withdrawal_character["roth_earnings_portion"] += max(0.0, take - basis_portion)
 
         remaining -= take
 
-    return taxable_withdrawals, remaining, breakdown
+    return taxable_withdrawals, remaining, breakdown, withdrawal_character
 
 
 def _surplus_fallback_bucket(
@@ -3417,12 +3630,13 @@ def _apply_surplus_with_reserve_target(
     surplus_order: list[str] | None = None,
     withdrawal_order: list[str] | None = None,
     protected_cash: float = 0.0,
-) -> None:
+) -> dict[str, float]:
     """Refill cash floor first, then invest surplus and sweep excess cash above that floor.
 
     `protected_cash` reserves an additional amount above `cash_target` that should
     remain in cash for this year (e.g., explicitly-preserved SellHome proceeds).
     """
+    additions = {"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0}
     if excluded_categories is None:
         excluded_categories = set()
 
@@ -3442,7 +3656,7 @@ def _apply_surplus_with_reserve_target(
         remaining += excess_cash
 
     if remaining <= 0:
-        return
+        return additions
 
     positive_non_cash_total = sum(
         balance
@@ -3458,10 +3672,16 @@ def _apply_surplus_with_reserve_target(
         )
         if fallback_bucket is not None:
             portfolio[fallback_bucket] = portfolio.get(fallback_bucket, 0.0) + remaining
+            if fallback_bucket in additions:
+                additions[fallback_bucket] += remaining
         else:
             portfolio["cash"] = portfolio.get("cash", 0.0) + remaining
-        return
+        return additions
 
     for category, balance in list(portfolio.items()):
         if category != "cash" and category not in excluded_categories and balance > 0:
-            portfolio[category] += remaining * (balance / positive_non_cash_total)
+            added = remaining * (balance / positive_non_cash_total)
+            portfolio[category] += added
+            if category in additions:
+                additions[category] += added
+    return additions

@@ -6,6 +6,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- First richer-account-mechanics slice in `src/model.py`, `src/monarch_bridge.py`, `run.py`, and scenario docs: taxable brokerage now tracks remaining cost basis vs. unrealized gains, Roth now tracks contribution basis vs. earnings, and withdrawal/tax sidecars expose basis/gain splits for taxable and Roth withdrawals
 - Richer stochastic summary metrics in `src/model.py`, including probabilities for success / spending shortfall / liquid depletion / net worth below zero / home-equity-required rescue, median terminal liquid net worth, worst-decile terminal net worth, and first-failure-period distributions
 - Typed yearly tax contracts in `src/tax_model.py` (`FederalTaxSystem`, `StateTaxSystem`, `YearlyTaxInputs`, `YearlyTaxOutputs`) plus a dedicated `tax_breakdown_yearly.csv` sidecar for per-year tax audit data
 - Expanded yearly tax audit outputs in `src/tax_model.py` / sidecars: federal deduction-adjusted taxable income, effective rates, Social Security taxable fraction + provisional income, and state taxable income before/after deduction

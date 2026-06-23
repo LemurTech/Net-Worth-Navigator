@@ -1137,6 +1137,39 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertAlmostEqual(owner_balances["roth"]["person1"], 14700.0, places=6)
         self.assertAlmostEqual(owner_balances["roth"]["person2"], 29773.22, places=6)
 
+    def test_extract_basis_seeds_uses_optional_account_basis_metadata(self):
+        config = {
+            "accounts": {
+                "disabled": [],
+                "Brokerage": {"category": "taxable", "basis_fraction": 0.70},
+                "401k Person 1 (6-01)": {
+                    "category": "trad_ira",
+                    "owner": "person1",
+                    "opening_balance_split": {"trad_ira": 0.95, "roth": 0.05},
+                    "roth_contribution_basis_fraction": 0.40,
+                },
+                "OregonSaves (4216)": {
+                    "category": "roth",
+                    "owner": "person2",
+                    "roth_contribution_basis_fraction": 0.80,
+                },
+            }
+        }
+        raw = [
+            {"name": "Brokerage", "balance": 100000.0, "type": "Investment"},
+            {"name": "401k Person 1 (6-01)", "balance": 294000.0, "type": "Retirement"},
+            {"name": "OregonSaves (4216)", "balance": 29773.22, "type": "Retirement"},
+        ]
+
+        basis_seeds = monarch_bridge.extract_basis_seeds(raw, config)
+
+        self.assertAlmostEqual(basis_seeds["taxable_cost_basis"], 70000.0, places=6)
+        self.assertAlmostEqual(
+            basis_seeds["roth_contribution_basis"],
+            (294000.0 * 0.05 * 0.40) + (29773.22 * 0.80),
+            places=6,
+        )
+
     def test_run_projection_respects_seeded_retirement_owner_balances(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2026},
@@ -1278,6 +1311,7 @@ class RecurringEventsTests(unittest.TestCase):
             liability_balances=None,
             property_values=None,
             retirement_owner_balances=None,
+            basis_seeds=None,
             config=None,
         ):
             captured["balances"] = balances
@@ -1285,6 +1319,7 @@ class RecurringEventsTests(unittest.TestCase):
             captured["liability_balances"] = liability_balances
             captured["property_values"] = property_values
             captured["retirement_owner_balances"] = retirement_owner_balances
+            captured["basis_seeds"] = basis_seeds
             df = pd.DataFrame([
                 {
                     "year": 2026,

@@ -131,6 +131,21 @@ def _account_balance_split(config: dict, account_name: str) -> dict[str, float] 
     return {bucket: weight / total for bucket, weight in weights.items()}
 
 
+def _account_fraction_metadata(
+    config: dict,
+    account_name: str,
+    field: str,
+) -> float | None:
+    entry = _account_classification_entry(config, account_name)
+    if not isinstance(entry, dict) or field not in entry:
+        return None
+    try:
+        fraction = float(entry.get(field))
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, min(1.0, fraction))
+
+
 def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict[str, float], dict[str, float]]:
     """
     Classify raw Monarch accounts per config.toml [accounts] and return totals.
@@ -224,6 +239,55 @@ def extract_retirement_owner_balances(
         owner_balances[category][owner] += float(acct["balance"])
 
     return owner_balances
+
+
+def extract_basis_seeds(
+    raw: list[dict],
+    config: dict | None = None,
+) -> dict[str, float]:
+    """Return optional explicit taxable/Roth basis seeds from account metadata."""
+    if config is None:
+        config = load_config()
+    accounts_map: dict = config.get("accounts", {})
+    disabled: set[str] = set(accounts_map.get("disabled", []))
+
+    taxable_cost_basis = 0.0
+    roth_contribution_basis = 0.0
+    saw_taxable_basis = False
+    saw_roth_basis = False
+
+    for acct in raw:
+        name = acct["name"]
+        if name in disabled:
+            continue
+        balance = float(acct["balance"])
+        split = _account_balance_split(config, name)
+        taxable_fraction = _account_fraction_metadata(config, name, "basis_fraction")
+        roth_fraction = _account_fraction_metadata(config, name, "roth_contribution_basis_fraction")
+
+        if split is not None:
+            if taxable_fraction is not None and split.get("taxable", 0.0) > 0:
+                taxable_cost_basis += balance * split["taxable"] * taxable_fraction
+                saw_taxable_basis = True
+            if roth_fraction is not None and split.get("roth", 0.0) > 0:
+                roth_contribution_basis += balance * split["roth"] * roth_fraction
+                saw_roth_basis = True
+            continue
+
+        category = _account_category(config, name)
+        if category == "taxable" and taxable_fraction is not None:
+            taxable_cost_basis += balance * taxable_fraction
+            saw_taxable_basis = True
+        elif category == "roth" and roth_fraction is not None:
+            roth_contribution_basis += balance * roth_fraction
+            saw_roth_basis = True
+
+    seeds: dict[str, float] = {}
+    if saw_taxable_basis:
+        seeds["taxable_cost_basis"] = taxable_cost_basis
+    if saw_roth_basis:
+        seeds["roth_contribution_basis"] = roth_contribution_basis
+    return seeds
 
 
 def extract_real_estate_accounts(raw: list[dict], config: dict | None = None) -> dict[str, float]:

@@ -1,6 +1,6 @@
 # System Patterns — Net Worth Navigator
 
-**Last Review:** 2026-06-22
+**Last Review:** 2026-06-23
 
 ## Architectural Overview
 
@@ -46,6 +46,8 @@ run.py
 - **Bundled 401(k) plans can model traditional/Roth splits directly.** Keep `annual_401k_contribution` as the total payroll contribution and use optional `annual_401k_contribution_split.{trad_ira,roth}` to route that total proportionally; older single-bucket override behavior remains the fallback.
 - **Account-level retirement owners override household fallback shares.** `[accounts]` entries may be inline tables such as `{ category = "roth", owner = "person2" }`; live/offline raw-account reclassification uses that owner metadata to seed `trad_ira` / `roth` owner balances before any `roth_share` or RMD-share fallback logic applies.
 - **Bundled retirement accounts can split opening balances across buckets.** `[accounts]` inline entries may also define `opening_balance_split = { trad_ira = ..., roth = ... }`; the live/cached account balance is then apportioned across those investable buckets before the first projection year, and owner attribution is applied to each split slice.
+- **Taxable brokerage withdrawals should use tracked basis before fallback fractions.** The model now carries a yearly `taxable_cost_basis` ledger; realized-gain taxable income comes from the withdrawal's gain portion, while `taxable_withdrawal_taxable_fraction` remains only a backward-compatible way to infer the opening basis state when no explicit seed is supplied.
+- **Roth balances track contribution basis separately from earnings.** Yearly outputs now distinguish `roth_contribution_basis` from `roth_earnings`, and Roth withdrawals surface basis-vs-earnings portions for auditability even though current NWN tax treatment still keeps Roth withdrawals non-taxable.
 - **Gross-income wage migration is optional.** Unless NWN is explicitly re-scoped into a true household tax-return model, Monarch-style net-income wage inputs are acceptable and do not require forced gross-up migration.
 - **Cash reserves are protected in two stages.** `cash_above_target` spends only dollars above the reserve; `cash_below_target` taps the reserve itself only as a last resort.
 - **Specific emergency/sinking-fund expenses can override reserve protection.** `Expense` events may set `funding = "cash_reserve_first"` to let that event's deficit draw from cash below target before retirement buckets, while leaving the broader phase withdrawal order unchanged.
@@ -150,4 +152,5 @@ amount = -6000             # negative = cash outflow
 - **Natural-language stochastic metrics belong in shared summaries.** UI labels like `Probability of Success` and `Worst-Decile Terminal Net Worth` should map directly to normalized summary keys instead of hardcoded Monte Carlo-only copy, which keeps historical and Monte Carlo modes parallel.
 - **Tax audit output belongs in sidecars, not only in the HTML page.** `tax_breakdown_yearly.csv` is now the normalized per-year tax audit surface for modeled filing phase, taxable-income components, and federal/state splits.
 - **Tax audit output should include explanatory subcomponents, not just totals.** The yearly tax sidecar and rendered summaries now carry deduction-adjusted federal taxable income, Social Security taxable fraction/provisional income, and state taxable income before/after deduction so audits can explain why a year taxed the way it did.
+- **Optional account metadata is the preferred path for better opening basis approximations.** When a scenario needs more accurate starting basis than the household-wide fallback, `[accounts]` inline entries may supply `basis_fraction` for taxable accounts and `roth_contribution_basis_fraction` for Roth accounts; synthetic scenarios can seed direct amounts instead.
 - **Detailed yearly audit surfaces should mirror sidecar structure.** When a modeled output already has a normalized yearly sidecar (like taxes), the projection page can expose the same shape as a dedicated yearly tab instead of overloading summary cards or cash-flow rows.

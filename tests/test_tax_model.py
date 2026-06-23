@@ -17,6 +17,8 @@ class TaxModelTests(unittest.TestCase):
                 "bond_return": 0.0,
                 "inflation": 0.0,
                 "equity_allocation": 0.0,
+                "initial_taxable_cost_basis_fraction": 0.5,
+                "initial_roth_contribution_basis_fraction": 1.0,
                 "effective_tax_rate_pre_retirement": 0.22,
                 "effective_tax_rate_post_retirement": 0.15,
                 "taxable_withdrawal_taxable_fraction": 0.50,
@@ -159,6 +161,51 @@ class TaxModelTests(unittest.TestCase):
         self.assertAlmostEqual(row["federal_effective_rate"], 6.25 / 36.25, delta=0.0001)
         self.assertAlmostEqual(row["trad_ira"], 63.75, delta=0.02)
 
+    def test_taxable_withdrawals_tax_only_realized_gain_portion(self):
+        config = self._base_config()
+        config["taxes"]["enabled"] = False
+        config["assumptions"]["effective_tax_rate_post_retirement"] = 0.0
+        config["assumptions"]["initial_taxable_cost_basis_fraction"] = 0.8
+        config["spending"]["retirement_annual"] = 50.0
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 100.0, "trad_ira": 0.0, "roth": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(row["withdrawal_taxable"], 50.0, places=2)
+        self.assertAlmostEqual(row["withdrawal_taxable_income"], 10.0, places=2)
+        self.assertAlmostEqual(row["taxable_withdrawal_basis_portion"], 40.0, places=2)
+        self.assertAlmostEqual(row["taxable_withdrawal_gain_portion"], 10.0, places=2)
+        self.assertAlmostEqual(row["taxable"], 50.0, places=2)
+        self.assertAlmostEqual(row["taxable_cost_basis"], 40.0, places=2)
+        self.assertAlmostEqual(row["taxable_unrealized_gain"], 10.0, places=2)
+
+    def test_roth_withdrawals_deplete_contribution_basis_before_earnings(self):
+        config = self._base_config()
+        config["taxes"]["enabled"] = False
+        config["assumptions"]["effective_tax_rate_post_retirement"] = 0.0
+        config["assumptions"]["initial_roth_contribution_basis_fraction"] = 0.6
+        config["spending"]["retirement_annual"] = 50.0
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 100.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        row = df.iloc[0]
+        self.assertAlmostEqual(row["withdrawal_roth"], 50.0, places=2)
+        self.assertAlmostEqual(row["roth_withdrawal_basis_portion"], 30.0, places=2)
+        self.assertAlmostEqual(row["roth_withdrawal_earnings_portion"], 20.0, places=2)
+        self.assertAlmostEqual(row["roth"], 50.0, places=2)
+        self.assertAlmostEqual(row["roth_contribution_basis"], 30.0, places=2)
+        self.assertAlmostEqual(row["roth_earnings"], 20.0, places=2)
+
     def test_social_security_uses_provisional_income_thresholds(self):
         config = self._base_config()
         config["events"] = [
@@ -228,6 +275,10 @@ class TaxModelTests(unittest.TestCase):
                 "taxable_wage_income": 0.0,
                 "non_ss_taxable_income": 35000.0,
                 "withdrawal_taxable_income": 10000.0,
+                "taxable_withdrawal_basis_portion": 15000.0,
+                "taxable_withdrawal_gain_portion": 10000.0,
+                "roth_withdrawal_basis_portion": 4000.0,
+                "roth_withdrawal_earnings_portion": 1000.0,
                 "other_taxable_income": 35000.0,
                 "social_security_provisional_income": 47000.0,
                 "taxable_social_security_income": 5000.0,
@@ -247,6 +298,8 @@ class TaxModelTests(unittest.TestCase):
         html = tables.build_tax_table(df)
         self.assertIn("Tax Item", html)
         self.assertIn("Taxable Income Components", html)
+        self.assertIn("Taxable withdrawal realized gains", html)
+        self.assertIn("Roth withdrawal earnings", html)
         self.assertIn("Social Security taxable fraction", html)
         self.assertIn("Federal taxable after deduction", html)
         self.assertIn("State taxable before deduction", html)

@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Iteration Window:** 2026-06-19 → 2026-06-22
-**Current Status:** NWN now has both a seeded Monte Carlo MVP and a turnkey historical-sequence mode on top of the shared projection-result contract. The async render-job system in the config editor is now confirmed working end-to-end. The progress modal hint-text flash caused by two competing 1-second timers writing to the same element is fixed.
+**Iteration Window:** 2026-06-19 → 2026-06-23
+**Current Status:** NWN now has both seeded Monte Carlo / turnkey historical modes and the first richer-account-mechanics slice from the ignidash port plan. Taxable brokerage withdrawals now use tracked cost basis vs. realized gains, Roth balances now track contribution basis vs. earnings, and the audit sidecars/UI expose those components.
 
 ## Current State
 
@@ -22,6 +22,9 @@
 - Stochastic summaries now publish a broader risk/terminal-metrics surface: probability of success, spending shortfall, liquid depletion, net worth below zero, and home-equity-required rescue, plus median/worst-decile terminal net worth and first-failure-period distribution
 - The tax path now uses explicit yearly tax input/output contracts centered in `src/tax_model.py`, with normalized federal/state tax-system objects and a dedicated `tax_breakdown_yearly.csv` sidecar for auditability
 - Tax outputs now also expose richer yearly subcomponents such as other-taxable-income, Social Security taxable fraction, provisional income, deduction-adjusted federal taxable income, and state taxable income before/after deduction
+- Taxable brokerage balances now track remaining cost basis separately from unrealized gains, so taxable withdrawals feed taxes from realized-gain portions instead of a flat bucket fraction once the opening basis state is seeded
+- Roth balances now also track contribution basis separately from earnings, with yearly outputs surfacing Roth withdrawal basis vs. earnings portions for auditability and future tax-rule refinement
+- Optional basis seeding is now supported via synthetic-start amounts (`taxable_cost_basis`, `roth_contribution_basis`) or account metadata (`basis_fraction`, `roth_contribution_basis_fraction`) when a scenario needs a better opening approximation than the legacy taxable-withdrawal fraction fallback
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view

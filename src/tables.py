@@ -1259,6 +1259,14 @@ def build_tax_table(df: pd.DataFrame) -> str:
         rows.append(_data_row("Non-SS taxable income", num_col("non_ss_taxable_income"), indent=True))
     if "withdrawal_taxable_income" in subset.columns:
         rows.append(_data_row("Withdrawal taxable income", num_col("withdrawal_taxable_income"), indent=True))
+    if "taxable_withdrawal_basis_portion" in subset.columns:
+        rows.append(_data_row("Taxable withdrawal basis return", num_col("taxable_withdrawal_basis_portion"), indent=True))
+    if "taxable_withdrawal_gain_portion" in subset.columns:
+        rows.append(_data_row("Taxable withdrawal realized gains", num_col("taxable_withdrawal_gain_portion"), indent=True))
+    if "roth_withdrawal_basis_portion" in subset.columns:
+        rows.append(_data_row("Roth withdrawal contribution basis", num_col("roth_withdrawal_basis_portion"), indent=True))
+    if "roth_withdrawal_earnings_portion" in subset.columns:
+        rows.append(_data_row("Roth withdrawal earnings", num_col("roth_withdrawal_earnings_portion"), indent=True))
     if "other_taxable_income" in subset.columns:
         rows.append(_data_row("Other taxable income", num_col("other_taxable_income"), indent=True))
     if "social_security_provisional_income" in subset.columns:
