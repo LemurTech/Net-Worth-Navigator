@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-19 → 2026-06-22
-**Current Status:** NWN now has both a seeded Monte Carlo MVP and a turnkey historical-sequence mode on top of the shared projection-result contract. Stochastic success/failure semantics are no longer hardcoded to investable depletion; they are scenario-configurable via `[monte_carlo.success]`, deterministic runs remain the unchanged default path, and the repo now ships a bundled illustrative return series for immediate historical-mode use.
+**Current Status:** NWN now has both a seeded Monte Carlo MVP and a turnkey historical-sequence mode on top of the shared projection-result contract. The async render-job system in the config editor is now confirmed working end-to-end. The progress modal hint-text flash caused by two competing 1-second timers writing to the same element is fixed.
 
 ## Current State
 
@@ -72,6 +72,8 @@
 - Editor supports validate, save, and save+offline-rerender actions with timestamped backups under per-scenario paths in `output/config-backups/<slug>/`, auto-pruned to the newest 10 per scenario
 - Config editor now shows a render-in-progress overlay spinner during render actions (`Save + Re-render`, `Save + Render All`, `Clone`)
 - The config editor render overlay is now action-aware and mode-aware: it reports scenario/mode counts and rotates staged progress copy during long multi-mode rerenders
+- Async background render jobs: `Save + Re-render` and `Save + Render All` now POST to `/render-jobs`, receive a job id, and poll `GET /jobs/{id}` until the job completes, then redirect — confirmed working after restarting the stale container
+- Progress modal hint text no longer flashes: the static "This page will refresh when the render completes." lives in the HTML; the elapsed counter now updates only an inner `<span id="render-elapsed">` so `setOverlayCopy` and the elapsed timer no longer compete over the same element
 - The active default scenario now lives in `scenarios/default.toml`; root `config.toml` is a migration fallback only
 - The config editor now supports scenario selection, clone/create inputs, and a `Save + Render All` control for batch output refresh
 - The public `projection.html` entry point now serves as a scenario shell page backed by `output/scenarios/index.json`, with rendered scenario pages loaded inside an iframe
@@ -187,3 +189,4 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - `annotation_textangle=-90` + `annotation_position="top right"` is the correct vertical label approach
 - `output/` is gitignored — do not commit generated HTML or cache
 - For routine NWN UI/layout tweaks, prefer targeted checks plus a real `python run.py --offline` render; reserve the full test suite for broader model or semantic changes
+- **nwn-config-editor container must be restarted after any code change to `admin_app.py`.** It runs `python admin_app.py` directly with no `--reload`; the running process will serve stale routes until restarted. Command: `cd /opt/hal-pages && docker compose restart nwn-config-editor`. Symptom of staleness: `{"detail":"Not Found"}` from `/render-jobs` or `/jobs/{id}`.

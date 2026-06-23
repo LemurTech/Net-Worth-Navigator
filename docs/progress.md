@@ -146,6 +146,8 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Fixed
 
+- Config editor async render jobs (`/render-jobs`, `/jobs/{id}`) were returning `{"detail":"Not Found"}` because the `nwn-config-editor` container was running a stale pre-fix version of `admin_app.py` (started 3 days before the routes were added, no `--reload`); restarting the container resolved it
+- Progress modal hint text no longer flashes between "This page will refresh…" and "Elapsed: Xs…": moved the elapsed counter to a dedicated `<span id="render-elapsed">` inside the hint div; `setOverlayCopy` no longer touches the hint element, and `updateElapsed` writes only to the span, eliminating the two-timer write conflict
 - Scenario Parameters `Retirement ownership snapshots` rows now remain visible when non-default scenarios open with `Show only differences` enabled
 - Frozen first-column table labels and section bands now work reliably via JS `translateX(scrollLeft)`
 - Gantt no longer renders condensed from hidden-tab Plotly sizing

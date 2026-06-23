@@ -422,7 +422,7 @@
         <div class="render-title" id="render-title">Rendering projection…</div>
         <div class="render-detail" id="render-detail">Preparing render plan…</div>
         <div class="render-progress" id="render-progress">Starting…</div>
-        <div class="render-hint" id="render-hint">This window will update while the server works.</div>
+        <div class="render-hint" id="render-hint">This page will refresh when the render completes.<span id="render-elapsed" style="opacity:0.55;margin-left:0.5em"></span></div>
       </div>
     </div>
   </div>
@@ -437,6 +437,7 @@
       const renderDetail = document.getElementById("render-detail");
       const renderProgress = document.getElementById("render-progress");
       const renderHint = document.getElementById("render-hint");
+      const renderElapsed = document.getElementById("render-elapsed");
       const statusPanel = document.getElementById("status-panel");
       const renderPlanData = document.getElementById("render-plan-data");
       const renderPlan = renderPlanData ? JSON.parse(renderPlanData.textContent || "{}") : {};
@@ -527,10 +528,9 @@
         };
       }
 
-      function setOverlayCopy(title, detail, hint) {
+      function setOverlayCopy(title, detail) {
         if (renderTitle) renderTitle.textContent = title;
         if (renderDetail) renderDetail.textContent = detail;
-        if (renderHint) renderHint.textContent = hint;
       }
 
       function clearOverlayTimers() {
@@ -545,9 +545,9 @@
         overlayStartedAt = Date.now();
 
         function updateElapsed() {
-          if (!renderHint || overlayStartedAt === null) return;
+          if (!renderElapsed || overlayStartedAt === null) return;
           const elapsed = Math.max(0, Math.floor((Date.now() - overlayStartedAt) / 1000));
-          renderHint.textContent = `Elapsed: ${elapsed}s. This page will refresh when the render completes.`;
+          renderElapsed.textContent = `(${elapsed}s)`;
         }
 
         updateElapsed();
@@ -563,19 +563,17 @@
         if (action === "save_render") {
           setOverlayCopy(
             `Rendering ${currentPlan.name}`,
-            `${currentPlan.render_count} mode page${currentPlan.render_count === 1 ? "" : "s"}: ${joinModes(currentModes)}`,
-            "Preparing background render job…"
+            `${currentPlan.render_count} mode page${currentPlan.render_count === 1 ? "" : "s"}: ${joinModes(currentModes)}`
           );
           if (renderProgress) renderProgress.textContent = "Queuing render job…";
         } else if (action === "save_render_all") {
           setOverlayCopy(
             "Rendering All Scenarios",
-            `${plan.scenarioCount || 0} scenarios, ${plan.totalRenderCount || 0} mode pages`,
-            "Preparing background batch render job…"
+            `${plan.scenarioCount || 0} scenarios, ${plan.totalRenderCount || 0} mode pages`
           );
           if (renderProgress) renderProgress.textContent = "Queuing batch render job…";
         } else {
-          setOverlayCopy("Rendering projection…", "Preparing render plan…", "This page will update while the server works.");
+          setOverlayCopy("Rendering projection…", "Preparing render plan…");
           if (renderProgress) renderProgress.textContent = "Starting render…";
         }
         beginOverlayElapsed();
@@ -639,7 +637,7 @@
             progress = `${completedRenderCount} of ${totalRenderCount} mode pages complete…`;
           }
         }
-        setOverlayCopy(title, detail, "This page will refresh when the render completes.");
+        setOverlayCopy(title, detail);
         if (renderProgress) renderProgress.textContent = progress;
       }
 
