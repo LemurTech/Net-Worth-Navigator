@@ -89,6 +89,15 @@ class SimulationModeTests(unittest.TestCase):
         self.assertIn("temporary_pressure_rate", result.outcomes_df.columns)
         self.assertIn("success_rate", result.summary)
         self.assertEqual(result.summary["failure_mode"], "liquid_depletion")
+        self.assertIn("probability_of_success", result.summary)
+        self.assertIn("probability_of_spending_shortfall", result.summary)
+        self.assertIn("probability_of_liquid_depletion", result.summary)
+        self.assertIn("probability_of_net_worth_below_zero", result.summary)
+        self.assertIn("probability_of_home_equity_required", result.summary)
+        self.assertIn("median_terminal_net_worth", result.summary)
+        self.assertIn("median_terminal_liquid_net_worth", result.summary)
+        self.assertIn("worst_decile_terminal_net_worth", result.summary)
+        self.assertIn("first_failure_period_distribution", result.summary)
 
     def test_build_chart_renders_monte_carlo_copy(self):
         config = self._base_config(mode="monte_carlo")
@@ -104,7 +113,9 @@ class SimulationModeTests(unittest.TestCase):
             charts.build_chart(result, out, config=config)
             html = out.read_text(encoding="utf-8")
 
-        self.assertIn("Monte Carlo Success Rate", html)
+        self.assertIn("Probability of Success", html)
+        self.assertIn("Probability of Spending Shortfall", html)
+        self.assertIn("Worst-Decile Terminal Net Worth", html)
         self.assertIn("P10-P90 range", html)
         self.assertIn("Simulation results", html)
         self.assertIn("Outcome Timing", html)
@@ -131,6 +142,9 @@ class SimulationModeTests(unittest.TestCase):
         self.assertIn("Portfolio return volatility", html)
         self.assertIn("Simulation results", html)
         self.assertIn("Stochastic success rules", html)
+        self.assertIn("Probability of Liquid Depletion", html)
+        self.assertIn("Probability of Home Equity Required", html)
+        self.assertIn("First failure period distribution", html)
 
     def test_spending_shortfall_failure_mode_is_configurable(self):
         config = self._base_config(mode="monte_carlo")
@@ -146,6 +160,23 @@ class SimulationModeTests(unittest.TestCase):
 
         self.assertEqual(result.summary["success_rate"], 0.0)
         self.assertEqual(result.summary["first_failure_year_p50"], 2026)
+        self.assertEqual(result.summary["probability_of_spending_shortfall"], 1.0)
+
+    def test_home_equity_required_probability_uses_spending_rescue_semantics(self):
+        config = self._base_config(mode="monte_carlo")
+        config["simulation"]["num_runs"] = 4
+        config["simulation"]["portfolio_return_volatility"] = 0.0
+        config["spending"]["retirement_annual"] = 100.0
+        config["spending"]["pre_retirement_spending"] = 100.0
+        result = model.run_projection_result(
+            balances={"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+            home_value=250.0,
+            liability_balances={},
+            config=config,
+        )
+
+        self.assertEqual(result.summary["probability_of_home_equity_required"], 1.0)
+        self.assertEqual(result.summary["probability_of_spending_shortfall"], 1.0)
 
     def test_spending_shortfall_grace_distinguishes_pressure_from_actual_failure(self):
         config = self._base_config(mode="monte_carlo")

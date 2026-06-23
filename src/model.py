@@ -2068,6 +2068,69 @@ def _run_failure_trace(
     return trace
 
 
+def _success_settings_variant(
+    success_settings: dict[str, object],
+    **overrides: object,
+) -> dict[str, object]:
+    """Return a shallow success-settings copy with selected overrides."""
+    variant = dict(success_settings)
+    variant.update(overrides)
+    return variant
+
+
+def _failure_years_for_runs(
+    run_frames: list[pd.DataFrame],
+    success_settings: dict[str, object],
+) -> list[int | None]:
+    """Return first failure year per run under the supplied success settings."""
+    return [_run_failure_year(frame, success_settings) for frame in run_frames]
+
+
+def _probability_from_failure_years(failure_years: list[int | None]) -> float:
+    """Return probability of at least one failure across the run set."""
+    if not failure_years:
+        return 0.0
+    failure_count = sum(1 for year in failure_years if year is not None)
+    return failure_count / len(failure_years)
+
+
+def _first_failure_distribution(
+    failure_years: list[int | None],
+    *,
+    total_runs: int,
+) -> list[dict[str, int | float]]:
+    """Return distribution of first-failure years across all stochastic runs."""
+    if total_runs <= 0:
+        return []
+    counts = pd.Series([year for year in failure_years if year is not None]).value_counts().sort_index()
+    return [
+        {
+            "year": int(year),
+            "run_count": int(count),
+            "probability": float(count) / total_runs,
+        }
+        for year, count in counts.items()
+    ]
+
+
+def _run_requires_home_equity(
+    df: pd.DataFrame,
+    success_settings: dict[str, object],
+) -> bool:
+    """Whether a run only avoids spending failure when home equity is allowed."""
+    without_home = _success_settings_variant(
+        success_settings,
+        failure_mode="spending_shortfall",
+        allow_home_equity_for_spending=False,
+    )
+    with_home = _success_settings_variant(
+        success_settings,
+        failure_mode="spending_shortfall",
+        allow_home_equity_for_spending=True,
+    )
+    return _run_failure_year(df, without_home) is not None and _run_failure_year(df, with_home) is None
+
+
 def _projection_summary(
     *,
     config: dict,
@@ -2103,16 +2166,29 @@ def _projection_summary(
         summary["success"] = _run_failure_year(run_frames[0], success_settings) is None
         return summary
 
-    terminal_values = sorted(float(frame.iloc[-1]["total_net_worth"]) for frame in run_frames)
-    failure_years = [year for year in (_run_failure_year(frame, success_settings) for frame in run_frames) if year is not None]
-    success_count = sum(1 for frame in run_frames if _run_failure_year(frame, success_settings) is None)
+    terminal_total_values = sorted(float(frame.iloc[-1]["total_net_worth"]) for frame in run_frames)
+    terminal_liquid_values = sorted(float(frame.iloc[-1]["net_worth"]) for frame in run_frames)
+    failure_years_by_run = _failure_years_for_runs(run_frames, success_settings)
+    failure_years = [year for year in failure_years_by_run if year is not None]
+    success_count = sum(1 for year in failure_years_by_run if year is None)
     summary["success_rate"] = success_count / len(run_frames)
     summary["failure_rate"] = 1.0 - summary["success_rate"]
-    summary["terminal_total_net_worth_p10"] = float(pd.Series(terminal_values).quantile(0.10))
-    summary["terminal_total_net_worth_p50"] = float(pd.Series(terminal_values).quantile(0.50))
-    summary["terminal_total_net_worth_p90"] = float(pd.Series(terminal_values).quantile(0.90))
+    summary["probability_of_success"] = summary["success_rate"]
+    summary["terminal_total_net_worth_p10"] = float(pd.Series(terminal_total_values).quantile(0.10))
+    summary["terminal_total_net_worth_p50"] = float(pd.Series(terminal_total_values).quantile(0.50))
+    summary["terminal_total_net_worth_p90"] = float(pd.Series(terminal_total_values).quantile(0.90))
+    summary["terminal_investable_net_worth_p10"] = float(pd.Series(terminal_liquid_values).quantile(0.10))
+    summary["terminal_investable_net_worth_p50"] = float(pd.Series(terminal_liquid_values).quantile(0.50))
+    summary["terminal_investable_net_worth_p90"] = float(pd.Series(terminal_liquid_values).quantile(0.90))
+    summary["median_terminal_net_worth"] = summary["terminal_total_net_worth_p50"]
+    summary["median_terminal_liquid_net_worth"] = summary["terminal_investable_net_worth_p50"]
+    summary["worst_decile_terminal_net_worth"] = summary["terminal_total_net_worth_p10"]
     summary["failed_run_count"] = len(failure_years)
     summary["successful_run_count"] = success_count
+    summary["first_failure_period_distribution"] = _first_failure_distribution(
+        failure_years_by_run,
+        total_runs=len(run_frames),
+    )
     if failure_years:
         failure_series = pd.Series(sorted(failure_years))
         summary["first_failure_year_p10"] = int(round(float(failure_series.quantile(0.10))))
@@ -2131,6 +2207,31 @@ def _projection_summary(
 
     if run_labels:
         summary["run_labels"] = list(run_labels)
+
+    spending_shortfall_settings = _success_settings_variant(
+        success_settings,
+        failure_mode="spending_shortfall",
+    )
+    liquid_depletion_settings = _success_settings_variant(
+        success_settings,
+        failure_mode="liquid_depletion",
+    )
+    net_worth_below_zero_settings = _success_settings_variant(
+        success_settings,
+        failure_mode="net_worth_below_zero",
+    )
+    summary["probability_of_spending_shortfall"] = _probability_from_failure_years(
+        _failure_years_for_runs(run_frames, spending_shortfall_settings)
+    )
+    summary["probability_of_liquid_depletion"] = _probability_from_failure_years(
+        _failure_years_for_runs(run_frames, liquid_depletion_settings)
+    )
+    summary["probability_of_net_worth_below_zero"] = _probability_from_failure_years(
+        _failure_years_for_runs(run_frames, net_worth_below_zero_settings)
+    )
+    summary["probability_of_home_equity_required"] = (
+        sum(1 for frame in run_frames if _run_requires_home_equity(frame, success_settings)) / len(run_frames)
+    )
 
     if outcomes_df is not None and not outcomes_df.empty:
         peak_trigger_row = outcomes_df.loc[outcomes_df["current_failure_trigger_rate"].idxmax()]

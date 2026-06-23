@@ -56,6 +56,21 @@ def _fmt_percent(value) -> str:
     return f"{text}%"
 
 
+def _fmt_failure_distribution(value) -> str:
+    if not isinstance(value, list) or not value:
+        return "No failure"
+    parts: list[str] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        year = item.get("year")
+        probability = _fmt_percent(item.get("probability"))
+        if year in (None, "") or probability == "—":
+            continue
+        parts.append(f"{year}: {probability}")
+    return " | ".join(parts) if parts else "No failure"
+
+
 def _fmt_401k_split(value) -> str:
     if not isinstance(value, dict):
         return "—"
@@ -803,11 +818,16 @@ def build_scenario_parameters_summary(
             ("Display path", escape(str(summary.get("display_path_kind", "median")))),
             ("Run count", escape(str(summary.get("run_count", "—")))),
             ("Failure mode", escape(str(summary.get("failure_mode", "—")))),
-            ("Success rate", _fmt_percent(summary.get("success_rate", 0.0))),
-            ("Median end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p50"))),
-            ("P10 end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p10"))),
-            ("P90 end net worth", _fmt_currency(summary.get("terminal_total_net_worth_p90"))),
+            ("Probability of Success", _fmt_percent(summary.get("probability_of_success", summary.get("success_rate", 0.0)))),
+            ("Probability of Spending Shortfall", _fmt_percent(summary.get("probability_of_spending_shortfall", 0.0))),
+            ("Probability of Liquid Depletion", _fmt_percent(summary.get("probability_of_liquid_depletion", 0.0))),
+            ("Probability of Net Worth Below Zero", _fmt_percent(summary.get("probability_of_net_worth_below_zero", 0.0))),
+            ("Probability of Home Equity Required", _fmt_percent(summary.get("probability_of_home_equity_required", 0.0))),
+            ("Median Terminal Net Worth", _fmt_currency(summary.get("median_terminal_net_worth"))),
+            ("Median Terminal Liquid Net Worth", _fmt_currency(summary.get("median_terminal_liquid_net_worth"))),
+            ("Worst-Decile Terminal Net Worth", _fmt_currency(summary.get("worst_decile_terminal_net_worth"))),
             ("Median first failure year", escape(str(summary.get("first_failure_year_p50", "No failure")))),
+            ("First failure period distribution", escape(_fmt_failure_distribution(summary.get("first_failure_period_distribution")))),
             ("Retirement P50 net worth", _fmt_currency(summary.get("retirement_total_net_worth_p50"))),
         ]
         simulation_result_card = (

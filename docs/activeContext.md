@@ -19,6 +19,7 @@
 - Stochastic projection pages now show probability-band charts for total net worth and investable portfolio, stochastic KPI strips, and a `Simulation results` summary card in Scenario Parameters
 - Stochastic projection pages now also get a dedicated `Simulation` tab with an outcome-timing chart plus a yearly outcomes table driven by the same normalized stochastic results bundle
 - The stochastic outcomes bundle now distinguishes raw yearly pressure triggers from actual rule failure, so grace-based modes like `spending_shortfall` can show “temporary pressure” separately from true plan failure
+- Stochastic summaries now publish a broader risk/terminal-metrics surface: probability of success, spending shortfall, liquid depletion, net worth below zero, and home-equity-required rescue, plus median/worst-decile terminal net worth and first-failure-period distribution
 - The tax path now uses explicit yearly tax input/output contracts centered in `src/tax_model.py`, with normalized federal/state tax-system objects and a dedicated `tax_breakdown_yearly.csv` sidecar for auditability
 - Tax outputs now also expose richer yearly subcomponents such as other-taxable-income, Social Security taxable fraction, provisional income, deduction-adjusted federal taxable income, and state taxable income before/after deduction
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
@@ -177,7 +178,7 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
 - Stochastic UI/data slice is now expanded beyond summary cards
   - `ProjectionResult` now carries a yearly stochastic outcomes frame in addition to the median path, summary metrics, and percentile bands
   - sidecars persist that frame as `simulation_outcomes_yearly.csv`
-  - the next natural follow-on is richer stochastic semantics or comparison UX, not another round of ad hoc Monte Carlo copy inside Scenario Parameters
+  - the next natural follow-on is richer stochastic comparison UX or scenario-to-scenario mode comparisons, not another round of ad hoc Monte Carlo copy inside Scenario Parameters
 
 ## Known Pitfalls
 

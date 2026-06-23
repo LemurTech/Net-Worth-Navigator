@@ -6,6 +6,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Richer stochastic summary metrics in `src/model.py`, including probabilities for success / spending shortfall / liquid depletion / net worth below zero / home-equity-required rescue, median terminal liquid net worth, worst-decile terminal net worth, and first-failure-period distributions
 - Typed yearly tax contracts in `src/tax_model.py` (`FederalTaxSystem`, `StateTaxSystem`, `YearlyTaxInputs`, `YearlyTaxOutputs`) plus a dedicated `tax_breakdown_yearly.csv` sidecar for per-year tax audit data
 - Expanded yearly tax audit outputs in `src/tax_model.py` / sidecars: federal deduction-adjusted taxable income, effective rates, Social Security taxable fraction + provisional income, and state taxable income before/after deduction
 - Bundled illustrative historical return dataset at `config/return_sequences/us_balanced_returns.csv` plus usage guidance in `docs/historical-return-sequences.md`, making historical mode turnkey for repo-local scenarios
@@ -118,6 +119,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Changed
 
+- Stochastic KPI strips, simulation callouts, and Scenario Parameters now use natural-language risk labels rather than Monte-Carlo-specific copy, and historical mode reuses the same headline metrics
 - Cash Flow now surfaces federal/state modeled tax rows when present, and Scenario Parameters now includes a `Tax output snapshot` card driven by the rendered projection path
 - Tax output snapshot and tax sidecars now surface the main explanatory subcomponents behind each year's modeled taxes instead of only total federal/state amounts
 - Projection page now includes a dedicated `Tax` tab that mirrors the yearly tax audit path with tax context, taxable-income components, federal/state deduction math, effective rates, and total modeled taxes

@@ -572,39 +572,35 @@ def _build_kpi_summary(
     if projection_result.mode == "monte_carlo":
         summary = projection_result.summary
         cards = [
-            ("Monte Carlo Success Rate", _format_percent(float(summary.get("success_rate", 0.0)))),
+            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0))))),
             (
-                "Median Net Worth at Retirement",
-                _format_compact_currency(float(summary.get("retirement_total_net_worth_p50", retirement_row["total_net_worth"] if retirement_row is not None else 0.0)))
-                if retirement_row is not None or summary.get("retirement_total_net_worth_p50") is not None
-                else "—",
+                "Probability of Spending Shortfall",
+                _format_percent(float(summary.get("probability_of_spending_shortfall", 0.0))),
             ),
             (
-                "Median First Failure Year",
-                str(summary.get("first_failure_year_p50")) if summary.get("first_failure_year_p50") is not None else "No failure",
+                "Median Terminal Net Worth",
+                _format_compact_currency(float(summary.get("median_terminal_net_worth", summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"])))),
             ),
             (
-                "Median Net Worth at End",
-                _format_compact_currency(float(summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"]))),
+                "Worst-Decile Terminal Net Worth",
+                _format_compact_currency(float(summary.get("worst_decile_terminal_net_worth", summary.get("terminal_total_net_worth_p10", last_row["total_net_worth"])))),
             ),
         ]
     elif projection_result.mode == "historical":
         summary = projection_result.summary
         cards = [
-            ("Historical Success Rate", _format_percent(float(summary.get("success_rate", 0.0)))),
+            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0))))),
             (
-                "Median Net Worth at Retirement",
-                _format_compact_currency(float(summary.get("retirement_total_net_worth_p50", retirement_row["total_net_worth"] if retirement_row is not None else 0.0)))
-                if retirement_row is not None or summary.get("retirement_total_net_worth_p50") is not None
-                else "—",
+                "Probability of Spending Shortfall",
+                _format_percent(float(summary.get("probability_of_spending_shortfall", 0.0))),
             ),
             (
-                "Median First Failure Year",
-                str(summary.get("first_failure_year_p50")) if summary.get("first_failure_year_p50") is not None else "No failure",
+                "Median Terminal Net Worth",
+                _format_compact_currency(float(summary.get("median_terminal_net_worth", summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"])))),
             ),
             (
-                "Median Net Worth at End",
-                _format_compact_currency(float(summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"]))),
+                "Worst-Decile Terminal Net Worth",
+                _format_compact_currency(float(summary.get("worst_decile_terminal_net_worth", summary.get("terminal_total_net_worth_p10", last_row["total_net_worth"])))),
             ),
         ]
     else:
@@ -1108,7 +1104,8 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
     summary_html = (
         "<div class='assumptions-note'>"
         f"{mode_label} outcome detail for the current rendered result path. "
-        f"<strong>Success rate:</strong> {_fmt_pct_text(summary.get('success_rate', 0.0))} | "
+        f"<strong>Probability of Success:</strong> {_fmt_pct_text(summary.get('probability_of_success', summary.get('success_rate', 0.0)))} | "
+        f"<strong>Probability of Spending Shortfall:</strong> {_fmt_pct_text(summary.get('probability_of_spending_shortfall', 0.0))} | "
         f"<strong>Failure mode:</strong> {escape(str(summary.get('failure_mode', '—')))} | "
         f"<strong>Median first failure year:</strong> {escape(str(summary.get('first_failure_year_p50', 'No failure')))} | "
         f"<strong>Peak temporary pressure:</strong> {_fmt_pct_text(summary.get('peak_temporary_pressure_rate', 0.0))}"
