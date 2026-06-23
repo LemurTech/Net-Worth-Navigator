@@ -426,12 +426,43 @@ def _complete_render_job(
     )
 
 
+def _run_render_job_guarded(
+    job_id: str,
+    worker,
+    *args,
+) -> None:
+    try:
+        _update_render_job(
+            job_id,
+            state="running",
+            title="Starting render job",
+            progress="Starting background worker…",
+        )
+        worker(job_id, *args)
+    except Exception as exc:
+        _complete_render_job(
+            job_id,
+            state="failed",
+            status_kind="error",
+            status_title="Render job failed",
+            status_message=str(exc),
+            details="Background render worker crashed before completion.",
+        )
+
+
+def _start_render_job_thread(job_id: str, worker, *args) -> None:
+    threading.Thread(
+        target=_run_render_job_guarded,
+        args=(job_id, worker, *args),
+        daemon=True,
+    ).start()
+
+
 def _run_save_render_job(job_id: str, scenario_slug: str) -> None:
     scenario = _current_scenario(scenario_slug)
     planned_modes = _planned_modes_for_scenario(scenario.slug)
     _update_render_job(
         job_id,
-        state="running",
         title="Rendering projections",
         detail=f"Scenario 1 of 1, 0 of {len(planned_modes)} mode pages complete",
         progress="Preparing render process…",
@@ -471,7 +502,6 @@ def _run_save_render_all_job(job_id: str, current_scenario_slug: str) -> None:
     total_render_count = sum(len(_planned_modes_for_scenario(scenario.slug)) for scenario in scenarios)
     _update_render_job(
         job_id,
-        state="running",
         scenario_count=len(scenarios),
         total_render_count=total_render_count,
         title="Rendering all scenarios",
@@ -657,11 +687,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
                     total_render_count=len(planned_modes),
                     backup_path=str(backup_path),
                 )
-                threading.Thread(
-                    target=_run_save_render_job,
-                    args=(job["id"], scenario.slug),
-                    daemon=True,
-                ).start()
+                _start_render_job_thread(job["id"], _run_save_render_job, scenario.slug)
                 return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
             result = _render_projection_offline(scenario_slug)
             if result.returncode == 0:
@@ -711,11 +737,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
                     total_render_count=total_render_count,
                     backup_path=str(backup_path),
                 )
-                threading.Thread(
-                    target=_run_save_render_all_job,
-                    args=(job["id"], scenario.slug),
-                    daemon=True,
-                ).start()
+                _start_render_job_thread(job["id"], _run_save_render_all_job, scenario.slug)
                 return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
             results = _render_all_scenarios()
             failures = [
