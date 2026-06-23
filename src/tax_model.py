@@ -67,6 +67,16 @@ class YearlyTaxOutputs:
     state_taxable_income: float
     non_ss_taxable_income: float
     withdrawal_taxable_income: float
+    other_taxable_income: float
+    federal_standard_deduction: float
+    federal_taxable_after_deduction: float
+    federal_effective_rate: float
+    state_standard_deduction: float
+    state_taxable_before_deduction: float
+    state_effective_rate: float
+    social_security_taxable_fraction: float
+    social_security_provisional_income: float
+    state_social_security_taxed: bool
 
 
 def _tax_phase(*, both_retired: bool, one_deceased: bool) -> str:
@@ -173,11 +183,15 @@ def calculate_progressive_tax(
     return total_tax
 
 
-def _estimate_federal_taxes(inputs: YearlyTaxInputs) -> tuple[float, float, float]:
-    """Return federal taxes, taxable income, and taxable Social Security income."""
+def _estimate_federal_taxes(inputs: YearlyTaxInputs) -> tuple[float, float, float, float, float, float, float]:
+    """Return federal tax details for the year."""
     other_taxable_income = inputs.other_taxable_income
     taxable_ss_income = 0.0
+    provisional_income = 0.0
+    standard_deduction = 0.0
     if inputs.federal_system.mode == "brackets":
+        standard_deduction = float(inputs.federal_system.standard_deduction)
+        provisional_income = max(0.0, other_taxable_income) + (max(0.0, inputs.social_security_income) * 0.5)
         taxable_ss_income = calculate_social_security_taxable_income(
             social_security_income=max(0.0, inputs.social_security_income),
             other_taxable_income=other_taxable_income,
@@ -187,25 +201,50 @@ def _estimate_federal_taxes(inputs: YearlyTaxInputs) -> tuple[float, float, floa
         taxable_income = other_taxable_income + taxable_ss_income
         federal_taxes = calculate_progressive_tax(
             taxable_income=taxable_income,
-            standard_deduction=float(inputs.federal_system.standard_deduction),
+            standard_deduction=standard_deduction,
             brackets=list(inputs.federal_system.brackets),
         )
     else:
         taxable_income = max(0.0, other_taxable_income + inputs.legacy_ss_taxable_income)
         federal_taxes = taxable_income * float(inputs.federal_system.rate)
         taxable_ss_income = inputs.legacy_ss_taxable_income
-    return federal_taxes, taxable_income, taxable_ss_income
+        standard_deduction = 0.0
+        provisional_income = max(0.0, other_taxable_income) + (max(0.0, inputs.social_security_income) * 0.5)
+    taxable_after_deduction = max(0.0, taxable_income - standard_deduction)
+    effective_rate = 0.0 if taxable_income <= 0 else federal_taxes / taxable_income
+    ss_fraction = 0.0 if inputs.social_security_income <= 0 else taxable_ss_income / max(0.0, inputs.social_security_income)
+    return (
+        federal_taxes,
+        taxable_income,
+        taxable_ss_income,
+        standard_deduction,
+        taxable_after_deduction,
+        effective_rate,
+        provisional_income,
+    )
 
 
 def estimate_annual_taxes(*, inputs: YearlyTaxInputs) -> YearlyTaxOutputs:
     """Estimate annual federal+state taxes and return a structured yearly result."""
-    federal_taxes, taxable_income, taxable_ss_income = _estimate_federal_taxes(inputs)
-    state_taxes, state_taxable_income = estimate_state_taxes(
+    (
+        federal_taxes,
+        taxable_income,
+        taxable_ss_income,
+        federal_standard_deduction,
+        federal_taxable_after_deduction,
+        federal_effective_rate,
+        social_security_provisional_income,
+    ) = _estimate_federal_taxes(inputs)
+    state_taxes, state_taxable_income, state_taxable_before_deduction = estimate_state_taxes(
         non_ss_taxable_income=inputs.other_taxable_income,
         social_security_taxable_income=taxable_ss_income,
         state_tax_system=inputs.state_system,
     )
     total_taxes = federal_taxes + state_taxes
+    state_effective_rate = 0.0 if state_taxable_before_deduction <= 0 else state_taxes / state_taxable_before_deduction
+    social_security_taxable_fraction = (
+        0.0 if inputs.social_security_income <= 0 else taxable_ss_income / max(0.0, inputs.social_security_income)
+    )
     return YearlyTaxOutputs(
         total_taxes=total_taxes,
         taxable_income=taxable_income,
@@ -215,6 +254,16 @@ def estimate_annual_taxes(*, inputs: YearlyTaxInputs) -> YearlyTaxOutputs:
         state_taxable_income=state_taxable_income,
         non_ss_taxable_income=max(0.0, float(inputs.non_ss_taxable_income)),
         withdrawal_taxable_income=max(0.0, float(inputs.withdrawal_taxable_income)),
+        other_taxable_income=inputs.other_taxable_income,
+        federal_standard_deduction=federal_standard_deduction,
+        federal_taxable_after_deduction=federal_taxable_after_deduction,
+        federal_effective_rate=federal_effective_rate,
+        state_standard_deduction=float(inputs.state_system.standard_deduction),
+        state_taxable_before_deduction=state_taxable_before_deduction,
+        state_effective_rate=state_effective_rate,
+        social_security_taxable_fraction=social_security_taxable_fraction,
+        social_security_provisional_income=social_security_provisional_income,
+        state_social_security_taxed=bool(inputs.state_system.tax_social_security),
     )
 
 
@@ -223,24 +272,25 @@ def estimate_state_taxes(
     non_ss_taxable_income: float,
     social_security_taxable_income: float,
     state_tax_system: StateTaxSystem,
-) -> tuple[float, float]:
+) -> tuple[float, float, float]:
     """Estimate state tax from modeled taxable inflows."""
     if not state_tax_system.enabled:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
     if state_tax_system.name != "oregon":
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
 
     filing_status = str(state_tax_system.filing_status or "married_joint")
-    state_taxable_income = max(0.0, non_ss_taxable_income)
+    state_taxable_before_deduction = max(0.0, non_ss_taxable_income)
     if state_tax_system.tax_social_security:
-        state_taxable_income += max(0.0, social_security_taxable_income)
-    state_taxable_income = max(0.0, state_taxable_income - float(state_tax_system.standard_deduction))
+        state_taxable_before_deduction += max(0.0, social_security_taxable_income)
+    state_taxable_income = max(0.0, state_taxable_before_deduction - float(state_tax_system.standard_deduction))
     return (
         calculate_oregon_state_tax(
             taxable_income=state_taxable_income,
             filing_status=filing_status,
         ),
         state_taxable_income,
+        state_taxable_before_deduction,
     )
 
 

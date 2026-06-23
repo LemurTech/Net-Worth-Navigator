@@ -29,14 +29,24 @@ class SidecarTests(unittest.TestCase):
                 "taxable_wage_income": 0.0,
                 "non_ss_taxable_income": 5.0,
                 "withdrawal_taxable_income": 0.0,
+                "other_taxable_income": 5.0,
                 "taxable_social_security_income": 0.0,
+                "social_security_taxable_fraction": 0.0,
+                "social_security_provisional_income": 5.0,
                 "annual_taxes": 1.0,
                 "annual_federal_taxes": 1.0,
                 "annual_state_taxes": 0.0,
+                "federal_standard_deduction": 0.0,
+                "federal_taxable_after_deduction": 5.0,
+                "federal_effective_rate": 0.2,
                 "state_tax_enabled": False,
                 "state_tax_name": "",
                 "state_tax_filing_status": "",
+                "state_standard_deduction": 0.0,
+                "state_taxable_before_deduction": 5.0,
                 "state_taxable_income": 0.0,
+                "state_effective_rate": 0.0,
+                "state_social_security_taxed": False,
                 "annual_spend": 15.0,
                 "freed_payments": 0.0,
                 "net_flow": 14.0,
@@ -115,6 +125,8 @@ class SidecarTests(unittest.TestCase):
             tax_breakdown_df = pd.read_csv(tax_breakdown_csv)
             self.assertIn("tax_phase", tax_breakdown_df.columns)
             self.assertIn("annual_federal_taxes", tax_breakdown_df.columns)
+            self.assertIn("federal_taxable_after_deduction", tax_breakdown_df.columns)
+            self.assertIn("social_security_taxable_fraction", tax_breakdown_df.columns)
             self.assertEqual(str(tax_breakdown_df.iloc[0]["tax_mode"]), "brackets")
 
             manifest = json.loads((sidecar_dir / "scenario_manifest.json").read_text())
@@ -151,14 +163,24 @@ class SidecarTests(unittest.TestCase):
                 "taxable_wage_income": 0.0,
                 "non_ss_taxable_income": 0.0,
                 "withdrawal_taxable_income": 0.0,
+                "other_taxable_income": 0.0,
                 "taxable_social_security_income": 0.0,
+                "social_security_taxable_fraction": 0.0,
+                "social_security_provisional_income": 0.0,
                 "annual_taxes": 0.0,
                 "annual_federal_taxes": 0.0,
                 "annual_state_taxes": 0.0,
+                "federal_standard_deduction": 0.0,
+                "federal_taxable_after_deduction": 0.0,
+                "federal_effective_rate": 0.0,
                 "state_tax_enabled": False,
                 "state_tax_name": "",
                 "state_tax_filing_status": "",
+                "state_standard_deduction": 0.0,
+                "state_taxable_before_deduction": 0.0,
                 "state_taxable_income": 0.0,
+                "state_effective_rate": 0.0,
+                "state_social_security_taxed": False,
                 "annual_spend": 0.0,
                 "freed_payments": 0.0,
                 "net_flow": 0.0,

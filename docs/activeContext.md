@@ -16,6 +16,7 @@
 - `[monte_carlo.success]` now controls stochastic failure semantics, including `failure_mode`, `minimum_spending_funded_ratio`, home-equity/debt allowances, and `failure_grace_period_months`
 - Stochastic projection pages now show probability-band charts for total net worth and investable portfolio, stochastic KPI strips, and a `Simulation results` summary card in Scenario Parameters
 - The tax path now uses explicit yearly tax input/output contracts centered in `src/tax_model.py`, with normalized federal/state tax-system objects and a dedicated `tax_breakdown_yearly.csv` sidecar for auditability
+- Tax outputs now also expose richer yearly subcomponents such as other-taxable-income, Social Security taxable fraction, provisional income, deduction-adjusted federal taxable income, and state taxable income before/after deduction
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view
@@ -31,6 +32,7 @@
 - Deficit coverage now honors configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` semantics to preserve reserves when possible
 - Cash Flow tab now shows positive income events in Income and a `Modeled tax on retirement/event inflows` expense row
 - Cash Flow can now break modeled taxes into federal and state rows when those components are non-zero, and Scenario Parameters now includes a `Tax output snapshot` card sourced from the rendered projection
+- The tax snapshot card now includes the main explanatory subcomponents behind the current year's modeled taxes rather than only top-line tax totals
 - End-of-plan timing is now synced from each person's `dob` + `life_expectancy` at runtime so stale hardcoded event years do not skew the chart
 - `SellHome` proceeds are now preserved in cash in the sale year rather than being auto-invested into existing non-cash buckets
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`

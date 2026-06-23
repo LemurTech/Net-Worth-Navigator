@@ -153,7 +153,10 @@ class TaxModelTests(unittest.TestCase):
 
         row = df.iloc[0]
         self.assertAlmostEqual(row["taxable_income"], 36.25, delta=0.02)
+        self.assertAlmostEqual(row["other_taxable_income"], 36.25, delta=0.02)
+        self.assertAlmostEqual(row["federal_taxable_after_deduction"], 36.25, delta=0.02)
         self.assertAlmostEqual(row["annual_taxes"], 6.25, delta=0.02)
+        self.assertAlmostEqual(row["federal_effective_rate"], 6.25 / 36.25, delta=0.0001)
         self.assertAlmostEqual(row["trad_ira"], 63.75, delta=0.02)
 
     def test_social_security_uses_provisional_income_thresholds(self):
@@ -186,6 +189,9 @@ class TaxModelTests(unittest.TestCase):
 
         row = df.iloc[0]
         self.assertAlmostEqual(row["taxable_income"], 37_000.0, places=2)
+        self.assertAlmostEqual(row["taxable_social_security_income"], 12_000.0, places=2)
+        self.assertAlmostEqual(row["social_security_taxable_fraction"], 0.5, places=4)
+        self.assertAlmostEqual(row["social_security_provisional_income"], 37_000.0, places=2)
         self.assertAlmostEqual(row["annual_taxes"], 7_399.0, places=2)
 
     def test_cashflow_table_relabels_modeled_tax_scope(self):

@@ -829,8 +829,18 @@ def build_scenario_parameters_summary(
             ("Peak state tax", _fmt_currency(peak_tax_row.get("annual_state_taxes"))),
             ("Latest tax phase", escape(str(latest_tax_row.get("tax_phase", "—")))),
             ("Latest filing status", escape(str(latest_tax_row.get("tax_filing_status", "—")))),
+            ("Latest other taxable income", _fmt_currency(latest_tax_row.get("other_taxable_income"))),
             ("Latest taxable income", _fmt_currency(latest_tax_row.get("taxable_income"))),
+            ("Latest federal deduction", _fmt_currency(latest_tax_row.get("federal_standard_deduction"))),
+            ("Latest federal taxable after deduction", _fmt_currency(latest_tax_row.get("federal_taxable_after_deduction"))),
+            ("Latest federal effective rate", _fmt_percent(latest_tax_row.get("federal_effective_rate"))),
             ("Latest taxable Social Security", _fmt_currency(latest_tax_row.get("taxable_social_security_income"))),
+            ("Latest Social Security taxable fraction", _fmt_percent(latest_tax_row.get("social_security_taxable_fraction"))),
+            ("Latest provisional income", _fmt_currency(latest_tax_row.get("social_security_provisional_income"))),
+            ("Latest state deduction", _fmt_currency(latest_tax_row.get("state_standard_deduction"))),
+            ("Latest state taxable before deduction", _fmt_currency(latest_tax_row.get("state_taxable_before_deduction"))),
+            ("Latest state taxable income", _fmt_currency(latest_tax_row.get("state_taxable_income"))),
+            ("Latest state effective rate", _fmt_percent(latest_tax_row.get("state_effective_rate"))),
         ]
         tax_result_card = (
             "<section class='assumption-card'>"
