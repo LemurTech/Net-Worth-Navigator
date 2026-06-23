@@ -356,6 +356,7 @@ class TaxModelTests(unittest.TestCase):
         self.assertIn("btn-tax", html)
         self.assertIn("panel-tax", html)
         self.assertIn(">Tax</button>", html)
+        self.assertIn(">Definitions</a>", html)
 
     def test_oregon_state_tax_uses_table_under_50k(self):
         config = self._base_config()

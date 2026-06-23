@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from src.charts import build_chart
+from src.definitions_page import write_definitions_page
 from src.model import load_config, run_projection_result
 from src.monarch_bridge import (
     classify_accounts,
@@ -276,8 +277,16 @@ def main():
         output_path=shell_output_path,
         manifest_relpath="scenarios/index.json",
         editor_url="/finances/config/",
+        definitions_url="/finances/definitions.html",
     )
     print(f"  scenario_shell_html: {shell_output_path}")
+    definitions_output_path = OUTPUT_DIR / "definitions.html"
+    write_definitions_page(
+        definitions_output_path,
+        editor_url="/finances/config/",
+        projection_url="/finances/projection.html",
+    )
+    print(f"  definitions_html: {definitions_output_path}")
 
     # 4. Deploy to web server
     DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
@@ -288,7 +297,10 @@ def main():
     shutil.copy2(index_path, deploy_index_path)
     deploy_path = DEPLOY_DIR / "projection.html"
     shutil.copy2(shell_output_path, deploy_path)
+    deploy_definitions_path = DEPLOY_DIR / "definitions.html"
+    shutil.copy2(definitions_output_path, deploy_definitions_path)
     deploy_path.chmod(0o644)
+    deploy_definitions_path.chmod(0o644)
     print(f"→ Deployed → {deploy_path}")
     print(f"  View at: http://casalemuria.lan/finances/projection.html")
     print("Done.")

@@ -12,6 +12,7 @@ def build_scenario_shell(
     output_path: Path,
     manifest_relpath: str = "scenarios/index.json",
     editor_url: str = "/finances/config/",
+    definitions_url: str = "/finances/definitions.html",
 ) -> None:
     default_slug = str(manifest.get("default_slug", "default"))
     inline_manifest = json.dumps(manifest)
@@ -266,6 +267,7 @@ def build_scenario_shell(
           </div>
           <div class="control-actions">
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
+            <a class="linkbtn" id="definitions-link" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
             <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
             <a class="linkbtn primary" id="edit-scenarios-link" href="{editor_url}">Edit Scenarios</a>
           </div>

@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-19 → 2026-06-23
-**Current Status:** NWN now has both seeded Monte Carlo / turnkey historical modes and the first richer-account-mechanics slice from the ignidash port plan. Taxable brokerage withdrawals now use tracked cost basis vs. realized gains, Roth balances now track contribution basis vs. earnings, and the audit sidecars/UI expose those components.
+**Current Status:** NWN now has both seeded Monte Carlo / turnkey historical modes, the first richer-account-mechanics slice from the ignidash port plan, and a new static definitions/reference page. Taxable brokerage withdrawals now use tracked cost basis vs. realized gains, Roth balances now track contribution basis vs. earnings, and the public/editor surfaces now link to a simplified parameter glossary instead of pushing more explanation into every TOML file.
 
 ## Current State
 
@@ -25,6 +25,9 @@
 - Taxable brokerage balances now track remaining cost basis separately from unrealized gains, so taxable withdrawals feed taxes from realized-gain portions instead of a flat bucket fraction once the opening basis state is seeded
 - Roth balances now also track contribution basis separately from earnings, with yearly outputs surfacing Roth withdrawal basis vs. earnings portions for auditability and future tax-rule refinement
 - Optional basis seeding is now supported via synthetic-start amounts (`taxable_cost_basis`, `roth_contribution_basis`) or account metadata (`basis_fraction`, `roth_contribution_basis_fraction`) when a scenario needs a better opening approximation than the legacy taxable-withdrawal fraction fallback
+- The public site now also emits `output/definitions.html`, a static reference page grouped by scenario metadata, simulation, people, spending, withdrawal policy, taxes, assumptions, accounts, and events
+- Projection pages, the public scenario shell, and the config editor now all expose a `Definitions` link that opens the static reference page in a new tab
+- Scenario TOML comment blocks were harmonized across the full scenario set so the new basis/bucket metadata is described consistently everywhere without expanding into a full handbook inside each file
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
 - Cash Flow tab: income / portfolio funding withdrawals / living expenses / event outflows / net (yearly columns)
 - Portfolio tab: dedicated projected investment portfolio chart for taxable / traditional IRA / 401k / Roth, separate from cash, home equity, and the main net worth view

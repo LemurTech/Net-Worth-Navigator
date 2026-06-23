@@ -6,6 +6,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
+- Static definitions/reference page in `src/definitions_page.py` plus public/editor wiring in `run.py`, `src/scenario_shell.py`, `src/charts.py`, `admin_app.py`, and `templates/config_editor.html`; the site now ships `definitions.html` and opens it in a new tab from the shell, projection page, and config editor
 - First richer-account-mechanics slice in `src/model.py`, `src/monarch_bridge.py`, `run.py`, and scenario docs: taxable brokerage now tracks remaining cost basis vs. unrealized gains, Roth now tracks contribution basis vs. earnings, and withdrawal/tax sidecars expose basis/gain splits for taxable and Roth withdrawals
 - Richer stochastic summary metrics in `src/model.py`, including probabilities for success / spending shortfall / liquid depletion / net worth below zero / home-equity-required rescue, median terminal liquid net worth, worst-decile terminal net worth, and first-failure-period distributions
 - Typed yearly tax contracts in `src/tax_model.py` (`FederalTaxSystem`, `StateTaxSystem`, `YearlyTaxInputs`, `YearlyTaxOutputs`) plus a dedicated `tax_breakdown_yearly.csv` sidecar for per-year tax audit data
@@ -40,6 +41,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 - Share-safe sample scenario at `scenarios/sample.toml` using synthetic start balances and realistic recurring/one-time events for demos
 - Portfolio tab display cue when taxable/brokerage is zero across all years
 - Expanded `[[events]]` documentation in `scenarios/default.toml`: required/optional fields by event type plus copy/paste templates for each supported event type
+- Scenario config comments harmonized across the full `scenarios/*.toml` set for the new basis-accounting controls, followed by a successful offline rerender sweep of all scenarios using a local deploy-dir override
 
 - Per-bucket cash/investment growth behavior in `model.py`: `cash_return` now applies to `cash`, while non-cash investable buckets keep blended stock/bond growth
 - Spending-basis control in `model.py`/scenario config via `spending_basis = "real" | "nominal"`, with inflation indexing for retirement/survivor spending when real mode is selected

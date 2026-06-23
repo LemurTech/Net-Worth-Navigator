@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
+from src.definitions_page import build_definitions_page_html
 from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes
 
 APP_ROOT = Path(__file__).resolve().parent
@@ -27,6 +28,7 @@ PYTHON_BIN = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
 RUN_SCRIPT = APP_ROOT / "run.py"
 PUBLIC_PROJECTION_URL = "http://casalemuria.lan/finances/projection.html"
 PUBLIC_EDITOR_URL = "http://casalemuria.lan/finances/config/"
+PUBLIC_DEFINITIONS_URL = "http://casalemuria.lan/finances/definitions.html"
 
 app = FastAPI(title="Net Worth Navigator Config Editor")
 templates = Jinja2Templates(directory=str(APP_ROOT / "templates"))
@@ -184,6 +186,7 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "last_modified": last_modified,
         "projection_url": f"{PUBLIC_PROJECTION_URL}?scenario={resolved_slug}",
         "editor_url": f"{PUBLIC_EDITOR_URL}?scenario={resolved_slug}",
+        "definitions_url": PUBLIC_DEFINITIONS_URL,
     }
 
 
@@ -611,6 +614,17 @@ async def editor_home(request: Request) -> HTMLResponse:
         clone_description="",
     )
     return templates.TemplateResponse(request, "config_editor.html", context)
+
+
+@app.get("/definitions", response_class=HTMLResponse)
+@app.get("/finances/config/definitions", response_class=HTMLResponse)
+async def definitions_page() -> HTMLResponse:
+    return HTMLResponse(
+        build_definitions_page_html(
+            editor_url="/finances/config/",
+            projection_url="/finances/projection.html",
+        )
+    )
 
 
 @app.post("/", response_class=HTMLResponse)

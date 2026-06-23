@@ -44,6 +44,7 @@ class ScenarioShellTests(unittest.TestCase):
                 output_path=output_path,
                 manifest_relpath="scenarios/index.json",
                 editor_url="/finances/config/",
+                definitions_url="/finances/definitions.html",
             )
             html = output_path.read_text(encoding="utf-8")
 
@@ -56,5 +57,7 @@ class ScenarioShellTests(unittest.TestCase):
         self.assertIn(json.dumps(manifest), html)
         self.assertIn("scenario-select", html)
         self.assertIn("edit-scenarios-link", html)
+        self.assertIn("/finances/definitions.html", html)
+        self.assertIn("Definitions</a>", html)
         self.assertIn('url.searchParams.set("scenario", slug);', html)
         self.assertIn('editScenariosLink.href = editorUrlFor(selected);', html)
