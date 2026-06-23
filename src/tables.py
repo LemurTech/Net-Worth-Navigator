@@ -1306,7 +1306,8 @@ def build_simulation_outcomes_table(
         percent_row("Success through year", "success_through_year_rate"),
         percent_row("Cumulative failure rate", "cumulative_failure_rate"),
         percent_row("First failure in year", "first_failure_in_year_rate"),
-        percent_row("Current-year failure trigger", "current_failure_trigger_rate"),
+        percent_row("Current-year pressure trigger", "current_failure_trigger_rate"),
+        percent_row("Temporary pressure only", "temporary_pressure_rate"),
         "<tr class='section sep'><th colspan='100'>Spending Funding</th></tr>",
         percent_row("Spending funded ratio (P10)", "spending_funded_ratio_p10"),
         percent_row("Spending funded ratio (P50)", "spending_funded_ratio_p50"),
@@ -1326,7 +1327,8 @@ def build_simulation_outcomes_table(
         failure_mode = escape(str(summary.get("failure_mode", "—")))
         note = (
             "<div class='assumptions-note'>"
-            f"Yearly stochastic outcomes under <code>{failure_mode}</code> success semantics."
+            f"Yearly stochastic outcomes under <code>{failure_mode}</code> success semantics. "
+            "Pressure rows show runs currently tripping the yearly trigger; temporary pressure isolates runs still surviving because the configured failure rule has not been exhausted yet."
             "</div>"
         )
     return f"{note}<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"

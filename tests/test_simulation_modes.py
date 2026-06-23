@@ -86,6 +86,7 @@ class SimulationModeTests(unittest.TestCase):
         self.assertIn("total_net_worth_p10", result.band_df.columns)
         self.assertIn("success_through_year_rate", result.outcomes_df.columns)
         self.assertIn("current_failure_trigger_rate", result.outcomes_df.columns)
+        self.assertIn("temporary_pressure_rate", result.outcomes_df.columns)
         self.assertIn("success_rate", result.summary)
         self.assertEqual(result.summary["failure_mode"], "liquid_depletion")
 
@@ -108,6 +109,7 @@ class SimulationModeTests(unittest.TestCase):
         self.assertIn("Simulation results", html)
         self.assertIn("Outcome Timing", html)
         self.assertIn("Success through year", html)
+        self.assertIn("Temporary pressure only", html)
         self.assertIn("Projected Investment Portfolio Range", html)
 
     def test_scenario_parameters_include_simulation_controls(self):
@@ -144,6 +146,29 @@ class SimulationModeTests(unittest.TestCase):
 
         self.assertEqual(result.summary["success_rate"], 0.0)
         self.assertEqual(result.summary["first_failure_year_p50"], 2026)
+
+    def test_spending_shortfall_grace_distinguishes_pressure_from_actual_failure(self):
+        config = self._base_config(mode="monte_carlo")
+        config["simulation"]["num_runs"] = 4
+        config["simulation"]["portfolio_return_volatility"] = 0.0
+        config["spending"]["retirement_annual"] = 100.0
+        config["spending"]["pre_retirement_spending"] = 100.0
+        config["monte_carlo"]["success"]["failure_mode"] = "spending_shortfall"
+        config["monte_carlo"]["success"]["failure_grace_period_months"] = 6
+        result = model.run_projection_result(
+            balances={"cash": 60.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0},
+            home_value=0.0,
+            liability_balances={},
+            config=config,
+        )
+
+        outcomes = result.outcomes_df.set_index("year")
+        self.assertEqual(result.summary["first_failure_year_p50"], 2027)
+        self.assertGreater(outcomes.loc[2026, "current_failure_trigger_rate"], 0.0)
+        self.assertGreater(outcomes.loc[2026, "temporary_pressure_rate"], 0.0)
+        self.assertEqual(outcomes.loc[2026, "first_failure_in_year_rate"], 0.0)
+        self.assertEqual(outcomes.loc[2027, "temporary_pressure_rate"], 0.0)
+        self.assertGreater(outcomes.loc[2027, "first_failure_in_year_rate"], 0.0)
 
     def test_historical_mode_uses_rolling_windows_from_csv(self):
         config = self._base_config(mode="historical")

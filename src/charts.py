@@ -1080,9 +1080,16 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
     fig.add_trace(go.Scatter(
         x=outcomes_df["year"],
         y=outcomes_df["current_failure_trigger_rate"],
-        mode="lines", name="Current-year trigger rate",
+        mode="lines", name="Current-year pressure trigger",
         line=dict(color="#fbbf24", width=2.0, dash="dot"),
-        hovertemplate="<b>%{x}</b><br>Current-year trigger rate: %{y:.1%}<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Current-year pressure trigger: %{y:.1%}<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=outcomes_df["year"],
+        y=outcomes_df["temporary_pressure_rate"],
+        mode="lines", name="Temporary pressure only",
+        line=dict(color="#60a5fa", width=2.0, dash="dash"),
+        hovertemplate="<b>%{x}</b><br>Temporary pressure only: %{y:.1%}<extra></extra>",
     ))
     fig.update_layout(
         font=dict(color="#e5edf7"),
@@ -1103,7 +1110,8 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
         f"{mode_label} outcome detail for the current rendered result path. "
         f"<strong>Success rate:</strong> {_fmt_pct_text(summary.get('success_rate', 0.0))} | "
         f"<strong>Failure mode:</strong> {escape(str(summary.get('failure_mode', '—')))} | "
-        f"<strong>Median first failure year:</strong> {escape(str(summary.get('first_failure_year_p50', 'No failure')))}"
+        f"<strong>Median first failure year:</strong> {escape(str(summary.get('first_failure_year_p50', 'No failure')))} | "
+        f"<strong>Peak temporary pressure:</strong> {_fmt_pct_text(summary.get('peak_temporary_pressure_rate', 0.0))}"
         "</div>"
     )
     return (

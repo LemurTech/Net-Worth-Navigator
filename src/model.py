@@ -1972,6 +1972,7 @@ def _build_stochastic_outcomes_frame(
     years = [int(year) for year in run_frames[0]["year"].tolist()]
     total_runs = len(run_frames)
     failure_years = [_run_failure_year(frame, success_settings) for frame in run_frames]
+    run_traces = [_run_failure_trace(frame, success_settings) for frame in run_frames]
     rows: list[dict[str, float | int]] = []
 
     for year in years:
@@ -1979,10 +1980,11 @@ def _build_stochastic_outcomes_frame(
         investable_net_worth_values: list[float] = []
         funded_ratio_values: list[float] = []
         current_failure_trigger_count = 0
+        temporary_pressure_count = 0
         first_failure_in_year_count = sum(1 for failure_year in failure_years if failure_year == year)
         cumulative_failure_count = sum(1 for failure_year in failure_years if failure_year is not None and failure_year <= year)
 
-        for frame in run_frames:
+        for frame, trace in zip(run_frames, run_traces):
             match = frame[frame["year"] == year]
             if match.empty:
                 continue
@@ -1990,9 +1992,11 @@ def _build_stochastic_outcomes_frame(
             total_net_worth_values.append(float(row.get("total_net_worth", 0.0)))
             investable_net_worth_values.append(float(row.get("net_worth", 0.0)))
             funded_ratio_values.append(float(row.get("spending_funded_ratio", 1.0)))
-            row_failure, _ = _row_failure_triggered(row, success_settings)
-            if row_failure:
+            year_trace = trace.get(year, {})
+            if year_trace.get("triggered", False):
                 current_failure_trigger_count += 1
+            if year_trace.get("temporary_pressure", False):
+                temporary_pressure_count += 1
 
         total_series = pd.Series(total_net_worth_values, dtype="float64")
         investable_series = pd.Series(investable_net_worth_values, dtype="float64")
@@ -2008,6 +2012,8 @@ def _build_stochastic_outcomes_frame(
             "first_failure_in_year_rate": first_failure_in_year_count / total_runs,
             "current_failure_trigger_count": current_failure_trigger_count,
             "current_failure_trigger_rate": current_failure_trigger_count / total_runs,
+            "temporary_pressure_count": temporary_pressure_count,
+            "temporary_pressure_rate": temporary_pressure_count / total_runs,
             "spending_funded_ratio_p10": float(funded_ratio_series.quantile(0.10)),
             "spending_funded_ratio_p50": float(funded_ratio_series.quantile(0.50)),
             "spending_funded_ratio_p90": float(funded_ratio_series.quantile(0.90)),
@@ -2020,6 +2026,46 @@ def _build_stochastic_outcomes_frame(
         })
 
     return pd.DataFrame(rows)
+
+
+def _run_failure_trace(
+    df: pd.DataFrame,
+    success_settings: dict[str, object],
+) -> dict[int, dict[str, bool]]:
+    failure_mode = str(success_settings.get("failure_mode", "liquid_depletion"))
+    grace_months = float(success_settings.get("failure_grace_period_months", 0.0))
+    minimum_ratio = float(success_settings.get("minimum_spending_funded_ratio", 1.0))
+    consecutive_failure_months = 0.0
+    failed = False
+    trace: dict[int, dict[str, bool]] = {}
+
+    for _, row in df.iterrows():
+        year = int(row["year"])
+        triggered, funded_ratio = _row_failure_triggered(row, success_settings)
+        actual_failure_this_year = False
+
+        if not failed and failure_mode in {"spending_shortfall", "preserve_home_equity"}:
+            if triggered:
+                threshold_gap_ratio = max(0.0, minimum_ratio - funded_ratio)
+                failure_months = 12.0 * (threshold_gap_ratio if minimum_ratio > 0 else (1.0 - funded_ratio))
+                consecutive_failure_months += max(1.0, failure_months)
+            else:
+                consecutive_failure_months = 0.0
+            if consecutive_failure_months > grace_months:
+                actual_failure_this_year = True
+                failed = True
+        elif not failed and triggered:
+            actual_failure_this_year = True
+            failed = True
+
+        trace[year] = {
+            "triggered": triggered,
+            "temporary_pressure": bool(triggered and not failed and not actual_failure_this_year),
+            "failed_by_year_end": failed,
+            "actual_failure_this_year": actual_failure_this_year,
+        }
+
+    return trace
 
 
 def _projection_summary(
@@ -2090,12 +2136,16 @@ def _projection_summary(
         peak_trigger_row = outcomes_df.loc[outcomes_df["current_failure_trigger_rate"].idxmax()]
         summary["peak_current_failure_trigger_rate"] = float(peak_trigger_row["current_failure_trigger_rate"])
         summary["peak_current_failure_trigger_year"] = int(peak_trigger_row["year"])
+        peak_pressure_row = outcomes_df.loc[outcomes_df["temporary_pressure_rate"].idxmax()]
+        summary["peak_temporary_pressure_rate"] = float(peak_pressure_row["temporary_pressure_rate"])
+        summary["peak_temporary_pressure_year"] = int(peak_pressure_row["year"])
         if retirement_year is not None:
             match = outcomes_df[outcomes_df["year"] == retirement_year]
             if not match.empty:
                 retirement_row = match.iloc[0]
                 summary["retirement_success_through_year_rate"] = float(retirement_row["success_through_year_rate"])
                 summary["retirement_current_failure_trigger_rate"] = float(retirement_row["current_failure_trigger_rate"])
+                summary["retirement_temporary_pressure_rate"] = float(retirement_row["temporary_pressure_rate"])
 
     if retirement_year is not None and band_df is not None:
         match = band_df[band_df["year"] == retirement_year]

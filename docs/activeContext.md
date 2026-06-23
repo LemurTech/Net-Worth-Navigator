@@ -17,6 +17,7 @@
 - `[monte_carlo.success]` now controls stochastic failure semantics, including `failure_mode`, `minimum_spending_funded_ratio`, home-equity/debt allowances, and `failure_grace_period_months`
 - Stochastic projection pages now show probability-band charts for total net worth and investable portfolio, stochastic KPI strips, and a `Simulation results` summary card in Scenario Parameters
 - Stochastic projection pages now also get a dedicated `Simulation` tab with an outcome-timing chart plus a yearly outcomes table driven by the same normalized stochastic results bundle
+- The stochastic outcomes bundle now distinguishes raw yearly pressure triggers from actual rule failure, so grace-based modes like `spending_shortfall` can show “temporary pressure” separately from true plan failure
 - The tax path now uses explicit yearly tax input/output contracts centered in `src/tax_model.py`, with normalized federal/state tax-system objects and a dedicated `tax_breakdown_yearly.csv` sidecar for auditability
 - Tax outputs now also expose richer yearly subcomponents such as other-taxable-income, Social Security taxable fraction, provisional income, deduction-adjusted federal taxable income, and state taxable income before/after deduction
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
