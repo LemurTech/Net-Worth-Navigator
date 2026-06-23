@@ -1280,6 +1280,58 @@ def build_tax_table(df: pd.DataFrame) -> str:
     return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
 
 
+def build_simulation_outcomes_table(
+    outcomes_df: pd.DataFrame,
+    summary: dict | None = None,
+) -> str:
+    """Yearly stochastic outcomes table for Monte Carlo / historical modes."""
+    if outcomes_df is None or outcomes_df.empty:
+        return "<div class='assumptions-wrap'><div class='assumptions-note'>No stochastic outcomes available.</div></div>"
+
+    years = outcomes_df["year"].astype(int).tolist()
+    subset = outcomes_df.set_index("year")
+
+    def num_col(field: str) -> list[float]:
+        return [
+            float(subset.loc[y, field]) if (y in subset.index and field in subset.columns and pd.notna(subset.loc[y, field])) else 0.0
+            for y in years
+        ]
+
+    def percent_row(label: str, field: str) -> str:
+        cells = "".join(f"<td>{escape(_fmt_percent(v))}</td>" for v in num_col(field))
+        return f"<tr class='indent'><td class='rowlabel'>{escape(label)}</td>{cells}</tr>"
+
+    rows = [
+        "<tr class='section'><th colspan='100'>Failure Timing</th></tr>",
+        percent_row("Success through year", "success_through_year_rate"),
+        percent_row("Cumulative failure rate", "cumulative_failure_rate"),
+        percent_row("First failure in year", "first_failure_in_year_rate"),
+        percent_row("Current-year failure trigger", "current_failure_trigger_rate"),
+        "<tr class='section sep'><th colspan='100'>Spending Funding</th></tr>",
+        percent_row("Spending funded ratio (P10)", "spending_funded_ratio_p10"),
+        percent_row("Spending funded ratio (P50)", "spending_funded_ratio_p50"),
+        percent_row("Spending funded ratio (P90)", "spending_funded_ratio_p90"),
+        "<tr class='section sep'><th colspan='100'>Net Worth Distribution</th></tr>",
+        _data_row("Total net worth (P10)", num_col("total_net_worth_p10"), indent=True),
+        _data_row("Total net worth (P50)", num_col("total_net_worth_p50"), indent=True),
+        _data_row("Total net worth (P90)", num_col("total_net_worth_p90"), indent=True),
+        _data_row("Investable net worth (P10)", num_col("net_worth_p10"), indent=True),
+        _data_row("Investable net worth (P50)", num_col("net_worth_p50"), indent=True),
+        _data_row("Investable net worth (P90)", num_col("net_worth_p90"), indent=True),
+    ]
+    header = _header_row(years).replace("Account", "Simulation Item", 1)
+    body = "\n".join(rows)
+    note = ""
+    if summary:
+        failure_mode = escape(str(summary.get("failure_mode", "—")))
+        note = (
+            "<div class='assumptions-note'>"
+            f"Yearly stochastic outcomes under <code>{failure_mode}</code> success semantics."
+            "</div>"
+        )
+    return f"{note}<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
+
+
 def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
     """Projected investable-portfolio balances for the Portfolio tab."""
     years = _display_years(df)

@@ -82,7 +82,10 @@ class SimulationModeTests(unittest.TestCase):
         self.assertEqual(result.run_count, 12)
         self.assertEqual(result.display_path_kind, "median")
         self.assertIsNotNone(result.band_df)
+        self.assertIsNotNone(result.outcomes_df)
         self.assertIn("total_net_worth_p10", result.band_df.columns)
+        self.assertIn("success_through_year_rate", result.outcomes_df.columns)
+        self.assertIn("current_failure_trigger_rate", result.outcomes_df.columns)
         self.assertIn("success_rate", result.summary)
         self.assertEqual(result.summary["failure_mode"], "liquid_depletion")
 
@@ -103,6 +106,8 @@ class SimulationModeTests(unittest.TestCase):
         self.assertIn("Monte Carlo Success Rate", html)
         self.assertIn("P10-P90 range", html)
         self.assertIn("Simulation results", html)
+        self.assertIn("Outcome Timing", html)
+        self.assertIn("Success through year", html)
         self.assertIn("Projected Investment Portfolio Range", html)
 
     def test_scenario_parameters_include_simulation_controls(self):

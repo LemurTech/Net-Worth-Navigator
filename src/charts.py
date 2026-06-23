@@ -6,6 +6,7 @@ Produces a single self-contained HTML file:
   - Below: three CSS tabs — Accounts, Cash Flow, Gantt
 """
 
+from html import escape
 from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
@@ -13,6 +14,7 @@ import plotly.graph_objects as go
 from src.tables import (
     build_accounts_table,
     build_cashflow_table,
+    build_simulation_outcomes_table,
     build_tax_table,
     build_portfolio_table,
     build_assumptions_summary,
@@ -1044,6 +1046,75 @@ def _build_tax_semantics_note() -> str:
     )
 
 
+def _fmt_pct_text(value) -> str:
+    try:
+        pct = float(value) * 100.0
+    except (TypeError, ValueError):
+        return "—"
+    text = f"{pct:.1f}".rstrip("0").rstrip(".")
+    return f"{text}%"
+
+
+def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
+    summary = projection_result.summary or {}
+    outcomes_df = projection_result.outcomes_df
+    if outcomes_df is None or outcomes_df.empty:
+        return "<div class='assumptions-wrap'><div class='assumptions-note'>No stochastic simulation outcomes available.</div></div>"
+
+    mode_label = "Monte Carlo" if projection_result.mode == "monte_carlo" else "Historical sequence"
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=outcomes_df["year"],
+        y=outcomes_df["success_through_year_rate"],
+        mode="lines", name="Success through year",
+        line=dict(color="#22c55e", width=2.5),
+        hovertemplate="<b>%{x}</b><br>Success through year: %{y:.1%}<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=outcomes_df["year"],
+        y=outcomes_df["cumulative_failure_rate"],
+        mode="lines", name="Cumulative failure rate",
+        line=dict(color="#f87171", width=2.2),
+        hovertemplate="<b>%{x}</b><br>Cumulative failure rate: %{y:.1%}<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=outcomes_df["year"],
+        y=outcomes_df["current_failure_trigger_rate"],
+        mode="lines", name="Current-year trigger rate",
+        line=dict(color="#fbbf24", width=2.0, dash="dot"),
+        hovertemplate="<b>%{x}</b><br>Current-year trigger rate: %{y:.1%}<extra></extra>",
+    ))
+    fig.update_layout(
+        font=dict(color="#e5edf7"),
+        title=dict(text=f"{mode_label} Outcome Timing", font=dict(size=16)),
+        xaxis=dict(title="Year", tickmode="linear", dtick=2, gridcolor="rgba(148,163,184,0.14)", zerolinecolor="rgba(148,163,184,0.14)", color="#e5edf7"),
+        yaxis=dict(title="Probability", tickformat=".0%", gridcolor="rgba(148,163,184,0.14)", zerolinecolor="rgba(148,163,184,0.14)", color="#e5edf7", range=[0, 1]),
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
+        hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
+        plot_bgcolor="#0f1725",
+        paper_bgcolor="#111827",
+        height=420,
+        margin=dict(l=64, r=24, t=70, b=56),
+    )
+    chart_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-simulation")
+    table_html = build_simulation_outcomes_table(outcomes_df, summary=summary)
+    summary_html = (
+        "<div class='assumptions-note'>"
+        f"{mode_label} outcome detail for the current rendered result path. "
+        f"<strong>Success rate:</strong> {_fmt_pct_text(summary.get('success_rate', 0.0))} | "
+        f"<strong>Failure mode:</strong> {escape(str(summary.get('failure_mode', '—')))} | "
+        f"<strong>Median first failure year:</strong> {escape(str(summary.get('first_failure_year_p50', 'No failure')))}"
+        "</div>"
+    )
+    return (
+        "<div class='assumptions-wrap'>"
+        f"{summary_html}"
+        f"<div class='gantt-wrap'>{chart_html}</div>"
+        f"<div class='table-panel portfolio-table-panel'>{table_html}</div>"
+        "</div>"
+    )
+
+
 def build_chart(
     projection: pd.DataFrame | ProjectionResult,
     output_path: Path,
@@ -1074,6 +1145,11 @@ def build_chart(
     accounts_html  = build_accounts_table(df, config=config)
     cashflow_html  = build_cashflow_table(df, config=config)
     tax_html       = build_tax_table(df)
+    simulation_html = (
+        _build_simulation_results_panel(projection_result)
+        if projection_result.mode in {"monte_carlo", "historical"}
+        else ""
+    )
     portfolio_html = _build_portfolio_chart(df, config=config, projection_result=projection_result)
     gantt_html     = _build_gantt_chart(config, df)
     assumptions_html = build_assumptions_summary(
@@ -1122,6 +1198,7 @@ def build_chart(
             onclick="switchTab('cashflow')">Cash Flow</button>
     <button class="tab-btn" id="btn-tax"
             onclick="switchTab('tax')">Tax</button>
+    {'<button class="tab-btn" id="btn-simulation" onclick="switchTab(\'simulation\')">Simulation</button>' if simulation_html else ''}
     <button class="tab-btn" id="btn-portfolio"
             onclick="switchTab('portfolio')">Portfolio</button>
     <button class="tab-btn" id="btn-gantt"
@@ -1141,6 +1218,7 @@ def build_chart(
   <div class="tab-panel table-panel" id="panel-tax">
     {tax_html}
   </div>
+  {'<div class="tab-panel assumptions-panel" id="panel-simulation">' + simulation_html + '</div>' if simulation_html else ''}
   <div class="tab-panel gantt-panel" id="panel-portfolio">
     {portfolio_html}
   </div>

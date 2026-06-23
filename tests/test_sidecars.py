@@ -208,10 +208,34 @@ class SidecarTests(unittest.TestCase):
                 "net_worth_p90": 130.0,
             }
         ])
+        outcomes_df = pd.DataFrame([
+            {
+                "year": 2026,
+                "run_count": 25,
+                "success_through_year_count": 22,
+                "success_through_year_rate": 0.88,
+                "cumulative_failure_count": 3,
+                "cumulative_failure_rate": 0.12,
+                "first_failure_in_year_count": 3,
+                "first_failure_in_year_rate": 0.12,
+                "current_failure_trigger_count": 3,
+                "current_failure_trigger_rate": 0.12,
+                "spending_funded_ratio_p10": 0.90,
+                "spending_funded_ratio_p50": 1.0,
+                "spending_funded_ratio_p90": 1.0,
+                "total_net_worth_p10": 80.0,
+                "total_net_worth_p50": 100.0,
+                "total_net_worth_p90": 130.0,
+                "net_worth_p10": 80.0,
+                "net_worth_p50": 100.0,
+                "net_worth_p90": 130.0,
+            }
+        ])
         projection_result = ProjectionResult(
             mode="monte_carlo",
             yearly_df=df,
             band_df=band_df,
+            outcomes_df=outcomes_df,
             summary={"mode": "monte_carlo", "run_count": 25, "success_rate": 0.88},
             simulation={"mode": "monte_carlo", "num_runs": 25, "seed": 123},
             run_count=25,
@@ -250,10 +274,13 @@ class SidecarTests(unittest.TestCase):
             )
 
             self.assertIn("projection_bands_yearly_csv", paths)
+            self.assertIn("simulation_outcomes_yearly_csv", paths)
             self.assertTrue((sidecar_dir / "projection_bands_yearly.csv").exists())
+            self.assertTrue((sidecar_dir / "simulation_outcomes_yearly.csv").exists())
             manifest = json.loads((sidecar_dir / "scenario_manifest.json").read_text())
             self.assertEqual(manifest["simulation"]["result_mode"], "monte_carlo")
             self.assertEqual(manifest["simulation"]["run_count"], 25)
+            self.assertEqual(manifest["sidecars"]["simulation_outcomes_yearly_csv"], "simulation_outcomes_yearly.csv")
 
 
 if __name__ == "__main__":

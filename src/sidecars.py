@@ -20,6 +20,7 @@ ACCOUNTS_SNAPSHOT_JSON = "accounts_snapshot.json"
 PROJECTION_BANDS_CSV = "projection_bands_yearly.csv"
 SIMULATION_SUMMARY_JSON = "simulation_summary.json"
 TAX_BREAKDOWN_CSV = "tax_breakdown_yearly.csv"
+SIMULATION_OUTCOMES_CSV = "simulation_outcomes_yearly.csv"
 
 
 def _person_keys(config: dict) -> list[str]:
@@ -74,6 +75,7 @@ def write_sidecars(
     bands_path = output_dir / PROJECTION_BANDS_CSV
     summary_path = output_dir / SIMULATION_SUMMARY_JSON
     tax_breakdown_path = output_dir / TAX_BREAKDOWN_CSV
+    outcomes_path = output_dir / SIMULATION_OUTCOMES_CSV
 
     projection_df = _projection_sidecar_frame(df)
     projection_df.to_csv(projection_path, index=False)
@@ -86,6 +88,8 @@ def write_sidecars(
 
     if projection_result.band_df is not None and not projection_result.band_df.empty:
         projection_result.band_df.to_csv(bands_path, index=False)
+    if projection_result.outcomes_df is not None and not projection_result.outcomes_df.empty:
+        projection_result.outcomes_df.to_csv(outcomes_path, index=False)
 
     summary_path.write_text(
         json.dumps(projection_result.summary, indent=2),
@@ -124,6 +128,11 @@ def write_sidecars(
         "scenario_manifest_json": manifest_path,
         "accounts_snapshot_json": accounts_path,
         "simulation_summary_json": summary_path,
+        **(
+            {"simulation_outcomes_yearly_csv": outcomes_path}
+            if projection_result.outcomes_df is not None and not projection_result.outcomes_df.empty
+            else {}
+        ),
         **(
             {"projection_bands_yearly_csv": bands_path}
             if projection_result.band_df is not None and not projection_result.band_df.empty
@@ -239,6 +248,11 @@ def _scenario_manifest(
             "scenario_manifest_json": SCENARIO_MANIFEST_JSON,
             "accounts_snapshot_json": ACCOUNTS_SNAPSHOT_JSON,
             "simulation_summary_json": SIMULATION_SUMMARY_JSON,
+            **(
+                {"simulation_outcomes_yearly_csv": SIMULATION_OUTCOMES_CSV}
+                if projection_result.outcomes_df is not None and not projection_result.outcomes_df.empty
+                else {}
+            ),
             **(
                 {"projection_bands_yearly_csv": PROJECTION_BANDS_CSV}
                 if projection_result.band_df is not None and not projection_result.band_df.empty

@@ -9,12 +9,14 @@
 - `python run.py --offline` — offline run (cached), fast re-render
 - Chart: http://casalemuria.lan/finances/projection.html
 - Analysis sidecars now emit per scenario under `output/scenarios/<slug>/sidecars/`: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, `accounts_snapshot.json`, and `simulation_summary.json`; Monte Carlo runs also emit `projection_bands_yearly.csv`
+- Stochastic sidecars now also emit `simulation_outcomes_yearly.csv`, a yearly outcomes surface for success-through-year, cumulative failure, current-year trigger rate, funded-ratio percentiles, and net-worth distribution
 - Projection outputs now flow through a normalized `ProjectionResult` contract in `src/model.py`, with deterministic runs exposing a single yearly path and Monte Carlo runs exposing a median display path plus percentile bands
 - `[simulation]` now supports `mode`, `num_runs`, `seed`, and `portfolio_return_volatility` so scenarios can opt into seeded Monte Carlo without changing other config semantics
 - `[simulation]` historical mode is now supported via `historical_returns_path`, using rolling annual-return windows from a CSV with `year` and `return` columns
 - Historical mode is now turnkey with the bundled starter dataset at `config/return_sequences/us_balanced_returns.csv`; the default scenario can switch to `mode = "historical"` without requiring a user-supplied local file
 - `[monte_carlo.success]` now controls stochastic failure semantics, including `failure_mode`, `minimum_spending_funded_ratio`, home-equity/debt allowances, and `failure_grace_period_months`
 - Stochastic projection pages now show probability-band charts for total net worth and investable portfolio, stochastic KPI strips, and a `Simulation results` summary card in Scenario Parameters
+- Stochastic projection pages now also get a dedicated `Simulation` tab with an outcome-timing chart plus a yearly outcomes table driven by the same normalized stochastic results bundle
 - The tax path now uses explicit yearly tax input/output contracts centered in `src/tax_model.py`, with normalized federal/state tax-system objects and a dedicated `tax_breakdown_yearly.csv` sidecar for auditability
 - Tax outputs now also expose richer yearly subcomponents such as other-taxable-income, Social Security taxable fraction, provisional income, deduction-adjusted federal taxable income, and state taxable income before/after deduction
 - Accounts tab: trad IRA / Roth / taxable / cash / home equity / total net worth (yearly columns)
@@ -168,6 +170,10 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - the reusable tax contracts/calculators now live in `src/tax_model.py`, while `src/model.py` stays focused on projection orchestration
   - sidecars now include a dedicated yearly tax breakdown export
   - the extracted module now also feeds a dedicated yearly `Tax` UI tab; the next natural step is to keep deepening tax semantics/coverage inside `src/tax_model.py`, not by reintroducing inline tax branching inside `src/model.py`
+- Stochastic UI/data slice is now expanded beyond summary cards
+  - `ProjectionResult` now carries a yearly stochastic outcomes frame in addition to the median path, summary metrics, and percentile bands
+  - sidecars persist that frame as `simulation_outcomes_yearly.csv`
+  - the next natural follow-on is richer stochastic semantics or comparison UX, not another round of ad hoc Monte Carlo copy inside Scenario Parameters
 
 ## Known Pitfalls
 

@@ -139,6 +139,7 @@ class ProjectionResult:
     summary: dict[str, object]
     simulation: dict[str, object]
     band_df: pd.DataFrame | None = None
+    outcomes_df: pd.DataFrame | None = None
     run_count: int = 1
     display_path_kind: str = "deterministic"
 
@@ -1910,33 +1911,15 @@ def _run_failure_year(
     success_settings: dict[str, object],
 ) -> int | None:
     failure_mode = str(success_settings.get("failure_mode", "liquid_depletion"))
-    minimum_ratio = float(success_settings.get("minimum_spending_funded_ratio", 1.0))
     grace_months = float(success_settings.get("failure_grace_period_months", 0.0))
     consecutive_failure_months = 0.0
 
     for _, row in df.iterrows():
-        funded_ratio = _spending_funded_ratio_for_failure(row, success_settings)
-        row_failure = False
-
-        if failure_mode == "net_worth_below_zero":
-            row_failure = float(row.get("total_net_worth", 0.0)) < 0.0
-        elif failure_mode == "liquid_depletion":
-            row_failure = _liquid_resources_for_failure(row, success_settings) <= 0.0
-        elif failure_mode == "spending_shortfall":
-            row_failure = funded_ratio < minimum_ratio
-        elif failure_mode == "preserve_home_equity":
-            liquid_resources = float(row.get("net_worth", 0.0))
-            if success_settings.get("allow_home_equity_for_spending"):
-                row_failure = funded_ratio < minimum_ratio
-            else:
-                row_failure = (
-                    liquid_resources <= 0.0 and float(row.get("home_equity", 0.0)) > 0.0
-                ) or float(row.get("total_net_worth", 0.0)) < 0.0
-        elif failure_mode == "custom":
-            row_failure = _custom_failure_triggered(row, success_settings)
+        row_failure, funded_ratio = _row_failure_triggered(row, success_settings)
 
         if failure_mode in {"spending_shortfall", "preserve_home_equity"}:
             if row_failure:
+                minimum_ratio = float(success_settings.get("minimum_spending_funded_ratio", 1.0))
                 threshold_gap_ratio = max(0.0, minimum_ratio - funded_ratio)
                 failure_months = 12.0 * (threshold_gap_ratio if minimum_ratio > 0 else (1.0 - funded_ratio))
                 consecutive_failure_months += max(1.0, failure_months)
@@ -1950,6 +1933,95 @@ def _run_failure_year(
     return None
 
 
+def _row_failure_triggered(
+    row: pd.Series,
+    success_settings: dict[str, object],
+) -> tuple[bool, float]:
+    failure_mode = str(success_settings.get("failure_mode", "liquid_depletion"))
+    minimum_ratio = float(success_settings.get("minimum_spending_funded_ratio", 1.0))
+    funded_ratio = _spending_funded_ratio_for_failure(row, success_settings)
+
+    if failure_mode == "net_worth_below_zero":
+        return float(row.get("total_net_worth", 0.0)) < 0.0, funded_ratio
+    if failure_mode == "liquid_depletion":
+        return _liquid_resources_for_failure(row, success_settings) <= 0.0, funded_ratio
+    if failure_mode == "spending_shortfall":
+        return funded_ratio < minimum_ratio, funded_ratio
+    if failure_mode == "preserve_home_equity":
+        liquid_resources = float(row.get("net_worth", 0.0))
+        if success_settings.get("allow_home_equity_for_spending"):
+            return funded_ratio < minimum_ratio, funded_ratio
+        return (
+            (
+                liquid_resources <= 0.0 and float(row.get("home_equity", 0.0)) > 0.0
+            ) or float(row.get("total_net_worth", 0.0)) < 0.0,
+            funded_ratio,
+        )
+    if failure_mode == "custom":
+        return _custom_failure_triggered(row, success_settings), funded_ratio
+    return False, funded_ratio
+
+
+def _build_stochastic_outcomes_frame(
+    run_frames: list[pd.DataFrame],
+    success_settings: dict[str, object],
+) -> pd.DataFrame:
+    if not run_frames:
+        return pd.DataFrame()
+
+    years = [int(year) for year in run_frames[0]["year"].tolist()]
+    total_runs = len(run_frames)
+    failure_years = [_run_failure_year(frame, success_settings) for frame in run_frames]
+    rows: list[dict[str, float | int]] = []
+
+    for year in years:
+        total_net_worth_values: list[float] = []
+        investable_net_worth_values: list[float] = []
+        funded_ratio_values: list[float] = []
+        current_failure_trigger_count = 0
+        first_failure_in_year_count = sum(1 for failure_year in failure_years if failure_year == year)
+        cumulative_failure_count = sum(1 for failure_year in failure_years if failure_year is not None and failure_year <= year)
+
+        for frame in run_frames:
+            match = frame[frame["year"] == year]
+            if match.empty:
+                continue
+            row = match.iloc[0]
+            total_net_worth_values.append(float(row.get("total_net_worth", 0.0)))
+            investable_net_worth_values.append(float(row.get("net_worth", 0.0)))
+            funded_ratio_values.append(float(row.get("spending_funded_ratio", 1.0)))
+            row_failure, _ = _row_failure_triggered(row, success_settings)
+            if row_failure:
+                current_failure_trigger_count += 1
+
+        total_series = pd.Series(total_net_worth_values, dtype="float64")
+        investable_series = pd.Series(investable_net_worth_values, dtype="float64")
+        funded_ratio_series = pd.Series(funded_ratio_values, dtype="float64")
+        rows.append({
+            "year": year,
+            "run_count": total_runs,
+            "success_through_year_count": total_runs - cumulative_failure_count,
+            "success_through_year_rate": (total_runs - cumulative_failure_count) / total_runs,
+            "cumulative_failure_count": cumulative_failure_count,
+            "cumulative_failure_rate": cumulative_failure_count / total_runs,
+            "first_failure_in_year_count": first_failure_in_year_count,
+            "first_failure_in_year_rate": first_failure_in_year_count / total_runs,
+            "current_failure_trigger_count": current_failure_trigger_count,
+            "current_failure_trigger_rate": current_failure_trigger_count / total_runs,
+            "spending_funded_ratio_p10": float(funded_ratio_series.quantile(0.10)),
+            "spending_funded_ratio_p50": float(funded_ratio_series.quantile(0.50)),
+            "spending_funded_ratio_p90": float(funded_ratio_series.quantile(0.90)),
+            "total_net_worth_p10": float(total_series.quantile(0.10)),
+            "total_net_worth_p50": float(total_series.quantile(0.50)),
+            "total_net_worth_p90": float(total_series.quantile(0.90)),
+            "net_worth_p10": float(investable_series.quantile(0.10)),
+            "net_worth_p50": float(investable_series.quantile(0.50)),
+            "net_worth_p90": float(investable_series.quantile(0.90)),
+        })
+
+    return pd.DataFrame(rows)
+
+
 def _projection_summary(
     *,
     config: dict,
@@ -1958,6 +2030,7 @@ def _projection_summary(
     primary_df: pd.DataFrame,
     run_frames: list[pd.DataFrame],
     band_df: pd.DataFrame | None,
+    outcomes_df: pd.DataFrame | None = None,
     run_labels: list[str] | None = None,
 ) -> dict[str, object]:
     retirement_year = _first_retirement_year(config)
@@ -2013,6 +2086,17 @@ def _projection_summary(
     if run_labels:
         summary["run_labels"] = list(run_labels)
 
+    if outcomes_df is not None and not outcomes_df.empty:
+        peak_trigger_row = outcomes_df.loc[outcomes_df["current_failure_trigger_rate"].idxmax()]
+        summary["peak_current_failure_trigger_rate"] = float(peak_trigger_row["current_failure_trigger_rate"])
+        summary["peak_current_failure_trigger_year"] = int(peak_trigger_row["year"])
+        if retirement_year is not None:
+            match = outcomes_df[outcomes_df["year"] == retirement_year]
+            if not match.empty:
+                retirement_row = match.iloc[0]
+                summary["retirement_success_through_year_rate"] = float(retirement_row["success_through_year_rate"])
+                summary["retirement_current_failure_trigger_rate"] = float(retirement_row["current_failure_trigger_rate"])
+
     if retirement_year is not None and band_df is not None:
         match = band_df[band_df["year"] == retirement_year]
         if not match.empty:
@@ -2052,6 +2136,7 @@ def run_projection_result(
             primary_df=yearly_df,
             run_frames=[yearly_df],
             band_df=None,
+            outcomes_df=None,
         )
         return ProjectionResult(
             mode="deterministic",
@@ -2059,6 +2144,7 @@ def run_projection_result(
             summary=summary,
             simulation=simulation_settings,
             band_df=None,
+            outcomes_df=None,
             run_count=1,
             display_path_kind="deterministic",
         )
@@ -2119,6 +2205,7 @@ def run_projection_result(
 
     primary_df = _build_primary_path_from_runs(run_frames)
     band_df = _build_band_frame(run_frames)
+    outcomes_df = _build_stochastic_outcomes_frame(run_frames, success_settings)
     summary = _projection_summary(
         config=config,
         simulation_settings=simulation_settings,
@@ -2126,6 +2213,7 @@ def run_projection_result(
         primary_df=primary_df,
         run_frames=run_frames,
         band_df=band_df,
+        outcomes_df=outcomes_df,
         run_labels=run_labels,
     )
     return ProjectionResult(
@@ -2134,6 +2222,7 @@ def run_projection_result(
         summary=summary,
         simulation=simulation_settings,
         band_df=band_df,
+        outcomes_df=outcomes_df,
         run_count=len(run_frames),
         display_path_kind="median",
     )
