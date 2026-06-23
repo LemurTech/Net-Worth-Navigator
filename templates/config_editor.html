@@ -635,11 +635,17 @@
       }
 
       async function pollRenderJob(jobId) {
-        const response = await fetch(`jobs/${encodeURIComponent(jobId)}`, {
+        const jobUrl = new URL(`jobs/${encodeURIComponent(jobId)}`, window.location.href);
+        const response = await fetch(jobUrl.toString(), {
           headers: { "Accept": "application/json" }
         });
         if (!response.ok) {
           throw new Error(`Unable to load render job ${jobId}.`);
+        }
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          const bodyText = (await response.text()).slice(0, 240);
+          throw new Error(`Render job returned non-JSON response: ${bodyText}`);
         }
         const payload = await response.json();
         if (!payload.ok) {
@@ -673,11 +679,13 @@
         showRenderOverlay(action);
         const formData = new FormData(configForm);
         formData.set("action", action);
+        formData.set("_response_format", "json");
         const body = new URLSearchParams();
         formData.forEach(function (value, key) {
           body.append(key, String(value));
         });
-        const response = await fetch(configForm.getAttribute("action") || window.location.pathname, {
+        const submitUrl = new URL(configForm.getAttribute("action") || window.location.href, window.location.href);
+        const response = await fetch(submitUrl.toString(), {
           method: "POST",
           headers: {
             "Accept": "application/json",
@@ -690,6 +698,12 @@
           hideRenderOverlay();
           window.location.reload();
           return;
+        }
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          const bodyText = (await response.text()).slice(0, 240);
+          hideRenderOverlay();
+          throw new Error(`Render submit returned non-JSON response: ${bodyText}`);
         }
         const payload = await response.json();
         if (!payload.job_id) {

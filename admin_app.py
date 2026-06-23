@@ -587,7 +587,10 @@ async def editor_submit(request: Request) -> HTMLResponse:
     clone_name = form.get("clone_name", "")
     clone_slug = form.get("clone_slug", "")
     clone_description = form.get("clone_description", "")
-    wants_json = request.headers.get("x-requested-with", "").lower() == "fetch"
+    wants_json = (
+        request.headers.get("x-requested-with", "").lower() == "fetch"
+        or str(form.get("_response_format", "")).strip().lower() == "json"
+    )
 
     try:
         parsed = _validate_config_text(content)
