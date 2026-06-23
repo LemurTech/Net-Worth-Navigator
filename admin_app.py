@@ -859,6 +859,7 @@ async def health() -> JSONResponse:
 
 
 @app.get("/jobs/{job_id}")
+@app.get("/finances/config/jobs/{job_id}")
 async def render_job_status(job_id: str) -> JSONResponse:
     job = _get_render_job(job_id)
     if job is None:
@@ -867,6 +868,7 @@ async def render_job_status(job_id: str) -> JSONResponse:
 
 
 @app.post("/render-jobs")
+@app.post("/finances/config/render-jobs")
 async def start_render_job(request: Request) -> JSONResponse:
     form = await _parse_form(request)
     action = form.get("action", "")
