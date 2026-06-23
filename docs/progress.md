@@ -6,7 +6,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 ### Added
 
-- Typed yearly tax contracts in `src/model.py` (`FederalTaxSystem`, `StateTaxSystem`, `YearlyTaxInputs`, `YearlyTaxOutputs`) plus a dedicated `tax_breakdown_yearly.csv` sidecar for per-year tax audit data
+- Typed yearly tax contracts in `src/tax_model.py` (`FederalTaxSystem`, `StateTaxSystem`, `YearlyTaxInputs`, `YearlyTaxOutputs`) plus a dedicated `tax_breakdown_yearly.csv` sidecar for per-year tax audit data
 - Bundled illustrative historical return dataset at `config/return_sequences/us_balanced_returns.csv` plus usage guidance in `docs/historical-return-sequences.md`, making historical mode turnkey for repo-local scenarios
 - Historical-sequence simulation mode in `src/model.py`, driven by rolling windows from `simulation.historical_returns_path` CSV data (`year`, `return`)
 - Configurable stochastic success/failure settings via `[monte_carlo.success]`, including named `failure_mode`, spending-funded threshold, home-equity/debt allowances, grace-period months, and a basic custom-threshold comparator
