@@ -607,6 +607,15 @@
         return url.toString();
       }
 
+      function editorRelativeUrl(path) {
+        const base = new URL(window.location.href);
+        let pathname = base.pathname || "/";
+        if (!pathname.endsWith("/")) {
+          pathname += "/";
+        }
+        return `${pathname}${path}`.replace(/\/{2,}/g, "/");
+      }
+
       function updateOverlayFromJob(job) {
         if (!job) return;
         const scenarioCount = Number(job.scenario_count || 0);
@@ -635,8 +644,7 @@
       }
 
       async function pollRenderJob(jobId) {
-        const jobUrl = new URL(`jobs/${encodeURIComponent(jobId)}`, window.location.href);
-        const response = await fetch(jobUrl.toString(), {
+        const response = await fetch(editorRelativeUrl(`jobs/${encodeURIComponent(jobId)}`), {
           headers: { "Accept": "application/json" }
         });
         if (!response.ok) {
@@ -684,8 +692,7 @@
         formData.forEach(function (value, key) {
           body.append(key, String(value));
         });
-        const submitUrl = new URL("render-jobs", window.location.href);
-        const response = await fetch(submitUrl.toString(), {
+        const response = await fetch(editorRelativeUrl("render-jobs"), {
           method: "POST",
           headers: {
             "Accept": "application/json",
