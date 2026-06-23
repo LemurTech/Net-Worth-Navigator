@@ -872,6 +872,61 @@ async def health() -> JSONResponse:
     })
 
 
+@app.post("/delete-scenario")
+@app.post("/finances/config/delete-scenario")
+async def delete_scenario(request: Request) -> JSONResponse:
+    """Delete a non-default scenario TOML file and its rendered output directory."""
+    import shutil
+
+    form = await _parse_form(request)
+    scenario_slug = (form.get("scenario_slug") or "").strip()
+    confirm = (form.get("confirm") or "").strip()
+
+    if confirm != scenario_slug:
+        return JSONResponse(
+            {"ok": False, "error": "Confirmation slug did not match. Scenario not deleted."},
+            status_code=400,
+        )
+
+    try:
+        scenario = _current_scenario(scenario_slug)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
+
+    if scenario.is_default:
+        return JSONResponse(
+            {"ok": False, "error": "The default scenario cannot be deleted."},
+            status_code=400,
+        )
+
+    # Remove the TOML config file
+    config_path = scenario.config_path
+    if config_path.exists():
+        config_path.unlink()
+
+    # Remove rendered output directory (non-fatal if missing)
+    scenario_output_dir = OUTPUT_DIR / "scenarios" / scenario_slug
+    if scenario_output_dir.exists():
+        shutil.rmtree(scenario_output_dir, ignore_errors=True)
+
+    # Remove deployed output directory (non-fatal if missing)
+    deploy_scenario_dir = APP_ROOT / "output" / "scenarios" / scenario_slug
+    if deploy_scenario_dir != scenario_output_dir and deploy_scenario_dir.exists():
+        shutil.rmtree(deploy_scenario_dir, ignore_errors=True)
+
+    # Rebuild the shell + compare pages so the deleted scenario disappears from selectors
+    try:
+        _render_projection_offline(None)  # offline render of default refreshes shell pages
+    except Exception:
+        pass  # non-fatal; shell pages will be stale until next render
+
+    return JSONResponse({
+        "ok": True,
+        "deleted_slug": scenario_slug,
+        "message": f"Scenario '{scenario.name}' ({scenario_slug}) deleted.",
+    })
+
+
 @app.get("/jobs/{job_id}")
 @app.get("/finances/config/jobs/{job_id}")
 async def render_job_status(job_id: str) -> JSONResponse:

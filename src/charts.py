@@ -256,6 +256,31 @@ function applyResponsiveChartLayout() {
       'margin.b': 60
     });
   }
+
+  var simulation = document.getElementById('nwn-simulation');
+  if (simulation) {
+    Plotly.relayout(simulation, compact ? {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': -0.30,
+      'legend.yanchor': 'top',
+      'legend.font.size': 10,
+      'title.font.size': 15,
+      'margin.t': 72,
+      'margin.b': 136
+    } : {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': 1.01,
+      'legend.yanchor': 'bottom',
+      'legend.font.size': 12,
+      'title.font.size': 16,
+      'margin.t': 70,
+      'margin.b': 56
+    });
+  }
 }
 
 function switchTab(id) {

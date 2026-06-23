@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Iteration Window:** 2026-06-19 → 2026-06-23
-**Current Status:** NWN now has both seeded Monte Carlo / turnkey historical modes, the first richer-account-mechanics slice from the ignidash port plan, and a new static definitions/reference page. Taxable brokerage withdrawals now use tracked cost basis vs. realized gains, Roth balances now track contribution basis vs. earnings, and the public/editor surfaces now link to a simplified parameter glossary instead of pushing more explanation into every TOML file.
+**Current Status:** NWN now has both seeded Monte Carlo / turnkey historical modes, the first richer-account-mechanics slice from the ignidash port plan, a static definitions/reference page, and a new scenario comparison page (`compare.html`). The config editor now supports scenario deletion. Several small UI fixes landed this session: Simulation tab legend responsive fix, Refresh Frame hidden on small screens, bracketed mode label removed from shell description, y-axis title standoff corrected on the compare page.
 
 ## Current State
 

@@ -33,7 +33,7 @@ from src.scenarios import (
     scenario_output_dir,
     write_scenarios_index,
 )
-from src.scenario_shell import build_scenario_shell
+from src.scenario_shell import build_scenario_shell, build_compare_page
 from src.sidecars import write_sidecars
 
 OUTPUT_DIR  = Path("output")
@@ -288,6 +288,16 @@ def main():
     )
     print(f"  definitions_html: {definitions_output_path}")
 
+    compare_output_path = OUTPUT_DIR / "compare.html"
+    build_compare_page(
+        manifest=shell_manifest,
+        output_path=compare_output_path,
+        manifest_relpath="scenarios/index.json",
+        shell_url="/finances/projection.html",
+        definitions_url="/finances/definitions.html",
+    )
+    print(f"  compare_html: {compare_output_path}")
+
     # 4. Deploy to web server
     DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
     deploy_scenario_dir = DEPLOY_DIR / "scenarios" / scenario.slug
@@ -299,8 +309,11 @@ def main():
     shutil.copy2(shell_output_path, deploy_path)
     deploy_definitions_path = DEPLOY_DIR / "definitions.html"
     shutil.copy2(definitions_output_path, deploy_definitions_path)
+    deploy_compare_path = DEPLOY_DIR / "compare.html"
+    shutil.copy2(compare_output_path, deploy_compare_path)
     deploy_path.chmod(0o644)
     deploy_definitions_path.chmod(0o644)
+    deploy_compare_path.chmod(0o644)
     print(f"→ Deployed → {deploy_path}")
     print(f"  View at: http://casalemuria.lan/finances/projection.html")
     print("Done.")

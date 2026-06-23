@@ -1,9 +1,26 @@
-"""Build the public scenario shell page for pre-rendered projections."""
+"""Build the public scenario shell page and comparison page for pre-rendered projections."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Colour palette assigned to each scenario slot (up to 10 scenarios).
+# These are Plotly-safe CSS colour strings used in both the chart and chip UI.
+# ---------------------------------------------------------------------------
+_SCENARIO_COLORS = [
+    "#7dd3fc",  # sky-300
+    "#86efac",  # green-300
+    "#fbbf24",  # amber-400
+    "#f87171",  # red-400
+    "#c084fc",  # purple-400
+    "#34d399",  # emerald-400
+    "#fb923c",  # orange-400
+    "#a78bfa",  # violet-400
+    "#f472b6",  # pink-400
+    "#94a3b8",  # slate-400
+]
 
 
 def build_scenario_shell(
@@ -208,6 +225,7 @@ def build_scenario_shell(
         align-items: flex-start;
         order: 3;
       }}
+      #refresh-frame-btn {{ display: none; }}
       .control-actions {{
         flex-wrap: wrap;
         gap: 8px;
@@ -267,7 +285,8 @@ def build_scenario_shell(
           </div>
           <div class="control-actions">
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
-            <a class="linkbtn" id="definitions-link" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
+            <a class="linkbtn" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
+            <a class="linkbtn" href="/finances/compare.html" target="_blank" rel="noreferrer">Compare Scenarios</a>
             <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
             <a class="linkbtn primary" id="edit-scenarios-link" href="{editor_url}">Edit Scenarios</a>
           </div>
@@ -412,7 +431,7 @@ def build_scenario_shell(
         const selectedModeEntry = modeEntryFor(selected, resolvedMode);
         const modeLabel = selectedModeEntry?.label || "Mode unavailable";
         const scenarioText = selected.description || "No description provided.";
-        description.textContent = `${{scenarioText}} [${{modeLabel}}]`;
+        description.textContent = scenarioText;
         frame.src = projectionUrlFor(selected, resolvedMode, {{ embed: true }});
         openLink.href = projectionUrlFor(selected, resolvedMode, {{ embed: false }});
         if (editScenariosLink) {{
@@ -439,3 +458,538 @@ def build_scenario_shell(
 """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(shell_html, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# build_compare_page
+# ---------------------------------------------------------------------------
+
+def build_compare_page(
+    *,
+    manifest: dict,
+    output_path: Path,
+    manifest_relpath: str = "scenarios/index.json",
+    shell_url: str = "/finances/projection.html",
+    definitions_url: str = "/finances/definitions.html",
+) -> None:
+    """Generate a self-contained scenario comparison page.
+
+    The page fetches sidecar CSVs and simulation_summary.json at runtime so it
+    always reflects the latest renders without requiring a Python rebuild.
+    Plotly is loaded from CDN.
+    """
+    inline_manifest = json.dumps(manifest)
+    colors_js = json.dumps(_SCENARIO_COLORS)
+
+    compare_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NWN — Compare Scenarios</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+  <style>
+    :root {{
+      --bg: #08111d;
+      --panel: rgba(15,23,37,0.9);
+      --panel-2: #111827;
+      --text: #e5edf7;
+      --muted: #9fb2c8;
+      --border: #243142;
+      --accent: #7dd3fc;
+      --accent-strong: #0ea5e9;
+    }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(14,165,233,.14), transparent 26%),
+        radial-gradient(circle at top right, rgba(56,189,248,.09), transparent 20%),
+        linear-gradient(180deg, #08111d, #0b1220 46%, #08111d);
+      min-height: 100vh;
+    }}
+    .page {{ max-width: 1280px; margin: 0 auto; padding: 18px 16px 40px; }}
+    .topbar {{ display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }}
+    .topbar-title {{ font-size: 22px; font-weight: 700; letter-spacing: -.03em; }}
+    .topbar-sub {{ color: var(--muted); font-size: 13px; }}
+    .back-link {{ color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; margin-left: auto; white-space: nowrap; }}
+    .back-link:hover {{ color: #fff; }}
+
+    /* ── Controls ───────────────────────────────────────────────── */
+    .controls {{ display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }}
+    .control-group {{ display: flex; flex-direction: column; gap: 6px; }}
+    .control-label {{ font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }}
+    .chip-row {{ display: flex; gap: 7px; flex-wrap: wrap; }}
+    .chip {{
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 11px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1.5px solid transparent; cursor: pointer; transition: opacity .14s, transform .1s;
+      background: rgba(36,49,66,0.7); color: var(--muted);
+      white-space: nowrap; user-select: none;
+    }}
+    .chip.active {{ color: #06111d; }}
+    .chip:hover {{ transform: translateY(-1px); opacity: .9; }}
+    .chip .chip-dot {{
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0;
+    }}
+    select.mode-select {{
+      appearance: none; height: 36px; padding: 6px 34px 6px 12px;
+      border-radius: 10px; border: 1px solid rgba(125,211,252,.2);
+      background: linear-gradient(180deg, #101a2a, #0f1725),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 14 14'%3E%3Cpath d='M3 5.25 7 9l4-3.75' fill='none' stroke='%23f8fafc' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat, no-repeat;
+      background-position: 0 0, right 10px center;
+      background-size: auto, 12px 12px;
+      color: #f8fafc; -webkit-text-fill-color: #f8fafc; opacity: 1; text-shadow: none;
+      font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+    }}
+    select.mode-select:focus {{ outline: none; border-color: rgba(125,211,252,.55); }}
+    select.mode-select option {{ background: #101a2a; }}
+
+    /* ── Chart card ─────────────────────────────────────────────── */
+    .card {{
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 16px; padding: 18px 16px; margin-bottom: 16px;
+    }}
+    .card-title {{ font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }}
+    #compare-chart {{ width: 100%; height: 420px; }}
+
+    /* ── KPI table ──────────────────────────────────────────────── */
+    .kpi-table-wrap {{ overflow-x: auto; }}
+    table.kpi {{
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      min-width: 640px;
+    }}
+    table.kpi th {{
+      text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }}
+    table.kpi td {{
+      padding: 9px 12px; border-bottom: 1px solid rgba(36,49,66,.6);
+      white-space: nowrap;
+    }}
+    table.kpi tr:last-child td {{ border-bottom: none; }}
+    table.kpi tr:hover td {{ background: rgba(125,211,252,.04); }}
+    .kpi-name {{ font-weight: 600; }}
+    .kpi-swatch {{
+      display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+      margin-right: 6px; vertical-align: middle; flex-shrink: 0;
+    }}
+    .kpi-num {{ font-variant-numeric: tabular-nums; font-family: "SF Mono", "Fira Mono", monospace; font-size: 12px; }}
+    .delta-pos {{ color: #86efac; }}
+    .delta-neg {{ color: #f87171; }}
+    .delta-neu {{ color: var(--muted); }}
+    .kpi-default-marker {{ font-size: 10px; color: var(--accent); margin-left: 4px; }}
+    .loading-msg {{ color: var(--muted); font-size: 13px; padding: 12px 0; }}
+    .error-msg {{ color: #f87171; font-size: 13px; padding: 12px 0; }}
+
+    @media (max-width: 760px) {{
+      .page {{ padding: 12px 10px 32px; }}
+      #compare-chart {{ height: 320px; }}
+    }}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="topbar-title">Compare Scenarios</div>
+    <div class="topbar-sub">Net Worth Navigator</div>
+    <a class="back-link" href="{shell_url}">← Back to projection</a>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <div class="control-label">Scenarios</div>
+      <div class="chip-row" id="scenario-chips"></div>
+    </div>
+    <div class="control-group">
+      <div class="control-label">Mode</div>
+      <select class="mode-select" id="mode-select">
+        <option value="deterministic">Deterministic</option>
+        <option value="historical">Historical</option>
+        <option value="monte_carlo">Monte Carlo</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Total Net Worth Trajectory</div>
+    <div id="compare-chart"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Scenario Metrics</div>
+    <div class="kpi-table-wrap">
+      <div id="kpi-area"><div class="loading-msg">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Investable Portfolio Trajectory</div>
+    <div id="portfolio-chart" style="width:100%;height:340px;"></div>
+  </div>
+</div>
+
+<script>
+(function() {{
+  const MANIFEST = {inline_manifest};
+  const COLORS = {colors_js};
+  const SCENARIO_LIST = Array.isArray(MANIFEST.scenarios) ? MANIFEST.scenarios : [];
+  const DEFAULT_SLUG = MANIFEST.default_slug || (SCENARIO_LIST[0] && SCENARIO_LIST[0].slug);
+
+  // Assign stable colour index per scenario slug (by manifest order)
+  const COLOR_MAP = {{}};
+  SCENARIO_LIST.forEach(function(s, i) {{
+    COLOR_MAP[s.slug] = COLORS[i % COLORS.length];
+  }});
+
+  // ── State ────────────────────────────────────────────────────────
+  let activeMode = 'deterministic';
+  let activeSlugs = new Set();
+
+  // Default selection: default + comfortable (or first two)
+  const preselect = [];
+  if (DEFAULT_SLUG) preselect.push(DEFAULT_SLUG);
+  const others = SCENARIO_LIST.filter(s => s.slug !== DEFAULT_SLUG);
+  if (others.length) preselect.push(others[0].slug);
+  preselect.forEach(slug => activeSlugs.add(slug));
+
+  // ── Chip rendering ───────────────────────────────────────────────
+  function renderChips() {{
+    const row = document.getElementById('scenario-chips');
+    row.innerHTML = '';
+    SCENARIO_LIST.forEach(function(s) {{
+      const color = COLOR_MAP[s.slug];
+      const active = activeSlugs.has(s.slug);
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (active ? ' active' : '');
+      if (active) {{
+        chip.style.backgroundColor = color;
+        chip.style.borderColor = color;
+      }} else {{
+        chip.style.borderColor = color + '55';
+      }}
+      chip.innerHTML =
+        '<span class="chip-dot" style="background:' + color + '"></span>' +
+        s.name +
+        (s.slug === DEFAULT_SLUG ? '<span style="font-size:10px;opacity:.7"> ★</span>' : '');
+      chip.addEventListener('click', function() {{
+        if (activeSlugs.has(s.slug)) {{
+          if (activeSlugs.size <= 2) return; // keep at least 2
+          activeSlugs.delete(s.slug);
+        }} else {{
+          activeSlugs.add(s.slug);
+        }}
+        renderChips();
+        refresh();
+      }});
+      row.appendChild(chip);
+    }});
+  }}
+
+  // ── Sidecar path helpers ─────────────────────────────────────────
+  function sidecarBase(slug, mode) {{
+    return 'scenarios/' + slug + '/' + mode + '/sidecars/';
+  }}
+
+  // ── CSV fetch helper ─────────────────────────────────────────────
+  function parseCSV(text) {{
+    const lines = text.trim().split('\\n');
+    if (!lines.length) return [];
+    const headers = lines[0].split(',');
+    return lines.slice(1).map(function(line) {{
+      const vals = line.split(',');
+      const obj = {{}};
+      headers.forEach(function(h, i) {{ obj[h.trim()] = vals[i] !== undefined ? vals[i].trim() : ''; }});
+      return obj;
+    }});
+  }}
+
+  function fetchCSV(url) {{
+    return fetch(url, {{ cache: 'no-cache' }}).then(function(r) {{
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+      return r.text();
+    }}).then(parseCSV);
+  }}
+
+  function fetchJSON(url) {{
+    return fetch(url, {{ cache: 'no-cache' }}).then(function(r) {{
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+      return r.json();
+    }});
+  }}
+
+  // ── Number formatters ────────────────────────────────────────────
+  function fmtM(v) {{
+    const n = parseFloat(v);
+    if (isNaN(n)) return '—';
+    if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+    return n.toFixed(0);
+  }}
+  function fmtPct(v) {{
+    const n = parseFloat(v);
+    if (isNaN(n)) return '—';
+    return (n * 100).toFixed(1) + '%';
+  }}
+  function fmtYear(v) {{
+    return v ? String(v) : '—';
+  }}
+  function deltaClass(diff, higherIsBetter) {{
+    if (diff === null || diff === undefined) return 'delta-neu';
+    if (Math.abs(diff) < 0.0001) return 'delta-neu';
+    return (diff > 0) === higherIsBetter ? 'delta-pos' : 'delta-neg';
+  }}
+  function fmtDelta(diff, fmt) {{
+    if (diff === null || diff === undefined) return '';
+    if (Math.abs(diff) < 1) return '';
+    const sign = diff > 0 ? '+' : '';
+    return ' <span style="font-size:11px;opacity:.75">(' + sign + fmt(diff) + ')</span>';
+  }}
+
+  // ── Main refresh ─────────────────────────────────────────────────
+  function refresh() {{
+    const slugs = Array.from(activeSlugs);
+    if (!slugs.length) return;
+
+    // Build sidecar fetch promises for each active scenario
+    const projPromises = slugs.map(function(slug) {{
+      const url = sidecarBase(slug, activeMode) + 'projection_yearly.csv';
+      return fetchCSV(url).then(function(rows) {{ return {{ slug, rows }}; }}).catch(function() {{ return {{ slug, rows: null }}; }});
+    }});
+    const summPromises = slugs.map(function(slug) {{
+      const url = sidecarBase(slug, activeMode) + 'simulation_summary.json';
+      return fetchJSON(url).then(function(data) {{ return {{ slug, data }}; }}).catch(function() {{ return {{ slug, data: null }}; }});
+    }});
+
+    Promise.all([...projPromises, ...summPromises]).then(function(results) {{
+      const projMap = {{}};
+      const summMap = {{}};
+      results.forEach(function(r) {{
+        if (r.rows !== undefined) projMap[r.slug] = r.rows;
+        if (r.data !== undefined) summMap[r.slug] = r.data;
+      }});
+      renderChart(slugs, projMap);
+      renderPortfolioChart(slugs, projMap);
+      renderKPI(slugs, projMap, summMap);
+    }});
+  }}
+
+  // ── Trajectory chart ─────────────────────────────────────────────
+  function renderChart(slugs, projMap) {{
+    const traces = [];
+    slugs.forEach(function(slug) {{
+      const rows = projMap[slug];
+      if (!rows || !rows.length) return;
+      const scenMeta = SCENARIO_LIST.find(s => s.slug === slug);
+      const name = scenMeta ? scenMeta.name : slug;
+      const color = COLOR_MAP[slug];
+      const years = rows.map(r => parseInt(r.year));
+      const vals  = rows.map(r => parseFloat(r.total_net_worth) / 1e6);
+      traces.push({{
+        x: years, y: vals, mode: 'lines', name: name,
+        line: {{ color: color, width: slug === DEFAULT_SLUG ? 2.5 : 2 }},
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ': $%{{y:.2f}}M<extra></extra>',
+      }});
+    }});
+
+    const layout = {{
+      font: {{ color: '#e5edf7' }},
+      paper_bgcolor: '#111827',
+      plot_bgcolor: '#0f1725',
+      xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
+      yaxis: {{ title: {{ text: 'Total Net Worth ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
+      legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 11 }} }},
+      hoverlabel: {{ bgcolor: '#0f1725', bordercolor: '#334155', font_color: '#f8fafc' }},
+      margin: {{ l: 80, r: 16, t: 48, b: 48 }},
+    }};
+    const el = document.getElementById('compare-chart');
+    if (!el) return;
+    if (el._hasPlot) {{
+      Plotly.react(el, traces, layout);
+    }} else {{
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      el._hasPlot = true;
+    }}
+  }}
+
+  // ── Portfolio chart ───────────────────────────────────────────────
+  function renderPortfolioChart(slugs, projMap) {{
+    const traces = [];
+    slugs.forEach(function(slug) {{
+      const rows = projMap[slug];
+      if (!rows || !rows.length) return;
+      const scenMeta = SCENARIO_LIST.find(s => s.slug === slug);
+      const name = scenMeta ? scenMeta.name : slug;
+      const color = COLOR_MAP[slug];
+      const years = rows.map(r => parseInt(r.year));
+      // investable = taxable + trad_ira + roth (exclude cash, home)
+      const vals = rows.map(function(r) {{
+        const t = parseFloat(r.taxable) || 0;
+        const tr = parseFloat(r.trad_ira) || 0;
+        const ro = parseFloat(r.roth) || 0;
+        return (t + tr + ro) / 1e6;
+      }});
+      traces.push({{
+        x: years, y: vals, mode: 'lines', name: name,
+        line: {{ color: color, width: slug === DEFAULT_SLUG ? 2.5 : 2, dash: slug === DEFAULT_SLUG ? 'solid' : 'dot' }},
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' investable: $%{{y:.2f}}M<extra></extra>',
+      }});
+    }});
+
+    const layout = {{
+      font: {{ color: '#e5edf7' }},
+      paper_bgcolor: '#111827',
+      plot_bgcolor: '#0f1725',
+      xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
+      yaxis: {{ title: {{ text: 'Investable Portfolio ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
+      legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 11 }} }},
+      hoverlabel: {{ bgcolor: '#0f1725', bordercolor: '#334155', font_color: '#f8fafc' }},
+      margin: {{ l: 80, r: 16, t: 48, b: 48 }},
+    }};
+    const el = document.getElementById('portfolio-chart');
+    if (!el) return;
+    if (el._hasPlot) {{
+      Plotly.react(el, traces, layout);
+    }} else {{
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      el._hasPlot = true;
+    }}
+  }}
+
+  // ── KPI table ────────────────────────────────────────────────────
+  function renderKPI(slugs, projMap, summMap) {{
+    const kpiArea = document.getElementById('kpi-area');
+
+    // Gather metrics per scenario
+    const rows = slugs.map(function(slug) {{
+      const proj = projMap[slug] || [];
+      const summ = summMap[slug] || {{}};
+      const meta = SCENARIO_LIST.find(s => s.slug === slug) || {{}};
+
+      const lastRow = proj.length ? proj[proj.length - 1] : null;
+      const retYear = parseInt(summ.retirement_year) || null;
+      const retRow  = retYear ? proj.find(r => parseInt(r.year) === retYear) : null;
+
+      return {{
+        slug,
+        name: meta.name || slug,
+        isDefault: slug === DEFAULT_SLUG,
+        termNW: lastRow ? parseFloat(lastRow.total_net_worth) : null,
+        termInv: lastRow ? (parseFloat(lastRow.taxable || 0) + parseFloat(lastRow.trad_ira || 0) + parseFloat(lastRow.roth || 0)) : null,
+        retNW: retRow ? parseFloat(retRow.total_net_worth) : null,
+        retYear: retYear,
+        successRate: summ.probability_of_success != null ? parseFloat(summ.probability_of_success) : null,
+        termNWp10: summ.terminal_total_net_worth_p10 != null ? parseFloat(summ.terminal_total_net_worth_p10) : null,
+        termNWp90: summ.terminal_total_net_worth_p90 != null ? parseFloat(summ.terminal_total_net_worth_p90) : null,
+        worstDecile: summ.worst_decile_terminal_net_worth != null ? parseFloat(summ.worst_decile_terminal_net_worth) : null,
+        firstFailP50: summ.first_failure_year_p50 || null,
+        peakPressure: summ.peak_temporary_pressure_rate != null ? parseFloat(summ.peak_temporary_pressure_rate) : null,
+      }};
+    }});
+
+    // Find baseline (default scenario or first in list)
+    const baseline = rows.find(r => r.isDefault) || rows[0];
+
+    // Determine whether MC metrics are available
+    const hasMC = rows.some(r => r.successRate !== null);
+
+    // Build table HTML
+    const cols = [
+      {{ key: 'name', label: 'Scenario', fmt: null, higherBetter: null }},
+      {{ key: 'retYear', label: 'Retirement Year', fmt: fmtYear, higherBetter: false }},
+      {{ key: 'retNW', label: 'NW at Retirement', fmt: fmtM, higherBetter: true }},
+      {{ key: 'termNW', label: 'Terminal NW', fmt: fmtM, higherBetter: true }},
+      {{ key: 'termInv', label: 'Terminal Investable', fmt: fmtM, higherBetter: true }},
+    ];
+    if (hasMC) {{
+      cols.push({{ key: 'successRate', label: 'Prob. of Success', fmt: fmtPct, higherBetter: true }});
+      cols.push({{ key: 'worstDecile', label: 'Worst-Decile Terminal', fmt: fmtM, higherBetter: true }});
+      cols.push({{ key: 'termNWp10', label: 'Terminal P10', fmt: fmtM, higherBetter: true }});
+      cols.push({{ key: 'termNWp90', label: 'Terminal P90', fmt: fmtM, higherBetter: true }});
+      cols.push({{ key: 'firstFailP50', label: 'Median 1st Failure', fmt: fmtYear, higherBetter: true }});
+      cols.push({{ key: 'peakPressure', label: 'Peak Pressure Rate', fmt: fmtPct, higherBetter: false }});
+    }}
+
+    let thead = '<tr>';
+    cols.forEach(function(c) {{ thead += '<th>' + c.label + '</th>'; }});
+    thead += '</tr>';
+
+    let tbody = '';
+    rows.forEach(function(row) {{
+      const color = COLOR_MAP[row.slug];
+      tbody += '<tr>';
+      cols.forEach(function(c) {{
+        if (c.key === 'name') {{
+          tbody += '<td class="kpi-name"><span class="kpi-swatch" style="background:' + color + '"></span>' + row.name;
+          if (row.isDefault) tbody += '<span class="kpi-default-marker">★</span>';
+          tbody += '</td>';
+          return;
+        }}
+        const val = row[c.key];
+        const bval = baseline ? baseline[c.key] : null;
+        const fval = val !== null && val !== undefined && c.fmt ? c.fmt(val) : (val !== null && val !== undefined ? String(val) : '—');
+        let deltaHtml = '';
+        if (!row.isDefault && bval !== null && val !== null && c.fmt === fmtM) {{
+          const diff = val - bval;
+          const dc = deltaClass(diff, c.higherBetter);
+          deltaHtml = '<span class="' + dc + '">' + fmtDelta(diff, fmtM) + '</span>';
+        }} else if (!row.isDefault && bval !== null && val !== null && c.fmt === fmtPct) {{
+          const diff = val - bval;
+          const dc = deltaClass(diff, c.higherBetter);
+          if (Math.abs(diff) > 0.0005) {{
+            const sign = diff > 0 ? '+' : '';
+            deltaHtml = ' <span class="' + dc + '" style="font-size:11px;opacity:.75">(' + sign + fmtPct(diff) + ')</span>';
+          }}
+        }} else if (!row.isDefault && bval !== null && val !== null && c.fmt === fmtYear) {{
+          const diff = parseInt(val) - parseInt(bval);
+          if (!isNaN(diff) && diff !== 0) {{
+            const dc = deltaClass(diff, c.higherBetter);
+            const sign = diff > 0 ? '+' : '';
+            deltaHtml = ' <span class="' + dc + '" style="font-size:11px;opacity:.75">(' + sign + diff + 'yr)</span>';
+          }}
+        }}
+        tbody += '<td class="kpi-num">' + fval + deltaHtml + '</td>';
+      }});
+      tbody += '</tr>';
+    }});
+
+    kpiArea.innerHTML = (
+      '<table class="kpi"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>'
+    );
+  }}
+
+  // ── Mode selector ─────────────────────────────────────────────────
+  function resolveAvailableModes() {{
+    const allModes = new Set();
+    SCENARIO_LIST.forEach(function(s) {{
+      if (Array.isArray(s.modes)) {{
+        s.modes.forEach(function(m) {{ allModes.add(m.mode); }});
+      }}
+    }});
+    const sel = document.getElementById('mode-select');
+    Array.from(sel.options).forEach(function(opt) {{
+      opt.disabled = !allModes.has(opt.value);
+    }});
+  }}
+
+  // ── Boot ─────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {{
+    resolveAvailableModes();
+    document.getElementById('mode-select').addEventListener('change', function() {{
+      activeMode = this.value;
+      refresh();
+    }});
+    renderChips();
+    refresh();
+  }});
+}})();
+</script>
+</body>
+</html>"""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(compare_html, encoding="utf-8")
+

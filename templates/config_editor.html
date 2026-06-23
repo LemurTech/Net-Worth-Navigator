@@ -233,6 +233,72 @@
       border-color: #38bdf8;
       color: #08111d;
     }
+    button.danger {
+      background: linear-gradient(180deg, rgba(239,68,68,0.18), rgba(220,38,38,0.14));
+      border-color: rgba(248,113,113,0.4);
+      color: #fca5a5;
+      margin-left: auto;
+    }
+    button.danger:hover {
+      border-color: #f87171;
+      background: linear-gradient(180deg, rgba(239,68,68,0.30), rgba(220,38,38,0.22));
+      color: #fecaca;
+    }
+    /* ── Delete confirmation dialog ── */
+    .delete-dialog-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(8,13,24,0.76);
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(2px);
+    }
+    .delete-dialog-overlay.active { display: flex; }
+    .delete-dialog {
+      background: #111827;
+      border: 1px solid rgba(248,113,113,0.35);
+      border-radius: 14px;
+      padding: 28px 28px 22px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 24px 60px rgba(0,0,0,.48);
+    }
+    .delete-dialog h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #fca5a5;
+    }
+    .delete-dialog p {
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .delete-dialog .confirm-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+    .delete-dialog input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      margin-bottom: 16px;
+    }
+    .delete-dialog input:focus { outline: none; border-color: #f87171; }
+    .delete-dialog .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .delete-dialog .dialog-actions button { margin-left: 0; }
+    #confirm-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .hint {
       padding: 0 16px 18px;
       color: var(--muted);
@@ -412,9 +478,22 @@
         <button type="submit" name="action" value="save_render" class="primary">Save + Re-render</button>
         <button type="submit" name="action" value="save_render_all">Save + Render All</button>
         <button type="submit" name="action" value="clone">Clone Scenario</button>
+        <button type="button" id="delete-scenario-btn" class="danger" title="Delete this scenario permanently">Delete Scenario</button>
       </div>
       <div class="hint">Backups are written to <code>{{ backup_dir }}</code> before each save.</div>
     </form>
+  </div>
+  <div class="delete-dialog-overlay" id="delete-dialog-overlay" aria-modal="true" role="dialog" aria-labelledby="delete-dialog-title">
+    <div class="delete-dialog">
+      <h3 id="delete-dialog-title">⚠ Delete Scenario</h3>
+      <p>This will permanently delete <strong id="delete-dialog-name"></strong> and its rendered output. This cannot be undone.<br><br>Type the scenario slug to confirm:</p>
+      <label class="confirm-label" for="delete-confirm-input">Scenario slug: <code id="delete-dialog-slug-hint"></code></label>
+      <input type="text" id="delete-confirm-input" autocomplete="off" spellcheck="false" placeholder="">
+      <div class="dialog-actions">
+        <button type="button" id="cancel-delete-btn">Cancel</button>
+        <button type="button" id="confirm-delete-btn" class="danger" disabled>Delete Permanently</button>
+      </div>
+    </div>
   </div>
   <div class="render-overlay" id="render-overlay" aria-live="polite" aria-hidden="true">
     <div class="render-card">
@@ -805,6 +884,101 @@
       } else if (lastActionFromServer === "save_render" || lastActionFromServer === "save_render_all") {
         history.replaceState(null, "", buildEditorUrl(""));
       }
+    })();
+  </script>
+  <script>
+    // ── Delete Scenario dialog ──────────────────────────────────────────────
+    (function () {
+      const deleteBtn   = document.getElementById('delete-scenario-btn');
+      const overlay     = document.getElementById('delete-dialog-overlay');
+      const cancelBtn   = document.getElementById('cancel-delete-btn');
+      const confirmBtn  = document.getElementById('confirm-delete-btn');
+      const confirmInput = document.getElementById('delete-confirm-input');
+      const dialogName  = document.getElementById('delete-dialog-name');
+      const slugHint    = document.getElementById('delete-dialog-slug-hint');
+
+      // Read scenario identity from server-rendered hidden field
+      const scenarioSlug = (document.querySelector('input[name="scenario_slug"]') || {}).value || '';
+      const scenarioNameEl = document.querySelector('.scenario-name') || document.querySelector('.title h1');
+      const scenarioName = scenarioNameEl ? scenarioNameEl.textContent.trim() : scenarioSlug;
+
+      if (!deleteBtn || !overlay) return;
+
+      // Disable delete button on the default scenario
+      const isDefault = {% if scenario_options %}
+        (function() {
+          const opts = {{ scenario_options | tojson | safe }};
+          const opt = opts.find(function(o) { return o.slug === '{{ scenario_slug }}'; });
+          return opt && opt.is_default;
+        })()
+      {% else %}
+        false
+      {% endif %};
+      if (isDefault) {
+        deleteBtn.disabled = true;
+        deleteBtn.title = 'The default scenario cannot be deleted.';
+      }
+
+      deleteBtn.addEventListener('click', function () {
+        dialogName.textContent = '{{ scenario_name }}' || scenarioName;
+        slugHint.textContent = '{{ scenario_slug }}' || scenarioSlug;
+        confirmInput.value = '';
+        confirmBtn.disabled = true;
+        overlay.classList.add('active');
+        confirmInput.focus();
+      });
+
+      confirmInput.addEventListener('input', function () {
+        const expected = '{{ scenario_slug }}' || scenarioSlug;
+        confirmBtn.disabled = confirmInput.value.trim() !== expected;
+      });
+
+      cancelBtn.addEventListener('click', function () {
+        overlay.classList.remove('active');
+      });
+
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) overlay.classList.remove('active');
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay.classList.contains('active')) {
+          overlay.classList.remove('active');
+        }
+      });
+
+      confirmBtn.addEventListener('click', function () {
+        const slug = '{{ scenario_slug }}' || scenarioSlug;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Deleting…';
+
+        const body = new URLSearchParams();
+        body.set('scenario_slug', slug);
+        body.set('confirm', slug);
+
+        fetch('delete-scenario', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-requested-with': 'fetch' },
+          body: body.toString(),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            overlay.classList.remove('active');
+            // Redirect to editor root so the deleted scenario doesn't stay selected
+            window.location.href = '/finances/config/';
+          } else {
+            alert('Delete failed: ' + (data.error || 'Unknown error.'));
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Delete Permanently';
+          }
+        })
+        .catch(function (err) {
+          alert('Delete request failed: ' + err);
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Delete Permanently';
+        });
+      });
     })();
   </script>
 </body>
