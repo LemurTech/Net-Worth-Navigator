@@ -286,7 +286,7 @@ def build_scenario_shell(
           <div class="control-actions">
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
             <a class="linkbtn" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
-            <a class="linkbtn" href="/finances/compare.html" target="_blank" rel="noreferrer">Compare Scenarios</a>
+            <a class="linkbtn" id="compare-link" href="/finances/compare.html" target="_blank" rel="noreferrer">Compare Scenarios</a>
             <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
             <a class="linkbtn primary" id="edit-scenarios-link" href="{editor_url}">Edit Scenarios</a>
           </div>
@@ -440,6 +440,18 @@ def build_scenario_shell(
         frameWrap.classList.remove("empty");
         emptyState.classList.remove("active");
         setQueryState(selected.slug, resolvedMode);
+
+        // Keep Compare Scenarios link scoped to the active scenario vs default
+        const compareLink = document.getElementById("compare-link");
+        if (compareLink) {{
+          const defaultSlug = manifest.default_slug || "";
+          const compareUrl = new URL("/finances/compare.html", window.location.origin);
+          compareUrl.searchParams.set("a", selected.slug);
+          if (selected.slug !== defaultSlug && defaultSlug) {{
+            compareUrl.searchParams.set("b", defaultSlug);
+          }}
+          compareLink.href = compareUrl.toString();
+        }}
       }}
 
       select.addEventListener("change", () => activateScenario(select.value));
@@ -631,6 +643,11 @@ def build_compare_page(
     <div class="card-title">Investable Portfolio Trajectory</div>
     <div id="portfolio-chart" style="width:100%;height:340px;"></div>
   </div>
+
+  <div class="card">
+    <div class="card-title">Net Worth Delta vs Baseline <span style="font-weight:400;font-size:12px;color:var(--muted)">(scenario − default)</span></div>
+    <div id="delta-chart" style="width:100%;height:300px;"></div>
+  </div>
 </div>
 
 <script>
@@ -650,12 +667,24 @@ def build_compare_page(
   let activeMode = 'deterministic';
   let activeSlugs = new Set();
 
-  // Default selection: default + comfortable (or first two)
-  const preselect = [];
-  if (DEFAULT_SLUG) preselect.push(DEFAULT_SLUG);
-  const others = SCENARIO_LIST.filter(s => s.slug !== DEFAULT_SLUG);
-  if (others.length) preselect.push(others[0].slug);
-  preselect.forEach(slug => activeSlugs.add(slug));
+  // Boot selection: honour ?a=slug&b=slug URL params, else default + first other
+  (function initSelection() {{
+    const params = new URLSearchParams(window.location.search);
+    const paramA = params.get('a');
+    const paramB = params.get('b');
+    const validSlugs = new Set(SCENARIO_LIST.map(s => s.slug));
+    if (paramA && validSlugs.has(paramA)) activeSlugs.add(paramA);
+    if (paramB && validSlugs.has(paramB)) activeSlugs.add(paramB);
+    if (activeSlugs.size === 0) {{
+      if (DEFAULT_SLUG) activeSlugs.add(DEFAULT_SLUG);
+      const others = SCENARIO_LIST.filter(s => s.slug !== DEFAULT_SLUG);
+      if (others.length) activeSlugs.add(others[0].slug);
+    }}
+    // If only one valid param was given, add the default as the second
+    if (activeSlugs.size === 1 && DEFAULT_SLUG && !activeSlugs.has(DEFAULT_SLUG)) {{
+      activeSlugs.add(DEFAULT_SLUG);
+    }}
+  }})();
 
   // ── Chip rendering ───────────────────────────────────────────────
   function renderChips() {{
@@ -774,6 +803,7 @@ def build_compare_page(
       }});
       renderChart(slugs, projMap);
       renderPortfolioChart(slugs, projMap);
+      renderDeltaChart(slugs, projMap);
       renderKPI(slugs, projMap, summMap);
     }});
   }}
@@ -851,6 +881,71 @@ def build_compare_page(
       margin: {{ l: 80, r: 16, t: 48, b: 48 }},
     }};
     const el = document.getElementById('portfolio-chart');
+    if (!el) return;
+    if (el._hasPlot) {{
+      Plotly.react(el, traces, layout);
+    }} else {{
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      el._hasPlot = true;
+    }}
+  }}
+
+  // ── Delta chart (scenario − baseline) ───────────────────────────
+  function renderDeltaChart(slugs, projMap) {{
+    const baselineRows = projMap[DEFAULT_SLUG] || (slugs.length ? projMap[slugs[0]] : null);
+    if (!baselineRows || !baselineRows.length) return;
+
+    const baselineByYear = {{}};
+    baselineRows.forEach(function(r) {{ baselineByYear[parseInt(r.year)] = parseFloat(r.total_net_worth); }});
+
+    const traces = [];
+    slugs.forEach(function(slug) {{
+      const rows = projMap[slug];
+      if (!rows || !rows.length) return;
+      const scenMeta = SCENARIO_LIST.find(s => s.slug === slug);
+      const name = scenMeta ? scenMeta.name : slug;
+      const color = COLOR_MAP[slug];
+      const years = rows.map(r => parseInt(r.year));
+      const vals  = rows.map(function(r) {{
+        const yr = parseInt(r.year);
+        const base = baselineByYear[yr];
+        if (base === undefined) return null;
+        return (parseFloat(r.total_net_worth) - base) / 1e6;
+      }});
+
+      // Skip if this is the baseline itself (all zeros) or no non-null values
+      const nonNull = vals.filter(v => v !== null);
+      if (!nonNull.length) return;
+      const allZero = nonNull.every(v => Math.abs(v) < 1e-6);
+      if (allZero) return;  // don't draw the baseline − baseline = 0 line
+
+      traces.push({{
+        x: years, y: vals, mode: 'lines', name: name,
+        line: {{ color: color, width: 2 }},
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' delta: %{{y:+.2f}}M<extra></extra>',
+      }});
+    }});
+
+    // Always draw a zero reference line
+    const allYears = baselineRows.map(r => parseInt(r.year));
+    traces.unshift({{
+      x: [allYears[0], allYears[allYears.length - 1]], y: [0, 0],
+      mode: 'lines', name: 'Baseline (default)', showlegend: true,
+      line: {{ color: 'rgba(148,163,184,0.35)', width: 1, dash: 'dot' }},
+      hoverinfo: 'skip',
+    }});
+
+    const layout = {{
+      font: {{ color: '#e5edf7' }},
+      paper_bgcolor: '#111827',
+      plot_bgcolor: '#0f1725',
+      xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
+      yaxis: {{ title: {{ text: 'Δ Net Worth ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '+$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }}, zeroline: false }},
+      legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 11 }} }},
+      hoverlabel: {{ bgcolor: '#0f1725', bordercolor: '#334155', font_color: '#f8fafc' }},
+      margin: {{ l: 80, r: 16, t: 48, b: 48 }},
+    }};
+    const el = document.getElementById('delta-chart');
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
@@ -992,4 +1087,3 @@ def build_compare_page(
 </html>"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(compare_html, encoding="utf-8")
-

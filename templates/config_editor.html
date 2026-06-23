@@ -383,6 +383,9 @@
       background: #111827;
       color: var(--text);
     }
+    .scenario-tools + .rename-tools {
+      border-top: 1px solid rgba(125,211,252,0.08);
+    }
     @media (max-width: 900px) {
       .header { grid-template-columns: 1fr; }
       .links { justify-content: flex-start; }
@@ -471,6 +474,20 @@
           <input id="clone_description" name="clone_description" value="{{ clone_description }}" placeholder="Higher returns, later home sale.">
         </div>
       </div>
+      <div class="scenario-tools rename-tools">
+        <div>
+          <label for="rename_name">Rename — New Name</label>
+          <input id="rename_name" name="rename_name" placeholder="{{ scenario_name }}">
+        </div>
+        <div>
+          <label for="rename_slug">Rename — New Slug</label>
+          <input id="rename_slug" name="rename_slug" placeholder="{{ scenario_slug }}">
+        </div>
+        <div>
+          <label for="rename_description">Rename — New Description</label>
+          <input id="rename_description" name="rename_description" placeholder="{{ scenario_description or '' }}">
+        </div>
+      </div>
       <textarea id="content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
       <div class="actions">
         <button type="submit" name="action" value="validate">Validate</button>
@@ -478,6 +495,7 @@
         <button type="submit" name="action" value="save_render" class="primary">Save + Re-render</button>
         <button type="submit" name="action" value="save_render_all">Save + Render All</button>
         <button type="submit" name="action" value="clone">Clone Scenario</button>
+        <button type="button" id="rename-scenario-btn">Rename Scenario</button>
         <button type="button" id="delete-scenario-btn" class="danger" title="Delete this scenario permanently">Delete Scenario</button>
       </div>
       <div class="hint">Backups are written to <code>{{ backup_dir }}</code> before each save.</div>
@@ -977,6 +995,72 @@
           alert('Delete request failed: ' + err);
           confirmBtn.disabled = false;
           confirmBtn.textContent = 'Delete Permanently';
+        });
+      });
+    })();
+  </script>
+  <script>
+    // ── Rename Scenario ───────────────────────────────────────────────────────
+    (function () {
+      const renameBtn = document.getElementById('rename-scenario-btn');
+      if (!renameBtn) return;
+
+      const isDefault = {% if scenario_options %}
+        (function() {
+          const opts = {{ scenario_options | tojson | safe }};
+          const opt = opts.find(function(o) { return o.slug === '{{ scenario_slug }}'; });
+          return opt && opt.is_default;
+        })()
+      {% else %}
+        false
+      {% endif %};
+      if (isDefault) {
+        renameBtn.disabled = true;
+        renameBtn.title = 'The default scenario cannot be renamed.';
+      }
+
+      renameBtn.addEventListener('click', function () {
+        const newName = (document.getElementById('rename_name').value || '').trim();
+        const newSlug = (document.getElementById('rename_slug').value || '').trim();
+        const newDesc = (document.getElementById('rename_description').value || '').trim();
+
+        if (!newName || !newSlug) {
+          alert('New name and new slug are required to rename a scenario.');
+          return;
+        }
+
+        if (!confirm('Rename "{{ scenario_name }}" to "' + newName + '" (' + newSlug + ')?\n\nThis will move the TOML file and re-render. The page will redirect to the renamed scenario.')) {
+          return;
+        }
+
+        renameBtn.disabled = true;
+        renameBtn.textContent = 'Renaming…';
+
+        const body = new URLSearchParams();
+        body.set('scenario_slug', '{{ scenario_slug }}');
+        body.set('new_name', newName);
+        body.set('new_slug', newSlug);
+        body.set('new_description', newDesc);
+
+        fetch('rename-scenario', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-requested-with': 'fetch' },
+          body: body.toString(),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            window.location.href = data.redirect_url || '/finances/config/?scenario=' + data.new_slug;
+          } else {
+            alert('Rename failed: ' + (data.error || 'Unknown error.'));
+            renameBtn.disabled = false;
+            renameBtn.textContent = 'Rename Scenario';
+          }
+        })
+        .catch(function (err) {
+          alert('Rename request failed: ' + err);
+          renameBtn.disabled = false;
+          renameBtn.textContent = 'Rename Scenario';
         });
       });
     })();

@@ -872,10 +872,67 @@ async def health() -> JSONResponse:
     })
 
 
+@app.post("/rename-scenario")
+@app.post("/finances/config/rename-scenario")
+async def rename_scenario(request: Request) -> JSONResponse:
+    """Rename a non-default scenario: rewrite its [scenario] block, move the file."""
+    from src.scenarios import materialize_scenario_content, scenario_path_for_slug
+
+    form = await _parse_form(request)
+    scenario_slug = (form.get("scenario_slug") or "").strip()
+    new_name = (form.get("new_name") or "").strip()
+    new_slug = (form.get("new_slug") or "").strip()
+    new_description = (form.get("new_description") or "").strip()
+
+    if not new_name or not new_slug:
+        return JSONResponse({"ok": False, "error": "New name and slug are required."}, status_code=400)
+
+    try:
+        scenario = _current_scenario(scenario_slug)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
+
+    if scenario.is_default:
+        return JSONResponse({"ok": False, "error": "The default scenario cannot be renamed."}, status_code=400)
+
+    new_path = scenario_path_for_slug(new_slug)
+    if new_path.exists() and new_path != scenario.config_path:
+        return JSONResponse({"ok": False, "error": f"A scenario with slug '{new_slug}' already exists."}, status_code=409)
+
+    source_content = scenario.config_path.read_text(encoding="utf-8")
+    new_content = materialize_scenario_content(
+        source_content,
+        name=new_name,
+        slug=new_slug,
+        description=new_description or scenario.description,
+        is_default=False,
+    )
+
+    # Write new file, remove old if slug changed
+    new_path.parent.mkdir(parents=True, exist_ok=True)
+    new_path.write_text(new_content, encoding="utf-8")
+    if new_path != scenario.config_path:
+        scenario.config_path.unlink(missing_ok=True)
+
+    # Trigger offline render of the renamed scenario to update the manifest
+    try:
+        _render_projection_offline(new_slug)
+    except Exception:
+        pass
+
+    return JSONResponse({
+        "ok": True,
+        "old_slug": scenario_slug,
+        "new_slug": new_slug,
+        "new_name": new_name,
+        "message": f"Scenario renamed to '{new_name}' ({new_slug}).",
+        "redirect_url": f"{PUBLIC_EDITOR_URL}?scenario={new_slug}",
+    })
+
+
 @app.post("/delete-scenario")
 @app.post("/finances/config/delete-scenario")
 async def delete_scenario(request: Request) -> JSONResponse:
-    """Delete a non-default scenario TOML file and its rendered output directory."""
     import shutil
 
     form = await _parse_form(request)
