@@ -70,6 +70,7 @@
 - Config editor `Open projection` now always uses the currently selected scenario slug from the dropdown at click time
 - Editor supports validate, save, and save+offline-rerender actions with timestamped backups under per-scenario paths in `output/config-backups/<slug>/`, auto-pruned to the newest 10 per scenario
 - Config editor now shows a render-in-progress overlay spinner during render actions (`Save + Re-render`, `Save + Render All`, `Clone`)
+- The config editor render overlay is now action-aware and mode-aware: it reports scenario/mode counts and rotates staged progress copy during long multi-mode rerenders
 - The active default scenario now lives in `scenarios/default.toml`; root `config.toml` is a migration fallback only
 - The config editor now supports scenario selection, clone/create inputs, and a `Save + Render All` control for batch output refresh
 - The public `projection.html` entry point now serves as a scenario shell page backed by `output/scenarios/index.json`, with rendered scenario pages loaded inside an iframe

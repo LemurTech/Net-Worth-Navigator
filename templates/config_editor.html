@@ -250,17 +250,37 @@
     }
     .render-overlay.active { display: flex; }
     .render-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px 14px;
+      padding: 16px 18px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: #0f1725;
       box-shadow: 0 10px 28px rgba(0,0,0,.24);
       color: #e5edf7;
-      font-size: 14px;
-      font-weight: 600;
+      min-width: min(560px, calc(100vw - 32px));
+    }
+    .render-copy {
+      min-width: 0;
+    }
+    .render-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .render-detail,
+    .render-progress,
+    .render-hint {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .render-progress {
+      color: #d5e2f1;
+      margin-top: 6px;
+    }
+    .render-hint {
+      margin-top: 8px;
     }
     .spinner {
       width: 18px;
@@ -394,18 +414,127 @@
   <div class="render-overlay" id="render-overlay" aria-live="polite" aria-hidden="true">
     <div class="render-card">
       <span class="spinner" aria-hidden="true"></span>
-      <span>Rendering projection…</span>
+      <div class="render-copy">
+        <div class="render-title" id="render-title">Rendering projection…</div>
+        <div class="render-detail" id="render-detail">Preparing render plan…</div>
+        <div class="render-progress" id="render-progress">Starting…</div>
+        <div class="render-hint" id="render-hint">This window will update while the server works.</div>
+      </div>
     </div>
   </div>
+  <script id="render-plan-data" type="application/json">{{ render_plan_json | safe }}</script>
   <script>
     (function () {
       const scenarioSelect = document.getElementById("scenario");
       const configForm = document.getElementById("config-form");
       const renderOverlay = document.getElementById("render-overlay");
+      const renderTitle = document.getElementById("render-title");
+      const renderDetail = document.getElementById("render-detail");
+      const renderProgress = document.getElementById("render-progress");
+      const renderHint = document.getElementById("render-hint");
+      const renderPlanData = document.getElementById("render-plan-data");
+      const renderPlan = renderPlanData ? JSON.parse(renderPlanData.textContent || "{}") : {};
       let lastAction = "";
+      let progressTimer = null;
+      let elapsedTimer = null;
+      let overlayStartedAt = null;
 
-      function showRenderOverlay() {
+      function modeLabel(mode) {
+        if (mode === "deterministic") return "Deterministic";
+        if (mode === "historical") return "Historical";
+        if (mode === "monte_carlo") return "Monte Carlo";
+        return String(mode || "").replaceAll("_", " ");
+      }
+
+      function joinModes(modes) {
+        return (modes || []).map(modeLabel).join(", ");
+      }
+
+      function scenarioRenderPlan(slug) {
+        const scenarios = Array.isArray(renderPlan.scenarios) ? renderPlan.scenarios : [];
+        return scenarios.find(function (item) { return item.slug === slug; }) || {
+          name: renderPlan.current_scenario_name || "Current scenario",
+          render_modes: renderPlan.current_render_modes || ["deterministic"],
+          render_count: renderPlan.current_render_count || 1
+        };
+      }
+
+      function setOverlayCopy(title, detail, hint) {
+        if (renderTitle) renderTitle.textContent = title;
+        if (renderDetail) renderDetail.textContent = detail;
+        if (renderHint) renderHint.textContent = hint;
+      }
+
+      function beginOverlayProgress(stages) {
+        if (progressTimer) window.clearInterval(progressTimer);
+        if (elapsedTimer) window.clearInterval(elapsedTimer);
+        overlayStartedAt = Date.now();
+        let stageIndex = 0;
+
+        function updateStage() {
+          if (!renderProgress || !Array.isArray(stages) || stages.length === 0) return;
+          renderProgress.textContent = stages[stageIndex % stages.length];
+          stageIndex += 1;
+        }
+
+        function updateElapsed() {
+          if (!renderHint || overlayStartedAt === null) return;
+          const elapsed = Math.max(0, Math.floor((Date.now() - overlayStartedAt) / 1000));
+          renderHint.textContent = `Elapsed: ${elapsed}s. This page will refresh when the render completes.`;
+        }
+
+        updateStage();
+        updateElapsed();
+        progressTimer = window.setInterval(updateStage, 2200);
+        elapsedTimer = window.setInterval(updateElapsed, 1000);
+      }
+
+      function showRenderOverlay(action) {
         if (!renderOverlay) return;
+        const selectedSlug = scenarioSelect && scenarioSelect.value ? scenarioSelect.value : (renderPlan.current_scenario_slug || "");
+        const currentPlan = scenarioRenderPlan(selectedSlug);
+        const currentModes = Array.isArray(currentPlan.render_modes) ? currentPlan.render_modes : ["deterministic"];
+        if (action === "save_render") {
+          setOverlayCopy(
+            `Rendering ${currentPlan.name}`,
+            `${currentPlan.render_count} mode page${currentPlan.render_count === 1 ? "" : "s"}: ${joinModes(currentModes)}`,
+            "Preparing render stages…"
+          );
+          beginOverlayProgress([
+            "Validating TOML and saving backup…",
+            `Running ${modeLabel(currentModes[0])} projection…`,
+            currentModes.length > 1 ? `Continuing with ${joinModes(currentModes.slice(1))}…` : "Writing chart and sidecars…",
+            "Refreshing shell manifest and deploy artifacts…",
+          ]);
+        } else if (action === "save_render_all") {
+          setOverlayCopy(
+            "Rendering All Scenarios",
+            `${renderPlan.scenario_count || 0} scenarios, ${renderPlan.total_render_count || 0} mode pages`,
+            "Preparing batch render stages…"
+          );
+          const scenarioNames = Array.isArray(renderPlan.scenario_names) ? renderPlan.scenario_names : [];
+          beginOverlayProgress([
+            "Saving current scenario and validating all configs…",
+            scenarioNames[0] ? `Rendering ${scenarioNames[0]}…` : "Rendering first scenario…",
+            scenarioNames[1] ? `Moving on to ${scenarioNames[1]}…` : "Continuing through remaining scenarios…",
+            "Updating shell manifest, indexes, and deploy output…",
+          ]);
+        } else if (action === "clone") {
+          setOverlayCopy(
+            "Cloning Scenario",
+            `Creating a new scenario and rendering ${currentPlan.render_count} mode page${currentPlan.render_count === 1 ? "" : "s"}`,
+            "Preparing clone and initial render…"
+          );
+          beginOverlayProgress([
+            "Validating current TOML…",
+            "Creating scenario file and metadata…",
+            `Rendering ${joinModes(currentModes)}…`,
+            "Refreshing shell manifest and deploy output…",
+          ]);
+        } else {
+          setOverlayCopy("Rendering projection…", "Preparing render plan…", "This page will update while the server works.");
+          beginOverlayProgress(["Starting render…"]);
+        }
         renderOverlay.classList.add("active");
         renderOverlay.setAttribute("aria-hidden", "false");
       }
@@ -419,7 +548,7 @@
         });
         configForm.addEventListener("submit", function () {
           if (lastAction === "save_render" || lastAction === "save_render_all" || lastAction === "clone") {
-            showRenderOverlay();
+            showRenderOverlay(lastAction);
           }
         });
       }

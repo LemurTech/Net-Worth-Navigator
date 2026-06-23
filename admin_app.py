@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 import subprocess
 import sys
 import tomllib
@@ -13,7 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
-from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario
+from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes
 
 APP_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_ROOT / "output"
@@ -101,6 +102,7 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
     scenario = _current_scenario(scenario_slug)
     resolved_slug = scenario.slug
     config_path = _config_path(resolved_slug)
+    discovered_scenarios = discover_scenarios()
     scenario_options = [
         {
             "slug": option.slug,
@@ -108,9 +110,15 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
             "description": option.description,
             "is_default": option.is_default,
         }
-        for option in discover_scenarios()
+        for option in discovered_scenarios
     ]
     last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    render_plan = _render_plan_snapshot(
+        content=content,
+        scenario_slug=resolved_slug,
+        scenario_name=scenario.name,
+        discovered_scenarios=discovered_scenarios,
+    )
     return {
         "request": request,
         "content": content,
@@ -125,12 +133,70 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "scenario_slug": resolved_slug,
         "scenario_description": scenario.description,
         "scenario_options": scenario_options,
+        "render_plan_json": json.dumps(render_plan),
         "clone_name": clone_name,
         "clone_slug": clone_slug,
         "clone_description": clone_description,
         "last_modified": last_modified,
         "projection_url": f"{PUBLIC_PROJECTION_URL}?scenario={resolved_slug}",
         "editor_url": f"{PUBLIC_EDITOR_URL}?scenario={resolved_slug}",
+    }
+
+
+def _render_modes_from_content(content: str | None, fallback_slug: str | None = None) -> list[str]:
+    if content:
+        try:
+            parsed = tomllib.loads(content)
+            simulation_cfg = parsed.get("simulation", {}) if isinstance(parsed, dict) else {}
+            if isinstance(simulation_cfg, dict):
+                return normalized_render_modes(simulation_cfg.get("render_modes"))
+        except Exception:
+            pass
+    if fallback_slug:
+        try:
+            parsed = tomllib.loads(_read_config_text(fallback_slug))
+            simulation_cfg = parsed.get("simulation", {}) if isinstance(parsed, dict) else {}
+            if isinstance(simulation_cfg, dict):
+                return normalized_render_modes(simulation_cfg.get("render_modes"))
+        except Exception:
+            pass
+    return normalized_render_modes(None)
+
+
+def _render_plan_snapshot(
+    *,
+    content: str,
+    scenario_slug: str,
+    scenario_name: str,
+    discovered_scenarios,
+) -> dict:
+    current_modes = _render_modes_from_content(content, fallback_slug=scenario_slug)
+    scenarios_summary = []
+    total_render_count = 0
+    for discovered in discovered_scenarios:
+        try:
+            modes = _render_modes_from_content(None, fallback_slug=discovered.slug)
+        except Exception:
+            modes = normalized_render_modes(None)
+        total_render_count += len(modes)
+        scenarios_summary.append(
+            {
+                "slug": discovered.slug,
+                "name": discovered.name,
+                "render_modes": modes,
+                "render_count": len(modes),
+            }
+        )
+
+    return {
+        "current_scenario_slug": scenario_slug,
+        "current_scenario_name": scenario_name,
+        "current_render_modes": current_modes,
+        "current_render_count": len(current_modes),
+        "scenario_count": len(scenarios_summary),
+        "total_render_count": total_render_count,
+        "scenario_names": [item["name"] for item in scenarios_summary],
+        "scenarios": scenarios_summary,
     }
 
 
