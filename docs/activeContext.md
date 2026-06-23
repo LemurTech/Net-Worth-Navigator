@@ -33,6 +33,7 @@
 - Cash Flow tab now shows positive income events in Income and a `Modeled tax on retirement/event inflows` expense row
 - Cash Flow can now break modeled taxes into federal and state rows when those components are non-zero, and Scenario Parameters now includes a `Tax output snapshot` card sourced from the rendered projection
 - The tax snapshot card now includes the main explanatory subcomponents behind the current year's modeled taxes rather than only top-line tax totals
+- Projection page now includes a dedicated `Tax` tab with a yearly audit table for tax context, taxable-income components, federal/state deductions, effective rates, and total modeled taxes
 - End-of-plan timing is now synced from each person's `dob` + `life_expectancy` at runtime so stale hardcoded event years do not skew the chart
 - `SellHome` proceeds are now preserved in cash in the sale year rather than being auto-invested into existing non-cash buckets
 - `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
@@ -166,7 +167,7 @@ Then load `docs/activeContext.md` from the repo for current iteration state.
   - yearly tax inputs/outputs are explicitly modeled instead of being passed around as loose float/dict bundles
   - the reusable tax contracts/calculators now live in `src/tax_model.py`, while `src/model.py` stays focused on projection orchestration
   - sidecars now include a dedicated yearly tax breakdown export
-  - the next natural tax step is to deepen the extracted module with richer subcomponents, not more inline tax branching inside `src/model.py`
+  - the extracted module now also feeds a dedicated yearly `Tax` UI tab; the next natural step is to keep deepening tax semantics/coverage inside `src/tax_model.py`, not by reintroducing inline tax branching inside `src/model.py`
 
 ## Known Pitfalls
 

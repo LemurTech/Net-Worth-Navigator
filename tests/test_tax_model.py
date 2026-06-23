@@ -215,6 +215,95 @@ class TaxModelTests(unittest.TestCase):
         self.assertIn("Modeled tax on retirement/event inflows", html)
         self.assertNotIn(">Estimated taxes<", html)
 
+    def test_tax_table_surfaces_yearly_tax_audit_components(self):
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "tax_phase": "retirement",
+                "tax_mode": "brackets",
+                "tax_filing_status": "married_joint",
+                "state_tax_name": "oregon",
+                "state_tax_filing_status": "married_joint",
+                "taxable_income": 50000.0,
+                "taxable_wage_income": 0.0,
+                "non_ss_taxable_income": 35000.0,
+                "withdrawal_taxable_income": 10000.0,
+                "other_taxable_income": 35000.0,
+                "social_security_provisional_income": 47000.0,
+                "taxable_social_security_income": 5000.0,
+                "social_security_taxable_fraction": 0.5,
+                "federal_standard_deduction": 30000.0,
+                "federal_taxable_after_deduction": 20000.0,
+                "annual_federal_taxes": 2200.0,
+                "federal_effective_rate": 0.11,
+                "state_standard_deduction": 5670.0,
+                "state_taxable_before_deduction": 50000.0,
+                "state_taxable_income": 44330.0,
+                "annual_state_taxes": 1800.0,
+                "state_effective_rate": 0.0406,
+                "annual_taxes": 4000.0,
+            }
+        ])
+        html = tables.build_tax_table(df)
+        self.assertIn("Tax Item", html)
+        self.assertIn("Taxable Income Components", html)
+        self.assertIn("Social Security taxable fraction", html)
+        self.assertIn("Federal taxable after deduction", html)
+        self.assertIn("State taxable before deduction", html)
+        self.assertIn("Total modeled taxes", html)
+        self.assertIn("married_joint", html)
+        self.assertIn("50%", html)
+        self.assertIn("11%", html)
+
+    def test_build_chart_includes_tax_tab(self):
+        config = {
+            "display": {"projection_title": "Casa Lemuria"},
+            "person1": {"name": "Person 1", "dob": "1967-04-23"},
+            "person2": {"name": "Person 2", "dob": "1976-10-02"},
+            "events": [],
+            "simulation": {"start_year": 2026, "end_year": 2026},
+        }
+        df = pd.DataFrame([
+            {
+                "year": 2026,
+                "home_value": 0.0,
+                "mortgage": 0.0,
+                "home_equity": 0.0,
+                "cash": 100.0,
+                "taxable": 0.0,
+                "trad_ira": 0.0,
+                "roth": 0.0,
+                "total_net_worth": 100.0,
+                "survivor": False,
+                "events_active": "",
+                "person1_income": 0.0,
+                "person2_income": 0.0,
+                "freed_payments": 0.0,
+                "annual_spend": 0.0,
+                "annual_taxes": 0.0,
+                "annual_federal_taxes": 0.0,
+                "annual_state_taxes": 0.0,
+                "net_flow": 0.0,
+                "event_items": [],
+                "taxable_income": 0.0,
+                "tax_phase": "retirement",
+                "tax_mode": "brackets",
+                "tax_filing_status": "married_joint",
+            },
+        ])
+
+        with patch("src.charts.load_config", return_value=config):
+            with patch("src.charts.resolve_runtime_config", side_effect=lambda c: c):
+                with patch("src.charts._build_gantt_chart", return_value="<div>gantt</div>"):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        out = Path(tmp) / "nwn-tax-tab-test.html"
+                        charts.build_chart(df, out)
+                        html = out.read_text(encoding="utf-8")
+
+        self.assertIn("btn-tax", html)
+        self.assertIn("panel-tax", html)
+        self.assertIn(">Tax</button>", html)
+
     def test_oregon_state_tax_uses_table_under_50k(self):
         config = self._base_config()
         config["assumptions"]["effective_tax_rate_pre_retirement"] = 0.0

@@ -1188,6 +1188,98 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
     return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
 
 
+def build_tax_table(df: pd.DataFrame) -> str:
+    """Yearly tax-audit table for the Tax tab."""
+    years = _display_years(df)
+    subset = df[df["year"].isin(years)].set_index("year")
+
+    def num_col(field: str) -> list[float]:
+        return [
+            float(subset.loc[y, field]) if (y in subset.index and field in subset.columns and pd.notna(subset.loc[y, field])) else 0.0
+            for y in years
+        ]
+
+    def text_row(label: str, field: str, *, separator: bool = False) -> str:
+        cls = "sep" if separator else ""
+        cells = []
+        for y in years:
+            if y in subset.index and field in subset.columns:
+                value = subset.loc[y, field]
+                text = "—" if pd.isna(value) or str(value).strip() == "" else escape(str(value))
+            else:
+                text = "—"
+            cells.append(f"<td>{text}</td>")
+        return f"<tr class='{cls}'><td class='rowlabel'>{escape(label)}</td>{''.join(cells)}</tr>"
+
+    def percent_row(label: str, field: str) -> str:
+        cells = []
+        for y in years:
+            if y in subset.index and field in subset.columns:
+                value = subset.loc[y, field]
+                text = _fmt_percent(value)
+            else:
+                text = "—"
+            cells.append(f"<td>{escape(text)}</td>")
+        return f"<tr class='indent'><td class='rowlabel'>{escape(label)}</td>{''.join(cells)}</tr>"
+
+    rows = []
+    rows.append("<tr class='section'><th colspan='100'>Tax Context</th></tr>")
+    rows.append(text_row("Tax phase", "tax_phase"))
+    rows.append(text_row("Tax mode", "tax_mode"))
+    rows.append(text_row("Federal filing status", "tax_filing_status"))
+    if "state_tax_name" in subset.columns:
+        rows.append(text_row("State tax jurisdiction", "state_tax_name"))
+    if "state_tax_filing_status" in subset.columns:
+        rows.append(text_row("State filing status", "state_tax_filing_status"))
+
+    rows.append("<tr class='section sep'><th colspan='100'>Taxable Income Components</th></tr>")
+    if "taxable_wage_income" in subset.columns:
+        rows.append(_data_row("Taxable wage income", num_col("taxable_wage_income"), indent=True))
+    if "non_ss_taxable_income" in subset.columns:
+        rows.append(_data_row("Non-SS taxable income", num_col("non_ss_taxable_income"), indent=True))
+    if "withdrawal_taxable_income" in subset.columns:
+        rows.append(_data_row("Withdrawal taxable income", num_col("withdrawal_taxable_income"), indent=True))
+    if "other_taxable_income" in subset.columns:
+        rows.append(_data_row("Other taxable income", num_col("other_taxable_income"), indent=True))
+    if "social_security_provisional_income" in subset.columns:
+        rows.append(_data_row("Social Security provisional income", num_col("social_security_provisional_income"), indent=True))
+    if "taxable_social_security_income" in subset.columns:
+        rows.append(_data_row("Taxable Social Security", num_col("taxable_social_security_income"), indent=True))
+    if "social_security_taxable_fraction" in subset.columns:
+        rows.append(percent_row("Social Security taxable fraction", "social_security_taxable_fraction"))
+    rows.append(_data_row("Total taxable income", num_col("taxable_income"), bold=True))
+
+    rows.append("<tr class='section sep'><th colspan='100'>Federal Tax</th></tr>")
+    if "federal_standard_deduction" in subset.columns:
+        rows.append(_data_row("Federal standard deduction", num_col("federal_standard_deduction"), indent=True))
+    if "federal_taxable_after_deduction" in subset.columns:
+        rows.append(_data_row("Federal taxable after deduction", num_col("federal_taxable_after_deduction"), indent=True))
+    if "annual_federal_taxes" in subset.columns:
+        rows.append(_data_row("Federal tax", num_col("annual_federal_taxes"), bold=True))
+    if "federal_effective_rate" in subset.columns:
+        rows.append(percent_row("Federal effective rate", "federal_effective_rate"))
+
+    if any(col in subset.columns for col in ("state_standard_deduction", "state_taxable_before_deduction", "state_taxable_income", "annual_state_taxes", "state_effective_rate")):
+        rows.append("<tr class='section sep'><th colspan='100'>State Tax</th></tr>")
+        if "state_standard_deduction" in subset.columns:
+            rows.append(_data_row("State standard deduction", num_col("state_standard_deduction"), indent=True))
+        if "state_taxable_before_deduction" in subset.columns:
+            rows.append(_data_row("State taxable before deduction", num_col("state_taxable_before_deduction"), indent=True))
+        if "state_taxable_income" in subset.columns:
+            rows.append(_data_row("State taxable income", num_col("state_taxable_income"), indent=True))
+        if "annual_state_taxes" in subset.columns:
+            rows.append(_data_row("State tax", num_col("annual_state_taxes"), bold=True))
+        if "state_effective_rate" in subset.columns:
+            rows.append(percent_row("State effective rate", "state_effective_rate"))
+
+    rows.append("<tr class='section sep'><th colspan='100'>Combined Output</th></tr>")
+    rows.append(_data_row("Total modeled taxes", num_col("annual_taxes"), bold=True))
+
+    header = _header_row(years).replace("Account", "Tax Item", 1)
+    body = "\n".join(rows)
+    return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
+
+
 def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
     """Projected investable-portfolio balances for the Portfolio tab."""
     years = _display_years(df)

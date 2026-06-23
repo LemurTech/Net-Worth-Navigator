@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from src.tables import (
     build_accounts_table,
     build_cashflow_table,
+    build_tax_table,
     build_portfolio_table,
     build_assumptions_summary,
     build_scenario_parameters_summary,
@@ -1072,6 +1073,7 @@ def build_chart(
     # Build table HTML
     accounts_html  = build_accounts_table(df, config=config)
     cashflow_html  = build_cashflow_table(df, config=config)
+    tax_html       = build_tax_table(df)
     portfolio_html = _build_portfolio_chart(df, config=config, projection_result=projection_result)
     gantt_html     = _build_gantt_chart(config, df)
     assumptions_html = build_assumptions_summary(
@@ -1118,6 +1120,8 @@ def build_chart(
             onclick="switchTab('accounts')">Accounts</button>
     <button class="tab-btn" id="btn-cashflow"
             onclick="switchTab('cashflow')">Cash Flow</button>
+    <button class="tab-btn" id="btn-tax"
+            onclick="switchTab('tax')">Tax</button>
     <button class="tab-btn" id="btn-portfolio"
             onclick="switchTab('portfolio')">Portfolio</button>
     <button class="tab-btn" id="btn-gantt"
@@ -1133,6 +1137,9 @@ def build_chart(
   </div>
   <div class="tab-panel table-panel" id="panel-cashflow">
     {cashflow_html}
+  </div>
+  <div class="tab-panel table-panel" id="panel-tax">
+    {tax_html}
   </div>
   <div class="tab-panel gantt-panel" id="panel-portfolio">
     {portfolio_html}

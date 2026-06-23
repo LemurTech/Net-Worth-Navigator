@@ -120,6 +120,7 @@ All notable shipped changes and decisions are logged here. Newest at top.
 
 - Cash Flow now surfaces federal/state modeled tax rows when present, and Scenario Parameters now includes a `Tax output snapshot` card driven by the rendered projection path
 - Tax output snapshot and tax sidecars now surface the main explanatory subcomponents behind each year's modeled taxes instead of only total federal/state amounts
+- Projection page now includes a dedicated `Tax` tab that mirrors the yearly tax audit path with tax context, taxable-income components, federal/state deduction math, effective rates, and total modeled taxes
 - Survivor-period shading on the main chart and Gantt now spans exactly from the first `EndOfPlan` boundary through the surviving partner's `EndOfPlan` boundary for clearer visual alignment with the event markers
 - Main-chart event annotations now wrap at two events per line, sit to the right of each event line, and use softer translucent backgrounds (`rgba(15,23,37,0.60)`) for improved readability with multiline labels
 - Synthesized `Retirement (...)` and `SS Begins (...)` labels now use configured person-name initials instead of person-key initials, so sample scenarios render A/S (etc.) instead of M/W
