@@ -8,6 +8,7 @@
 - `python run.py` — full run (live Monarch), deploys chart
 - `python run.py --offline` — offline run (cached), fast re-render
 - Chart: http://casalemuria.lan/finances/projection.html
+- Each scenario render now emits mode-specific artifacts under `output/scenarios/<slug>/<mode>/` for `deterministic`, `historical`, and `monte_carlo`, with the shell page selecting among them via scenario + mode selectors
 - Analysis sidecars now emit per scenario under `output/scenarios/<slug>/sidecars/`: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, `accounts_snapshot.json`, and `simulation_summary.json`; Monte Carlo runs also emit `projection_bands_yearly.csv`
 - Stochastic sidecars now also emit `simulation_outcomes_yearly.csv`, a yearly outcomes surface for success-through-year, cumulative failure, current-year trigger rate, funded-ratio percentiles, and net-worth distribution
 - Projection outputs now flow through a normalized `ProjectionResult` contract in `src/model.py`, with deterministic runs exposing a single yearly path and Monte Carlo runs exposing a median display path plus percentile bands
@@ -72,6 +73,7 @@
 - The active default scenario now lives in `scenarios/default.toml`; root `config.toml` is a migration fallback only
 - The config editor now supports scenario selection, clone/create inputs, and a `Save + Render All` control for batch output refresh
 - The public `projection.html` entry point now serves as a scenario shell page backed by `output/scenarios/index.json`, with rendered scenario pages loaded inside an iframe
+- The scenario shell is now two-dimensional: it selects both scenario and rendered mode, with URL state preserved as `?scenario=<slug>&mode=<mode>`
 - Scenario shell iframe URLs now include a version query parameter (`v=<rendered_at/generated_at>`) and expose a `Refresh Frame` control that appends a nonce to force-load the latest rendered scenario page when browser caching gets sticky
 - Scenario TOMLs are intended to be local-only working files rather than shared repository state
 - Projection page now includes a bottom-fixed `Edit Config` shortcut

@@ -9,6 +9,7 @@ Usage:
 import json
 import shutil
 import sys
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ from src.scenarios import (
     SCENARIO_OUTPUT_ROOT,
     get_default_scenario,
     get_scenario,
+    normalized_render_modes,
     scenario_output_dir,
     write_scenarios_index,
 )
@@ -36,6 +38,7 @@ OUTPUT_DIR  = Path("output")
 DEPLOY_DIR  = Path("/srv/web-projects/finances")
 CACHE_FILE  = OUTPUT_DIR / "balances_cache.json"
 OFFLINE     = "--offline" in sys.argv
+BUNDLED_HISTORICAL_RETURNS_PATH = "config/return_sequences/us_balanced_returns.csv"
 
 
 def selected_scenario_slug(argv: list[str]) -> str | None:
@@ -129,12 +132,27 @@ def _synthetic_inputs_from_config(config: dict) -> tuple[dict, dict, dict, dict,
     return portfolio, extras, liability_balances, property_values, retirement_owner_balances
 
 
+def scenario_render_modes(config: dict) -> list[str]:
+    simulation_cfg = config.get("simulation", {}) if isinstance(config.get("simulation"), dict) else {}
+    return normalized_render_modes(simulation_cfg.get("render_modes"))
+
+def config_for_render_mode(config: dict, mode: str) -> dict:
+    rendered = deepcopy(config)
+    simulation_cfg = dict(rendered.get("simulation", {}))
+    simulation_cfg["mode"] = mode
+    if mode == "historical" and not simulation_cfg.get("historical_returns_path"):
+        simulation_cfg["historical_returns_path"] = BUNDLED_HISTORICAL_RETURNS_PATH
+    rendered["simulation"] = simulation_cfg
+    return rendered
+
+
 def main():
     scenario = get_scenario(selected_scenario_slug(sys.argv))
     config = load_config(scenario.config_path)
     default_scenario = get_default_scenario()
     baseline_config = load_config(default_scenario.config_path)
     scenario_dir = scenario_output_dir(scenario.slug)
+    render_modes = scenario_render_modes(config)
 
     print("Net Worth Navigator")
     print("=" * 40)
@@ -189,50 +207,55 @@ def main():
     print(f"  Liabilities:    ${total_liabilities:>12,.2f}")
     print(f"  Home equity:    ${home_value - total_liabilities:>12,.2f}")
 
-    # 2. Run projection
-    print("→ Running projection...")
-    projection_result = run_projection_result(
-        portfolio,
-        home_value=home_value,
-        liability_balances=liability_balances,
-        property_values=property_values,
-        retirement_owner_balances=retirement_owner_seed,
-        config=config,
-    )
-    df = projection_result.yearly_df
-    print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
-    print(f"  Simulation mode: {projection_result.mode} ({projection_result.run_count} run{'s' if projection_result.run_count != 1 else ''})")
-
-    # 3. Generate chart and sidecars
+    # 2. Run projection(s)
+    rendered_modes: list[str] = []
     OUTPUT_DIR.mkdir(exist_ok=True)
     scenario_dir.mkdir(parents=True, exist_ok=True)
-    sidecar_dir = scenario_dir / "sidecars"
-    output_path = scenario_dir / "projection.html"
-    print(f"→ Generating chart → {output_path}")
-    build_chart(
-        projection_result,
-        output_path,
-        config=config,
-        scenario=scenario,
-        baseline_config=baseline_config,
-    )
-    print(f"→ Writing sidecar analysis files → {sidecar_dir}")
-    sidecars = write_sidecars(
-        output_dir=sidecar_dir,
-        df=df,
-        projection_result=projection_result,
-        config=config,
-        scenario=scenario,
-        mode=mode,
-        cache_timestamp=cache_timestamp,
-        portfolio=portfolio,
-        extras=extras,
-        liability_balances=liability_balances,
-        property_values=property_values,
-        raw_accounts=raw_accounts,
-    )
-    for label, path in sidecars.items():
-        print(f"  {label}: {path}")
+    for render_mode in render_modes:
+        mode_config = config_for_render_mode(config, render_mode)
+        mode_baseline_config = config_for_render_mode(baseline_config, render_mode)
+        mode_dir = scenario_output_dir(scenario.slug, render_mode)
+        sidecar_dir = mode_dir / "sidecars"
+        output_path = mode_dir / "projection.html"
+
+        print(f"→ Running projection [{render_mode}]...")
+        projection_result = run_projection_result(
+            portfolio,
+            home_value=home_value,
+            liability_balances=liability_balances,
+            property_values=property_values,
+            retirement_owner_balances=retirement_owner_seed,
+            config=mode_config,
+        )
+        df = projection_result.yearly_df
+        print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
+        print(f"  Simulation mode: {projection_result.mode} ({projection_result.run_count} run{'s' if projection_result.run_count != 1 else ''})")
+        print(f"→ Generating chart [{render_mode}] → {output_path}")
+        build_chart(
+            projection_result,
+            output_path,
+            config=mode_config,
+            scenario=scenario,
+            baseline_config=mode_baseline_config,
+        )
+        print(f"→ Writing sidecar analysis files [{render_mode}] → {sidecar_dir}")
+        sidecars = write_sidecars(
+            output_dir=sidecar_dir,
+            df=df,
+            projection_result=projection_result,
+            config=mode_config,
+            scenario=scenario,
+            mode=mode,
+            cache_timestamp=cache_timestamp,
+            portfolio=portfolio,
+            extras=extras,
+            liability_balances=liability_balances,
+            property_values=property_values,
+            raw_accounts=raw_accounts,
+        )
+        for label, path in sidecars.items():
+            print(f"  {label}: {path}")
+        rendered_modes.append(render_mode)
     index_path = write_scenarios_index(output_root=SCENARIO_OUTPUT_ROOT)
     print(f"  scenarios_index_json: {index_path}")
     shell_manifest = json.loads(index_path.read_text(encoding="utf-8"))

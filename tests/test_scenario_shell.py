@@ -16,8 +16,23 @@ class ScenarioShellTests(unittest.TestCase):
                     "slug": "default",
                     "name": "Default Plan",
                     "description": "Baseline scenario",
-                    "projection_path": "scenarios/default/projection.html",
+                    "projection_path": "scenarios/default/deterministic/projection.html",
                     "rendered_at": "2026-06-19T13:00:00",
+                    "default_mode": "deterministic",
+                    "modes": [
+                        {
+                            "mode": "deterministic",
+                            "label": "Deterministic",
+                            "projection_path": "scenarios/default/deterministic/projection.html",
+                            "rendered_at": "2026-06-19T13:00:00",
+                        },
+                        {
+                            "mode": "monte_carlo",
+                            "label": "Monte Carlo",
+                            "projection_path": "scenarios/default/monte_carlo/projection.html",
+                            "rendered_at": "2026-06-19T13:05:00",
+                        },
+                    ],
                     "is_default": True,
                 }
             ],
@@ -34,9 +49,12 @@ class ScenarioShellTests(unittest.TestCase):
 
         self.assertIn("Net Worth Navigator", html)
         self.assertIn("scenarios/index.json", html)
-        self.assertIn("scenarios/default/projection.html", html)
+        self.assertIn("scenarios/default/deterministic/projection.html", html)
+        self.assertIn("mode-select", html)
+        self.assertIn('url.searchParams.set("mode", mode);', html)
+        self.assertIn("modeEntryFor", html)
         self.assertIn(json.dumps(manifest), html)
         self.assertIn("scenario-select", html)
         self.assertIn("edit-scenarios-link", html)
-        self.assertIn('url.searchParams.set("scenario", selected.slug)', html)
+        self.assertIn('url.searchParams.set("scenario", slug);', html)
         self.assertIn('editScenariosLink.href = editorUrlFor(selected);', html)

@@ -258,6 +258,9 @@ def build_scenario_shell(
           <div class="selector-main">
             <select id="scenario-select" aria-label="Select scenario"></select>
           </div>
+          <div class="selector-main">
+            <select id="mode-select" aria-label="Select mode"></select>
+          </div>
           <div class="scenario-summary">
             <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
           </div>
@@ -289,14 +292,25 @@ def build_scenario_shell(
       return params.get("scenario");
     }}
 
-    function setQueryScenario(slug) {{
+    function getModeFromQuery() {{
+      const params = new URLSearchParams(window.location.search);
+      return params.get("mode");
+    }}
+
+    function setQueryState(slug, mode) {{
       const url = new URL(window.location.href);
       url.searchParams.set("scenario", slug);
+      if (mode) {{
+        url.searchParams.set("mode", mode);
+      }} else {{
+        url.searchParams.delete("mode");
+      }}
       window.history.replaceState({{}}, "", url);
     }}
 
     function populateShell(manifest) {{
       const select = document.getElementById("scenario-select");
+      const modeSelect = document.getElementById("mode-select");
       const description = document.getElementById("scenario-description");
       const frame = document.getElementById("scenario-frame");
       const openLink = document.getElementById("open-scenario-link");
@@ -315,7 +329,14 @@ def build_scenario_shell(
         select.appendChild(option);
       }});
 
-      function projectionUrlFor(selected, {{ embed = false, force = false }} = {{}}) {{
+      function modeEntryFor(selectedScenario, mode) {{
+        const modes = Array.isArray(selectedScenario?.modes) ? selectedScenario.modes : [];
+        return modes.find((entry) => entry.mode === mode) || modes.find((entry) => entry.mode === selectedScenario?.default_mode) || modes[0] || null;
+      }}
+
+      function projectionUrlFor(selectedScenario, selectedMode, {{ embed = false, force = false }} = {{}}) {{
+        const selected = modeEntryFor(selectedScenario, selectedMode);
+        if (!selected) return "#";
         const base = selected.projection_path;
         const version = selected.rendered_at || manifest.generated_at || new Date().toISOString();
         const params = new URLSearchParams();
@@ -338,13 +359,37 @@ def build_scenario_shell(
         return scenarios.find((scenario) => scenario.slug === slug) || null;
       }}
 
-      function hardRefreshFrame() {{
-        const selected = currentSelectedScenario();
-        if (!selected) return;
-        frame.src = projectionUrlFor(selected, {{ embed: true, force: true }});
+      function currentSelectedMode() {{
+        const selectedScenario = currentSelectedScenario();
+        if (!selectedScenario) return null;
+        return modeEntryFor(selectedScenario, modeSelect.value || getModeFromQuery())?.mode || null;
       }}
 
-      function activateScenario(slug) {{
+      function populateModeOptions(selectedScenario, requestedMode) {{
+        const modes = Array.isArray(selectedScenario?.modes) ? selectedScenario.modes : [];
+        modeSelect.innerHTML = "";
+        modes.forEach((entry) => {{
+          const option = document.createElement("option");
+          option.value = entry.mode;
+          option.textContent = entry.label;
+          modeSelect.appendChild(option);
+        }});
+        const resolvedMode = modeEntryFor(selectedScenario, requestedMode)?.mode || "";
+        if (resolvedMode) {{
+          modeSelect.value = resolvedMode;
+        }}
+        modeSelect.disabled = modes.length <= 1;
+        return resolvedMode;
+      }}
+
+      function hardRefreshFrame() {{
+        const selectedScenario = currentSelectedScenario();
+        const selectedMode = currentSelectedMode();
+        if (!selectedScenario || !selectedMode) return;
+        frame.src = projectionUrlFor(selectedScenario, selectedMode, {{ embed: true, force: true }});
+      }}
+
+      function activateScenario(slug, requestedMode = null) {{
         const selected = scenarios.find((scenario) => scenario.slug === slug) || scenarios.find((scenario) => scenario.slug === manifest.default_slug) || scenarios[0];
         if (!selected) {{
           frameWrap.classList.add("empty");
@@ -352,6 +397,8 @@ def build_scenario_shell(
           description.textContent = "Render a scenario from the editor to populate the public selector.";
           frame.removeAttribute("src");
           openLink.setAttribute("href", "#");
+          modeSelect.innerHTML = "";
+          modeSelect.disabled = true;
           if (editScenariosLink) {{
             editScenariosLink.setAttribute("href", "{editor_url}");
           }}
@@ -359,20 +406,25 @@ def build_scenario_shell(
         }}
 
         select.value = selected.slug;
-        description.textContent = selected.description || "No description provided.";
-        frame.src = projectionUrlFor(selected, {{ embed: true }});
-        openLink.href = projectionUrlFor(selected, {{ embed: false }});
+        const resolvedMode = populateModeOptions(selected, requestedMode || getModeFromQuery() || selected.default_mode);
+        const selectedModeEntry = modeEntryFor(selected, resolvedMode);
+        const modeLabel = selectedModeEntry?.label || "Mode unavailable";
+        const scenarioText = selected.description || "No description provided.";
+        description.textContent = `${{scenarioText}} [${{modeLabel}}]`;
+        frame.src = projectionUrlFor(selected, resolvedMode, {{ embed: true }});
+        openLink.href = projectionUrlFor(selected, resolvedMode, {{ embed: false }});
         if (editScenariosLink) {{
           editScenariosLink.href = editorUrlFor(selected);
         }}
         frameWrap.classList.remove("empty");
         emptyState.classList.remove("active");
-        setQueryScenario(selected.slug);
+        setQueryState(selected.slug, resolvedMode);
       }}
 
       select.addEventListener("change", () => activateScenario(select.value));
+      modeSelect.addEventListener("change", () => activateScenario(select.value, modeSelect.value));
       refreshButton?.addEventListener("click", hardRefreshFrame);
-      activateScenario(getScenarioFromQuery() || manifest.default_slug || initialDefaultSlug);
+      activateScenario(getScenarioFromQuery() || manifest.default_slug || initialDefaultSlug, getModeFromQuery());
     }}
 
     fetch(manifestUrl, {{ cache: "no-store" }})

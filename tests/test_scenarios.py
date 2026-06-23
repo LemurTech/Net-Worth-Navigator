@@ -27,8 +27,10 @@ class ScenarioTests(unittest.TestCase):
             output_root = Path(tmp) / "output" / "scenarios"
             output_root.mkdir(parents=True, exist_ok=True)
             scenario_output = output_root / "default"
-            scenario_output.mkdir(parents=True, exist_ok=True)
-            (scenario_output / "projection.html").write_text("<html></html>", encoding="utf-8")
+            (scenario_output / "deterministic").mkdir(parents=True, exist_ok=True)
+            (scenario_output / "monte_carlo").mkdir(parents=True, exist_ok=True)
+            (scenario_output / "deterministic" / "projection.html").write_text("<html></html>", encoding="utf-8")
+            (scenario_output / "monte_carlo" / "projection.html").write_text("<html></html>", encoding="utf-8")
             scenario = ScenarioRef(
                 slug="default",
                 name="Default Plan",
@@ -44,7 +46,12 @@ class ScenarioTests(unittest.TestCase):
             payload = json.loads(index_path.read_text(encoding="utf-8"))
 
         self.assertEqual(payload["default_slug"], "default")
-        self.assertEqual(payload["scenarios"][0]["projection_path"], "scenarios/default/projection.html")
+        self.assertEqual(payload["scenarios"][0]["projection_path"], "scenarios/default/deterministic/projection.html")
+        self.assertEqual(payload["scenarios"][0]["default_mode"], "deterministic")
+        self.assertEqual(
+            [entry["mode"] for entry in payload["scenarios"][0]["modes"]],
+            ["deterministic", "monte_carlo"],
+        )
         self.assertEqual(payload["scenarios"][0]["name"], "Default Plan")
 
     def test_materialize_scenario_content_replaces_metadata_block(self):

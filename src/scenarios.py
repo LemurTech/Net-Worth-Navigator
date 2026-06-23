@@ -14,6 +14,12 @@ from src.config_loader import PROJECT_ROOT
 SCENARIOS_DIR = PROJECT_ROOT / "scenarios"
 SCENARIO_OUTPUT_ROOT = PROJECT_ROOT / "output" / "scenarios"
 SCENARIO_INDEX_JSON = "index.json"
+AVAILABLE_RENDER_MODES = ("deterministic", "historical", "monte_carlo")
+RENDER_MODE_LABELS = {
+    "deterministic": "Deterministic",
+    "historical": "Historical",
+    "monte_carlo": "Monte Carlo",
+}
 
 
 @dataclass(frozen=True)
@@ -100,12 +106,26 @@ def get_scenario(slug: str | None = None) -> ScenarioRef:
     raise KeyError(f"Scenario '{slug}' not found.")
 
 
-def scenario_output_dir(slug: str) -> Path:
-    return SCENARIO_OUTPUT_ROOT / slug
+def scenario_output_dir(slug: str, mode: str | None = None) -> Path:
+    base = SCENARIO_OUTPUT_ROOT / slug
+    return base / mode if mode else base
 
 
-def scenario_projection_relpath(slug: str) -> str:
-    return f"scenarios/{slug}/projection.html"
+def scenario_projection_relpath(slug: str, mode: str) -> str:
+    return f"scenarios/{slug}/{mode}/projection.html"
+
+
+def normalized_render_modes(raw_modes) -> list[str]:
+    if not isinstance(raw_modes, list):
+        return list(AVAILABLE_RENDER_MODES)
+    normalized: list[str] = []
+    for raw_mode in raw_modes:
+        mode = str(raw_mode).strip().lower()
+        if mode in AVAILABLE_RENDER_MODES and mode not in normalized:
+            normalized.append(mode)
+    if "deterministic" not in normalized:
+        normalized.insert(0, "deterministic")
+    return normalized or list(AVAILABLE_RENDER_MODES)
 
 
 def scenario_path_for_slug(slug: str) -> Path:
@@ -203,19 +223,33 @@ def write_scenarios_index(*, output_root: Path | None = None) -> Path:
         "scenarios": [],
     }
     for scenario in scenarios:
-        projection_path = output_root / scenario.slug / "projection.html"
+        scenario_dir = output_root / scenario.slug
+        mode_entries = []
+        for mode in AVAILABLE_RENDER_MODES:
+            projection_path = scenario_dir / mode / "projection.html"
+            if not projection_path.exists():
+                continue
+            mode_entries.append(
+                {
+                    "mode": mode,
+                    "label": RENDER_MODE_LABELS.get(mode, mode.replace("_", " ").title()),
+                    "projection_path": scenario_projection_relpath(scenario.slug, mode),
+                    "rendered_at": datetime.fromtimestamp(projection_path.stat().st_mtime).isoformat(),
+                }
+            )
+        default_mode = "deterministic" if any(entry["mode"] == "deterministic" for entry in mode_entries) else (
+            mode_entries[0]["mode"] if mode_entries else None
+        )
         payload["scenarios"].append(
             {
                 "slug": scenario.slug,
                 "name": scenario.name,
                 "description": scenario.description,
                 "config_path": _display_config_path(scenario.config_path),
-                "projection_path": scenario_projection_relpath(scenario.slug),
-                "rendered_at": (
-                    datetime.fromtimestamp(projection_path.stat().st_mtime).isoformat()
-                    if projection_path.exists()
-                    else None
-                ),
+                "projection_path": scenario_projection_relpath(scenario.slug, default_mode) if default_mode else None,
+                "rendered_at": next((entry["rendered_at"] for entry in mode_entries if entry["mode"] == default_mode), None),
+                "default_mode": default_mode,
+                "modes": mode_entries,
                 "is_default": scenario.is_default,
             }
         )
