@@ -82,6 +82,27 @@ All household TOMLs are **gitignored local files**. `annual_401k_employer_match 
 - Oregon state tax refinement and validation.
 - Gross-income migration for wages is optional unless targeting a full household tax return.
 
+### Immediate Roadmap
+
+Grouped by implementation area.
+
+#### Projection Page — Cash Flow Tab
+
+- [x] **Add cash flow graph to the Cash Flow tab.** Model after the existing cash flow graph on the `Compare` page, reusing the same visual structure, data conventions, formatting, and interaction patterns.
+
+#### 401(k) Contribution Model
+
+- [ ] **Reassess 401(k) contribution modeling.** Currently flat annual contribution + flat annual increase. Evaluate refactoring to percentage-of-gross-income contributions with variables: `GrossIncome`, `GrossIncomeAnnualIncreasePercent`, `RetirementContributionPercent`, `RetirementContributionAnnualIncreasePercent`, `RetirementContributionMaxPercent`. Design decision: replace flat-dollar entirely, or support both with a user-selectable method. Update `ContributionChange` event to support percentage-based changes.
+
+#### Compare Page — Annual Cash Flow Card
+
+- [ ] **Round net flow values in chart popup overlays.** Net flow values should use the same currency rounding and formatting conventions used elsewhere in the application.
+- [ ] **Fix negative currency formatting.** Negative amounts display as `$-` instead of `-$`. Expected: `-$1,250` not `$-1,250`.
+
+#### Compare Page — Investment Portfolio Trajectory
+
+- [ ] **Investigate sudden drop-to-zero in portfolio trajectory graph.** Line graph shows values dropping to `$0`, inconsistent with broader portfolio growth. Investigate: graphing artifact, missing/malformed data point, incorrect series, null/undefined/zero handling, or data alignment issue. Confirm whether visual-only or caused by incorrect data generation. Fix so values do not incorrectly drop to zero.
+
 ---
 
 ## Known Pitfalls

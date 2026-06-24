@@ -280,6 +280,32 @@ function applyResponsiveChartLayout() {
       'margin.t': 70,
       'margin.b': 56
     });
+
+  }
+
+  var cashflow = document.getElementById('nwn-cashflow');
+  if (cashflow) {
+    Plotly.relayout(cashflow, compact ? {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': -0.24,
+      'legend.yanchor': 'top',
+      'legend.font.size': 10,
+      'title.font.size': 14,
+      'margin.t': 62,
+      'margin.b': 92
+    } : {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': 1.01,
+      'legend.yanchor': 'bottom',
+      'legend.font.size': 12,
+      'title.font.size': 16,
+      'margin.t': 72,
+      'margin.b': 48
+    });
   }
 }
 
@@ -648,6 +674,64 @@ def _build_kpi_summary(
         for label, value in cards
     )
     return f"<div class='kpi-strip'>{boxes}</div>"
+
+
+def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+    """Annual Cash Flow chart: income, spending, and net flow per year.
+    Modeled after the Compare page's cash flow graph for single-scenario display."""
+    paper_bg = "#111827"
+    plot_bg = "#0f1725"
+    grid = "rgba(148,163,184,0.14)"
+    font_color = "#e5edf7"
+
+    income = df["person1_income"].fillna(0) + df["person2_income"].fillna(0) + df["freed_payments"].fillna(0)
+    spending = df["annual_spend"].abs()
+    net_flow = income - spending
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=df["year"], y=income, mode="lines", name="Total Income",
+        line=dict(color="#34d399", width=1.8),
+        hovertemplate="<b>%{x}</b><br>Income: $%{y:,.0f}<extra></extra>",
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=df["year"], y=spending, mode="lines", name="Total Spending",
+        line=dict(color="#f87171", width=1.8, dash="dash"),
+        opacity=0.70,
+        hovertemplate="<b>%{x}</b><br>Spending: $%{y:,.0f}<extra></extra>",
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=df["year"], y=net_flow, mode="lines", name="Net Flow",
+        fill="tozeroy", fillcolor="rgba(52, 211, 153, 0.10)",
+        line=dict(color="#e5edf7", width=2.2),
+        hovertemplate="<b>%{x}</b><br>Net Flow: $%{y:+,.0f}<extra></extra>",
+    ))
+
+    fig.update_layout(
+        font=dict(color=font_color),
+        title=dict(text="Annual Cash Flow (Income vs Spending)", font=dict(size=16)),
+        xaxis=dict(
+            title="Year", tickmode="linear", dtick=2,
+            ticklabelstandoff=6, gridcolor=grid, zerolinecolor=grid, color=font_color,
+        ),
+        yaxis=dict(
+            title="Amount (USD)", tickformat="$,.0f",
+            ticklabelstandoff=6, automargin=True,
+            gridcolor=grid, color=font_color,
+            zeroline=True, zerolinecolor="rgba(148,163,184,0.35)", zerolinewidth=1,
+        ),
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
+        hoverlabel=dict(bgcolor="#1e293b", bordercolor="#7dd3fc", font_color="#f8fafc"),
+        plot_bgcolor=plot_bg, paper_bgcolor=paper_bg,
+        height=340,
+        margin=dict(l=80, r=24, t=72, b=48),
+    )
+
+    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cashflow")
 
 
 def _build_portfolio_chart(
@@ -1187,6 +1271,7 @@ def build_chart(
     # Build table HTML
     accounts_html  = build_accounts_table(df, config=config)
     cashflow_html  = build_cashflow_table(df, config=config)
+    cashflow_chart_html = _build_cashflow_chart(df, config=config)
     tax_html       = build_tax_table(df)
     simulation_html = (
         _build_simulation_results_panel(projection_result)
@@ -1257,8 +1342,10 @@ def build_chart(
   <div class="tab-panel table-panel active" id="panel-accounts">
     {accounts_html}
   </div>
-  <div class="tab-panel table-panel" id="panel-cashflow">
-    {cashflow_html}
+  <div class="tab-panel" id="panel-cashflow">
+    <div class="gantt-wrap">{cashflow_chart_html}</div>
+    <div class="modeling-note"><strong>What this shows:</strong> Total household income (take-home + freed mortgage payments) vs total spending for each year. Net flow above zero is surplus; below zero is deficit funded by portfolio withdrawals.</div>
+    <div class="table-panel portfolio-table-panel">{cashflow_html}</div>
   </div>
   <div class="tab-panel table-panel" id="panel-tax">
     {tax_html}
