@@ -1,232 +1,78 @@
 # Progress — Net Worth Navigator
 
 All notable shipped changes and decisions are logged here. Newest at top.
+Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
-## [Unreleased]
+## 2026-06-23
 
 ### Added
 
-- **Phase 4 — Employer match and IRS cap modeling** (`src/model.py`, `src/tables.py`):
-  - IRS 401(k) employee deferral limits enforced at runtime: $23,500 base (2025), +$7,500 catch-up at age ≥ 50. Constants in `_IRS_401K_LIMIT_BASE` / `_IRS_401K_CATCHUP_EXTRA` — update annually. Contributions above the limit are silently capped and flagged in the projection row.
-  - Employer match modeled via new per-person config field `annual_401k_employer_match` (flat annual dollar amount). Match is always prefunded (never a cash outflow), routes into the same `annual_401k_contribution_split` as the employee contribution.
-  - New projection DataFrame columns: `employer_match_total`, `employer_match_person1`, `employer_match_person2`, `person1_401k_over_irs_cap`, `person2_401k_over_irs_cap` — all present in `projection_yearly.csv` sidecar.
-  - Cash Flow tab: employer match shown as a dedicated indented row under Retirement Contributions when non-zero; amber ⚠ warning banner when any year exceeds the IRS cap.
-  - Scenario Parameters tab: `401k employer match (annual)` row added to per-person contribution section with diff highlighting.
-  - `scenarios/default.toml` updated with `annual_401k_employer_match = 0` comment placeholder.
-  - `scenarios/sample-b.toml` demonstrates the feature with a $6,000/yr employer match for person1.
-
-- **Compare page improvements** (`src/scenario_shell.py`): deep-linking via `?a=slug&b=slug` URL params; shell "Compare Scenarios" button dynamically scopes to active vs default; Net Worth Delta chart (scenario − baseline per year).
-- **Scenario rename** (`admin_app.py`, `templates/config_editor.html`): `POST /rename-scenario` rewrites `[scenario]` block, moves TOML file on slug change, triggers render, redirects. Rename fields + button added to config editor (disabled on default).
-
-- **Two share-safe synthetic demo scenarios** for showcasing the comparison feature: `scenarios/sample-a.toml` (moderate/conservative: 7% equity, retirement 2038/2043, $82K/yr spending) and `scenarios/sample-b.toml` (growth-oriented: 8.5% equity, retirement 2035/2037, $98K/yr spending, delayed SS to 70, more Roth concentration). Both use Alex & Sam personas from the original sample scenario.
-- **Scenario deletion** in the config editor: `POST /delete-scenario` endpoint in `admin_app.py` validates a slug-confirmation, blocks deletion of the default scenario, removes the TOML and rendered output, and triggers an offline render of default to refresh shell/compare manifests. Red "Delete Scenario" button in the actions row, separated right; opens a confirmation dialog requiring the user to type the exact scenario slug before "Delete Permanently" becomes enabled. Escape/backdrop-click dismiss safely.
-
-### Changed / Fixed
-
-- **Simulation tab legend responsive fix** (`src/charts.py`): added `nwn-simulation` block to `applyResponsiveChartLayout()` matching the existing Portfolio pattern — legend moves below chart at ≤900px.
-- **"Refresh Frame" button hidden on small screens** (`src/scenario_shell.py`): `#refresh-frame-btn { display: none }` added inside the `@media (max-width: 980px)` block.
-- **Bracketed mode label removed from shell description**: `activateScenario()` now sets `description.textContent = scenarioText` instead of appending ` [Mode]`; the mode selector dropdown already communicates the active mode.
-- **Compare page mode selector styling fixed**: was using a malformed CSS `background` shorthand (gradient and SVG arrow without a separating comma), causing browsers to fall back to white. Fixed to match the shell page pattern: separate `background-repeat`, `background-position`, `background-size`, and `-webkit-text-fill-color`.
-- **Compare page y-axis title standoff fix**: `standoff` alone was insufficient because `margin.l: 56` left no room for the title after tick labels. Fix: `automargin: true` on both chart yaxes + `margin.l` raised to 80. This is the correct pattern — `automargin` expands the margin as needed; `standoff` only controls spacing once space exists.
-- First richer-account-mechanics slice in `src/model.py`, `src/monarch_bridge.py`, `run.py`, and scenario docs: taxable brokerage now tracks remaining cost basis vs. unrealized gains, Roth now tracks contribution basis vs. earnings, and withdrawal/tax sidecars expose basis/gain splits for taxable and Roth withdrawals
-- Richer stochastic summary metrics in `src/model.py`, including probabilities for success / spending shortfall / liquid depletion / net worth below zero / home-equity-required rescue, median terminal liquid net worth, worst-decile terminal net worth, and first-failure-period distributions
-- Typed yearly tax contracts in `src/tax_model.py` (`FederalTaxSystem`, `StateTaxSystem`, `YearlyTaxInputs`, `YearlyTaxOutputs`) plus a dedicated `tax_breakdown_yearly.csv` sidecar for per-year tax audit data
-- Expanded yearly tax audit outputs in `src/tax_model.py` / sidecars: federal deduction-adjusted taxable income, effective rates, Social Security taxable fraction + provisional income, and state taxable income before/after deduction
-- Bundled illustrative historical return dataset at `config/return_sequences/us_balanced_returns.csv` plus usage guidance in `docs/historical-return-sequences.md`, making historical mode turnkey for repo-local scenarios
-- Historical-sequence simulation mode in `src/model.py`, driven by rolling windows from `simulation.historical_returns_path` CSV data (`year`, `return`)
-- Configurable stochastic success/failure settings via `[monte_carlo.success]`, including named `failure_mode`, spending-funded threshold, home-equity/debt allowances, grace-period months, and a basic custom-threshold comparator
-- Additional stochastic summary and UI coverage: Scenario Parameters now includes `Stochastic success rules`, simulation summaries now report generic first-failure metrics, and historical runs reuse the same probability-band result surfaces
-- Regression coverage for configurable failure modes and historical rolling windows in `tests/test_simulation_modes.py`
-- Normalized projection-result contract in `src/model.py`: deterministic and stochastic runs now share a `ProjectionResult` boundary carrying the primary yearly path, simulation summary, and optional yearly percentile bands
-- Seeded Monte Carlo MVP in `src/model.py` + `src/charts.py`: `[simulation]` now supports `mode`, `num_runs`, `seed`, and `portfolio_return_volatility`, with stochastic runs varying blended investable returns while preserving existing household/event semantics
-- Monte Carlo presentation surfaces: KPI strip, total-net-worth probability-band chart, investable-portfolio probability-band chart, and a `Simulation results` card in Scenario Parameters
-- Stochastic-ready sidecar bundle in `src/sidecars.py`: `simulation_summary.json` now ships for every run, and Monte Carlo runs additionally emit `projection_bands_yearly.csv` with yearly percentile bands
-- Regression coverage for simulation modes and stochastic sidecars in `tests/test_simulation_modes.py`, `tests/test_sidecars.py`, and `tests/test_recurring_events.py`
-
-- Comparative analysis doc at `docs/ignidash-comparative-analysis.md`, covering NWN vs. ignidash strengths, replacement-fit assessment, Monarch-bridge feasibility, partial scenario-port feasibility, and recommended cross-pollination targets
-- High-level feature-port roadmap at `docs/ignidash-feature-port-plan.md`, defining a phased plan to bring ignidash-inspired capabilities into NWN while preserving TOML-first household planning and avoiding SaaS-style infrastructure creep
-
-- Portfolio tab now includes a projected-balances table below the chart, using the shared datatable styling and owner-split retirement rows when present
-- Scenario Parameters now includes a compact `Retirement ownership snapshots` card (first retirement year + end year; combined/traditional/Roth shares) sourced from projection owner-split columns
-- Accounts, Cash Flow, and Portfolio owner-split labels now resolve from configured person display names (`person1.name` / `person2.name`) instead of hardcoded `Person 1` / `Person 2`
-- Assumptions tab baseline-diff support in `src/tables.py` + `src/charts.py`: changed rows now use `param-diff`, includes changed-field count and `Show only differences` filtering parity with Scenario Parameters
-- Scenario-aware projection/editor URL propagation updates in `admin_app.py`, `src/charts.py`, and `src/scenario_shell.py` so shell/editor/projection navigation preserves `?scenario=<slug>`
-- Config editor render-progress overlay spinner (`templates/config_editor.html`) shown during render-triggering submit actions
-- Main-chart event-label control strip (inside chart area, above tax note) with client-side toggles to show all labels or keep only key labels (Retirement, Social Security, End-of-Plan)
-- Regression tests for new behavior in `tests/test_assumptions_summary.py`, `tests/test_scenario_shell.py`, `tests/test_editor_scenarios.py`, and `tests/test_recurring_events.py`
-
-- Scenario Parameters tab in projection page (`src/charts.py` + `src/tables.py`) with detailed per-scenario controls: metadata, tax/RMD settings, withdrawal orders/surplus orders, per-person contribution semantics, and enabled-event metrics
-- Baseline-diff emphasis in Scenario Parameters: rows that differ from default scenario are marked with `param-diff`, and the tab shows a total changed-field count
-- Client-side `Show only differences` filter for Scenario Parameters, including automatic hiding of cards with no diff rows
-- Synthetic scenario data-source mode in `run.py`: `[data_source].mode = "synthetic"` with `[synthetic_start]` seeds (portfolio/home/liabilities) bypasses live Monarch and cached balances
-- Share-safe sample scenario at `scenarios/sample.toml` using synthetic start balances and realistic recurring/one-time events for demos
-- Portfolio tab display cue when taxable/brokerage is zero across all years
-- Expanded `[[events]]` documentation in `scenarios/default.toml`: required/optional fields by event type plus copy/paste templates for each supported event type
-- Scenario config comments harmonized across the full `scenarios/*.toml` set for the new basis-accounting controls, followed by a successful offline rerender sweep of all scenarios using a local deploy-dir override
-
-- Per-bucket cash/investment growth behavior in `model.py`: `cash_return` now applies to `cash`, while non-cash investable buckets keep blended stock/bond growth
-- Spending-basis control in `model.py`/scenario config via `spending_basis = "real" | "nominal"`, with inflation indexing for retirement/survivor spending when real mode is selected
-- Explicit pre-retirement spending precedence in `model.py`: `pre_retirement_spending` → `annual_savings_override` → implied `income - contributions`
-- Explicit retirement contribution routing in `model.py`: contributions deposit to `trad_ira`/`roth` before generic surplus allocation, with optional per-person bucket overrides
-- Optional `annual_401k_contribution_split` support in `model.py` and `scenarios/default.toml` so bundled employer retirement contributions can be routed proportionally between traditional and Roth buckets
-- Account-level retirement owner attribution in `run.py`, `src/monarch_bridge.py`, and `src/model.py`: `[accounts]` entries can now be inline tables with `category` + `owner`, and live/offline raw-account reclassification seeds `trad_ira` / `roth` owner balances from exact accounts before fallback sharing logic
-- Opening-balance split support for bundled retirement accounts in `src/monarch_bridge.py` + scenario config: `[accounts]` inline entries can define `opening_balance_split` so one live account can seed both `trad_ira` and `roth` before the first projection year
-- Event-level reserve funding override in `src/model.py` + scenario TOMLs: `Expense` events may now set `funding = "cash_reserve_first"` so emergency/sinking-fund costs can draw from reserve cash before Roth/traditional buckets without weakening the default withdrawal policy
-- Scenario sweep across `scenarios/*.toml`: legacy household account mappings were upgraded to owner-aware `opening_balance_split` / `owner` metadata where needed, reserve-first funding flags were added to surgery/vacation/travel/car/home-repair expenses, and all scenarios were rerendered offline with refreshed sidecars
-- Early-death survivor modeling improvements in `model.py`: survivor phase now begins immediately after death (not only after both partners retire), and widow/er Social Security can step up from the deceased partner's configured benefit once the survivor reaches `survivor_ss_start_age` (default 60)
-- `BuyHome` events now add/update tracked real-estate property state when `price` is provided, so future home purchases flow into `home_value` / `home_equity` and can later be referenced by `SellHome`
-- Configurable wage tax treatment in `model.py` via `taxes.wage_tax_treatment = "net_cash" | "taxable_wages"`, including a tracked `taxable_wage_income` output column
-- Scenario shell iframe height increased by 25% across desktop/mobile breakpoints in `src/scenario_shell.py`
-- Shared config loader in `src/config_loader.py` for merged runtime config resolution across model, bridge, and editor
-- Shared tax reference file at `config/tax_tables/2025_us_federal_oregon.toml`
-- Regression coverage for merged tax-table loading in `tests/test_config_loader.py`
-- Scenario discovery/registry helpers in `src/scenarios.py`, including a generated `output/scenarios/index.json` manifest for the future shell page
-- Per-scenario output layout now begins under `output/scenarios/<slug>/`, with the legacy top-level `output/projection.html` retained as a compatibility copy
-- Config-editor backups are now written per scenario under `output/config-backups/<slug>/`
-- Scenario output now stores analysis sidecars under `output/scenarios/<slug>/sidecars/`
-- Config-editor backups now auto-prune to the newest 10 files per scenario
-- Local scenario/config Git ignore rules now exclude `config.toml` and `scenarios/*.toml`, while `scenarios/.gitkeep` preserves the directory
-- Real scenario file introduced at `scenarios/default.toml`, and the editor now supports selecting the active scenario from the discovered scenario list
-- The config editor now supports cloning the current scenario into a new `scenarios/<slug>.toml` file and can batch re-render all discovered scenarios
-- Public `projection.html` now acts as a scenario shell page that reads `output/scenarios/index.json` and switches between pre-rendered scenario pages without triggering a new render
-- `SellHome` event type for converting a named real-estate account into cash proceeds, with default/override sale-fee rates and optional mortgage payoff linkage
-- `SellHome` can now optionally reinvest some or all positive net proceeds into the taxable brokerage bucket via `reinvest_to = "taxable"` and optional `reinvest_fraction`
-- Analysis sidecar bundle now emits on each run: `projection_yearly.csv`, `event_flows.csv`, `scenario_manifest.json`, and `accounts_snapshot.json`
-- Real-estate appreciation is now separately configurable from CPI via `[assumptions].real_estate_appreciation`
-- Retirement now has a single source of truth in person settings: runtime synthesizes Retire events from each person's `retirement_year`, while preserving legacy event metadata overrides (label/enabled) for compatibility
-- Social Security now has a single source of truth in person settings: runtime synthesizes SocialSecurity events from each person's `ss_start_age` plus `social_security_benefits` (or legacy `ss_monthly_benefit` fallback), while preserving legacy event metadata overrides (label/enabled/taxability) for compatibility
-- Survivor spending can now be configured as `survivor_percent_of_retirement`, with runtime survivor-dollar spending derived from `retirement_annual` and legacy `survivor_annual` retained as a fallback
-- Pre-retirement net income can now grow annually from inflation plus person-level `annual_take_home_real_raise`, and 401(k) contributions can now grow from that same income path plus person-level `annual_401k_contribution_extra_increase`
-- Cash Flow now exposes a dedicated Portfolio Funding / Withdrawals section with cash reserve drawdown, taxable withdrawals, traditional IRA / 401k withdrawals, Roth withdrawals, and a total portfolio-funding row
-- Regression coverage for `SellHome` equity-to-cash behavior under `tests/test_withdrawal_policy.py`
-- Main-chart x-axis can now show ages below the year ticks using household DOBs from config
-- Small-screen responsive layout now suppresses the parenthetical age labels on the main chart x-axis so the year ticks remain legible on narrow viewports
-- Regression coverage for age tick-label generation under `tests/test_recurring_events.py`
-- Phase-specific withdrawal policy controls via `[withdrawal_policy]` in `config.toml`
-- Cash reserve targets for accumulation, retirement, and survivor periods
-- Configurable phase-specific withdrawal order using `cash_above_target` / `cash_below_target` steps
-- Regression coverage for reserve-target preservation, phase-specific withdrawal order, and cash-target refill behavior under `tests/test_withdrawal_policy.py`
-- Regression coverage for reserve-first expense funding under `tests/test_withdrawal_policy.py`
-- Recurring events via optional `repeat_every_years`, `repeat_until_year`, and `repeat_count` fields on events with `year` or `start_year`
-- Runtime event expansion shared by the projection model and Gantt timeline
-- Regression coverage for recurring event expansion and yearly application under `tests/test_recurring_events.py`
-- `chart_first_occurrence_only = true` event control for decluttering repeated-event annotations on the main projection chart without changing model or table behavior
-- `Expense` events now support `expense_kind = "mandatory" | "discretionary"`, with 🏖️ for discretionary, 💸 for mandatory, and 🎉 for retirement
-- Cash Flow now splits mandatory event expenses from discretionary event expenses
-- KPI summary strip above the chart showing Net Worth (EOY), Net Worth at Retirement, Retirement Age, and Net Worth at End
-- Raw TOML config editor page at `/finances/config/`
-- Validate, Save, and Save + Re-render actions for `config.toml`
-- Automatic timestamped config backups under `output/config-backups/` before each save
-- Small FastAPI admin backend and template for config editing
-- Projection page toolbar shortcut: `Edit Config`
-- Dockerized config-editor service for nginx proxying within the local Compose stack
-- Gantt tab added to the projection page
-- Assumptions tab added after Gantt, summarizing current person assumptions, market assumptions, spending, and withdrawal-policy cash targets from `config.toml`
-- Gantt supports milestone vs span semantics by event type
-- Gantt includes liability payoff milestones derived from projection output
-- Gantt row labels include event/liability icons
-- Gantt includes survivor-period shading aligned to projection output
-- Gantt row labels increased in size after the density pass while preserving the compressed layout
-- Main chart title suffix is configurable via `[display].projection_title` in `config.toml`
-- First-pass tax modeling now applies the 2025 federal ordinary-income bracket schedule plus standard deduction to taxable Social Security, positive income events, and taxable withdrawals while preserving current job income as net cash
-- Projection page now includes an explicit tax-modeling note clarifying that employment income is still net cash and the displayed taxes cover modeled taxable retirement/event inflows rather than a full household tax return
-- Cash Flow now labels the tax row generically as modeled tax on retirement/event inflows so it remains correct once state tax is included
-- Gross-income wage migration is no longer treated as a required next step; it is optional future work only if NWN ever moves from Monarch-style net-income cash-flow modeling to a true full household tax-return model
-- Cash Flow tab now exposes positive income events in Income and the modeled-tax row in Expenses
-- Event-level taxability is configurable in `config.toml` via optional `taxable` and `taxable_fraction` fields on `Income` and `SocialSecurity` events
-- Ordinary-income tax brackets and standard deductions are now configurable in `config.toml [taxes]`
-- Simplified Social Security provisional-income thresholds are now configurable in `config.toml [taxes.social_security]`
-- Oregon state tax treatment is now configurable in `config.toml [taxes.state]`
-- Regression coverage for progressive tax calculation, bracketed Social Security tax, and bracketed trad-IRA-withdrawal tax now lives in `tests/test_tax_model.py`
-- Oregon state tax regression coverage (tax table under $50k and chart formulas above $50k) now lives in `tests/test_tax_model.py`
-- Withdrawal-source sequencing is now active: deficits are covered from cash → taxable → trad IRA → Roth, and taxable/trad withdrawals feed the bracket-based tax model
-
-### Changed
-
-- Stochastic KPI strips, simulation callouts, and Scenario Parameters now use natural-language risk labels rather than Monte-Carlo-specific copy, and historical mode reuses the same headline metrics
-- Cash Flow now surfaces federal/state modeled tax rows when present, and Scenario Parameters now includes a `Tax output snapshot` card driven by the rendered projection path
-- Tax output snapshot and tax sidecars now surface the main explanatory subcomponents behind each year's modeled taxes instead of only total federal/state amounts
-- Projection page now includes a dedicated `Tax` tab that mirrors the yearly tax audit path with tax context, taxable-income components, federal/state deduction math, effective rates, and total modeled taxes
-- Stochastic runs now emit a normalized yearly `simulation_outcomes_yearly.csv` sidecar and render a dedicated `Simulation` tab with outcome timing, success-through-year, current-year failure-trigger rates, funded-ratio percentiles, and yearly net-worth distribution
-- Stochastic outcomes now distinguish temporary yearly pressure from actual rule failure for grace-based success modes, and the `Simulation` tab surfaces that split explicitly instead of treating every yearly trigger as an immediate failed plan
-- Scenario renders now produce separate `deterministic`, `historical`, and `monte_carlo` artifacts per TOML scenario, and the public shell page now supports both scenario and mode selection via the manifest instead of assuming one projection page per scenario
-- The config editor’s render overlay now shows action-aware, mode-aware progress messaging for `Save + Re-render`, `Save + Render All`, and `Clone`, including scenario/mode counts and rotating stage text for the longer three-mode render workflow
-- Survivor-period shading on the main chart and Gantt now spans exactly from the first `EndOfPlan` boundary through the surviving partner's `EndOfPlan` boundary for clearer visual alignment with the event markers
-- Main-chart event annotations now wrap at two events per line, sit to the right of each event line, and use softer translucent backgrounds (`rgba(15,23,37,0.60)`) for improved readability with multiline labels
-- Synthesized `Retirement (...)` and `SS Begins (...)` labels now use configured person-name initials instead of person-key initials, so sample scenarios render A/S (etc.) instead of M/W
-- `config.toml [taxes]` now points to shared tax reference data via `table_set = "2025_us_federal_oregon"` instead of inlining the large bracket/deduction tables
-- The current root `config.toml` is now treated as the legacy default scenario until real `scenarios/*.toml` files take over
-- The default runtime/editor scenario now comes from `scenarios/default.toml`; root `config.toml` remains only as a fallback during migration
-- Negative-only liquid series now remain visible on the main chart instead of being suppressed when the series sum is below zero
-- Offline/full projection runs now pass named real-estate accounts into the model so `SellHome` can target a specific property
-- `BuyHome` docs/examples now document optional `property` naming and the requirement to provide `price` if the purchase should create tracked equity
-- Projection config schema and sample config now include `real_estate_sale_fee_rate` plus `SellHome` event examples
-- Projection page moved to a cohesive dark theme across chrome, tables, and both Plotly charts
-- Main chart x-axis uses 2-year ticks with 6px tick-label standoff on both axes
-- Table horizontal navigation now supports grab-to-pan and moderated wheel scrolling
-- Gantt now resizes correctly when shown from a hidden tab
-- Gantt density was tuned repeatedly to reduce vertical whitespace while preserving readable event bars
-- Surplus cash flow now refills the active phase cash target before the remainder is invested into non-cash buckets
+- **Phase 4 — Employer match and IRS 401(k) cap enforcement** (`src/model.py`, `src/tables.py`):
+  - IRS employee elective deferral limits enforced at runtime: $23,500 base + $7,500 catch-up at age ≥ 50 (2025 values). Update `_IRS_401K_LIMIT_BASE` / `_IRS_401K_CATCHUP_EXTRA` in `src/model.py` annually.
+  - New per-person config field `annual_401k_employer_match` (flat annual $). Always prefunded; routes through same `annual_401k_contribution_split` as employee. Person 1's household value: $5,688/yr, set in all 9 household scenario TOMLs.
+  - New projection DataFrame / sidecar columns: `employer_match_total`, `employer_match_person1`, `employer_match_person2`, `person1_401k_over_irs_cap`, `person2_401k_over_irs_cap`.
+  - Cash Flow tab: dedicated employer match row; amber ⚠ cap-exceeded warning banner.
+  - Scenario Parameters: `401k employer match (annual)` diff row per person.
+- **Scenario comparison page** (`src/scenario_shell.py`):
+  - `compare.html` deployed at `/finances/compare.html` — reads sidecar CSVs and `simulation_summary.json` at runtime.
+  - Scenario chip toggles (stable colour per slug, min 2 active), mode selector (deterministic / historical / monte_carlo).
+  - Three Plotly charts: Total Net Worth trajectory, Investable Portfolio trajectory, Net Worth Delta (scenario − default).
+  - KPI table with delta highlighting vs default; MC mode adds probability of success, worst-decile terminal NW, P10/P90, median first failure year, peak pressure rate.
+  - Deep-linking via `?a=slug&b=slug` URL params; shell "Compare Scenarios" button pre-scopes to active vs default.
+- **Scenario rename** (`admin_app.py`, `templates/config_editor.html`): `POST /rename-scenario` rewrites `[scenario]` block, moves TOML if slug changes, triggers offline render, redirects. Rename fields + button in config editor (disabled on default scenario).
+- **Scenario deletion** (`admin_app.py`, `templates/config_editor.html`): `POST /delete-scenario` with slug-confirmation dialog; blocks deletion of default scenario; removes TOML + rendered output; triggers manifest refresh.
+- **Two share-safe synthetic demo scenarios**: `sample-a.toml` (moderate: 7% equity, retirement 2038/2043, $82K/yr spending) and `sample-b.toml` (growth: 8.5% equity, retirement 2035/2037, $98K/yr, delayed SS to 70, $6K employer match). Both use Alex & Sam personas.
 
 ### Fixed
 
-- Config editor async render jobs (`/render-jobs`, `/jobs/{id}`) were returning `{"detail":"Not Found"}` because the `nwn-config-editor` container was running a stale pre-fix version of `admin_app.py` (started 3 days before the routes were added, no `--reload`); restarting the container resolved it
-- Progress modal hint text no longer flashes between "This page will refresh…" and "Elapsed: Xs…": moved the elapsed counter to a dedicated `<span id="render-elapsed">` inside the hint div; `setOverlayCopy` no longer touches the hint element, and `updateElapsed` writes only to the span, eliminating the two-timer write conflict
-- Scenario Parameters `Retirement ownership snapshots` rows now remain visible when non-default scenarios open with `Show only differences` enabled
-- Frozen first-column table labels and section bands now work reliably via JS `translateX(scrollLeft)`
-- Gantt no longer renders condensed from hidden-tab Plotly sizing
+- Simulation tab legend responsive fix: `nwn-simulation` block added to `applyResponsiveChartLayout()` — legend moves below chart at ≤900px.
+- Shell page: "Refresh Frame" button hidden on screens ≤980px; bracketed `[Mode]` suffix removed from scenario description text.
+- Compare page: mode selector CSS background shorthand was malformed (missing comma between gradient layers), causing white fallback. Fixed to match shell page pattern.
+- Compare page: y-axis title overlap fixed — `automargin: true` + `margin.l = 80` required alongside `standoff`; `standoff` alone is insufficient when left margin is too narrow.
 
 ---
 
-## [2026-06-17] — V1 Feature Complete
+## 2026-06-19 to 2026-06-22
 
 ### Added
 
-- Liability amortization: mortgage (3.5%, $2,675/mo total) and CR-V loan (6%, $298/mo)
-  with live Monarch balance anchors and auto payoff detection
-  - CR-V payoff: 2028 (frees $3,576/yr)
-  - Mortgage payoff: 2030 (frees $35,682/yr — 5 yrs before Person 1 retires)
-- End of Plan events: Person 1 2054, Person 2 2063
-- SS survivor benefit: on Person 1's death, Person 2 steps up to $2,691/mo (his higher check)
-- Survivor period: spending switches to survivor_annual ($66,500 = ~70% of $95K)
-- Survivor period shading on chart (gray vrect, paper-space label)
-- Emoji icons for all event types: 💀🏖️🏛️💸💰🏠💼⏸️🎓💍🚗
-- Annotation overlap fix: EndOfPlan uses bottom-right; alternating positions for others;
-  survivor label moved to paper-space annotation
-- Chart subtitle: "Values shown are end-of-year estimates, anchored to live Monarch balances"
-- All 46 Monarch accounts classified in config.toml [accounts]
-- Account disable list: vehicles and personal operating accounts excluded
-- Home equity as separate non-liquid band (brown dotted), grows at inflation
+- Monte Carlo simulation mode: seeded multi-run engine, `num_runs`, `seed`, `portfolio_return_volatility`; probability-band charts; stochastic KPI strip; Simulation tab with outcome-timing chart and yearly outcomes table.
+- Historical-sequence simulation mode via `simulation.historical_returns_path` CSV; bundled starter dataset at `config/return_sequences/us_balanced_returns.csv`; turnkey without a user-supplied file.
+- Configurable stochastic success/failure via `[monte_carlo.success]`: `failure_mode`, spending-funded threshold, home-equity/debt allowances, grace-period months.
+- Normalized `ProjectionResult` contract in `src/model.py` shared by deterministic, Monte Carlo, and historical modes.
+- Richer stochastic summary metrics: probability of success, spending shortfall, liquid depletion, net worth below zero, home-equity rescue; median/worst-decile terminal NW; first-failure distribution.
+- Stochastic outcomes sidecar: `simulation_outcomes_yearly.csv` per run.
+- Tax engine refactor: explicit yearly `YearlyTaxInputs` / `YearlyTaxOutputs` contracts in `src/tax_model.py`; `tax_breakdown_yearly.csv` sidecar; dedicated `Tax` tab in projection page.
+- Federal bracket-based ordinary-income tax + Oregon state tax layer; SS provisional-income banding; configurable filing status per lifecycle phase; shared tax tables in `config/tax_tables/`.
+- RMD modeling via `[taxes.rmd]`: forced traditional-account withdrawals from IRS life-expectancy factors.
+- Richer account mechanics: taxable brokerage tracks cost basis vs. unrealized gains; Roth tracks contribution basis vs. earnings; optional basis seeding via `taxable_cost_basis`, `roth_contribution_basis`.
+- Owner-level retirement bucket split: `trad_ira_person1/person2`, `roth_person1/person2` through projection pipeline; Accounts and Portfolio show per-person split; labels use configured person display names.
+- Per-person `annual_401k_contribution_split` for routing employer-plan contributions proportionally between traditional and Roth.
+- Account-level `owner` and `opening_balance_split` metadata in `[accounts]` inline tables for Monarch reclassification.
+- `Expense` event `funding = "cash_reserve_first"` override; `expense_kind = "mandatory" | "discretionary"` categorisation.
+- `SpendingShift` event type (`mode = "replace"`) for baseline spending regime changes.
+- Survivor modeling improvements: survivor phase starts immediately after death; widow/er SS step-up via `survivor_ss_start_age`.
+- Pre-retirement spending explicit precedence chain; `spending_basis = "real" | "nominal"` CPI indexing.
+- `annual_take_home_is_net_of_retirement_contributions` payroll-prefunded flag.
+- Phase-specific withdrawal policy (`[withdrawal_policy]`): per-phase cash targets, configurable withdrawal and surplus order.
+- `SellHome` / `BuyHome` event improvements: proceeds preserved in cash; optional `reinvest_to`; real-estate property state tracking; `real_estate_appreciation` separate from CPI.
+- Recurring events via `repeat_every_years` / `repeat_until_year` / `repeat_count`; `chart_first_occurrence_only` flag.
+- Scenario comparison infrastructure: `compare.html`, deep-linking, delta chart (shipped 2026-06-23; listed here for completeness).
+- Static definitions/reference page (`definitions.html`) linked from shell, projection pages, and config editor.
+- Config editor: scenario clone, delete, rename; async render jobs with progress overlay; `Save + Render All`; timestamped backups; scenario-scoped projection/editor URL propagation.
+- Public shell page: two-dimensional scenario + mode selector; iframe with version nonce; `Refresh Frame` control.
+- Share-safe sample scenario (`scenarios/sample.toml`) with synthetic balances.
+- `ignidash-comparative-analysis.md` and `ignidash-feature-port-plan.md` added to `docs/`.
 
-### Changed
+### Fixed / Changed
 
-- simulation end_year extended from 2054 to 2063 (Person 2 life expectancy)
-- monarch_bridge.py: calls MCP server venv via subprocess (version-safe)
-- model.py: home value tracked separately from mortgage balance
+- Main chart: 2-year x-axis ticks; age labels below year ticks; configurable chart title via `[display].projection_title`; event-label wrap and control strip.
+- Gantt: denser row pitch, milestone vs span semantics, liability payoff milestones from projection output, survivor-period band, centered legend.
+- Scenario Parameters: baseline-diff emphasis, `Show only differences` toggle, `Retirement ownership snapshots` card, `Tax output snapshot` card.
+- Assumptions tab: baseline-diff support and `Show only differences` toggle.
+- Horizontal table UX: JS `translateX(scrollLeft)` frozen first column + section bands, grab-to-pan, wheel-to-horizontal scroll.
+- Portfolio tab: investable-only chart, projected-balances table, zero-taxable display cue, no cash bucket.
+- KPI strip above main chart: Net Worth (EOY), Net Worth at Retirement, Retirement Age, Net Worth at End.
+- `cash_return` separate from blended investable return; `wages.wage_tax_treatment` config.
+- Cohesive dark theme across chrome, tables, and all Plotly charts.
 
-### Decisions
-
-- **Emoji in annotations via Unicode** — Plotly renders Unicode emoji natively in annotation text. No special config needed. Adopted 2026-06-17.
-- **Survivor period label in paper-space** — avoids collision with data-space vline annotations at the same x-coordinate. Adopted 2026-06-17.
-- **survivor_annual = 66500** — ~70% of $95K couple target. Standard planning assumption. Adjustable in config.toml. Adopted 2026-06-17.
-
----
-
-
-
-### Added
-
-- Repository created at `LemurTech/Net-Worth-Navigator` on GitHub
-- Project scaffolded on Hermes host at `/home/lemurtech/Net-Worth-Navigator`
-- Memory Bank initialized: all six core docs/ files created
-- `.gitignore`, `README.md` created
-- Directory structure: `src/`, `output/`, `docs/`
-
-### Decisions
-
-- **TOML config format** — human-readable, commentable, stdlib Python 3.11+. Adopted.
-- **Static Plotly HTML output** — self-contained, no server required locally. LAN access via hal-pages nginx. Adopted.
-- **Simplified tax modeling in V1** — full bracket modeling deferred to V2. Adopted.
-- **Event system with typed events and enable/disable flag** — every event has `type`, `enabled`, and type-specific properties. Adopted.
-- **OWL deferred** — Net Worth Navigator establishes the strategic picture first; OWL is a downstream decumulation tool for the withdrawal phase. Adopted.
-- **Household members modeled independently** — Person 1 (retire 2035) and Person 2 (retire 2037) have independent income, retirement year, SS start age, and life expectancy parameters. Adopted.
