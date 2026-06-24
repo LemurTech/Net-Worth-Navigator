@@ -465,6 +465,7 @@ EVENT_TYPE_COLORS = {
     "Education": "rgba(155,89,182,0.78)",
     "Marriage": "rgba(214,103,137,0.78)",
     "SpendingShift": "rgba(45, 212, 191, 0.82)",
+    "ContributionChange": "rgba(129, 140, 248, 0.82)",
     "LiabilityPayoff": "rgba(90,160,120,0.82)",
 }
 

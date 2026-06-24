@@ -431,6 +431,19 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Additional event types for job changes, pauses, tuition, informational life events, and baseline-spending regime changes.",
             },
             {
+                "key": "ContributionChange",
+                "summary": "Override one or more per-person contribution amounts starting from a given year. "
+                           "Useful for modelling a mid-scenario step-up or step-down in 401(k) or IRA contributions "
+                           "(e.g. restoring full 401(k) contributions after an early mortgage payoff).",
+                "options": [
+                    "Required: `year`, `person` (`person1` or `person2`)",
+                    "Optional: `annual_401k_contribution` — new absolute dollar amount",
+                    "Optional: `annual_ira_contribution` — new absolute dollar amount",
+                    "Optional: `annual_401k_employer_match` — new employer match dollar amount",
+                    "Multiple events for the same person are applied in year order; later years win",
+                ],
+            },
+            {
                 "key": "Recurring controls",
                 "summary": "Repeat a compatible event without copying it many times.",
                 "options": ["`repeat_every_years`", "`repeat_until_year`", "`repeat_count`", "`chart_first_occurrence_only` for decluttering labels"],

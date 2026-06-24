@@ -45,7 +45,8 @@ EVENT_ICONS = {
     "CareerBreak":    "⏸️",
     "Education":      "🎓",
     "Marriage":       "💍",
-    "SpendingShift":  "🌍",
+    "SpendingShift":       "🌍",
+    "ContributionChange":  "📈",
 }
 
 EXPENSE_KIND_ICONS = {
@@ -1313,12 +1314,65 @@ def _take_home_is_net_of_retirement_contributions(person: dict) -> bool:
     )
 
 
+def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
+    """Return a copy of person with ContributionChange overrides applied.
+
+    Scans all ContributionChange events targeting this person whose year is
+    <= current year, applies them in chronological order so the most recent
+    change wins.  Only the fields present on each event are overridden;
+    omitted fields retain the person-config baseline value.
+
+    Supported override fields (all optional per event):
+      annual_401k_contribution
+      annual_ira_contribution
+      annual_401k_employer_match
+    """
+    person_key = person.get("_person_key")  # injected by caller; may be None
+    overrides: dict = {}
+
+    # Collect all matching changes up to and including this year, sort by year
+    changes = []
+    for event in events:
+        if event.get("type") != "ContributionChange":
+            continue
+        ev_person = str(event.get("person", "")).strip().lower()
+        if person_key and ev_person and ev_person != person_key:
+            continue
+        try:
+            ev_year = int(event["year"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if ev_year <= year:
+            changes.append((ev_year, event))
+
+    # Apply in ascending year order so later events win
+    for _, event in sorted(changes, key=lambda x: x[0]):
+        for field in (
+            "annual_401k_contribution",
+            "annual_ira_contribution",
+            "annual_401k_employer_match",
+        ):
+            if field in event:
+                try:
+                    overrides[field] = float(event[field])
+                except (TypeError, ValueError):
+                    pass
+
+    if not overrides:
+        return person
+
+    patched = dict(person)
+    patched.update(overrides)
+    return patched
+
+
 def _person_retirement_contribution_breakdown(
     person: dict,
     *,
     year: int,
     simulation_start_year: int,
     assumptions: dict,
+    events: list | None = None,
 ) -> dict[str, float]:
     """Return current-year retirement contributions by destination bucket.
 
@@ -1334,6 +1388,10 @@ def _person_retirement_contribution_breakdown(
       "employee_401k_capped"      — post-cap employee amount
       "irs_401k_limit"            — limit that was applied
     """
+    # Apply any ContributionChange events active for this year
+    if events:
+        person = _apply_contribution_changes(person, year, events)
+
     raw_401k = _project_person_401k_contribution(
         person,
         year=year,
@@ -2831,6 +2889,11 @@ def _run_projection_yearly(
                     icon = EVENT_ICONS["SpendingShift"]
                     active_labels.append(f"{icon} {event['label']}")
 
+            elif etype == "ContributionChange":
+                if event["year"] == year and should_show_chart_label(event):
+                    icon = EVENT_ICONS["ContributionChange"]
+                    active_labels.append(f"{icon} {event['label']}")
+
         mortgage_balance = sum(
             s["balance"] for s in lib_state if s["type"] == "mortgage"
         )
@@ -2883,10 +2946,11 @@ def _run_projection_yearly(
              "employee_401k_uncapped": 0.0, "employee_401k_capped": 0.0, "irs_401k_limit": 0.0}
             if person1_retired
             else _person_retirement_contribution_breakdown(
-                person1,
+                {**person1, "_person_key": "person1"},
                 year=year,
                 simulation_start_year=start_year,
                 assumptions=assumptions,
+                events=events,
             )
         )
         person2_contrib_buckets = (
@@ -2895,10 +2959,11 @@ def _run_projection_yearly(
              "employee_401k_uncapped": 0.0, "employee_401k_capped": 0.0, "irs_401k_limit": 0.0}
             if person2_retired
             else _person_retirement_contribution_breakdown(
-                person2,
+                {**person2, "_person_key": "person2"},
                 year=year,
                 simulation_start_year=start_year,
                 assumptions=assumptions,
+                events=events,
             )
         )
 
