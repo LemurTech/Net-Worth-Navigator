@@ -863,17 +863,16 @@ def build_compare_page(
       const name = scenMeta ? scenMeta.name : slug;
       const color = COLOR_MAP[slug];
       const years = rows.map(r => parseInt(r.year));
-      // investable = taxable + trad_ira + roth (exclude cash, home)
       const vals = rows.map(function(r) {{
-        const t = parseFloat(r.taxable) || 0;
+        const t  = parseFloat(r.taxable)  || 0;
         const tr = parseFloat(r.trad_ira) || 0;
-        const ro = parseFloat(r.roth) || 0;
+        const ro = parseFloat(r.roth)     || 0;
         return (t + tr + ro) / 1e6;
       }});
       traces.push({{
         x: years, y: vals, mode: 'lines', name: name,
         line: {{ color: color, width: slug === DEFAULT_SLUG ? 2.5 : 2, dash: slug === DEFAULT_SLUG ? 'solid' : 'dot' }},
-        hovertemplate: '<b>%{{x}}</b><br>' + name + ' investable: $%{{y:.2f}}M<extra></extra>',
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ': $%{{y:.2f}}M<extra></extra>',
       }});
     }});
 
