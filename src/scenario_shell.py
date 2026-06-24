@@ -926,13 +926,13 @@ def build_compare_page(
       traces.push({{
         x: years, y: income, mode: 'lines', name: name + ' income',
         line: {{ color: color, width: 1.6, dash: isDash ? 'dot' : 'solid' }},
-        hovertemplate: '<b>%{{x}}</b><br>' + name + ' income: $%{{y:.2f}}M<extra></extra>',
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' income: %{{y:$,.3f}}M<extra></extra>',
       }});
       traces.push({{
         x: years, y: spend, mode: 'lines', name: name + ' spending',
         line: {{ color: color, width: 1.6, dash: isDash ? 'longdash' : 'dash' }},
         opacity: 0.65,
-        hovertemplate: '<b>%{{x}}</b><br>' + name + ' spending: $%{{y:.2f}}M<extra></extra>',
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' spending: %{{y:$,.3f}}M<extra></extra>',
       }});
       traces.push({{
         x: years, y: net, mode: 'lines', name: name + ' net',
@@ -941,7 +941,7 @@ def build_compare_page(
           return 'rgba(' + parseInt(r, 16) + ',' + parseInt(g, 16) + ',' + parseInt(b, 16) + ',0.12)';
         }}),
         line: {{ color: color, width: 2.2, dash: isDash ? 'dashdot' : 'solid' }},
-        hovertemplate: '<b>%{{x}}</b><br>' + name + ' net flow: $%{{y:+.2f}}M<extra></extra>',
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' net flow: %{{y:$,.3f}}M<extra></extra>',
       }});
     }});
 
