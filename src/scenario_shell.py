@@ -640,8 +640,14 @@ def build_compare_page(
   </div>
 
   <div class="card">
-    <div class="card-title">Investable Portfolio Trajectory</div>
+    <div class="card-title">Retirement &amp; Investment Accounts <span style="font-weight:400;font-size:12px;color:var(--muted)">(excl. cash &amp; home equity)</span></div>
     <div id="portfolio-chart" style="width:100%;height:340px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Annual Cash Flow <span style="font-weight:400;font-size:12px;color:var(--muted)">(income vs spending)</span></div>
+    <div id="cashflow-chart" style="width:100%;height:320px;"></div>
+    <div class="modeling-note" style="margin-top:6px"><strong>What this shows:</strong> Total household income (take-home + freed mortgage payments + events) vs total spending (living expenses + event outflows) for each year. Bars above zero are net surplus; below zero are net deficit funded by portfolio withdrawals.</div>
   </div>
 
   <div class="card">
@@ -803,6 +809,7 @@ def build_compare_page(
       }});
       renderChart(slugs, projMap);
       renderPortfolioChart(slugs, projMap);
+      renderCashFlowChart(slugs, projMap);
       renderDeltaChart(slugs, projMap);
       renderKPI(slugs, projMap, summMap);
     }});
@@ -875,12 +882,81 @@ def build_compare_page(
       paper_bgcolor: '#111827',
       plot_bgcolor: '#0f1725',
       xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
-      yaxis: {{ title: {{ text: 'Investable Portfolio ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
+      yaxis: {{ title: {{ text: 'Account Balance ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
       legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 11 }} }},
       hoverlabel: {{ bgcolor: '#0f1725', bordercolor: '#334155', font_color: '#f8fafc' }},
       margin: {{ l: 80, r: 16, t: 48, b: 48 }},
     }};
     const el = document.getElementById('portfolio-chart');
+    if (!el) return;
+    if (el._hasPlot) {{
+      Plotly.react(el, traces, layout);
+    }} else {{
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      el._hasPlot = true;
+    }}
+  }}
+
+  // ── Annual Cash Flow chart ────────────────────────────────────────
+  function renderCashFlowChart(slugs, projMap) {{
+    const traces = [];
+    slugs.forEach(function(slug) {{
+      const rows = projMap[slug];
+      if (!rows || !rows.length) return;
+      const scenMeta = SCENARIO_LIST.find(s => s.slug === slug);
+      const name = scenMeta ? scenMeta.name : slug;
+      const color = COLOR_MAP[slug];
+      const years = rows.map(r => parseInt(r.year));
+
+      // Income = person1 + person2 take-home + freed_payments
+      const income = rows.map(function(r) {{
+        const p1 = parseFloat(r.person1_income) || 0;
+        const p2 = parseFloat(r.person2_income) || 0;
+        const fr = parseFloat(r.freed_payments) || 0;
+        return (p1 + p2 + fr) / 1e3;
+      }});
+
+      // Spend = annual_spend (already negative in model; flip to positive for display)
+      const spend = rows.map(r => Math.abs(parseFloat(r.annual_spend) || 0) / 1e3);
+
+      // Net = income - spend (positive = surplus, negative = deficit)
+      const net = income.map((inc, i) => inc - spend[i]);
+
+      const isDash = slug !== DEFAULT_SLUG;
+
+      traces.push({{
+        x: years, y: income, mode: 'lines', name: name + ' income',
+        line: {{ color: color, width: 1.6, dash: isDash ? 'dot' : 'solid' }},
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' income: $%{{y:.1f}}K<extra></extra>',
+      }});
+      traces.push({{
+        x: years, y: spend, mode: 'lines', name: name + ' spending',
+        line: {{ color: color, width: 1.6, dash: isDash ? 'longdash' : 'dash' }},
+        opacity: 0.65,
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' spending: $%{{y:.1f}}K<extra></extra>',
+      }});
+      traces.push({{
+        x: years, y: net, mode: 'lines', name: name + ' net',
+        fill: 'tozeroy',
+        fillcolor: color.replace('rgb', 'rgba').replace(')', ',0.12)').replace('#', 'rgba(').replace(/rgba\(([0-9a-f]{{2}})([0-9a-f]{{2}})([0-9a-f]{{2}}),0\.12\)/, function(_, r, g, b) {{
+          return 'rgba(' + parseInt(r, 16) + ',' + parseInt(g, 16) + ',' + parseInt(b, 16) + ',0.12)';
+        }}),
+        line: {{ color: color, width: 2.2, dash: isDash ? 'dashdot' : 'solid' }},
+        hovertemplate: '<b>%{{x}}</b><br>' + name + ' net flow: $%{{y:+.1f}}K<extra></extra>',
+      }});
+    }});
+
+    const layout = {{
+      font: {{ color: '#e5edf7' }},
+      paper_bgcolor: '#111827',
+      plot_bgcolor: '#0f1725',
+      xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
+      yaxis: {{ title: {{ text: 'Annual ($K)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$,.0f', ticksuffix: 'K', tickfont: {{ size: 11 }}, zeroline: true, zerolinecolor: 'rgba(148,163,184,0.35)', zerolinewidth: 1 }},
+      legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 10 }} }},
+      hoverlabel: {{ bgcolor: '#0f1725', bordercolor: '#334155', font_color: '#f8fafc' }},
+      margin: {{ l: 80, r: 16, t: 48, b: 48 }},
+    }};
+    const el = document.getElementById('cashflow-chart');
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);

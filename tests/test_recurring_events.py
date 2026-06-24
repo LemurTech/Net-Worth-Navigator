@@ -967,8 +967,8 @@ class RecurringEventsTests(unittest.TestCase):
         }
         html = charts._build_portfolio_chart(df, config=config)
 
-        self.assertIn("Traditional IRA \\u002f 401k \\u2014 Person 1", html)
-        self.assertIn("Traditional IRA \\u002f 401k \\u2014 Person 2", html)
+        self.assertIn("Trad IRA \\u002f 401k \\u2014 Person 1", html)
+        self.assertIn("Trad IRA \\u002f 401k \\u2014 Person 2", html)
         self.assertIn("Roth \\u2014 Person 1", html)
         self.assertIn("Roth \\u2014 Person 2", html)
         self.assertIn("Projected Balances", html)

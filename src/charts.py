@@ -754,30 +754,33 @@ def _build_portfolio_chart(
         )
 
     portfolio_series = [
-        ("taxable", "rgba(96,165,250,0.42)", "Taxable"),
+        ("taxable",     "#60a5fa", "Taxable / Brokerage"),
     ]
     if {"trad_ira_person1", "trad_ira_person2"}.issubset(df.columns):
         portfolio_series.extend([
-            ("trad_ira_person1", "rgba(16,185,129,0.36)", f"Traditional IRA / 401k — {person1_name}"),
-            ("trad_ira_person2", "rgba(74,222,128,0.32)", f"Traditional IRA / 401k — {person2_name}"),
+            ("trad_ira_person1", "#10b981", f"Trad IRA / 401k — {person1_name}"),
+            ("trad_ira_person2", "#34d399", f"Trad IRA / 401k — {person2_name}"),
         ])
     else:
-        portfolio_series.append(("trad_ira", "rgba(74,222,128,0.36)", "Traditional IRA / 401k"))
+        portfolio_series.append(("trad_ira", "#10b981", "Trad IRA / 401k"))
 
     if {"roth_person1", "roth_person2"}.issubset(df.columns):
         portfolio_series.extend([
-            ("roth_person1", "rgba(245,158,11,0.38)", f"Roth — {person1_name}"),
-            ("roth_person2", "rgba(251,191,36,0.36)", f"Roth — {person2_name}"),
+            ("roth_person1", "#f59e0b", f"Roth — {person1_name}"),
+            ("roth_person2", "#fbbf24", f"Roth — {person2_name}"),
         ])
     else:
-        portfolio_series.append(("roth", "rgba(251,191,36,0.38)", "Roth"))
+        portfolio_series.append(("roth", "#f59e0b", "Roth"))
 
     for category, color, label in portfolio_series:
-        if category in df.columns and (df[category] != 0).any():
+        if category in df.columns:
+            # Always plot — a $0 flat line means the account is unfunded,
+            # not that the portfolio collapsed. Individual non-stacked lines
+            # eliminate the "stacked area touching zero" visual confusion.
             fig.add_trace(go.Scatter(
                 x=df["year"], y=df[category],
                 mode="lines", name=label,
-                stackgroup="portfolio", fillcolor=color, line=dict(width=0),
+                line=dict(color=color, width=2.0),
                 hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
             ))
 
@@ -791,7 +794,7 @@ def _build_portfolio_chart(
 
     fig.update_layout(
         font=dict(color=font_color),
-        title=dict(text="Projected Investment Portfolio", font=dict(size=16)),
+        title=dict(text="Retirement & Investment Accounts", font=dict(size=16)),
         xaxis=dict(
             title="Year",
             tickmode="linear",
@@ -802,7 +805,7 @@ def _build_portfolio_chart(
             color=font_color,
         ),
         yaxis=dict(
-            title="Portfolio Value (USD)",
+            title="Account Balance (USD)",
             tickformat="$,.0f",
             ticklabelstandoff=6,
             automargin=True,
@@ -825,17 +828,26 @@ def _build_portfolio_chart(
         div_id="nwn-portfolio",
     )
 
+    portfolio_note = (
+        "<div class='modeling-note'><strong>What this chart shows:</strong> "
+        "Individual projected balances for taxable brokerage, traditional IRA/401(k), and Roth. "
+        "<strong>Cash and home equity are excluded.</strong> "
+        "A flat line at $0 (e.g. Taxable) means that account is unfunded in this scenario — "
+        "it does not mean the overall portfolio collapsed.</div>"
+    )
+
     taxable_hidden_note = ""
     if not (df["taxable"] != 0).any():
         taxable_hidden_note = (
-            "<div class='modeling-note'><strong>Portfolio display note:</strong> "
-            "Taxable/Brokerage is hidden in this chart because its projected value is "
-            "$0 in every year of this scenario.</div>"
+            "<div class='modeling-note'><strong>Note:</strong> "
+            "Taxable/Brokerage is $0 throughout — "
+            "all investable surplus routes directly into retirement accounts in this scenario.</div>"
         )
 
     portfolio_table_html = build_portfolio_table(df, config=config)
     return (
         f"<div class='gantt-wrap'>{portfolio_div}</div>"
+        f"{portfolio_note}"
         f"{taxable_hidden_note}"
         f"<div class='table-panel portfolio-table-panel'>{portfolio_table_html}</div>"
     )
