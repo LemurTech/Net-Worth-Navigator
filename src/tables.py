@@ -717,6 +717,24 @@ def build_scenario_parameters_summary(
                 _fmt_currency,
             ),
             _diff_row(
+                "401k contribution delta",
+                person.get("annual_401k_contribution_delta"),
+                baseline_person.get("annual_401k_contribution_delta"),
+                _fmt_currency,
+            ),
+            _diff_row(
+                "IRA contribution delta",
+                person.get("annual_ira_contribution_delta"),
+                baseline_person.get("annual_ira_contribution_delta"),
+                _fmt_currency,
+            ),
+            _diff_row(
+                "Employer match delta",
+                person.get("annual_401k_employer_match_delta"),
+                baseline_person.get("annual_401k_employer_match_delta"),
+                _fmt_currency,
+            ),
+            _diff_row(
                 "Employer match mode",
                 person.get("annual_401k_employer_match_mode", "flat"),
                 baseline_person.get("annual_401k_employer_match_mode", "flat"),

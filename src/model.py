@@ -1369,6 +1369,15 @@ def _normalize_contribution_bucket(raw_bucket: object, *, default: str) -> str:
     return bucket if bucket in {"trad_ira", "roth"} else default
 
 
+
+def _try_delta(person: dict, field: str) -> float:
+    """Return the delta value from person dict if present, else 0.0."""
+    try:
+        return float(person.get(field, 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _normalize_401k_contribution_split(raw_split: object) -> dict[str, float] | None:
     """Return normalized trad/Roth 401(k) split weights when configured."""
     if not isinstance(raw_split, dict):
@@ -1424,6 +1433,9 @@ def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
       annual_401k_contribution
       annual_ira_contribution
       annual_401k_employer_match
+      annual_401k_contribution_delta
+      annual_ira_contribution_delta
+      annual_401k_employer_match_delta
       GrossIncome
       GrossIncomeAnnualIncreasePercent
       RetirementContributionPercent
@@ -1454,6 +1466,9 @@ def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
             "annual_401k_contribution",
             "annual_ira_contribution",
             "annual_401k_employer_match",
+            "annual_401k_contribution_delta",
+            "annual_ira_contribution_delta",
+            "annual_401k_employer_match_delta",
             "annual_401k_employer_match_mode",
             "annual_401k_employer_match_rate",
             "annual_401k_employer_match_max_percent",
@@ -1528,6 +1543,8 @@ def _person_retirement_contribution_breakdown(
             assumptions=assumptions,
         )
 
+    # Apply any ContributionChange deltas (relative dollar adjustments)
+    raw_401k += _try_delta(person, "annual_401k_contribution_delta")
     irs_limit = _irs_401k_limit(person, year)
     annual_401k = min(max(0.0, raw_401k), irs_limit)
 
@@ -1535,6 +1552,7 @@ def _person_retirement_contribution_breakdown(
         annual_ira = float(person.get("annual_ira_contribution", 0.0))
     except (TypeError, ValueError):
         annual_ira = 0.0
+    annual_ira = max(0.0, annual_ira + _try_delta(person, "annual_ira_contribution_delta"))
 
     bucket_401k = _normalize_contribution_bucket(
         person.get("annual_401k_contribution_bucket"),
@@ -1585,6 +1603,7 @@ def _person_retirement_contribution_breakdown(
             employer_match = max(0.0, float(person.get("annual_401k_employer_match", 0.0)))
         except (TypeError, ValueError):
             employer_match = 0.0
+    employer_match = max(0.0, employer_match + _try_delta(person, "annual_401k_employer_match_delta"))
 
     match_breakdown = {"trad_ira": 0.0, "roth": 0.0}
     if employer_match > 0.0:

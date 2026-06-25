@@ -397,3 +397,97 @@ class TestEmployerMatchPercent:
         )
         total_match = breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"]
         assert total_match == 0.0
+
+
+class TestContributionChangeDeltas:
+
+    def test_401k_delta_increases_contribution(self):
+        events = [
+            {"type": "ContributionChange", "year": 2028, "person": "person1",
+             "annual_401k_contribution_delta": 12_000}
+        ]
+        breakdown = model._person_retirement_contribution_breakdown(
+            {"_person_key": "person1", "contribution_method": "percent_of_gross",
+             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "dob": "1980-01-01"},
+            year=2028, simulation_start_year=2026,
+            assumptions={"inflation": 0.0}, events=events)
+        assert breakdown["employee_401k_uncapped"] == pytest.approx(22_000.0)
+
+    def test_401k_delta_negative_decreases_contribution(self):
+        events = [
+            {"type": "ContributionChange", "year": 2028, "person": "person1",
+             "annual_401k_contribution_delta": -3_000}
+        ]
+        breakdown = model._person_retirement_contribution_breakdown(
+            {"_person_key": "person1", "contribution_method": "percent_of_gross",
+             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "dob": "1980-01-01"},
+            year=2028, simulation_start_year=2026,
+            assumptions={"inflation": 0.0}, events=events)
+        assert breakdown["employee_401k_uncapped"] == pytest.approx(7_000.0)
+
+    def test_401k_delta_respects_irs_cap(self):
+        events = [
+            {"type": "ContributionChange", "year": 2028, "person": "person1",
+             "annual_401k_contribution_delta": 25_000}
+        ]
+        breakdown = model._person_retirement_contribution_breakdown(
+            {"_person_key": "person1", "contribution_method": "percent_of_gross",
+             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "dob": "1980-01-01"},
+            year=2028, simulation_start_year=2026,
+            assumptions={"inflation": 0.0}, events=events)
+        assert breakdown["employee_401k_capped"] == pytest.approx(23_500.0)
+
+    def test_ira_delta(self):
+        events = [
+            {"type": "ContributionChange", "year": 2028, "person": "person1",
+             "annual_ira_contribution_delta": 2_000}
+        ]
+        breakdown = model._person_retirement_contribution_breakdown(
+            {"_person_key": "person1", "contribution_method": "percent_of_gross",
+             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "annual_ira_contribution": 3_600},
+            year=2028, simulation_start_year=2026,
+            assumptions={"inflation": 0.0}, events=events)
+        assert breakdown["roth"] == pytest.approx(5_600.0)
+
+    def test_employer_match_delta(self):
+        events = [
+            {"type": "ContributionChange", "year": 2028, "person": "person1",
+             "annual_401k_employer_match_delta": 2_000}
+        ]
+        breakdown = model._person_retirement_contribution_breakdown(
+            {"_person_key": "person1", "contribution_method": "percent_of_gross",
+             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "annual_401k_employer_match": 5_000, "dob": "1980-01-01"},
+            year=2028, simulation_start_year=2026,
+            assumptions={"inflation": 0.0}, events=events)
+        total_match = breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"]
+        assert total_match == pytest.approx(7_000.0)
+
+    def test_delta_works_in_flat_mode(self):
+        events = [
+            {"type": "ContributionChange", "year": 2028, "person": "person1",
+             "annual_401k_contribution_delta": 10_000}
+        ]
+        breakdown = model._person_retirement_contribution_breakdown(
+            {"_person_key": "person1", "contribution_method": "flat",
+             "annual_401k_contribution": 20_000, "dob": "1980-01-01"},
+            year=2028, simulation_start_year=2026,
+            assumptions={"inflation": 0.0}, events=events)
+        assert breakdown["employee_401k_capped"] == pytest.approx(23_500.0)
+
+    def test_delta_compounds_with_growth(self):
+        events = [
+            {"type": "ContributionChange", "year": 2028, "person": "person1",
+             "annual_401k_contribution_delta": 12_000}
+        ]
+        breakdown = model._person_retirement_contribution_breakdown(
+            {"_person_key": "person1", "contribution_method": "percent_of_gross",
+             "GrossIncome": 100_000, "GrossIncomeAnnualIncreasePercent": 0.05,
+             "RetirementContributionPercent": 0.10, "dob": "1980-01-01"},
+            year=2028, simulation_start_year=2026,
+            assumptions={"inflation": 0.0}, events=events)
+        assert breakdown["employee_401k_uncapped"] == pytest.approx(23_025.0)
