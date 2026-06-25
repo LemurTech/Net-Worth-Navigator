@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-06-23
-**Status:** Stable. Phase 6 comparison UX and Phase 4 contribution rules (IRS caps + employer match) are complete. 101 passing tests.
+**Last updated:** 2026-06-24
+**Status:** Stable. All charts and tests passing. Compare page CSV parsing hardened against quoted-field delimiters.
 
 ---
 
@@ -101,7 +101,7 @@ Grouped by implementation area.
 
 #### Compare Page — Investment Portfolio Trajectory
 
-- [ ] **Investigate sudden drop-to-zero in portfolio trajectory graph.** Line graph shows values dropping to `$0`, inconsistent with broader portfolio growth. Investigate: graphing artifact, missing/malformed data point, incorrect series, null/undefined/zero handling, or data alignment issue. Confirm whether visual-only or caused by incorrect data generation. Fix so values do not incorrectly drop to zero.
+- [x] **Investigate sudden drop-to-zero in portfolio trajectory graph.** Root cause: JS `parseCSV()` used naive `line.split(',')` which split on commas inside quoted CSV fields — the `events_active` column contains comma-separated event labels, and 6 rows had those commas treated as field delimiters, shifting `taxable`/`trad_ira`/`roth` into wrong columns. Fixed by replacing with a state-machine `parseCSVLine()` parser that respects CSV quoting.
 
 ---
 
@@ -112,6 +112,8 @@ Grouped by implementation area.
 - **`output/` is gitignored.** Do not commit generated HTML or sidecar data.
 - **Scenario TOMLs are local-only** (gitignored). Rollback via backups in `output/config-backups/<slug>/`.
 - **Plotly y-axis title standoff** alone is insufficient when `margin.l` is too narrow. Fix: `automargin: true` + `margin.l >= 80` for `$X.XXM`-format tick labels.
+- **CSV fields containing the delimiter must be quoted.** Pandas `to_csv()` quotes fields containing commas by default, but a naive JS `split(',')` parser will still split inside quotes. Use a state-machine parser (`parseCSVLine`) that tracks `inQuotes` and strips wrapping double-quotes. The `events_active` column is the primary offender — it contains comma-separated event labels.
+- **Delta chart y-axis labels with `+` prefix are wider.** The `tickformat: '+$.2f'` format adds a `+` sign to all values, making labels wider than the standard `$.2f` format used in other charts. This can cause bottom-left corner overlap with x-axis year labels. Increase `margin.l` (≥100) and `margin.b` (≥72) beyond the values used for other charts.
 - **IRS 401(k) cap constants** are hardcoded at 2025 values. Update `_IRS_401K_LIMIT_BASE` / `_IRS_401K_CATCHUP_EXTRA` in `src/model.py` each year.
 - **Employer match is always prefunded** — never a cash outflow from take-home. Routes into same `annual_401k_contribution_split` as the employee contribution. Do not double-count as income.
 - **Plotly `add_vrect` annotation_text** collides with vline labels — use a separate `add_annotation` with `yref="paper"` instead.

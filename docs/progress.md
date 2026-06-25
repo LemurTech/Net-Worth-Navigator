@@ -3,6 +3,13 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-06-24
+
+### Fixed
+
+- **Compare page — portfolio chart drop-to-zero bug.** Caused by JS `parseCSV()` using naive `line.split(',')` which split on commas inside quoted CSV fields. The `events_active` column contains comma-separated event labels (e.g. `🎉 Retirement (M), 🏛️ SS Begins (M)`), and 6 of 41 rows had those internal commas treated as field delimiters, shifting `taxable`/`trad_ira`/`roth` into wrong columns. Replaced with a state-machine `parseCSVLine()` parser in `src/scenario_shell.py` that tracks `inQuotes` and handles escaped quotes.
+- **Compare page — delta chart bottom-left label overlap.** Y-axis `+$X.XXM` labels (wider due to `+` prefix) encroached on x-axis year labels in the corner. Increased `margin.l` (80→100), `margin.b` (56→72), `xaxis.ticklabelstandoff` (12→16), and `xaxis.title.standoff` (10→20) on the delta chart layout in `src/scenario_shell.py`.
+
 ## 2026-06-23
 
 ### Added

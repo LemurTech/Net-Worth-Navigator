@@ -730,13 +730,38 @@ def build_compare_page(
     return 'scenarios/' + slug + '/' + mode + '/sidecars/';
   }}
 
+  // ── CSV line parser (handles quoted fields) ───────────────────────
+  function parseCSVLine(line) {{
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {{
+      const ch = line[i];
+      if (ch === '"') {{
+        if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {{
+          current += '"';
+          i++;
+        }} else {{
+          inQuotes = !inQuotes;
+        }}
+      }} else if (ch === ',' && !inQuotes) {{
+        result.push(current.trim());
+        current = '';
+      }} else {{
+        current += ch;
+      }}
+    }}
+    result.push(current.trim());
+    return result;
+  }}
+
   // ── CSV fetch helper ─────────────────────────────────────────────
   function parseCSV(text) {{
     const lines = text.trim().split('\\n');
     if (!lines.length) return [];
-    const headers = lines[0].split(',');
+    const headers = parseCSVLine(lines[0]);
     return lines.slice(1).map(function(line) {{
-      const vals = line.split(',');
+      const vals = parseCSVLine(line);
       const obj = {{}};
       headers.forEach(function(h, i) {{ obj[h.trim()] = vals[i] !== undefined ? vals[i].trim() : ''; }});
       return obj;
@@ -1014,11 +1039,11 @@ def build_compare_page(
       font: {{ color: '#e5edf7' }},
       paper_bgcolor: '#111827',
       plot_bgcolor: '#0f1725',
-      xaxis: {{ title: {{ text: 'Year', standoff: 10 }}, dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }}, ticklabelstandoff: 12 }},
+      xaxis: {{ title: {{ text: 'Year', standoff: 20 }}, dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }}, ticklabelstandoff: 16 }},
       yaxis: {{ title: {{ text: 'Δ Net Worth ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '+$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }}, zeroline: false }},
       legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 11 }} }},
       hoverlabel: {{ bgcolor: '#1e293b', bordercolor: '#7dd3fc', font_color: '#f8fafc' }},
-      margin: {{ l: 80, r: 16, t: 48, b: 56 }},
+      margin: {{ l: 100, r: 16, t: 48, b: 72 }},
     }};
     const el = document.getElementById('delta-chart');
     if (!el) return;

@@ -1,6 +1,6 @@
 # System Patterns — Net Worth Navigator
 
-**Last Review:** 2026-06-23
+**Last Review:** 2026-06-24
 
 ## Architectural Overview
 
@@ -155,3 +155,4 @@ amount = -6000             # negative = cash outflow
 - **Optional account metadata is the preferred path for better opening basis approximations.** When a scenario needs more accurate starting basis than the household-wide fallback, `[accounts]` inline entries may supply `basis_fraction` for taxable accounts and `roth_contribution_basis_fraction` for Roth accounts; synthetic scenarios can seed direct amounts instead.
 - **Keep TOML comments brief and move the handbook into the shared definitions page.** The repo now ships a static `definitions.html` reference page for grouped, simplified explanations of config parameters; scenario files should keep enough inline guidance to stay usable, but longer explanations belong in the shared page.
 - **Detailed yearly audit surfaces should mirror sidecar structure.** When a modeled output already has a normalized yearly sidecar (like taxes), the projection page can expose the same shape as a dedicated yearly tab instead of overloading summary cards or cash-flow rows.
+- **Static-page CSV parsing must handle quoted fields.** Pandas `to_csv()` correctly quotes fields containing commas, but a naive JS `split(',')` will split inside those quotes — corrupting column alignment for rows where quoted fields contain the delimiter character. The `events_active` column is the canonical trigger because it carries comma-separated event labels. The fix is a state-machine line parser (`parseCSVLine`) that tracks an `inQuotes` flag, strips wrapping double-quotes, and only treats commas as delimiters when outside quotes. This applies to any static HTML page that parses sidecar CSVs client-side.
