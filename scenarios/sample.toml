@@ -1,92 +1,133 @@
-# Net Worth Navigator — Shareable Sample Scenario
-# This scenario is safe for demos: it uses synthetic starting balances,
-# not live Monarch data and not Monarch cache data.
+# Net Worth Navigator — Shareable Sample Scenario (Reference Documentation)
+#
+# This file is the canonical versioned reference scenario. It illustrates every
+# available config section, field, and event type with inline documentation and
+# realistic synthetic demo values. Safe for sharing — uses synthetic starting
+# balances, not live Monarch data.
+#
+# Household: Alex (person1, b. 1969) and Sam (person2, b. 1974).
+# Both work into their 60s, both contribute to 401(k)/IRA via percentage-of-gross
+# with employer matches, travel every other year, and carry a sample mortgage.
+#
+# Scenario files are TOML. Fields can be commented out with #.
+# Events can be toggled on/off with enabled = true/false without deleting them.
+# All monetary values are in today's USD unless noted.
+
+# ─── Scenario Metadata ─────────────────────────────────────────────────────────
 
 [scenario]
-name = "Sample Plan"
-slug = "sample"
-description = "Share-safe synthetic scenario for demos and walkthroughs."
-is_default = false
+name        = "Sample Plan"
+slug        = "sample"
+description = "Share-safe synthetic reference scenario with full inline documentation."
+is_default  = false
+
+# ─── Data Source (synthetic → no Monarch call, no cache) ───────────────────────
 
 [data_source]
 mode = "synthetic"   # synthetic | monarch
 
+# ─── Synthetic Starting Balances ───────────────────────────────────────────────
+
 [synthetic_start]
-# Starting investable balances (synthetic)
-taxable = 120000
+# Investable buckets
+taxable  = 120000
 trad_ira = 380000
-roth = 95000
-cash = 45000
-# Optional explicit basis seeds for synthetic scenarios:
+roth     = 95000
+cash     = 45000
+# Optional explicit basis seeds (if omitted, defaults to 50% taxable cost basis,
+# 100% Roth contribution basis):
 # taxable_cost_basis = 84000
 # roth_contribution_basis = 70000
 
-# Starting non-investable balances (synthetic)
+# Non-investable balances
 home_value = 520000
+vehicles   = 0
+other      = 0
 
-# Optional synthetic rollups
-vehicles = 0
-other = 0
-
-# Optional named property balances for SellHome/property tracking
+# Named property balances for SellHome / property-tracking events
 [synthetic_start.property_values]
 "Sample Residence" = 520000
 
-# Optional named liability balances (must match [[liabilities]].name if used)
+# Named liability balances (must match [[liabilities]].name entries)
 [synthetic_start.liability_balances]
 "Sample Mortgage" = 265000
 
+# ─── Simulation Controls ───────────────────────────────────────────────────────
+
 [simulation]
-start_year = 2026
-end_year = 2066
+start_year  = 2026
+end_year    = 2066
+render_modes = ["deterministic", "historical", "monte_carlo"]
+mode = "deterministic"   # compatibility/default single-run mode
+# num_runs = 250                          # Monte Carlo run count (default 250)
+# seed = 12345                            # reproducibility seed
+# portfolio_return_volatility = 0.15      # annual stdev for blended investable return
+# historical_returns_path = "config/return_sequences/us_balanced_returns.csv"
+
+# ─── Display Settings ──────────────────────────────────────────────────────────
 
 [display]
 projection_title = "Sample Household Plan (Synthetic Demo)"
 
-render_modes = ["deterministic", "historical", "monte_carlo"]   # shell/render pipeline outputs these mode variants
-mode = "deterministic"   # compatibility/default single-run mode; per-mode renders override this automatically
-# num_runs = 250
-# seed = 12345
-# portfolio_return_volatility = 0.15   # annual stdev for blended investable return in Monte Carlo mode
-# historical_returns_path = "config/return_sequences/us_balanced_returns.csv"  # bundled illustrative starter dataset; columns: year, return
+# ─── Stochastic Success / Failure Rules ────────────────────────────────────────
 
-[monte_carlo.success]    # success/failure rules for all stochastic modes: monte_carlo and historical
+[monte_carlo.success]
 failure_mode = "spending_shortfall"
-
-# Possible values:
-# - "net_worth_below_zero"
-# - "liquid_depletion"
-# - "spending_shortfall"
-# - "preserve_home_equity"
-# - "custom"
-
+# Possible values: "net_worth_below_zero" | "liquid_depletion" |
+#   "spending_shortfall" | "preserve_home_equity" | "custom"
 minimum_spending_funded_ratio = 1.0
 allow_home_equity_for_spending = false
 allow_debt_for_spending = false
 failure_grace_period_months = 0
-
-# Additional stochastic risk metrics shown in the UI/sidecars
-# (for example Probability of Home Equity Required) are derived
-# from these rules and do not require extra TOML fields.
-
-# Optional custom mode controls:
-# custom_failure_column = "spending_funded_ratio"
+# custom_failure_column   = "spending_funded_ratio"
 # custom_failure_operator = "<"
 # custom_failure_threshold = 1.0
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Household Members ─────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [person1]
-name = "Alex"
-dob = "1969-04-12"
-life_expectancy = 90
-retirement_year = 2038
-annual_take_home = 78000
-annual_take_home_is_net_of_retirement_contributions = true
-annual_take_home_real_raise = 0.01
-annual_401k_contribution = 22000
-annual_401k_contribution_extra_increase = 0.00
-annual_ira_contribution = 0
+name              = "Alex"
+dob               = "1969-04-12"   # YYYY-MM-DD
+life_expectancy   = 90             # modeled terminal age (not a prediction)
+retirement_year   = 2038           # first year wages stop in the model
+
+# Employment income inputs (annual, nominal dollars)
+annual_take_home  = 78000          # net-cash wage input (see [taxes].wage_tax_treatment)
+annual_take_home_is_net_of_retirement_contributions = true  # true = do NOT subtract payroll contributions again
+annual_take_home_real_raise = 0.01  # real raise above inflation; total growth ~= (1+inflation)*(1+real_raise)-1
+
+# Retirement contributions — percentage of gross income
+# When contribution_method = "percent_of_gross", the model computes the
+# contribution as GrossIncome × RetirementContributionPercent, then applies
+# annual gross growth and auto-escalation if configured.
+contribution_method = "percent_of_gross"
+GrossIncome = 110000                   # gross annual income (used for contribution math only)
+GrossIncomeAnnualIncreasePercent = 0.04   # combined COLA + performance
+RetirementContributionPercent = 0.21       # 21% of gross income
+RetirementContributionAnnualIncreasePercent = 0.00  # no auto-escalation
+RetirementContributionMaxPercent = 0.30     # never exceed 30% of gross
+
+# Employer match — percentage of gross (standard match logic)
+# The employer matches match_rate of employee contributions, but only up to
+# match_max_percent of gross income.
+# Formula: match = grown_gross × min(employee_pct, match_max_pct) × match_rate
+annual_401k_employer_match_mode = "percent_of_gross"
+annual_401k_employer_match_rate = 0.50     # 50 cents per dollar contributed
+annual_401k_employer_match_max_percent = 0.06  # match applies to first 6% of salary
+
+annual_ira_contribution  = 0        # direct IRA contribution (cash outflow + bucket deposit)
+
+# Optional routing override for explicit contribution deposits
+# annual_401k_contribution_bucket = "trad_ira"  # valid: trad_ira | roth
+# annual_ira_contribution_bucket  = "roth"      # valid: trad_ira | roth
+
+# Share of household traditional retirement balance for RMD math
 rmd_trad_ira_share = 0.6
-ss_start_age = 67
+
+# Social Security timing and benefit options
+ss_start_age = 67   # source of truth for SS start timing
 
 [person1.social_security_benefits]
 "62" = 1700
@@ -99,22 +140,40 @@ ss_start_age = 67
 "69" = 2910
 "70" = 3120
 
+# Optional proportional split for bundled workplace plan (trad + Roth buckets).
+# When configured, contributions are divided between trad_ira and roth by ratio.
 [person1.annual_401k_contribution_split]
 trad_ira = 0.31
 roth     = 0.69
 
+# ────────────────────────────────────────────────────────────────────────────────
+
 [person2]
-name = "Sam"
-dob = "1974-10-03"
-life_expectancy = 92
-retirement_year = 2043
-annual_take_home = 52000
+name              = "Sam"
+dob               = "1974-10-03"
+life_expectancy   = 92
+retirement_year   = 2043
+
+annual_take_home  = 52000
 annual_take_home_is_net_of_retirement_contributions = true
 annual_take_home_real_raise = 0.005
-annual_401k_contribution = 8000
-annual_401k_contribution_extra_increase = 0.00
-annual_ira_contribution = 3000
+
+# Retirement contributions — percentage of gross income
+contribution_method = "percent_of_gross"
+GrossIncome = 65000
+GrossIncomeAnnualIncreasePercent = 0.035
+RetirementContributionPercent = 0.12
+RetirementContributionAnnualIncreasePercent = 0.00
+RetirementContributionMaxPercent = 0.20
+
+# Employer match — percentage of gross
+annual_401k_employer_match_mode = "percent_of_gross"
+annual_401k_employer_match_rate = 0.50
+annual_401k_employer_match_max_percent = 0.06
+
+annual_ira_contribution  = 3000  # direct IRA contribution
 annual_ira_contribution_bucket = "roth"
+
 rmd_trad_ira_share = 0.4
 ss_start_age = 67
 
@@ -129,155 +188,241 @@ ss_start_age = 67
 "69" = 1860
 "70" = 2010
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Spending & Withdrawal Policy ──────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [spending]
-retirement_annual = 82000
-survivor_percent_of_retirement = 0.72
-spending_basis = "real"
+retirement_annual = 82000            # annual household spending target (both alive, in today's dollars)
+survivor_percent_of_retirement = 0.72  # survivor spending = 72% of retirement_annual
+spending_basis = "real"              # "real" inflates spending annually | "nominal" keeps it flat
 
 [withdrawal_policy]
+# Cash reserve targets by phase — the model tries to keep this much cash on hand
+# before investing surplus or drawing down retirement accounts.
 accumulation_cash_target = 45000
-retirement_cash_target = 85000
-survivor_cash_target = 65000
+retirement_cash_target   = 85000
+survivor_cash_target     = 65000
 
+# Withdrawal order when cash is below target (which buckets to sell first)
 accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
 retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
 survivor_withdrawal_order     = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
 
+# Surplus reinvestment order when cash is above target (which buckets get the extra)
 accumulation_surplus_order = ["taxable", "roth", "trad_ira"]
 retirement_surplus_order   = ["taxable", "roth", "trad_ira"]
 survivor_surplus_order     = ["taxable", "roth", "trad_ira"]
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Market Assumptions ────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [assumptions]
-stock_return = 0.07
-bond_return = 0.04
-inflation = 0.03
-cash_return = 0.03
-real_estate_appreciation = 0.03
-equity_allocation = 0.70
-real_estate_sale_fee_rate = 0.06
+stock_return  = 0.07   # annual nominal return on equities
+bond_return   = 0.04   # annual nominal return on bonds
+inflation     = 0.03   # annual inflation rate
+cash_return   = 0.03   # annual return on cash buckets (defaults to inflation if omitted)
+real_estate_appreciation = 0.03   # annual home-value appreciation
+equity_allocation       = 0.70   # fraction of investable portfolio in equities (rest in bonds)
+real_estate_sale_fee_rate = 0.06 # fee deducted from gross sale proceeds
 
-effective_tax_rate_pre_retirement = 0.22
-effective_tax_rate_post_retirement = 0.15
+effective_tax_rate_pre_retirement  = 0.22  # legacy flat-tax fallback (see [taxes] for current model)
+effective_tax_rate_post_retirement = 0.15  # legacy flat-tax fallback
 
-taxable_withdrawal_taxable_fraction = 0.50   # legacy fallback only; omitted basis seeds imply 50% starting cost basis
-trad_ira_withdrawal_taxable_fraction = 1.00
-# Optional account-mechanics defaults:
+# Account-mechanics defaults
+taxable_withdrawal_taxable_fraction = 0.50   # 50% of taxable withdrawals are realized gains
+trad_ira_withdrawal_taxable_fraction = 1.00  # 100% of traditional withdrawals are taxable
 # initial_taxable_cost_basis_fraction = 0.50
 # initial_roth_contribution_basis_fraction = 1.00
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Tax Engine ────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [taxes]
 enabled = true
-table_set = "2025_us_federal_oregon"
+table_set = "2025_us_federal_oregon"   # shared tax table reference in config/tax_tables/
 pre_retirement_filing_status = "married_joint"
-retirement_filing_status = "married_joint"
-survivor_filing_status = "single"
-wage_tax_treatment = "net_cash"
+retirement_filing_status     = "married_joint"
+survivor_filing_status       = "single"
+wage_tax_treatment = "net_cash"        # "net_cash" (current) | "taxable_wages" (future)
 
 [taxes.rmd]
-enabled = true
-start_age = 73
+enabled    = true
+start_age  = 73
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Liabilities ───────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
 
 [[liabilities]]
-name = "Sample Mortgage"
+name        = "Sample Mortgage"
 annual_rate = 0.0575
-monthly_base = 2100
+monthly_base  = 2100
 monthly_extra = 200
-type = "mortgage"
+type        = "mortgage"
 
-# Core lifecycle anchors
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Events ────────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Each [[events]] block is one event. Set enabled = false to exclude it from
+# the current run without deleting configuration.
+#
+# Event types and required fields:
+# ┌─────────────────────┬──────────────────────────────────────────────────────┐
+# │ EndOfPlan           │ person, year — zeroes income, triggers SS survivor   │
+# │ Retire              │ person, year — permanent stop to wages (runtime)    │
+# │ SocialSecurity      │ person, year, monthly_benefit                      │
+# │ Expense             │ year, amount (negative), optional expense_kind/     │
+# │                     │   repeat_every_years, chart_first_occurrence_only   │
+# │ Income              │ year, amount (positive), optional end_year, taxable │
+# │ BuyHome / SellHome  │ year + property/mortgage fields                    │
+# │ NewJob / CareerBreak│ person, year/start_year/end_year, income fields    │
+# │ Education           │ person, start_year, end_year, annual_cost          │
+# │ SpendingShift       │ start_year, mode, optional end_year                │
+# │ ContributionChange  │ year, person + contribution/employer override fields│
+# │ Marriage            │ year (informational)                               │
+# └─────────────────────┴──────────────────────────────────────────────────────┘
+#
+# Recurring controls: repeat_every_years, repeat_until_year, repeat_count
+# Chart decluttering:   chart_first_occurrence_only = true (show only first label)
+
+# ─── 1. Plan Boundary / Life Expectancy ────────────────────────────────────────
+
 [[events]]
 enabled = true
-type = "EndOfPlan"
-label = "End of Plan (Alex)"
-person = "person1"
-year = 2059
+type    = "EndOfPlan"
+label   = "End of Plan (Alex)"
+person  = "person1"
+year    = 2059                      # 1969 + 90
 
 [[events]]
 enabled = true
-type = "EndOfPlan"
-label = "End of Plan (Sam)"
-person = "person2"
-year = 2066
+type    = "EndOfPlan"
+label   = "End of Plan (Sam)"
+person  = "person2"
+year    = 2066                      # 1974 + 92
 
-# Example recurring discretionary spending
+# ─── 2. Pre-Retirement / Near-Term Known Events ────────────────────────────────
+
+# --- ContributionChange ---
+# Override one or more per-person contribution amounts from a given year onward.
+# Useful for restoring full 401(k) contributions after an early mortgage payoff,
+# or stepping down contributions before a planned career break.
+#
+# Absolute fields (replace the current value):
+#   annual_401k_contribution, annual_ira_contribution, annual_401k_employer_match
+#
+# Delta fields (add to the computed dollar amount, works in both flat and percent modes):
+#   annual_401k_contribution_delta, annual_ira_contribution_delta,
+#   annual_401k_employer_match_delta
+#
+# Percent-mode fields:
+#   GrossIncome, GrossIncomeAnnualIncreasePercent, RetirementContributionPercent,
+#   RetirementContributionAnnualIncreasePercent, RetirementContributionMaxPercent
+#
+# Employer-match percent-mode fields:
+#   annual_401k_employer_match_mode, annual_401k_employer_match_rate,
+#   annual_401k_employer_match_max_percent
+#
+# Example (commented — not active in this sample scenario):
+# [[events]]
+# enabled = true
+# type    = "ContributionChange"
+# label   = "401k step-up (mortgage paid off)"
+# year    = 2033
+# person  = "person1"
+# annual_401k_contribution_delta = 12000   # redirect freed mortgage cash into 401(k)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ─── 3. Lifestyle Before and During Retirement ─────────────────────────────────
+
+# Recurring travel (every other year, starting in 2027)
 [[events]]
 enabled = true
-type = "Expense"
-label = "Travel"
-year = 2027
-amount = -8000
+type    = "Expense"
+label   = "Travel"
+year    = 2027
+amount  = -8000
 expense_kind = "discretionary"
 funding = "cash_reserve_first"
 repeat_every_years = 2
-repeat_until_year = 2055
+repeat_until_year  = 2055
 chart_first_occurrence_only = true
 
-# Typical home maintenance / repairs
+# Annual home maintenance reserve
 [[events]]
 enabled = true
-type = "Expense"
-label = "Home maintenance reserve"
-year = 2026
-amount = -3500
+type    = "Expense"
+label   = "Home maintenance reserve"
+year    = 2026
+amount  = -3500
 expense_kind = "mandatory"
 funding = "cash_reserve_first"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
+# One-time large home repairs
 [[events]]
 enabled = true
-type = "Expense"
-label = "HVAC replacement"
-year = 2034
-amount = -12000
+type    = "Expense"
+label   = "HVAC replacement"
+year    = 2034
+amount  = -12000
 expense_kind = "mandatory"
 funding = "cash_reserve_first"
 
 [[events]]
 enabled = true
-type = "Expense"
-label = "Roof replacement"
-year = 2043
-amount = -18000
+type    = "Expense"
+label   = "Roof replacement"
+year    = 2043
+amount  = -18000
 expense_kind = "mandatory"
 funding = "cash_reserve_first"
 
-# Vehicle lifecycle events
+# ─── 4. Vehicle Lifecycle ──────────────────────────────────────────────────────
+
 [[events]]
 enabled = true
-type = "Expense"
-label = "Vehicle purchase"
-year = 2032
-amount = -26000
+type    = "Expense"
+label   = "Vehicle purchase"
+year    = 2032
+amount  = -26000
 expense_kind = "mandatory"
 funding = "cash_reserve_first"
 
 [[events]]
 enabled = true
-type = "Expense"
-label = "Vehicle replacement"
-year = 2044
-amount = -30000
+type    = "Expense"
+label   = "Vehicle replacement"
+year    = 2044
+amount  = -30000
 expense_kind = "mandatory"
 funding = "cash_reserve_first"
 
-# Example bounded side income
+# ─── 5. Income Events ─────────────────────────────────────────────────────────
+
+# Bounded side income during early retirement
 [[events]]
 enabled = true
-type = "Income"
-label = "Part-time consulting"
-year = 2038
-amount = 18000
+type    = "Income"
+label   = "Part-time consulting"
+year    = 2038
+amount  = 18000
 end_year = 2042
-taxable = true
+taxable  = true
 
-# Example later-life care cost
+# ─── 6. Later-Life Care ────────────────────────────────────────────────────────
+
 [[events]]
 enabled = true
-type = "Expense"
-label = "Care support"
-year = 2053
-amount = -25000
+type    = "Expense"
+label   = "Care support"
+year    = 2053
+amount  = -25000
 expense_kind = "mandatory"
 repeat_every_years = 1
 chart_first_occurrence_only = true
