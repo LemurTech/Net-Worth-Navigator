@@ -266,3 +266,134 @@ class TestResolveContributionMethod:
 
     def test_invalid_falls_back_to_flat(self):
         assert model._resolve_contribution_method({"contribution_method": "garbage"}) == "flat"
+
+
+class TestEmployerMatchPercent:
+    """Percentage-of-gross employer match computation."""
+
+    def test_flat_match_default(self):
+        """Flat-dollar employer match is the default behavior."""
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "contribution_method": "percent_of_gross",
+                "GrossIncome": 100_000,
+                "RetirementContributionPercent": 0.10,
+                "annual_401k_employer_match": 5_000,
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+        assert breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"] == pytest.approx(5_000.0)
+
+    def test_percent_match_basic(self):
+        """50% match up to 6% of salary: employee contributes 10%, match = 100K × 6% × 50% = 3,000."""
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "contribution_method": "percent_of_gross",
+                "GrossIncome": 100_000,
+                "RetirementContributionPercent": 0.10,
+                "annual_401k_employer_match_mode": "percent_of_gross",
+                "annual_401k_employer_match_rate": 0.50,
+                "annual_401k_employer_match_max_percent": 0.06,
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+        total_match = breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"]
+        assert total_match == pytest.approx(3_000.0)
+
+    def test_percent_match_capped_by_employee_percent(self):
+        """Employee contributes 4%, match max is 6%. Match = 100K × 4% × 50% = 2,000."""
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "contribution_method": "percent_of_gross",
+                "GrossIncome": 100_000,
+                "RetirementContributionPercent": 0.04,
+                "annual_401k_employer_match_mode": "percent_of_gross",
+                "annual_401k_employer_match_rate": 0.50,
+                "annual_401k_employer_match_max_percent": 0.06,
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+        total_match = breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"]
+        assert total_match == pytest.approx(2_000.0)
+
+    def test_percent_match_with_gross_growth(self):
+        """Gross income grows, match tracks grown income."""
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "contribution_method": "percent_of_gross",
+                "GrossIncome": 100_000,
+                "GrossIncomeAnnualIncreasePercent": 0.05,
+                "RetirementContributionPercent": 0.10,
+                "annual_401k_employer_match_mode": "percent_of_gross",
+                "annual_401k_employer_match_rate": 0.50,
+                "annual_401k_employer_match_max_percent": 0.06,
+            },
+            year=2028,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+        # Gross = 100K × 1.05² = 110,250. Match = 110,250 × 6% × 50% = 3,307.50
+        total_match = breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"]
+        assert total_match == pytest.approx(3_307.50)
+
+    def test_percent_match_routes_through_split(self):
+        """Match respects the 401(k) contribution split."""
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "contribution_method": "percent_of_gross",
+                "GrossIncome": 100_000,
+                "RetirementContributionPercent": 0.10,
+                "annual_401k_contribution_split": {"trad_ira": 0.60, "roth": 0.40},
+                "annual_401k_employer_match_mode": "percent_of_gross",
+                "annual_401k_employer_match_rate": 1.00,
+                "annual_401k_employer_match_max_percent": 0.06,
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+        # Match = 100K × 6% × 100% = 6,000. Split 60/40 = 3,600 / 2,400
+        assert breakdown["employer_match_trad_ira"] == pytest.approx(3_600.0)
+        assert breakdown["employer_match_roth"] == pytest.approx(2_400.0)
+
+    def test_percent_match_zero_when_rate_zero(self):
+        """No match when match rate is zero."""
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "contribution_method": "percent_of_gross",
+                "GrossIncome": 100_000,
+                "RetirementContributionPercent": 0.10,
+                "annual_401k_employer_match_mode": "percent_of_gross",
+                "annual_401k_employer_match_rate": 0.0,
+                "annual_401k_employer_match_max_percent": 0.06,
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+        total_match = breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"]
+        assert total_match == 0.0
+
+    def test_percent_match_zero_when_max_percent_zero(self):
+        """No match when max matched percent is zero."""
+        breakdown = model._person_retirement_contribution_breakdown(
+            {
+                "contribution_method": "percent_of_gross",
+                "GrossIncome": 100_000,
+                "RetirementContributionPercent": 0.10,
+                "annual_401k_employer_match_mode": "percent_of_gross",
+                "annual_401k_employer_match_rate": 0.50,
+                "annual_401k_employer_match_max_percent": 0.0,
+            },
+            year=2026,
+            simulation_start_year=2026,
+            assumptions={"inflation": 0.0},
+        )
+        total_match = breakdown["employer_match_trad_ira"] + breakdown["employer_match_roth"]
+        assert total_match == 0.0

@@ -717,6 +717,24 @@ def build_scenario_parameters_summary(
                 _fmt_currency,
             ),
             _diff_row(
+                "Employer match mode",
+                person.get("annual_401k_employer_match_mode", "flat"),
+                baseline_person.get("annual_401k_employer_match_mode", "flat"),
+                _fmt_text,
+            ),
+            _diff_row(
+                "Employer match rate",
+                person.get("annual_401k_employer_match_rate"),
+                baseline_person.get("annual_401k_employer_match_rate"),
+                _fmt_percent,
+            ),
+            _diff_row(
+                "Employer match max percent",
+                person.get("annual_401k_employer_match_max_percent"),
+                baseline_person.get("annual_401k_employer_match_max_percent"),
+                _fmt_percent,
+            ),
+            _diff_row(
                 "401k extra increase",
                 person.get("annual_401k_contribution_extra_increase"),
                 baseline_person.get("annual_401k_contribution_extra_increase"),

@@ -1298,6 +1298,48 @@ def _project_person_401k_percent(
     return grown_income * max(0.0, escalated_pct)
 
 
+def _resolve_current_gross_income(
+    person: dict,
+    *,
+    year: int,
+    simulation_start_year: int,
+) -> float:
+    """Return grown gross income for the current year (for employer match math)."""
+    try:
+        gross_income = float(person.get("GrossIncome", 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+    try:
+        gross_increase = float(person.get("GrossIncomeAnnualIncreasePercent", 0.0))
+    except (TypeError, ValueError):
+        gross_increase = 0.0
+    years_elapsed = max(0, int(year) - int(simulation_start_year))
+    return gross_income * ((1.0 + gross_increase) ** years_elapsed)
+
+
+def _resolve_current_contribution_percent(
+    person: dict,
+    *,
+    year: int,
+    simulation_start_year: int,
+) -> float:
+    """Return escalated contribution percent for the current year (for employer match math)."""
+    try:
+        contrib_pct = float(person.get("RetirementContributionPercent", 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+    try:
+        contrib_escalation = float(person.get("RetirementContributionAnnualIncreasePercent", 0.0))
+    except (TypeError, ValueError):
+        contrib_escalation = 0.0
+    try:
+        contrib_max = float(person.get("RetirementContributionMaxPercent", 1.0))
+    except (TypeError, ValueError):
+        contrib_max = 1.0
+    years_elapsed = max(0, int(year) - int(simulation_start_year))
+    return min(contrib_pct + contrib_escalation * years_elapsed, contrib_max)
+
+
 # ── IRS 401(k) contribution limits (2025 baseline) ────────────────────────────
 # Employee-only elective deferral limits.  Catch-up applies at age 50+.
 # These are intentionally not config-driven — they are IRS-determined floors,
@@ -1412,6 +1454,9 @@ def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
             "annual_401k_contribution",
             "annual_ira_contribution",
             "annual_401k_employer_match",
+            "annual_401k_employer_match_mode",
+            "annual_401k_employer_match_rate",
+            "annual_401k_employer_match_max_percent",
         ):
             if field in event:
                 try:
@@ -1511,14 +1556,35 @@ def _person_retirement_contribution_breakdown(
         breakdown[bucket_401k] += annual_401k
     breakdown[bucket_ira] += max(0.0, annual_ira)
 
-    # ── Employer match ────────────────────────────────────────────────────────
-    # Flat annual dollar amount, always deposited as an additional prefunded
-    # contribution.  Routes into the same split as the employee 401(k).
-    # Config field: annual_401k_employer_match (default: 0)
-    try:
-        employer_match = max(0.0, float(person.get("annual_401k_employer_match", 0.0)))
-    except (TypeError, ValueError):
-        employer_match = 0.0
+        # ── Employer match ────────────────────────────────────────────────────────
+    # Config fields:
+    #   annual_401k_employer_match_mode = "flat" (default) | "percent_of_gross"
+    #   annual_401k_employer_match       — flat dollar amount
+    #   annual_401k_employer_match_rate  — match rate (e.g. 0.50 = 50% match)
+    #   annual_401k_employer_match_max_percent — max salary % matched (e.g. 0.06)
+    match_mode = str(person.get("annual_401k_employer_match_mode", "flat")).strip().lower()
+    if match_mode == "percent_of_gross":
+        gross = _resolve_current_gross_income(
+            person, year=year, simulation_start_year=simulation_start_year,
+        )
+        employee_pct = _resolve_current_contribution_percent(
+            person, year=year, simulation_start_year=simulation_start_year,
+        )
+        try:
+            match_rate = max(0.0, float(person.get("annual_401k_employer_match_rate", 0.0)))
+        except (TypeError, ValueError):
+            match_rate = 0.0
+        try:
+            match_max_pct = max(0.0, float(person.get("annual_401k_employer_match_max_percent", 0.0)))
+        except (TypeError, ValueError):
+            match_max_pct = 0.0
+        matched_pct = min(employee_pct, match_max_pct)
+        employer_match = max(0.0, gross * matched_pct * match_rate)
+    else:
+        try:
+            employer_match = max(0.0, float(person.get("annual_401k_employer_match", 0.0)))
+        except (TypeError, ValueError):
+            employer_match = 0.0
 
     match_breakdown = {"trad_ira": 0.0, "roth": 0.0}
     if employer_match > 0.0:

@@ -211,6 +211,22 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Maximum contribution percentage cap. The contribution rate stops escalating once it reaches this value. Example: 0.18 = never exceed 18% of gross income.",
             },
             {
+                "key": "[personX].annual_401k_employer_match",
+                "summary": "Flat annual employer 401(k) match dollar amount. Used when `annual_401k_employer_match_mode = \"flat\"` (default).",
+            },
+            {
+                "key": "[personX].annual_401k_employer_match_mode",
+                "summary": "Employer match mode: `flat` (default) or `percent_of_gross`. In percent mode, the employer matches `match_rate` of employee contributions up to `match_max_percent` of gross income.",
+            },
+            {
+                "key": "[personX].annual_401k_employer_match_rate",
+                "summary": "Percentage of employee contribution the employer matches. Example: 0.50 = 50 cents per dollar contributed.",
+            },
+            {
+                "key": "[personX].annual_401k_employer_match_max_percent",
+                "summary": "Maximum percentage of gross income the employer will match. Example: 0.06 = match applies only to the first 6% of salary contributed.",
+            },
+            {
                 "key": "[personX].annual_ira_contribution",
                 "summary": "Direct IRA contribution modeled as a cash outflow plus deposit into `trad_ira` or `roth`.",
             },
@@ -463,7 +479,10 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                     "Required: `year`, `person` (`person1` or `person2`)",
                     "Optional: `annual_401k_contribution` — new absolute dollar amount",
                     "Optional: `annual_ira_contribution` — new absolute dollar amount",
-                    "Optional: `annual_401k_employer_match` — new employer match dollar amount",
+                    "Optional: `annual_401k_employer_match` — new employer match dollar amount (flat mode)",
+                    "Optional: `annual_401k_employer_match_mode` — \"flat\" or \"percent_of_gross\"",
+                    "Optional: `annual_401k_employer_match_rate` — match rate as decimal (e.g. 0.50 = 50% match)",
+                    "Optional: `annual_401k_employer_match_max_percent` — max salary % matched (e.g. 0.06)",
                     "Optional: `GrossIncome` — new gross income for percentage-based contributions",
                     "Optional: `GrossIncomeAnnualIncreasePercent` — new gross income increase rate",
                     "Optional: `RetirementContributionPercent` — new contribution percentage",
