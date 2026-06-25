@@ -693,21 +693,21 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
     fig.add_trace(go.Scatter(
         x=df["year"], y=income, mode="lines", name="Total Income",
         line=dict(color="#34d399", width=1.8),
-        hovertemplate="<b>%{x}</b><br>Income: $%{y:,.0f}<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Income: %{y:$,.0f}<extra></extra>",
     ))
 
     fig.add_trace(go.Scatter(
         x=df["year"], y=spending, mode="lines", name="Total Spending",
         line=dict(color="#f87171", width=1.8, dash="dash"),
         opacity=0.70,
-        hovertemplate="<b>%{x}</b><br>Spending: $%{y:,.0f}<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Spending: %{y:$,.0f}<extra></extra>",
     ))
 
     fig.add_trace(go.Scatter(
         x=df["year"], y=net_flow, mode="lines", name="Net Flow",
         fill="tozeroy", fillcolor="rgba(52, 211, 153, 0.10)",
         line=dict(color="#e5edf7", width=2.2),
-        hovertemplate="<b>%{x}</b><br>Net Flow: $%{y:+,.0f}<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Net Flow: %{y:$,.0f}<extra></extra>",
     ))
 
     fig.update_layout(
