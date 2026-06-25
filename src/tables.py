@@ -723,6 +723,42 @@ def build_scenario_parameters_summary(
                 _fmt_percent,
             ),
             _diff_row(
+                "Contribution method",
+                person.get("contribution_method", "flat"),
+                baseline_person.get("contribution_method", "flat"),
+                _fmt_text,
+            ),
+            _diff_row(
+                "Gross income",
+                person.get("GrossIncome"),
+                baseline_person.get("GrossIncome"),
+                _fmt_currency,
+            ),
+            _diff_row(
+                "Gross income annual increase",
+                person.get("GrossIncomeAnnualIncreasePercent"),
+                baseline_person.get("GrossIncomeAnnualIncreasePercent"),
+                _fmt_percent,
+            ),
+            _diff_row(
+                "Retirement contribution percent",
+                person.get("RetirementContributionPercent"),
+                baseline_person.get("RetirementContributionPercent"),
+                _fmt_percent,
+            ),
+            _diff_row(
+                "Retirement contribution escalation",
+                person.get("RetirementContributionAnnualIncreasePercent"),
+                baseline_person.get("RetirementContributionAnnualIncreasePercent"),
+                _fmt_percent,
+            ),
+            _diff_row(
+                "Retirement contribution max percent",
+                person.get("RetirementContributionMaxPercent"),
+                baseline_person.get("RetirementContributionMaxPercent"),
+                _fmt_percent,
+            ),
+            _diff_row(
                 "401k contribution split",
                 person.get("annual_401k_contribution_split"),
                 baseline_person.get("annual_401k_contribution_split"),
@@ -1160,6 +1196,22 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
         if over_cap_years_p2:
             names_flagged.append(f"{person2_name} ({', '.join(str(y) for y in over_cap_years_p2[:3])}{'…' if len(over_cap_years_p2) > 3 else ''})")
         warning_msg = "⚠ IRS 401(k) limit exceeded — contribution capped: " + "; ".join(names_flagged)
+        rows.append(
+            f"<tr class='section'><th colspan='100' style='color:#fbbf24;background:rgba(251,191,36,0.08);font-weight:500;font-size:12px'>{warning_msg}</th></tr>"
+        )
+
+    # IRS total limit warnings
+    total_over_p1 = col("person1_over_total_limit") if "person1_over_total_limit" in df.columns else []
+    total_over_p2 = col("person2_over_total_limit") if "person2_over_total_limit" in df.columns else []
+    total_over_years_p1 = [years[i] for i, v in enumerate(total_over_p1) if v]
+    total_over_years_p2 = [years[i] for i, v in enumerate(total_over_p2) if v]
+    if total_over_years_p1 or total_over_years_p2:
+        names_flagged = []
+        if total_over_years_p1:
+            names_flagged.append(f"{person1_name} ({', '.join(str(y) for y in total_over_years_p1[:3])}{'…' if len(total_over_years_p1) > 3 else ''})")
+        if total_over_years_p2:
+            names_flagged.append(f"{person2_name} ({', '.join(str(y) for y in total_over_years_p2[:3])}{'…' if len(total_over_years_p2) > 3 else ''})")
+        warning_msg = "⚠ IRS total contribution limit exceeded — employee contribution scaled down: " + "; ".join(names_flagged)
         rows.append(
             f"<tr class='section'><th colspan='100' style='color:#fbbf24;background:rgba(251,191,36,0.08);font-weight:500;font-size:12px'>{warning_msg}</th></tr>"
         )

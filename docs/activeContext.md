@@ -96,8 +96,8 @@ Grouped by implementation area.
 
 #### Compare Page — Annual Cash Flow Card
 
-- [ ] **Round net flow values in chart popup overlays.** Net flow values should use the same currency rounding and formatting conventions used elsewhere in the application.
-- [ ] **Fix negative currency formatting.** Negative amounts display as `$-` instead of `-$`. Expected: `-$1,250` not `$-1,250`.
+- [x] **Round net flow values in chart popup overlays.** Net flow values should use the same currency rounding and formatting conventions used elsewhere in the application.
+- [x] **Fix negative currency formatting.** Negative amounts display as `$-` instead of `-$`. Expected: `-$1,250` not `$-1,250`.
 
 #### Compare Page — Investment Portfolio Trajectory
 

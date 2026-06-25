@@ -187,6 +187,30 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Additional annual growth applied to the 401(k) contribution path beyond the wage-growth path.",
             },
             {
+                "key": "[personX].contribution_method",
+                "summary": "401(k) contribution method: `flat` (default) or `percent_of_gross`. In `percent_of_gross` mode, contributions are computed from GrossIncome × RetirementContributionPercent.",
+            },
+            {
+                "key": "[personX].GrossIncome",
+                "summary": "Gross annual income used for percentage-based 401(k) contribution computation. Only used when `contribution_method = \"percent_of_gross\"`.",
+            },
+            {
+                "key": "[personX].GrossIncomeAnnualIncreasePercent",
+                "summary": "Combined annual gross income increase (COLA + performance + merit) as a decimal. Example: 0.05 = 5% annual increase.",
+            },
+            {
+                "key": "[personX].RetirementContributionPercent",
+                "summary": "401(k) contribution as a percentage of gross income. Example: 0.12 = 12% of gross.",
+            },
+            {
+                "key": "[personX].RetirementContributionAnnualIncreasePercent",
+                "summary": "Annual percentage-point increase in 401(k) contribution rate (auto-escalation). Example: 0.02 = increase contribution rate by 2 percentage points each year.",
+            },
+            {
+                "key": "[personX].RetirementContributionMaxPercent",
+                "summary": "Maximum contribution percentage cap. The contribution rate stops escalating once it reaches this value. Example: 0.18 = never exceed 18% of gross income.",
+            },
+            {
                 "key": "[personX].annual_ira_contribution",
                 "summary": "Direct IRA contribution modeled as a cash outflow plus deposit into `trad_ira` or `roth`.",
             },
@@ -440,6 +464,11 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                     "Optional: `annual_401k_contribution` — new absolute dollar amount",
                     "Optional: `annual_ira_contribution` — new absolute dollar amount",
                     "Optional: `annual_401k_employer_match` — new employer match dollar amount",
+                    "Optional: `GrossIncome` — new gross income for percentage-based contributions",
+                    "Optional: `GrossIncomeAnnualIncreasePercent` — new gross income increase rate",
+                    "Optional: `RetirementContributionPercent` — new contribution percentage",
+                    "Optional: `RetirementContributionAnnualIncreasePercent` — new escalation rate",
+                    "Optional: `RetirementContributionMaxPercent` — new percentage cap",
                     "Multiple events for the same person are applied in year order; later years win",
                 ],
             },

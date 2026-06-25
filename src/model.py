@@ -1243,6 +1243,61 @@ def _project_person_401k_contribution(
     )
 
 
+def _resolve_contribution_method(person: dict) -> str:
+    """Return the active contribution method for this person: 'flat' or 'percent_of_gross'."""
+    method = str(person.get("contribution_method", "flat")).strip().lower()
+    return method if method in ("flat", "percent_of_gross") else "flat"
+
+
+def _project_person_401k_percent(
+    person: dict,
+    *,
+    year: int,
+    simulation_start_year: int,
+    assumptions: dict,
+) -> float:
+    """Return grown annual 401(k) contribution based on percentage of gross income.
+
+    Gross income grows annually at GrossIncomeAnnualIncreasePercent.
+    The contribution percentage escalates annually by
+    RetirementContributionAnnualIncreasePercent up to RetirementContributionMaxPercent.
+    """
+    try:
+        gross_income = float(person.get("GrossIncome", 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+
+    try:
+        gross_increase = float(person.get("GrossIncomeAnnualIncreasePercent", 0.0))
+    except (TypeError, ValueError):
+        gross_increase = 0.0
+
+    try:
+        contrib_pct = float(person.get("RetirementContributionPercent", 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+
+    try:
+        contrib_escalation = float(person.get("RetirementContributionAnnualIncreasePercent", 0.0))
+    except (TypeError, ValueError):
+        contrib_escalation = 0.0
+
+    try:
+        contrib_max = float(person.get("RetirementContributionMaxPercent", 1.0))
+    except (TypeError, ValueError):
+        contrib_max = 1.0
+
+    years_elapsed = max(0, int(year) - int(simulation_start_year))
+
+    # Grow gross income
+    grown_income = gross_income * ((1.0 + gross_increase) ** years_elapsed)
+
+    # Escalate contribution percentage, capped at max
+    escalated_pct = min(contrib_pct + contrib_escalation * years_elapsed, contrib_max)
+
+    return grown_income * max(0.0, escalated_pct)
+
+
 # ── IRS 401(k) contribution limits (2025 baseline) ────────────────────────────
 # Employee-only elective deferral limits.  Catch-up applies at age 50+.
 # These are intentionally not config-driven — they are IRS-determined floors,
@@ -1250,6 +1305,7 @@ def _project_person_401k_contribution(
 _IRS_401K_LIMIT_BASE = 23_500      # 2025 employee deferral limit
 _IRS_401K_CATCHUP_EXTRA = 7_500    # 2025 catch-up add-on (age ≥ 50)
 _IRS_401K_CATCHUP_AGE = 50
+_IRS_401K_TOTAL_LIMIT = 69_000     # 2025 combined employee + employer limit
 
 
 def _irs_401k_limit(person: dict, year: int) -> float:
@@ -1326,6 +1382,11 @@ def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
       annual_401k_contribution
       annual_ira_contribution
       annual_401k_employer_match
+      GrossIncome
+      GrossIncomeAnnualIncreasePercent
+      RetirementContributionPercent
+      RetirementContributionAnnualIncreasePercent
+      RetirementContributionMaxPercent
     """
     person_key = person.get("_person_key")  # injected by caller; may be None
     overrides: dict = {}
@@ -1351,6 +1412,19 @@ def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
             "annual_401k_contribution",
             "annual_ira_contribution",
             "annual_401k_employer_match",
+        ):
+            if field in event:
+                try:
+                    overrides[field] = float(event[field])
+                except (TypeError, ValueError):
+                    pass
+
+        for field in (
+            "GrossIncome",
+            "GrossIncomeAnnualIncreasePercent",
+            "RetirementContributionPercent",
+            "RetirementContributionAnnualIncreasePercent",
+            "RetirementContributionMaxPercent",
         ):
             if field in event:
                 try:
@@ -1392,12 +1466,23 @@ def _person_retirement_contribution_breakdown(
     if events:
         person = _apply_contribution_changes(person, year, events)
 
-    raw_401k = _project_person_401k_contribution(
-        person,
-        year=year,
-        simulation_start_year=simulation_start_year,
-        assumptions=assumptions,
-    )
+    method = _resolve_contribution_method(person)
+
+    if method == "percent_of_gross":
+        raw_401k = _project_person_401k_percent(
+            person,
+            year=year,
+            simulation_start_year=simulation_start_year,
+            assumptions=assumptions,
+        )
+    else:
+        raw_401k = _project_person_401k_contribution(
+            person,
+            year=year,
+            simulation_start_year=simulation_start_year,
+            assumptions=assumptions,
+        )
+
     irs_limit = _irs_401k_limit(person, year)
     annual_401k = min(max(0.0, raw_401k), irs_limit)
 
@@ -1443,6 +1528,22 @@ def _person_retirement_contribution_breakdown(
         else:
             match_breakdown[bucket_401k] += employer_match
 
+    # ── IRS total limit (employee + employer) ─────────────────────────────────
+    total_employee = breakdown["trad_ira"] + breakdown["roth"]
+    total_match = match_breakdown["trad_ira"] + match_breakdown["roth"]
+    total_combined = total_employee + total_match
+    employee_over_total = 0.0
+    if total_combined > _IRS_401K_TOTAL_LIMIT > 0:
+        # Scale down employee contribution to fit under total limit
+        allowed_employee = max(0.0, _IRS_401K_TOTAL_LIMIT - total_match)
+        if total_employee > 0:
+            scale = allowed_employee / total_employee
+            for bucket in ("trad_ira", "roth"):
+                breakdown[bucket] *= scale
+            total_employee = allowed_employee
+            total_combined = total_employee + total_match
+            employee_over_total = max(0.0, raw_401k - allowed_employee)
+
     return {
         "trad_ira": breakdown["trad_ira"],
         "roth": breakdown["roth"],
@@ -1451,6 +1552,8 @@ def _person_retirement_contribution_breakdown(
         "employee_401k_uncapped": max(0.0, raw_401k),
         "employee_401k_capped": annual_401k,
         "irs_401k_limit": irs_limit,
+        "irs_total_limit": _IRS_401K_TOTAL_LIMIT,
+        "employee_over_total_limit": employee_over_total,
     }
 
 
@@ -3478,6 +3581,8 @@ def _run_projection_yearly(
             "employer_match_person2": employer_match_person2,
             "person1_401k_over_irs_cap": person1_over_cap,
             "person2_401k_over_irs_cap": person2_over_cap,
+            "person1_over_total_limit": person1_contrib_buckets.get("employee_over_total_limit", 0.0),
+            "person2_over_total_limit": person2_contrib_buckets.get("employee_over_total_limit", 0.0),
             "survivor":       one_deceased,
             "event_items":    event_items,
             "events_active":  ", ".join(all_labels) if all_labels else "",
