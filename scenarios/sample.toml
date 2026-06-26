@@ -109,13 +109,11 @@ RetirementContributionPercent = 0.21       # 21% of gross income
 RetirementContributionAnnualIncreasePercent = 0.00  # no auto-escalation
 RetirementContributionMaxPercent = 0.30     # never exceed 30% of gross
 
-# Employer match — percentage of gross (standard match logic)
-# The employer matches match_rate of employee contributions, but only up to
-# match_max_percent of gross income.
-# Formula: match = grown_gross × min(employee_pct, match_max_pct) × match_rate
-annual_401k_employer_match_mode = "percent_of_gross"
-annual_401k_employer_match_rate = 0.50     # 50 cents per dollar contributed
-annual_401k_employer_match_max_percent = 0.06  # match applies to first 6% of salary
+# Employer match
+# annual_401k_employer_match = 6513                   # flat annual employer 401(k) match
+annual_401k_employer_match_mode = "percent_of_gross"  # "flat" (default) | "percent_of_gross"
+annual_401k_employer_match_rate = 1.0                 # e.g. 0.50 = 50% match on each dollar contributed
+annual_401k_employer_match_max_percent = 0.06         # e.g. 0.06 = match applies to first 6% of salary
 
 annual_ira_contribution  = 0        # direct IRA contribution (cash outflow + bucket deposit)
 
@@ -166,10 +164,11 @@ RetirementContributionPercent = 0.12
 RetirementContributionAnnualIncreasePercent = 0.00
 RetirementContributionMaxPercent = 0.20
 
-# Employer match — percentage of gross
-annual_401k_employer_match_mode = "percent_of_gross"
-annual_401k_employer_match_rate = 0.50
-annual_401k_employer_match_max_percent = 0.06
+# Employer match
+# annual_401k_employer_match = 6513                   # flat annual employer 401(k) match
+annual_401k_employer_match_mode = "percent_of_gross"  # "flat" (default) | "percent_of_gross"
+annual_401k_employer_match_rate = 1.0                 # e.g. 0.50 = 50% match on each dollar contributed
+annual_401k_employer_match_max_percent = 0.06         # e.g. 0.06 = match applies to first 6% of salary
 
 annual_ira_contribution  = 3000  # direct IRA contribution
 annual_ira_contribution_bucket = "roth"

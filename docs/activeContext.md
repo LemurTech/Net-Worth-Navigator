@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-06-25
-**Status:** Stable. Surplus routing changed from proportional-by-balance to ordered priority via `*_surplus_order`. Roth IRA contribution caps now enforced on surplus routing (age-dependent $7K/$8K per-person limit); excess surplus spills to taxable brokerage. SellHome reinvestment timing fixed to run before surplus sweep.
+**Status:** Stable. Liabilities now support `monthly_escrow` field for escrow-split freed-payment semantics. New `debt_service_handling = "auto_reduce"` spending mode: active P&I obligations that persist into retirement are added to the spending target, and freed payments are zeroed in retirement to avoid double-counting. Property tax expense corrected to $4,857/yr (actual 2025). Homeowners insurance expense ($1,078/yr) added separately. Escrowed P&I is no longer treated as "freed" cash at payoff.
 
 ---
 

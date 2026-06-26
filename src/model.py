@@ -2880,14 +2880,15 @@ def _run_projection_yearly(
     for lib in liability_configs:
         bal = liability_balances.get(lib["name"], 0.0)
         lib_state.append({
-            "name":          lib["name"],
-            "balance":       bal,
-            "monthly_rate":  lib["annual_rate"] / 12,
-            "monthly_total": lib["monthly_base"] + lib.get("monthly_extra", 0.0),
-            "monthly_freed": 0.0,   # set to monthly_total in payoff year
-            "type":          lib.get("type", "other"),
-            "payoff_year":   None,
-            "paid_off":      bal <= 0,
+            "name":           lib["name"],
+            "balance":        bal,
+            "monthly_rate":   lib["annual_rate"] / 12,
+            "monthly_total":  lib["monthly_base"] + lib.get("monthly_extra", 0.0),
+            "monthly_escrow": float(lib.get("monthly_escrow", 0.0)),
+            "monthly_freed":  0.0,   # set to monthly_total - escrow in payoff year
+            "type":           lib.get("type", "other"),
+            "payoff_year":    None,
+            "paid_off":       bal <= 0,
         })
 
     # ── Home tracking ──────────────────────────────────────────────────────────
@@ -2910,7 +2911,7 @@ def _run_projection_yearly(
 
         for lib in lib_state:
             if lib["paid_off"]:
-                freed_this_year += lib["monthly_total"] * 12
+                freed_this_year += (lib["monthly_total"] - lib["monthly_escrow"]) * 12
                 continue
 
             for _ in range(12):
@@ -2928,7 +2929,7 @@ def _run_projection_yearly(
                 payoff_labels.append(f"{icon} {short_name} paid off")
 
             if lib["paid_off"]:
-                freed_this_year += lib["monthly_total"] * 12
+                freed_this_year += (lib["monthly_total"] - lib["monthly_escrow"]) * 12
 
         # Update running mortgage balance for home equity
         mortgage_balance = sum(
@@ -3084,7 +3085,7 @@ def _run_projection_yearly(
                         short_name = lib["name"].split("(")[0].strip()
                         icon = LIABILITY_ICONS.get(lib.get("type", "other"), "✅")
                         payoff_labels.append(f"{icon} {short_name} paid off")
-                        freed_this_year += float(lib.get("monthly_total", 0.0)) * 12
+                        freed_this_year += (float(lib.get("monthly_total", 0.0)) - float(lib.get("monthly_escrow", 0.0))) * 12
 
                     icon = EVENT_ICONS["SellHome"]
                     if should_show_chart_label(event):
@@ -3282,6 +3283,26 @@ def _run_projection_yearly(
                 year=year,
                 simulation_start_year=start_year,
             )
+
+        # ── Debt-aware spending baseline ────────────────────────────────────────
+        # When debt_service_handling = "auto_reduce", active P&I obligations that
+        # persist into retirement get added to the spending target.  Freed payments
+        # are zeroed in retirement because the spending baseline already accounts
+        # for the debt service — they'd double-count otherwise.
+        debt_handling = (
+            spending.get("debt_service_handling", "").lower()
+            if isinstance(spending.get("debt_service_handling"), str)
+            else ""
+        )
+        is_retirement_phase = one_deceased or both_retired
+        if debt_handling == "auto_reduce" and is_retirement_phase:
+            active_pi = sum(
+                (lib["monthly_total"] - lib["monthly_escrow"]) * 12
+                for lib in lib_state
+                if not lib["paid_off"]
+            )
+            annual_spend += active_pi
+            freed_this_year = 0.0  # accounted for in the spend bump above
 
         rmd_required = calculate_household_rmd_required(
             year=year,

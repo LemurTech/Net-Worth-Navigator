@@ -1138,11 +1138,6 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
         label = f"{person_name} earned income"
         rows.append(_data_row(label, col(field), indent=True))
 
-    # Freed liability payments as income-side items
-    freed = col("freed_payments")
-    if any(v != 0 for v in freed):
-        rows.append(_data_row("Freed loan payments",  freed, indent=True))
-
     for label, meta in event_map.items():
         amounts = meta["amounts"]
         if any(a > 0 for a in amounts):
@@ -1151,13 +1146,19 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
     total_income = [
         (
             sum(float(subset.loc[y, field]) for field in person_income_columns)
-            + subset.loc[y, "freed_payments"]
             + sum(_event_item_parts(item)[1] for item in (subset.loc[y, "event_items"] or []) if _event_item_parts(item)[1] > 0)
         )
         if y in subset.index else 0.0
         for y in years
     ]
     rows.append(_data_row("Total Income", total_income, bold=True))
+
+    # Debt service freed — shown outside the Income section; these are a spending
+    # reduction, not income.  With debt_service_handling = "auto_reduce" the value
+    # is zero in retirement years (active P&I is added to the spending baseline).
+    freed = col("freed_payments")
+    if any(v != 0 for v in freed):
+        rows.append(_data_row("Debt service freed", freed))
 
     # ── Portfolio funding / withdrawals ───────────────────────────────────────
     portfolio_funding_rows = [
