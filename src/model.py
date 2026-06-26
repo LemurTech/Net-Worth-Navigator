@@ -69,8 +69,10 @@ DEFAULT_WITHDRAWAL_ORDER = [
 ]
 
 # Surplus routing preference when investing cash above reserve targets.
-# Typical retirement behavior: sweep excess to taxable first.
-DEFAULT_SURPLUS_ORDER = ["taxable", "roth", "trad_ira"]
+# Ordered priority: Roth (tax-free growth) first, then taxable brokerage,
+# then remaining stays in cash.  This matches the household cash-flow waterfall:
+# expenses → cash reserve → retirement contributions → Roth → taxable → cash.
+DEFAULT_SURPLUS_ORDER = ["roth", "taxable"]
 
 WITHDRAWAL_BUCKETS = ("cash", "taxable", "trad_ira", "roth")
 RETIREMENT_OWNER_KEYS = ("person1", "person2")
@@ -1349,6 +1351,13 @@ _IRS_401K_CATCHUP_EXTRA = 7_500    # 2025 catch-up add-on (age ≥ 50)
 _IRS_401K_CATCHUP_AGE = 50
 _IRS_401K_TOTAL_LIMIT = 69_000     # 2025 combined employee + employer limit
 
+# ── IRS Roth IRA contribution limits (2025 baseline) ───────────────────────────
+# Per-person annual limit.  Catch-up applies at age 50+, matching the 401k rule.
+# These are IRS-determined floors, not household choices.
+_IRS_ROTH_IRA_LIMIT_BASE = 7_000       # 2025 Roth IRA limit (under 50)
+_IRS_ROTH_IRA_CATCHUP_EXTRA = 1_000    # 2025 catch-up add-on (age ≥ 50)
+_IRS_ROTH_IRA_CATCHUP_AGE = 50
+
 
 def _irs_401k_limit(person: dict, year: int) -> float:
     """Return the IRS employee elective deferral limit for this person and year."""
@@ -1360,6 +1369,25 @@ def _irs_401k_limit(person: dict, year: int) -> float:
     base = float(_IRS_401K_LIMIT_BASE)
     if age >= _IRS_401K_CATCHUP_AGE:
         base += float(_IRS_401K_CATCHUP_EXTRA)
+    return base
+
+
+def _roth_ira_limit(person: dict, year: int) -> float:
+    """Return the IRS Roth IRA contribution limit for this person and year.
+
+    Per-person limit: $7K (under 50) / $8K (50+, catch-up).
+    This caps how much surplus cash can be routed to the Roth portfolio bucket
+    each year.  Any surplus above this limit spills to the next surplus_order
+    bucket (taxable by default).
+    """
+    try:
+        dob_year = int(str(person.get("dob", "1970-01-01")).split("-")[0])
+    except (ValueError, TypeError):
+        dob_year = year - 40  # safe fallback — assume under catch-up age
+    age = year - dob_year
+    base = float(_IRS_ROTH_IRA_LIMIT_BASE)
+    if age >= _IRS_ROTH_IRA_CATCHUP_AGE:
+        base += float(_IRS_ROTH_IRA_CATCHUP_EXTRA)
     return base
 
 
@@ -1376,6 +1404,21 @@ def _try_delta(person: dict, field: str) -> float:
         return float(person.get(field, 0.0))
     except (TypeError, ValueError):
         return 0.0
+
+
+def _person_ira_contribution_to_roth(person: dict) -> float:
+    """Return the planned annual IRA contribution that routes to the Roth bucket.
+
+    The IRA contribution only counts toward the Roth IRA limit when
+    annual_ira_contribution_bucket is 'roth' (the default).
+    """
+    try:
+        annual_ira = float(person.get("annual_ira_contribution", 0.0))
+    except (TypeError, ValueError):
+        annual_ira = 0.0
+    annual_ira = max(0.0, annual_ira + _try_delta(person, "annual_ira_contribution_delta"))
+    bucket = str(person.get("annual_ira_contribution_bucket", "roth")).strip().lower()
+    return annual_ira if bucket == "roth" else 0.0
 
 
 def _normalize_401k_contribution_split(raw_split: object) -> dict[str, float] | None:
@@ -3337,6 +3380,30 @@ def _run_projection_yearly(
         taxable_withdrawal_gain_portion = 0.0
         roth_withdrawal_basis_portion = 0.0
         roth_withdrawal_earnings_portion = 0.0
+        # Surplus routing tracking (set inside each tax-iteration branch)
+        yearly_surplus_to_taxable = 0.0
+        yearly_surplus_to_trad_ira = 0.0
+        yearly_surplus_to_roth = 0.0
+
+        # ── Roth IRA surplus cap (accumulation only) ──────────────────────────
+        # During accumulation (at least one person still working), limit how much
+        # surplus can flow to the Roth bucket based on per-person Roth IRA limits
+        # minus planned IRA contributions already going to Roth.  Once both are
+        # retired there is no earned income to support IRA contributions, so the
+        # cap is removed (step_caps = None) and surplus flows freely.
+        if not (person1_retired and person2_retired):
+            p1_ira_roth = _person_ira_contribution_to_roth(
+                {**person1, "_person_key": "person1"},
+            ) if not person1_retired else 0.0
+            p2_ira_roth = _person_ira_contribution_to_roth(
+                {**person2, "_person_key": "person2"},
+            ) if not person2_retired else 0.0
+            p1_limit = _roth_ira_limit(person1, year) if not person1_retired else 0.0
+            p2_limit = _roth_ira_limit(person2, year) if not person2_retired else 0.0
+            roth_surplus_cap = max(0.0, p1_limit - p1_ira_roth) + max(0.0, p2_limit - p2_ira_roth)
+            step_caps = {"roth": roth_surplus_cap} if roth_surplus_cap > 0 else None
+        else:
+            step_caps = None
 
         # Iterate because taxable withdrawals themselves increase taxes.
         for _ in range(12):
@@ -3426,14 +3493,40 @@ def _run_projection_yearly(
                             amount=person_amount,
                         )
 
+                # Process pending reinvestments (e.g. SellHome proceeds routed
+                # to taxable) BEFORE the surplus sweep, so the reinvestment
+                # happens before the ordered priority sweep treats the cash
+                # as available surplus.
+                for reinvest_target, requested_amount in pending_reinvestments:
+                    move_amount = min(
+                        max(0.0, working_portfolio.get("cash", 0.0)),
+                        max(0.0, requested_amount),
+                    )
+                    if move_amount <= 0:
+                        continue
+                    working_portfolio["cash"] = working_portfolio.get("cash", 0.0) - move_amount
+                    working_portfolio[reinvest_target] = working_portfolio.get(reinvest_target, 0.0) + move_amount
+                    _apply_basis_addition(
+                        working_basis_state,
+                        bucket=reinvest_target,
+                        amount=move_amount,
+                    )
+                    if reinvest_target in {"trad_ira", "roth"}:
+                        _apply_owner_bucket_addition(
+                            working_retirement_owner_balances,
+                            bucket=reinvest_target,
+                            amount=move_amount,
+                            fallback_shares=retirement_owner_defaults[reinvest_target],
+                        )
+
                 surplus_additions = _apply_surplus_with_reserve_target(
                     working_portfolio,
                     surplus=available_for_contrib,
                     cash_target=cash_target,
                     excluded_categories={"trad_ira"} if forced_rmd_withdrawn > 0 else None,
                     surplus_order=surplus_order,
-                    withdrawal_order=withdrawal_order,
                     protected_cash=preserved_cash,
+                    step_caps=step_caps,
                 )
                 trad_surplus_delta = surplus_additions.get("trad_ira", 0.0)
                 roth_surplus_delta = surplus_additions.get("roth", 0.0)
@@ -3457,6 +3550,10 @@ def _run_projection_yearly(
                         bucket=bucket,
                         amount=added,
                     )
+                # Track surplus routing for the Cash Flow table
+                yearly_surplus_to_taxable = surplus_additions.get("taxable", 0.0)
+                yearly_surplus_to_trad_ira = surplus_additions.get("trad_ira", 0.0)
+                yearly_surplus_to_roth = surplus_additions.get("roth", 0.0)
             else:
                 reserve_first_draw = min(
                     max(0.0, reserve_access_expense_total),
@@ -3523,8 +3620,8 @@ def _run_projection_yearly(
                         cash_target=cash_target,
                         excluded_categories={"trad_ira"} if forced_rmd_withdrawn > 0 else None,
                         surplus_order=surplus_order,
-                        withdrawal_order=withdrawal_order,
                         protected_cash=0.0,
+                        step_caps=step_caps,
                     )
                     for bucket, added in zero_surplus_additions.items():
                         _apply_basis_addition(
@@ -3532,6 +3629,26 @@ def _run_projection_yearly(
                             bucket=bucket,
                             amount=added,
                         )
+                    trad_zero_surplus = zero_surplus_additions.get("trad_ira", 0.0)
+                    roth_zero_surplus = zero_surplus_additions.get("roth", 0.0)
+                    if trad_zero_surplus > 0:
+                        _apply_owner_bucket_addition(
+                            working_retirement_owner_balances,
+                            bucket="trad_ira",
+                            amount=trad_zero_surplus,
+                            fallback_shares=retirement_owner_defaults["trad_ira"],
+                        )
+                    if roth_zero_surplus > 0:
+                        _apply_owner_bucket_addition(
+                            working_retirement_owner_balances,
+                            bucket="roth",
+                            amount=roth_zero_surplus,
+                            fallback_shares=retirement_owner_defaults["roth"],
+                        )
+                    # Track surplus routing for the Cash Flow table (deficit path)
+                    yearly_surplus_to_taxable = zero_surplus_additions.get("taxable", 0.0)
+                    yearly_surplus_to_trad_ira = zero_surplus_additions.get("trad_ira", 0.0)
+                    yearly_surplus_to_roth = zero_surplus_additions.get("roth", 0.0)
 
             _sync_retirement_bucket_totals(working_portfolio, working_retirement_owner_balances)
 
@@ -3557,27 +3674,6 @@ def _run_projection_yearly(
         portfolio = working_portfolio
         retirement_owner_balances = _clone_retirement_owner_balances(working_retirement_owner_balances)
         basis_state = _clone_basis_state(working_basis_state)
-        for reinvest_target, requested_amount in pending_reinvestments:
-            move_amount = min(
-                max(0.0, portfolio.get("cash", 0.0)),
-                max(0.0, requested_amount),
-            )
-            if move_amount <= 0:
-                continue
-            portfolio["cash"] = portfolio.get("cash", 0.0) - move_amount
-            portfolio[reinvest_target] = portfolio.get(reinvest_target, 0.0) + move_amount
-            _apply_basis_addition(
-                basis_state,
-                bucket=reinvest_target,
-                amount=move_amount,
-            )
-            if reinvest_target in {"trad_ira", "roth"}:
-                _apply_owner_bucket_addition(
-                    retirement_owner_balances,
-                    bucket=reinvest_target,
-                    amount=move_amount,
-                    fallback_shares=retirement_owner_defaults[reinvest_target],
-                )
         _sync_retirement_bucket_totals(portfolio, retirement_owner_balances)
         net_flow = base_net_flow - annual_taxes
         required_outflows = max(0.0, annual_spend) + max(0.0, annual_taxes) + max(0.0, event_outflow_total)
@@ -3661,6 +3757,9 @@ def _run_projection_yearly(
             "contribution_roth_person1": contribution_breakdown_by_person["person1"]["roth"],
             "contribution_roth_person2": contribution_breakdown_by_person["person2"]["roth"],
             "contribution_total": contribution_breakdown["trad_ira"] + contribution_breakdown["roth"],
+            "surplus_to_taxable": yearly_surplus_to_taxable,
+            "surplus_to_trad_ira": yearly_surplus_to_trad_ira,
+            "surplus_to_roth": yearly_surplus_to_roth,
             "employer_match_total": total_employer_match,
             "employer_match_person1": employer_match_person1,
             "employer_match_person2": employer_match_person2,
@@ -3927,61 +4026,23 @@ def _cover_deficit_with_policy(
 
     return taxable_withdrawals, remaining, breakdown, withdrawal_character
 
-
-def _surplus_fallback_bucket(
-    *,
-    portfolio: dict[str, float],
-    surplus_order: list[str] | None,
-    withdrawal_order: list[str] | None,
-    excluded_categories: set[str],
-) -> str | None:
-    """Return fallback non-cash bucket for surplus when proportional routing has no receivers.
-
-    Priority:
-    1) configured surplus_order (phase-specific)
-    2) reverse withdrawal order (legacy mirror behavior)
-    3) static default order
-    """
-    if surplus_order:
-        for step in surplus_order:
-            if step not in {"taxable", "trad_ira", "roth"}:
-                continue
-            if step in excluded_categories:
-                continue
-            if step in portfolio:
-                return step
-
-    if withdrawal_order:
-        for step in reversed(withdrawal_order):
-            if step not in WITHDRAWAL_BUCKETS:
-                continue
-            if step == "cash":
-                continue
-            if step in excluded_categories:
-                continue
-            if step in portfolio:
-                return step
-
-    for bucket in DEFAULT_SURPLUS_ORDER:
-        if bucket in portfolio and bucket not in excluded_categories:
-            return bucket
-
-    return None
-
-
 def _apply_surplus_with_reserve_target(
     portfolio: dict[str, float],
     surplus: float,
     cash_target: float,
     excluded_categories: set[str] | None = None,
     surplus_order: list[str] | None = None,
-    withdrawal_order: list[str] | None = None,
     protected_cash: float = 0.0,
+    step_caps: dict[str, float] | None = None,
 ) -> dict[str, float]:
     """Refill cash floor first, then invest surplus and sweep excess cash above that floor.
 
     `protected_cash` reserves an additional amount above `cash_target` that should
     remain in cash for this year (e.g., explicitly-preserved SellHome proceeds).
+
+    `step_caps` limits how much surplus can flow to a given bucket per year
+    (e.g., ``{"roth": 12400.0}`` caps Roth surplus at the household's remaining
+    Roth IRA room).  Surplus above the cap spills to the next step in the order.
     """
     additions = {"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0}
     if excluded_categories is None:
@@ -4005,30 +4066,29 @@ def _apply_surplus_with_reserve_target(
     if remaining <= 0:
         return additions
 
-    positive_non_cash_total = sum(
-        balance
-        for category, balance in portfolio.items()
-        if category != "cash" and category not in excluded_categories and balance > 0
-    )
-    if positive_non_cash_total <= 0:
-        fallback_bucket = _surplus_fallback_bucket(
-            portfolio=portfolio,
-            surplus_order=surplus_order,
-            withdrawal_order=withdrawal_order,
-            excluded_categories=excluded_categories,
-        )
-        if fallback_bucket is not None:
-            portfolio[fallback_bucket] = portfolio.get(fallback_bucket, 0.0) + remaining
-            if fallback_bucket in additions:
-                additions[fallback_bucket] += remaining
-        else:
-            portfolio["cash"] = portfolio.get("cash", 0.0) + remaining
-        return additions
+    # Ordered priority: iterate through surplus_order funneling all remaining
+    # surplus to the first non-excluded bucket, capping per `step_caps` if set.
+    # When a bucket's cap is reached, surplus spills to the next step in the order.
+    # If no cap is set, the first valid bucket receives all remaining surplus.
+    effective_order = list(surplus_order) if surplus_order else list(DEFAULT_SURPLUS_ORDER)
+    for step in effective_order:
+        if remaining <= 0:
+            break
+        if step in excluded_categories:
+            continue
+        step_remaining = min(remaining, step_caps.get(step, remaining)) if step_caps else remaining
+        if step_remaining <= 0:
+            continue  # capped at 0, try next bucket
+        portfolio[step] = portfolio.get(step, 0.0) + step_remaining
+        if step in additions:
+            additions[step] += step_remaining
+        remaining -= step_remaining
+        if remaining > 0:
+            continue  # cap hit — spill to next step
+        break
 
-    for category, balance in list(portfolio.items()):
-        if category != "cash" and category not in excluded_categories and balance > 0:
-            added = remaining * (balance / positive_non_cash_total)
-            portfolio[category] += added
-            if category in additions:
-                additions[category] += added
+    # If no surplus_order bucket was available (all excluded), keep in cash.
+    if remaining > 0:
+        portfolio["cash"] = portfolio.get("cash", 0.0) + remaining
+
     return additions

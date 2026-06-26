@@ -1188,6 +1188,30 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
         ]
         rows.append(_data_row("Total Portfolio Funding", total_portfolio_funding, bold=True))
 
+    # ── Portfolio funding — surplus routing ────────────────────────────────────
+    surplus_routing_rows = [
+        ("Surplus to taxable brokerage", col("surplus_to_taxable")),
+        ("Surplus to traditional IRA / 401k", col("surplus_to_trad_ira")),
+        ("Surplus to Roth", col("surplus_to_roth")),
+    ]
+    shown_surplus_rows = [
+        (label, amounts)
+        for label, amounts in surplus_routing_rows
+        if any(v != 0 for v in amounts)
+    ]
+    if shown_surplus_rows:
+        rows.append("""<tr class='section sep'><th colspan='100'>Surplus Routing</th></tr>""")
+        for label, amounts in shown_surplus_rows:
+            rows.append(_data_row(label, amounts, indent=True))
+        total_surplus_routed = [
+            sum(
+                subset.loc[y, c] if (y in subset.index and c in subset.columns) else 0.0
+                for c in ("surplus_to_taxable", "surplus_to_trad_ira", "surplus_to_roth")
+            )
+            for y in years
+        ]
+        rows.append(_data_row("Total Surplus Routed", total_surplus_routed, bold=True))
+
     # ── Retirement contributions (owner split when available) ─────────────────
     contribution_rows = [
         ("Traditional IRA / 401k contributions", col("contribution_trad_ira")),

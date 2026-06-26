@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-06-24
-**Status:** Stable. All charts and tests passing. Compare page CSV parsing hardened against quoted-field delimiters.
+**Last updated:** 2026-06-25
+**Status:** Stable. Surplus routing changed from proportional-by-balance to ordered priority via `*_surplus_order`. Roth IRA contribution caps now enforced on surplus routing (age-dependent $7K/$8K per-person limit); excess surplus spills to taxable brokerage. SellHome reinvestment timing fixed to run before surplus sweep.
 
 ---
 
@@ -102,6 +102,14 @@ Grouped by implementation area.
 #### Compare Page — Investment Portfolio Trajectory
 
 - [x] **Investigate sudden drop-to-zero in portfolio trajectory graph.** Root cause: JS `parseCSV()` used naive `line.split(',')` which split on commas inside quoted CSV fields — the `events_active` column contains comma-separated event labels, and 6 rows had those commas treated as field delimiters, shifting `taxable`/`trad_ira`/`roth` into wrong columns. Fixed by replacing with a state-machine `parseCSVLine()` parser that respects CSV quoting.
+
+#### Surplus Routing
+
+- [x] **Change surplus routing from proportional-by-balance to ordered priority.** `_apply_surplus_with_reserve_target` now iterates through `*_surplus_order` as a strict priority chain. Default order: Roth → taxable.
+- [x] **Add Roth IRA contribution caps to surplus routing.** Per-person age-dependent limits ($7K under 50, $8K 50+) enforced on surplus to Roth bucket. Planned IRA contributions subtract from remaining room. Excess spills to next surplus_order bucket.
+- [x] **Fix SellHome reinvestment timing.** Reinvestment processing moved inside the tax iteration loop, before the surplus sweep, so reinvested proceeds reach their target before the ordered priority applies.
+- [x] **Add Surplus Routing section to Cash Flow table.** Dedicated rows for `Surplus to Roth`, `Surplus to taxable brokerage`, `Surplus to traditional IRA / 401k`.
+- [x] **Update all personal scenario TOMLs** to reflect new surplus order `["roth", "taxable"]`. Sample scenarios left unchanged.
 
 ---
 

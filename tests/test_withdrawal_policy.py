@@ -181,7 +181,10 @@ class WithdrawalPolicyTests(unittest.TestCase):
 
         row = df.iloc[0]
         self.assertEqual(row["cash"], 50.0)
-        self.assertEqual(row["taxable"], 90.0)
+        # Surplus above cash target goes to the first bucket in the default
+        # surplus_order: roth
+        self.assertEqual(row["roth"], 10.0)
+        self.assertEqual(row["taxable"], 80.0)
 
     def test_surplus_sweeps_cash_above_target_back_into_investments(self):
         portfolio = {"cash": 120.0, "taxable": 80.0, "trad_ira": 0.0, "roth": 0.0}
@@ -190,8 +193,7 @@ class WithdrawalPolicyTests(unittest.TestCase):
             portfolio,
             surplus=10.0,
             cash_target=50.0,
-            excluded_categories=set(),
-            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+            surplus_order=["taxable", "roth", "trad_ira"],
         )
 
         self.assertEqual(portfolio["cash"], 50.0)
@@ -204,8 +206,7 @@ class WithdrawalPolicyTests(unittest.TestCase):
             portfolio,
             surplus=0.0,
             cash_target=50.0,
-            excluded_categories=set(),
-            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+            surplus_order=["taxable", "roth", "trad_ira"],
         )
 
         self.assertEqual(portfolio["cash"], 50.0)
@@ -219,8 +220,7 @@ class WithdrawalPolicyTests(unittest.TestCase):
             surplus=0.0,
             cash_target=50.0,
             protected_cash=100.0,
-            excluded_categories=set(),
-            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+            surplus_order=["taxable", "roth", "trad_ira"],
         )
 
         self.assertEqual(portfolio["cash"], 150.0)
@@ -233,9 +233,7 @@ class WithdrawalPolicyTests(unittest.TestCase):
             portfolio,
             surplus=100.0,
             cash_target=0.0,
-            excluded_categories=set(),
             surplus_order=["taxable", "roth", "trad_ira"],
-            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
         )
 
         self.assertEqual(portfolio["taxable"], 100.0)
@@ -243,23 +241,22 @@ class WithdrawalPolicyTests(unittest.TestCase):
         self.assertEqual(portfolio["roth"], 0.0)
         self.assertEqual(portfolio["trad_ira"], 0.0)
 
-    def test_surplus_fallback_uses_reversed_withdrawal_order_when_no_non_cash_receivers(self):
+    def test_surplus_default_order_routes_to_roth_when_no_explicit_order(self):
+        """With no configured surplus_order, the default ["roth", "taxable"] applies."""
         portfolio = {"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0}
 
         model._apply_surplus_with_reserve_target(
             portfolio,
             surplus=100.0,
             cash_target=0.0,
-            excluded_categories=set(),
-            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
         )
 
-        self.assertEqual(portfolio["trad_ira"], 100.0)
+        self.assertEqual(portfolio["roth"], 100.0)
         self.assertEqual(portfolio["cash"], 0.0)
         self.assertEqual(portfolio["taxable"], 0.0)
-        self.assertEqual(portfolio["roth"], 0.0)
+        self.assertEqual(portfolio["trad_ira"], 0.0)
 
-    def test_surplus_fallback_skips_excluded_bucket_and_uses_next_reversed_choice(self):
+    def test_surplus_fallback_skips_excluded_bucket_and_uses_next_surplus_order_choice(self):
         portfolio = {"cash": 0.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0}
 
         model._apply_surplus_with_reserve_target(
@@ -267,12 +264,12 @@ class WithdrawalPolicyTests(unittest.TestCase):
             surplus=100.0,
             cash_target=0.0,
             excluded_categories={"trad_ira"},
-            withdrawal_order=["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"],
+            surplus_order=["taxable", "roth", "trad_ira"],
         )
 
-        self.assertEqual(portfolio["roth"], 100.0)
+        self.assertEqual(portfolio["taxable"], 100.0)
         self.assertEqual(portfolio["cash"], 0.0)
-        self.assertEqual(portfolio["taxable"], 0.0)
+        self.assertEqual(portfolio["roth"], 0.0)
         self.assertEqual(portfolio["trad_ira"], 0.0)
 
     def test_survivor_cash_target_defaults_from_percent_of_retirement_spend(self):
@@ -536,7 +533,10 @@ class WithdrawalPolicyTests(unittest.TestCase):
 
         row = df.iloc[0]
         self.assertEqual(row["cash"], 0.0)
-        self.assertEqual(row["taxable"], 400_000.0)
+        # Surplus from the down-payment net proceeds routes to the first
+        # surplus_order bucket (roth by default), not taxable.
+        self.assertEqual(row["roth"], 400_000.0)
+        self.assertEqual(row["taxable"], 0.0)
         self.assertEqual(row["home_value"], 350_000.0)
         self.assertEqual(row["home_equity"], 350_000.0)
         self.assertEqual(row["total_net_worth"], 750_000.0)

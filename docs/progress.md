@@ -3,6 +3,26 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-06-25
+
+### Added
+
+- **Ordered-priority surplus routing** (`src/model.py`): `_apply_surplus_with_reserve_target` now distributes surplus as a strict priority chain via `*_surplus_order` instead of proportional-by-balance. Default order changed from `["taxable", "roth", "trad_ira"]` to `["roth", "taxable"]`. First non-excluded bucket receives ALL remaining surplus; if empty or excluded, falls through to the next. Cash remains the final backstop when no bucket in the order is available. Removed `_surplus_fallback_bucket` (no longer needed).
+
+- **Roth IRA contribution caps on surplus routing** (`src/model.py`): New `_IRS_ROTH_IRA_LIMIT_*` constants, `_roth_ira_limit()` function (returns $7K under 50, $8K 50+ per person), and `_person_ira_contribution_to_roth()` helper. Household Roth surplus cap computed yearly: sum of per-person limits minus planned IRA contributions going to Roth. Applied via new `step_caps` parameter on `_apply_surplus_with_reserve_target`. Cap only active during accumulation (at least one person working); removed after both retire. Excess above cap spills to the next bucket in surplus_order.
+
+- **SellHome reinvestment timing fix** (`src/model.py`): Pending reinvestments (e.g. `reinvest_to="taxable"`) are now processed inside the tax iteration loop, BEFORE the surplus sweep, so reinvestment proceeds reach their target bucket before the ordered priority applies. Previously ran after the loop, leaving no cash for reinvestment after the sweep.
+
+- **Surplus Routing section in Cash Flow table** (`src/tables.py`): Dedicated rows for `Surplus to Roth`, `Surplus to taxable brokerage`, `Surplus to traditional IRA / 401k`. Data already tracked via `surplus_to_*` DataFrame columns.
+
+### Changed
+
+- **Scenario TOML surplus orders**: All 9 personal scenario files updated from `["taxable", "roth", "trad_ira"]` to `["roth", "taxable"]` for all three phases (accumulation, retirement, survivor). `restrictive.toml` kept its differentiated retirement/survivor `["taxable"]` orders unchanged. Sample scenarios left as-is.
+
+### Fixed
+
+- **Zero-surplus deficit branch owner-balance sync** (`src/model.py`): When a deficit is covered from cash and remaining excess cash is swept to a retirement bucket, `owner_balances` are now updated alongside the portfolio. Previously `_sync_retirement_bucket_totals` would overwrite the sweep with stale owner balances, causing Roth/trad_ira surplus additions to disappear during deficit years.
+
 ## 2026-06-24
 
 ### Fixed
