@@ -2884,6 +2884,7 @@ def _run_projection_yearly(
             "balance":        bal,
             "monthly_rate":   lib["annual_rate"] / 12,
             "monthly_total":  lib["monthly_base"] + lib.get("monthly_extra", 0.0),
+            "monthly_base":   lib["monthly_base"],
             "monthly_escrow": float(lib.get("monthly_escrow", 0.0)),
             "monthly_freed":  0.0,   # set to monthly_total - escrow in payoff year
             "type":           lib.get("type", "other"),
@@ -2911,7 +2912,7 @@ def _run_projection_yearly(
 
         for lib in lib_state:
             if lib["paid_off"]:
-                freed_this_year += (lib["monthly_total"] - lib["monthly_escrow"]) * 12
+                freed_this_year += (lib["monthly_base"] - lib["monthly_escrow"]) * 12
                 continue
 
             for _ in range(12):
@@ -2929,7 +2930,7 @@ def _run_projection_yearly(
                 payoff_labels.append(f"{icon} {short_name} paid off")
 
             if lib["paid_off"]:
-                freed_this_year += (lib["monthly_total"] - lib["monthly_escrow"]) * 12
+                freed_this_year += (lib["monthly_base"] - lib["monthly_escrow"]) * 12
 
         # Update running mortgage balance for home equity
         mortgage_balance = sum(
@@ -3085,7 +3086,7 @@ def _run_projection_yearly(
                         short_name = lib["name"].split("(")[0].strip()
                         icon = LIABILITY_ICONS.get(lib.get("type", "other"), "✅")
                         payoff_labels.append(f"{icon} {short_name} paid off")
-                        freed_this_year += (float(lib.get("monthly_total", 0.0)) - float(lib.get("monthly_escrow", 0.0))) * 12
+                        freed_this_year += (float(lib.get("monthly_base", 0.0)) - float(lib.get("monthly_escrow", 0.0))) * 12
 
                     icon = EVENT_ICONS["SellHome"]
                     if should_show_chart_label(event):
@@ -3297,7 +3298,7 @@ def _run_projection_yearly(
         is_retirement_phase = one_deceased or both_retired
         if debt_handling == "auto_reduce" and is_retirement_phase:
             active_pi = sum(
-                (lib["monthly_total"] - lib["monthly_escrow"]) * 12
+                (lib["monthly_base"] - lib["monthly_escrow"]) * 12
                 for lib in lib_state
                 if not lib["paid_off"]
             )
@@ -3777,6 +3778,12 @@ def _run_projection_yearly(
             "contribution_trad_ira_person2": contribution_breakdown_by_person["person2"]["trad_ira"],
             "contribution_roth_person1": contribution_breakdown_by_person["person1"]["roth"],
             "contribution_roth_person2": contribution_breakdown_by_person["person2"]["roth"],
+            "contribution_employee_trad_ira_person1": person1_contrib_buckets["trad_ira"],
+            "contribution_employee_roth_person1": person1_contrib_buckets["roth"],
+            "contribution_employee_trad_ira_person2": person2_contrib_buckets["trad_ira"],
+            "contribution_employee_roth_person2": person2_contrib_buckets["roth"],
+            "contribution_employee_trad_ira": person1_contrib_buckets["trad_ira"] + person2_contrib_buckets["trad_ira"],
+            "contribution_employee_roth": person1_contrib_buckets["roth"] + person2_contrib_buckets["roth"],
             "contribution_total": contribution_breakdown["trad_ira"] + contribution_breakdown["roth"],
             "surplus_to_taxable": yearly_surplus_to_taxable,
             "surplus_to_trad_ira": yearly_surplus_to_trad_ira,

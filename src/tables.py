@@ -1215,12 +1215,12 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
 
     # ── Retirement contributions (owner split when available) ─────────────────
     contribution_rows = [
-        ("Traditional IRA / 401k contributions", col("contribution_trad_ira")),
-        ("Roth contributions", col("contribution_roth")),
-        (f"Traditional IRA / 401k contributions — {person1_name}", col("contribution_trad_ira_person1")),
-        (f"Traditional IRA / 401k contributions — {person2_name}", col("contribution_trad_ira_person2")),
-        (f"Roth contributions — {person1_name}", col("contribution_roth_person1")),
-        (f"Roth contributions — {person2_name}", col("contribution_roth_person2")),
+        ("Traditional IRA / 401k contributions", col("contribution_employee_trad_ira")),
+        ("Roth contributions", col("contribution_employee_roth")),
+        (f"Employee 401k/IRA — {person1_name}", col("contribution_employee_trad_ira_person1")),
+        (f"Employee 401k/IRA — {person2_name}", col("contribution_employee_trad_ira_person2")),
+        (f"Roth contributions — {person1_name}", col("contribution_employee_roth_person1")),
+        (f"Roth contributions — {person2_name}", col("contribution_employee_roth_person2")),
     ]
     shown_contribution_rows = [
         (label, amounts)
@@ -1239,8 +1239,9 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
         for label, amounts in shown_contribution_rows:
             rows.append(_data_row(label, amounts, indent=True))
         if has_match:
-            if any(v != 0 for v in employer_match_p1) and any(v != 0 for v in employer_match_p2):
+            if any(v != 0 for v in employer_match_p1):
                 rows.append(_data_row(f"Employer match — {person1_name}", employer_match_p1, indent=True))
+            if any(v != 0 for v in employer_match_p2):
                 rows.append(_data_row(f"Employer match — {person2_name}", employer_match_p2, indent=True))
             rows.append(_data_row("Employer match (total, prefunded)", employer_match_total, indent=True))
         rows.append(_data_row("Total Retirement Contributions", col("contribution_total"), bold=True))

@@ -3,7 +3,39 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
-## 2026-06-25
+## 2026-06-27
+
+### Added
+
+- **Favicon** (`src/charts.py`): Inline SVG favicon data URI in HTML `<head>` — dark rounded square with blue trend line over bar columns, matching the dark theme.
+
+- **Mobile event-label defaults** (`src/charts.py`): On screens narrower than 768px, the chart now defaults to showing only key events (Show all unchecked, Keep key labels checked) on first load. User can toggle back manually.
+
+- **Employee-only contribution columns** (`src/model.py`): New DataFrame columns `contribution_employee_trad_ira`, `contribution_employee_roth`, `contribution_employee_trad_ira_person1/2`, `contribution_employee_roth_person1/2` — employee-only retirement contributions excluding employer match.
+
+### Changed
+
+- **Cash Flow table** (`src/tables.py`): Per-person contribution rows now use employee-only columns and are labelled `Employee 401k/IRA — Person 1` / `Person 2`. Aggregate rows (`Traditional IRA / 401k contributions`, `Roth contributions`) also use employee-only totals so they match the sum of per-person rows. Employer match rows are shown separately. Per-person employer match rows now appear independently when non-zero (previously required both people to have non-zero match).
+
+- **Household scenario TOMLs**: All 6 scenarios (default, comfortable, optimistic, restrictive, early-death-person1, early-death-person2) updated:
+  - `RetirementContributionPercent` → 0.24 (hits $31K IRS cap from year 1)
+  - `annual_401k_contribution_split` → 70/30 (trad/Roth)
+  - Cash targets → $40K accumulation, $50K retirement, $30K survivor
+  - Comments updated to match
+
+- **Default scenario**: Stale comment on line 67 (`# 16%` → `# 24% of gross income ($31K IRS cap)`). Withdrawal policy comments updated.
+
+### Fixed
+
+- **Freed payment calculation** (`src/model.py`): All four sites where freed payments are computed (amortization payoff loop, SellHome liability payoff, auto_reduce active P&I) now use `monthly_base` (contractual P&I) instead of `monthly_total` (which included voluntary `monthly_extra`). Voluntary extra principal is no longer treated as permanently freed cash flow. Also added `monthly_base` to the liability state dict.
+
+- **Event vlines hidden with annotations** (`src/charts.py`): `applyEventLabelVisibility()` JS now also toggles corresponding vline shapes when annotations are hidden. Previously only annotation text visibility was toggled, leaving vertical lines visible.
+
+- **Cash Flow Roth contribution mismatch**: Total `Roth contributions` row was including employer-match Roth portions (5% of match via 95/5 split), creating a gap vs per-person rows. Fixed by making all aggregate contribution rows employee-only. The employer-match Roth portion ($391 in 2026) is now correctly contained within the `Employer match` row.
+
+### Removed
+
+- **Three early-mortgage scenario files**: `default-early-mortgage.toml`, `comfortable-early-mortgage.toml`, `optimistic-early-mortgage.toml` deleted. The early-mortgage scenario's `monthly_base` was also corrected to use `monthly_extra = 1000` before deletion.
 
 ### Added
 

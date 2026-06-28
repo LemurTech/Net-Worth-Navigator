@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-06-25
-**Status:** Stable. Liabilities now support `monthly_escrow` field for escrow-split freed-payment semantics. New `debt_service_handling = "auto_reduce"` spending mode: active P&I obligations that persist into retirement are added to the spending target, and freed payments are zeroed in retirement to avoid double-counting. Property tax expense corrected to $4,857/yr (actual 2025). Homeowners insurance expense ($1,078/yr) added separately. Escrowed P&I is no longer treated as "freed" cash at payoff.
+**Last updated:** 2026-06-27
+**Status:** Stable. Freed-payment calculation fixed: now uses `monthly_base` (contractual P&I) instead of `monthly_total` (which included voluntary `monthly_extra`). Cash Flow table restructured with employee-only contribution rows and separate employer match rows. Employee 401k/IRA columns added to model output. All household scenarios updated: 24% 401k contribution hitting $31K IRS cap from year 1, 70/30 trad/Roth split, cash targets lowered to $40K/$50K/$30K. Three early-mortgage scenarios deleted. Favicon added. Event vlines sync with annotation visibility.
 
 ---
 
@@ -26,18 +26,15 @@ cd /home/lemurtech/Net-Worth-Navigator
 
 | Slug | Description |
 |---|---|
-| `default` | Conservative baseline — Person 1's primary scenario |
+| `default` | Conservative baseline — max 401k, 70/30 split, $40K cash |
 | `comfortable` | Earlier retirement, more travel |
 | `optimistic` | Higher returns, earlier aligned retirements |
 | `restrictive` | Bearish markets, later retirement |
-| `default-early-mortgage` | Default + accelerated mortgage paydown |
-| `comfortable-early-mortgage` | Comfortable + accelerated mortgage paydown |
-| `optimistic-early-mortgage` | Optimistic + accelerated mortgage paydown |
 | `early-death-person1` | Person 1 passes in his 60s |
 | `early-death-person2` | Person 2 passes in her 60s |
 | `sample` / `sample-a` / `sample-b` | Synthetic share-safe demo scenarios (Alex & Sam) |
 
-All household TOMLs are **gitignored local files**. `annual_401k_employer_match = 5688` is set in all 9 household scenarios.
+All household TOMLs use 24% 401k contribution ($31K IRS cap), 70/30 trad/Roth split, and $40K/$50K/$30K cash targets.
 
 ## Cron Jobs
 
@@ -57,7 +54,11 @@ All household TOMLs are **gitignored local files**. `annual_401k_employer_match 
 - Confirm survivor spending percentage feels right (currently 70% of retirement spending).
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available.
 - Validate `[withdrawal_policy]` cash targets match intent:
-  - Accumulation: $64,000 | Retirement: $95,000 | Survivor: $66,500
+  - Accumulation: $40,000 | Retirement: $50,000 | Survivor: $30,000
+
+### Recent changes requiring re-render
+
+- User needs to run a full manual re-render to reflect the updated scenario configs (24% 401k, 70/30 split, new cash targets, deleted early-mortgage scenarios).
 
 ### Ignidash port plan status
 

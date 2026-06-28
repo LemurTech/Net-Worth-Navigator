@@ -352,12 +352,25 @@ document.addEventListener('DOMContentLoaded', function() {
     keepKeyToggle.disabled = showAll;
 
     var updates = {};
+    var visiblePositions = {};
+
     chart.layout.annotations.forEach(function(annotation, idx) {
       if (!annotation || Number(annotation.textangle) !== -90) return;
       var isKey = isKeyEventText(annotation.text);
       var visible = showAll || (keepKey && isKey);
       updates['annotations[' + idx + '].visible'] = visible;
+      if (visible) {
+        visiblePositions[annotation.x] = true;
+      }
     });
+
+    // Sync vertical-line shapes (vlines) to match annotation visibility
+    if (chart.layout.shapes) {
+      chart.layout.shapes.forEach(function(shape, idx) {
+        if (!shape || shape.type !== 'line' || shape.x0 === undefined || shape.x0 !== shape.x1) return;
+        updates['shapes[' + idx + '].visible'] = !!visiblePositions[shape.x0];
+      });
+    }
 
     if (Object.keys(updates).length > 0) {
       Plotly.relayout(chart, updates);
@@ -371,6 +384,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   if (keepKeyEventLabelsToggle) {
     keepKeyEventLabelsToggle.addEventListener('change', applyEventLabelVisibility);
+  }
+  // On mobile screens, default to key-events-only (uncheck "Show all")
+  if (showAllEventLabelsToggle && window.innerWidth < 768) {
+    showAllEventLabelsToggle.checked = false;
   }
   applyEventLabelVisibility();
 
@@ -1304,6 +1321,7 @@ def build_chart(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Net Worth Navigator</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111827'/%3E%3Cg fill='none' stroke='%237dd3fc' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,22 10,18 15,20 20,12 26,7'/%3E%3C/g%3E%3Cg fill='%2338bdf8' opacity='0.35'%3E%3Crect x='5' y='23' width='3' height='5' rx='0.8'/%3E%3Crect x='9' y='21' width='3' height='7' rx='0.8'/%3E%3Crect x='14' y='22' width='3' height='6' rx='0.8'/%3E%3Crect x='19' y='16' width='3' height='12' rx='0.8'/%3E%3Crect x='24' y='14' width='3' height='14' rx='0.8'/%3E%3C/g%3E%3C/svg%3E">
   {_TABS_CSS}
 </head>
 <body>
