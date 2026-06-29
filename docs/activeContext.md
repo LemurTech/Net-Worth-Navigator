@@ -93,7 +93,7 @@ Grouped by implementation area.
 
 #### 401(k) Contribution Model
 
-- [x] **Reassess 401(k) contribution modeling.** Currently flat annual contribution + flat annual increase. Evaluate refactoring to percentage-of-gross-income contributions with variables: `GrossIncome`, `GrossIncomeAnnualIncreasePercent`, `RetirementContributionPercent`, `RetirementContributionAnnualIncreasePercent`, `RetirementContributionMaxPercent`. Design decision: replace flat-dollar entirely, or support both with a user-selectable method. Update `ContributionChange` event to support percentage-based changes.
+- [x] **Reassess 401(k) contribution modeling.** Currently flat annual contribution + flat annual increase. Evaluate refactoring to percentage-of-gross-income contributions with variables: `gross_income`, `gross_income_annual_increase_percent`, `retirement_contribution_percent`, `retirement_contribution_annual_increase_percent`, `retirement_contribution_max_percent`. Design decision: replace flat-dollar entirely, or support both with a user-selectable method. Update `ContributionChange` event to support percentage-based changes.
 
 #### Compare Page — Annual Cash Flow Card
 

@@ -100,14 +100,14 @@ annual_take_home_real_raise = 0.01  # real raise above inflation; total growth ~
 
 # Retirement contributions — percentage of gross income
 # When contribution_method = "percent_of_gross", the model computes the
-# contribution as GrossIncome × RetirementContributionPercent, then applies
+# contribution as gross_income × retirement_contribution_percent, then applies
 # annual gross growth and auto-escalation if configured.
 contribution_method = "percent_of_gross"
-GrossIncome = 110000                   # gross annual income (used for contribution math only)
-GrossIncomeAnnualIncreasePercent = 0.04   # combined COLA + performance
-RetirementContributionPercent = 0.21       # 21% of gross income
-RetirementContributionAnnualIncreasePercent = 0.00  # no auto-escalation
-RetirementContributionMaxPercent = 0.30     # never exceed 30% of gross
+gross_income = 110000                   # gross annual income (used for contribution math only)
+gross_income_annual_increase_percent = 0.04   # combined COLA + performance
+retirement_contribution_percent = 0.21       # 21% of gross income
+retirement_contribution_annual_increase_percent = 0.00  # no auto-escalation
+retirement_contribution_max_percent = 0.30     # never exceed 30% of gross
 
 # Employer match
 # annual_401k_employer_match = 6513                   # flat annual employer 401(k) match
@@ -158,11 +158,11 @@ annual_take_home_real_raise = 0.005
 
 # Retirement contributions — percentage of gross income
 contribution_method = "percent_of_gross"
-GrossIncome = 65000
-GrossIncomeAnnualIncreasePercent = 0.035
-RetirementContributionPercent = 0.12
-RetirementContributionAnnualIncreasePercent = 0.00
-RetirementContributionMaxPercent = 0.20
+gross_income = 65000
+gross_income_annual_increase_percent = 0.035
+retirement_contribution_percent = 0.12
+retirement_contribution_annual_increase_percent = 0.00
+retirement_contribution_max_percent = 0.20
 
 # Employer match
 # annual_401k_employer_match = 6513                   # flat annual employer 401(k) match
@@ -319,8 +319,8 @@ year    = 2066                      # 1974 + 92
 #   annual_401k_employer_match_delta
 #
 # Percent-mode fields:
-#   GrossIncome, GrossIncomeAnnualIncreasePercent, RetirementContributionPercent,
-#   RetirementContributionAnnualIncreasePercent, RetirementContributionMaxPercent
+#   gross_income, gross_income_annual_increase_percent, retirement_contribution_percent,
+#   retirement_contribution_annual_increase_percent, retirement_contribution_max_percent
 #
 # Employer-match percent-mode fields:
 #   annual_401k_employer_match_mode, annual_401k_employer_match_rate,

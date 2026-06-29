@@ -1260,32 +1260,32 @@ def _project_person_401k_percent(
 ) -> float:
     """Return grown annual 401(k) contribution based on percentage of gross income.
 
-    Gross income grows annually at GrossIncomeAnnualIncreasePercent.
+    Gross income grows annually at gross_income_annual_increase_percent.
     The contribution percentage escalates annually by
-    RetirementContributionAnnualIncreasePercent up to RetirementContributionMaxPercent.
+    retirement_contribution_annual_increase_percent up to retirement_contribution_max_percent.
     """
     try:
-        gross_income = float(person.get("GrossIncome", 0.0))
+        gross_income = float(person.get("gross_income", 0.0))
     except (TypeError, ValueError):
         return 0.0
 
     try:
-        gross_increase = float(person.get("GrossIncomeAnnualIncreasePercent", 0.0))
+        gross_increase = float(person.get("gross_income_annual_increase_percent", 0.0))
     except (TypeError, ValueError):
         gross_increase = 0.0
 
     try:
-        contrib_pct = float(person.get("RetirementContributionPercent", 0.0))
+        contrib_pct = float(person.get("retirement_contribution_percent", 0.0))
     except (TypeError, ValueError):
         return 0.0
 
     try:
-        contrib_escalation = float(person.get("RetirementContributionAnnualIncreasePercent", 0.0))
+        contrib_escalation = float(person.get("retirement_contribution_annual_increase_percent", 0.0))
     except (TypeError, ValueError):
         contrib_escalation = 0.0
 
     try:
-        contrib_max = float(person.get("RetirementContributionMaxPercent", 1.0))
+        contrib_max = float(person.get("retirement_contribution_max_percent", 1.0))
     except (TypeError, ValueError):
         contrib_max = 1.0
 
@@ -1308,11 +1308,11 @@ def _resolve_current_gross_income(
 ) -> float:
     """Return grown gross income for the current year (for employer match math)."""
     try:
-        gross_income = float(person.get("GrossIncome", 0.0))
+        gross_income = float(person.get("gross_income", 0.0))
     except (TypeError, ValueError):
         return 0.0
     try:
-        gross_increase = float(person.get("GrossIncomeAnnualIncreasePercent", 0.0))
+        gross_increase = float(person.get("gross_income_annual_increase_percent", 0.0))
     except (TypeError, ValueError):
         gross_increase = 0.0
     years_elapsed = max(0, int(year) - int(simulation_start_year))
@@ -1327,15 +1327,15 @@ def _resolve_current_contribution_percent(
 ) -> float:
     """Return escalated contribution percent for the current year (for employer match math)."""
     try:
-        contrib_pct = float(person.get("RetirementContributionPercent", 0.0))
+        contrib_pct = float(person.get("retirement_contribution_percent", 0.0))
     except (TypeError, ValueError):
         return 0.0
     try:
-        contrib_escalation = float(person.get("RetirementContributionAnnualIncreasePercent", 0.0))
+        contrib_escalation = float(person.get("retirement_contribution_annual_increase_percent", 0.0))
     except (TypeError, ValueError):
         contrib_escalation = 0.0
     try:
-        contrib_max = float(person.get("RetirementContributionMaxPercent", 1.0))
+        contrib_max = float(person.get("retirement_contribution_max_percent", 1.0))
     except (TypeError, ValueError):
         contrib_max = 1.0
     years_elapsed = max(0, int(year) - int(simulation_start_year))
@@ -1479,11 +1479,11 @@ def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
       annual_401k_contribution_delta
       annual_ira_contribution_delta
       annual_401k_employer_match_delta
-      GrossIncome
-      GrossIncomeAnnualIncreasePercent
-      RetirementContributionPercent
-      RetirementContributionAnnualIncreasePercent
-      RetirementContributionMaxPercent
+      gross_income
+      gross_income_annual_increase_percent
+      retirement_contribution_percent
+      retirement_contribution_annual_increase_percent
+      retirement_contribution_max_percent
     """
     person_key = person.get("_person_key")  # injected by caller; may be None
     overrides: dict = {}
@@ -1523,11 +1523,11 @@ def _apply_contribution_changes(person: dict, year: int, events: list) -> dict:
                     pass
 
         for field in (
-            "GrossIncome",
-            "GrossIncomeAnnualIncreasePercent",
-            "RetirementContributionPercent",
-            "RetirementContributionAnnualIncreasePercent",
-            "RetirementContributionMaxPercent",
+            "gross_income",
+            "gross_income_annual_increase_percent",
+            "retirement_contribution_percent",
+            "retirement_contribution_annual_increase_percent",
+            "retirement_contribution_max_percent",
         ):
             if field in event:
                 try:

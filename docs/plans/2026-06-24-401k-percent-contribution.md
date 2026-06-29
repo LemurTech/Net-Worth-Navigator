@@ -4,7 +4,7 @@
 
 **Goal:** Add an optional percentage-of-gross-income 401(k) contribution method alongside the existing flat-dollar method, with auto-escalation, a percentage cap, and ContributionChange event support. Migrate `default.toml` to the new model as a validation test.
 
-**Architecture:** Add a `contribution_method` toggle (`"flat"` | `"percent_of_gross"`) per person. In percentage mode, contributions are computed from `GrossIncome` × `RetirementContributionPercent`, with `GrossIncome` growing annually at `GrossIncomeAnnualIncreasePercent` and the contribution percentage escalating annually by `RetirementContributionAnnualIncreasePercent` up to `RetirementContributionMaxPercent`. The ContributionChange event gains corresponding percent-based override fields. The IRS total limit (employee + employer, $69,000 for 2025) is enforced on top of the existing employee deferral limit.
+**Architecture:** Add a `contribution_method` toggle (`"flat"` | `"percent_of_gross"`) per person. In percentage mode, contributions are computed from `gross_income` × `retirement_contribution_percent`, with `gross_income` growing annually at `gross_income_annual_increase_percent` and the contribution percentage escalating annually by `retirement_contribution_annual_increase_percent` up to `retirement_contribution_max_percent`. The ContributionChange event gains corresponding percent-based override fields. The IRS total limit (employee + employer, $69,000 for 2025) is enforced on top of the existing employee deferral limit.
 
 **Tech Stack:** Python 3.14, TOML config, pytest, Plotly (no change to chart layer).
 
@@ -50,32 +50,32 @@ def _project_person_401k_percent(
 ) -> float:
     """Return grown annual 401(k) contribution based on percentage of gross income.
     
-    Gross income grows annually at GrossIncomeAnnualIncreasePercent.
+    Gross income grows annually at gross_income_annual_increase_percent.
     The contribution percentage escalates annually by
-    RetirementContributionAnnualIncreasePercent up to RetirementContributionMaxPercent.
+    retirement_contribution_annual_increase_percent up to retirement_contribution_max_percent.
     """
     try:
-        gross_income = float(person.get("GrossIncome", 0.0))
+        gross_income = float(person.get("gross_income", 0.0))
     except (TypeError, ValueError):
         return 0.0
     
     try:
-        gross_increase = float(person.get("GrossIncomeAnnualIncreasePercent", 0.0))
+        gross_increase = float(person.get("gross_income_annual_increase_percent", 0.0))
     except (TypeError, ValueError):
         gross_increase = 0.0
     
     try:
-        contrib_pct = float(person.get("RetirementContributionPercent", 0.0))
+        contrib_pct = float(person.get("retirement_contribution_percent", 0.0))
     except (TypeError, ValueError):
         return 0.0
     
     try:
-        contrib_escalation = float(person.get("RetirementContributionAnnualIncreasePercent", 0.0))
+        contrib_escalation = float(person.get("retirement_contribution_annual_increase_percent", 0.0))
     except (TypeError, ValueError):
         contrib_escalation = 0.0
     
     try:
-        contrib_max = float(person.get("RetirementContributionMaxPercent", 1.0))
+        contrib_max = float(person.get("retirement_contribution_max_percent", 1.0))
     except (TypeError, ValueError):
         contrib_max = 1.0
     
@@ -186,11 +186,11 @@ In `_apply_contribution_changes()` (line 1317), add the new fields to the overri
 
 ```python
         for field in (
-            "GrossIncome",
-            "GrossIncomeAnnualIncreasePercent",
-            "RetirementContributionPercent",
-            "RetirementContributionAnnualIncreasePercent",
-            "RetirementContributionMaxPercent",
+            "gross_income",
+            "gross_income_annual_increase_percent",
+            "retirement_contribution_percent",
+            "retirement_contribution_annual_increase_percent",
+            "retirement_contribution_max_percent",
         ):
             if field in event:
                 try:
@@ -210,11 +210,11 @@ Update the docstring at line 1318 to list the new fields:
       annual_401k_contribution
       annual_ira_contribution
       annual_401k_employer_match
-      GrossIncome
-      GrossIncomeAnnualIncreasePercent
-      RetirementContributionPercent
-      RetirementContributionAnnualIncreasePercent
-      RetirementContributionMaxPercent
+      gross_income
+      gross_income_annual_increase_percent
+      retirement_contribution_percent
+      retirement_contribution_annual_increase_percent
+      retirement_contribution_max_percent
     """
 ```
 
@@ -237,30 +237,30 @@ After the `annual_401k_contribution_bucket` entry (around line 194), add:
             {
                 "key": "[personX].contribution_method",
                 "summary": "401(k) contribution method: `flat` (default) or `percent_of_gross`. "
-                           "In `percent_of_gross` mode, contributions are computed from GrossIncome × RetirementContributionPercent.",
+                           "In `percent_of_gross` mode, contributions are computed from gross_income × retirement_contribution_percent.",
             },
             {
-                "key": "[personX].GrossIncome",
+                "key": "[personX].gross_income",
                 "summary": "Gross annual income used for percentage-based 401(k) contribution computation. "
                            "Only used when `contribution_method = \"percent_of_gross\"`.",
             },
             {
-                "key": "[personX].GrossIncomeAnnualIncreasePercent",
+                "key": "[personX].gross_income_annual_increase_percent",
                 "summary": "Combined annual gross income increase (COLA + performance + merit) as a decimal. "
                            "Example: 0.05 = 5% annual increase.",
             },
             {
-                "key": "[personX].RetirementContributionPercent",
+                "key": "[personX].retirement_contribution_percent",
                 "summary": "401(k) contribution as a percentage of gross income. "
                            "Example: 0.12 = 12% of gross.",
             },
             {
-                "key": "[personX].RetirementContributionAnnualIncreasePercent",
+                "key": "[personX].retirement_contribution_annual_increase_percent",
                 "summary": "Annual percentage-point increase in 401(k) contribution rate (auto-escalation). "
                            "Example: 0.02 = increase contribution rate by 2 percentage points each year.",
             },
             {
-                "key": "[personX].RetirementContributionMaxPercent",
+                "key": "[personX].retirement_contribution_max_percent",
                 "summary": "Maximum contribution percentage cap. "
                            "The contribution rate stops escalating once it reaches this value. "
                            "Example: 0.18 = never exceed 18% of gross income.",
@@ -277,11 +277,11 @@ After the existing ContributionChange entry (around line 440), update the option
                     "Optional: `annual_401k_contribution` — new absolute dollar amount",
                     "Optional: `annual_ira_contribution` — new absolute dollar amount",
                     "Optional: `annual_401k_employer_match` — new employer match dollar amount",
-                    "Optional: `GrossIncome` — new gross income for percentage-based contributions",
-                    "Optional: `GrossIncomeAnnualIncreasePercent` — new gross income increase rate",
-                    "Optional: `RetirementContributionPercent` — new contribution percentage",
-                    "Optional: `RetirementContributionAnnualIncreasePercent` — new escalation rate",
-                    "Optional: `RetirementContributionMaxPercent` — new percentage cap",
+                    "Optional: `gross_income` — new gross income for percentage-based contributions",
+                    "Optional: `gross_income_annual_increase_percent` — new gross income increase rate",
+                    "Optional: `retirement_contribution_percent` — new contribution percentage",
+                    "Optional: `retirement_contribution_annual_increase_percent` — new escalation rate",
+                    "Optional: `retirement_contribution_max_percent` — new percentage cap",
                     "Multiple events for the same person are applied in year order; later years win",
                 ],
 ```
@@ -310,32 +310,32 @@ In the person card loop (around line 693), after the existing `_diff_row` calls 
             ),
             _diff_row(
                 "Gross income",
-                person.get("GrossIncome"),
-                baseline_person.get("GrossIncome"),
+                person.get("gross_income"),
+                baseline_person.get("gross_income"),
                 _fmt_currency,
             ),
             _diff_row(
                 "Gross income annual increase",
-                person.get("GrossIncomeAnnualIncreasePercent"),
-                baseline_person.get("GrossIncomeAnnualIncreasePercent"),
+                person.get("gross_income_annual_increase_percent"),
+                baseline_person.get("gross_income_annual_increase_percent"),
                 _fmt_percent,
             ),
             _diff_row(
                 "Retirement contribution percent",
-                person.get("RetirementContributionPercent"),
-                baseline_person.get("RetirementContributionPercent"),
+                person.get("retirement_contribution_percent"),
+                baseline_person.get("retirement_contribution_percent"),
                 _fmt_percent,
             ),
             _diff_row(
                 "Retirement contribution escalation",
-                person.get("RetirementContributionAnnualIncreasePercent"),
-                baseline_person.get("RetirementContributionAnnualIncreasePercent"),
+                person.get("retirement_contribution_annual_increase_percent"),
+                baseline_person.get("retirement_contribution_annual_increase_percent"),
                 _fmt_percent,
             ),
             _diff_row(
                 "Retirement contribution max percent",
-                person.get("RetirementContributionMaxPercent"),
-                baseline_person.get("RetirementContributionMaxPercent"),
+                person.get("retirement_contribution_max_percent"),
+                baseline_person.get("retirement_contribution_max_percent"),
                 _fmt_percent,
             ),
 ```
@@ -366,8 +366,8 @@ class Test401kPercentContribution:
         """Contribution = gross × percent, no growth or escalation."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.12,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.12,
             },
             year=2026,
             simulation_start_year=2026,
@@ -376,12 +376,12 @@ class Test401kPercentContribution:
         assert contrib == pytest.approx(12_000.0)
 
     def test_gross_income_grows_annually(self):
-        """Gross income compounds at GrossIncomeAnnualIncreasePercent."""
+        """Gross income compounds at gross_income_annual_increase_percent."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "GrossIncomeAnnualIncreasePercent": 0.05,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "gross_income_annual_increase_percent": 0.05,
+                "retirement_contribution_percent": 0.10,
             },
             year=2028,  # 2 years after start
             simulation_start_year=2026,
@@ -394,9 +394,9 @@ class Test401kPercentContribution:
         """Contribution percentage increases by escalation each year."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
-                "RetirementContributionAnnualIncreasePercent": 0.02,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
+                "retirement_contribution_annual_increase_percent": 0.02,
             },
             year=2028,  # 2 years: 0.10 + 0.02×2 = 0.14
             simulation_start_year=2026,
@@ -405,13 +405,13 @@ class Test401kPercentContribution:
         assert contrib == pytest.approx(14_000.0)
 
     def test_contribution_percent_capped_at_max(self):
-        """Escalation stops at RetirementContributionMaxPercent."""
+        """Escalation stops at retirement_contribution_max_percent."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
-                "RetirementContributionAnnualIncreasePercent": 0.05,
-                "RetirementContributionMaxPercent": 0.12,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
+                "retirement_contribution_annual_increase_percent": 0.05,
+                "retirement_contribution_max_percent": 0.12,
             },
             year=2028,
             simulation_start_year=2026,
@@ -421,9 +421,9 @@ class Test401kPercentContribution:
         assert contrib == pytest.approx(12_000.0)
 
     def test_zero_when_no_gross_income(self):
-        """Returns 0 when GrossIncome is missing or zero."""
+        """Returns 0 when gross_income is missing or zero."""
         contrib = model._project_person_401k_percent(
-            {"RetirementContributionPercent": 0.10},
+            {"retirement_contribution_percent": 0.10},
             year=2026,
             simulation_start_year=2026,
             assumptions={"inflation": 0.0},
@@ -431,9 +431,9 @@ class Test401kPercentContribution:
         assert contrib == 0.0
 
     def test_zero_when_no_contribution_percent(self):
-        """Returns 0 when RetirementContributionPercent is missing or zero."""
+        """Returns 0 when retirement_contribution_percent is missing or zero."""
         contrib = model._project_person_401k_percent(
-            {"GrossIncome": 100_000},
+            {"gross_income": 100_000},
             year=2026,
             simulation_start_year=2026,
             assumptions={"inflation": 0.0},
@@ -449,8 +449,8 @@ class Test401kPercentBreakdown:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.15,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.15,
             },
             year=2026,
             simulation_start_year=2026,
@@ -490,8 +490,8 @@ class Test401kPercentBreakdown:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 500_000,
-                "RetirementContributionPercent": 0.50,
+                "gross_income": 500_000,
+                "retirement_contribution_percent": 0.50,
                 "dob": "1980-01-01",  # under 50
             },
             year=2026,
@@ -507,8 +507,8 @@ class Test401kPercentBreakdown:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 500_000,
-                "RetirementContributionPercent": 0.50,
+                "gross_income": 500_000,
+                "retirement_contribution_percent": 0.50,
                 "annual_401k_employer_match": 50_000,
                 "dob": "1980-01-01",
             },
@@ -528,21 +528,21 @@ class TestContributionChangePercent:
     """ContributionChange event with percent-mode fields."""
 
     def test_contribution_change_overrides_gross_income(self):
-        """ContributionChange can override GrossIncome mid-scenario."""
+        """ContributionChange can override gross_income mid-scenario."""
         events = [
             {
                 "type": "ContributionChange",
                 "year": 2028,
                 "person": "person1",
-                "GrossIncome": 120_000,
+                "gross_income": 120_000,
             }
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "_person_key": "person1",
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
             },
             year=2028,
             simulation_start_year=2026,
@@ -552,21 +552,21 @@ class TestContributionChangePercent:
         assert breakdown["trad_ira"] == pytest.approx(12_000.0)
 
     def test_contribution_change_overrides_contribution_percent(self):
-        """ContributionChange can override RetirementContributionPercent."""
+        """ContributionChange can override retirement_contribution_percent."""
         events = [
             {
                 "type": "ContributionChange",
                 "year": 2028,
                 "person": "person1",
-                "RetirementContributionPercent": 0.20,
+                "retirement_contribution_percent": 0.20,
             }
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "_person_key": "person1",
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
             },
             year=2028,
             simulation_start_year=2026,
@@ -582,7 +582,7 @@ class TestContributionChangePercent:
                 "type": "ContributionChange",
                 "year": 2028,
                 "person": "person1",
-                "RetirementContributionPercent": 0.20,
+                "retirement_contribution_percent": 0.20,
             }
         ]
         breakdown = model._person_retirement_contribution_breakdown(
@@ -642,7 +642,7 @@ git commit -m "feat(401k): add percentage-of-gross-income contribution model
 
 Add optional contribution_method toggle per person: flat (default) or
 percent_of_gross. In percent mode, contributions are computed from
-GrossIncome x RetirementContributionPercent, with annual gross income
+gross_income x retirement_contribution_percent, with annual gross income
 growth and contribution percentage auto-escalation capped at a
 configurable max.
 
@@ -686,11 +686,11 @@ For person1 (Person 1):
 - Gross income estimate: We need to reverse-engineer. `annual_take_home` is net cash. With `annual_take_home_is_net_of_retirement_contributions = true`, the 401(k) contribution was already deducted. So Gross ≈ take_home + 401k_contribution + taxes + other deductions.
 - Approximate: $74,958 take-home + $24,225 401(k) = $99,183. Applying a rough 20% effective tax/benefit rate gives ~$124,000 gross.
 - This is inherently approximate. The percentage model doesn't depend on getting the exact gross right — it's a planning parameter. Person 1 can tune it.
-- Use `GrossIncome = 100000` as a round number to start, producing a similar contribution level.
-- 401(k) contribution: $24,225 / $100,000 = 24.225% → `RetirementContributionPercent = 0.24225`
-- No escalation currently: `RetirementContributionAnnualIncreasePercent = 0.0`
-- Cap: just above current rate: `RetirementContributionMaxPercent = 0.30`
-- Gross income increase: inflation (0.03) + real raise (0.02) = 0.05 → `GrossIncomeAnnualIncreasePercent = 0.05`
+- Use `gross_income = 100000` as a round number to start, producing a similar contribution level.
+- 401(k) contribution: $24,225 / $100,000 = 24.225% → `retirement_contribution_percent = 0.24225`
+- No escalation currently: `retirement_contribution_annual_increase_percent = 0.0`
+- Cap: just above current rate: `retirement_contribution_max_percent = 0.30`
+- Gross income increase: inflation (0.03) + real raise (0.02) = 0.05 → `gross_income_annual_increase_percent = 0.05`
 
 For person2 (Person 2):
 - `annual_401k_contribution = 0` — no 401(k) contributions. Keep in flat mode or set to 0%.
@@ -704,16 +704,16 @@ Replace the person1 contribution section:
 [person1]
 # Income
 contribution_method = "percent_of_gross"
-GrossIncome = 100000    # gross annual income (used for contribution math only)
-GrossIncomeAnnualIncreasePercent = 0.05  # combined COLA + performance (3% inflation + 2% real raise)
+gross_income = 100000    # gross annual income (used for contribution math only)
+gross_income_annual_increase_percent = 0.05  # combined COLA + performance (3% inflation + 2% real raise)
 annual_take_home = 74958           # net-cash wage input (unchanged)
 annual_take_home_is_net_of_retirement_contributions = true
 annual_take_home_real_raise = 0.02  # real raise above inflation; total growth ~= (1+inflation)*(1+real_raise)-1
 
 # Retirement contributions (annual) — percentage of gross income
-RetirementContributionPercent = 0.24225  # 24.225% of gross income
-RetirementContributionAnnualIncreasePercent = 0.00  # no auto-escalation
-RetirementContributionMaxPercent = 0.30  # never exceed 30% of gross
+retirement_contribution_percent = 0.24225  # 24.225% of gross income
+retirement_contribution_annual_increase_percent = 0.00  # no auto-escalation
+retirement_contribution_max_percent = 0.30  # never exceed 30% of gross
 annual_401k_employer_match = 5688   # Person 1's annual employer 401(k) match
 annual_ira_contribution  = 0
 
@@ -752,7 +752,7 @@ git add scenarios/default.toml
 git commit -m "feat(default): migrate Person 1 to percentage-of-gross 401(k) contributions
 
 Switch person1 (Person 1) from flat-dollar to percent_of_gross mode.
-GrossIncome = $100,000, RetirementContributionPercent = 24.225%,
+gross_income = $100,000, retirement_contribution_percent = 24.225%,
 with 5% annual gross income increase and 0% auto-escalation.
 Equivalent contribution amount is approximately unchanged from the
 prior $24,225 flat-dollar amount."

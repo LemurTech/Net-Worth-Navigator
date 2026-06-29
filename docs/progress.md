@@ -18,7 +18,7 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - **Cash Flow table** (`src/tables.py`): Per-person contribution rows now use employee-only columns and are labelled `Employee 401k/IRA — Person 1` / `Person 2`. Aggregate rows (`Traditional IRA / 401k contributions`, `Roth contributions`) also use employee-only totals so they match the sum of per-person rows. Employer match rows are shown separately. Per-person employer match rows now appear independently when non-zero (previously required both people to have non-zero match).
 
 - **Household scenario TOMLs**: All 6 scenarios (default, comfortable, optimistic, restrictive, early-death-person1, early-death-person2) updated:
-  - `RetirementContributionPercent` → 0.24 (hits $31K IRS cap from year 1)
+  - `retirement_contribution_percent` → 0.24 (hits $31K IRS cap from year 1)
   - `annual_401k_contribution_split` → 70/30 (trad/Roth)
   - Cash targets → $40K accumulation, $50K retirement, $30K survivor
   - Comments updated to match

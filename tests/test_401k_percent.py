@@ -10,8 +10,8 @@ class Test401kPercentContribution:
         """Contribution = gross × percent, no growth or escalation."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.12,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.12,
             },
             year=2026,
             simulation_start_year=2026,
@@ -20,12 +20,12 @@ class Test401kPercentContribution:
         assert contrib == pytest.approx(12_000.0)
 
     def test_gross_income_grows_annually(self):
-        """Gross income compounds at GrossIncomeAnnualIncreasePercent."""
+        """Gross income compounds at gross_income_annual_increase_percent."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "GrossIncomeAnnualIncreasePercent": 0.05,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "gross_income_annual_increase_percent": 0.05,
+                "retirement_contribution_percent": 0.10,
             },
             year=2028,
             simulation_start_year=2026,
@@ -38,9 +38,9 @@ class Test401kPercentContribution:
         """Contribution percentage increases by escalation each year."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
-                "RetirementContributionAnnualIncreasePercent": 0.02,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
+                "retirement_contribution_annual_increase_percent": 0.02,
             },
             year=2028,
             simulation_start_year=2026,
@@ -50,13 +50,13 @@ class Test401kPercentContribution:
         assert contrib == pytest.approx(14_000.0)
 
     def test_contribution_percent_capped_at_max(self):
-        """Escalation stops at RetirementContributionMaxPercent."""
+        """Escalation stops at retirement_contribution_max_percent."""
         contrib = model._project_person_401k_percent(
             {
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
-                "RetirementContributionAnnualIncreasePercent": 0.05,
-                "RetirementContributionMaxPercent": 0.12,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
+                "retirement_contribution_annual_increase_percent": 0.05,
+                "retirement_contribution_max_percent": 0.12,
             },
             year=2028,
             simulation_start_year=2026,
@@ -66,9 +66,9 @@ class Test401kPercentContribution:
         assert contrib == pytest.approx(12_000.0)
 
     def test_zero_when_no_gross_income(self):
-        """Returns 0 when GrossIncome is missing or zero."""
+        """Returns 0 when gross_income is missing or zero."""
         contrib = model._project_person_401k_percent(
-            {"RetirementContributionPercent": 0.10},
+            {"retirement_contribution_percent": 0.10},
             year=2026,
             simulation_start_year=2026,
             assumptions={"inflation": 0.0},
@@ -76,9 +76,9 @@ class Test401kPercentContribution:
         assert contrib == 0.0
 
     def test_zero_when_no_contribution_percent(self):
-        """Returns 0 when RetirementContributionPercent is missing or zero."""
+        """Returns 0 when retirement_contribution_percent is missing or zero."""
         contrib = model._project_person_401k_percent(
-            {"GrossIncome": 100_000},
+            {"gross_income": 100_000},
             year=2026,
             simulation_start_year=2026,
             assumptions={"inflation": 0.0},
@@ -94,8 +94,8 @@ class Test401kPercentBreakdown:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.15,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.15,
             },
             year=2026,
             simulation_start_year=2026,
@@ -135,8 +135,8 @@ class Test401kPercentBreakdown:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 500_000,
-                "RetirementContributionPercent": 0.50,
+                "gross_income": 500_000,
+                "retirement_contribution_percent": 0.50,
                 "dob": "1980-01-01",
             },
             year=2026,
@@ -152,8 +152,8 @@ class Test401kPercentBreakdown:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 500_000,
-                "RetirementContributionPercent": 0.50,
+                "gross_income": 500_000,
+                "retirement_contribution_percent": 0.50,
                 "annual_401k_employer_match": 50_000,
                 "dob": "1980-01-01",
             },
@@ -176,21 +176,21 @@ class TestContributionChangePercent:
     """ContributionChange event with percent-mode fields."""
 
     def test_contribution_change_overrides_gross_income(self):
-        """ContributionChange can override GrossIncome mid-scenario."""
+        """ContributionChange can override gross_income mid-scenario."""
         events = [
             {
                 "type": "ContributionChange",
                 "year": 2028,
                 "person": "person1",
-                "GrossIncome": 120_000,
+                "gross_income": 120_000,
             }
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "_person_key": "person1",
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
             },
             year=2028,
             simulation_start_year=2026,
@@ -200,21 +200,21 @@ class TestContributionChangePercent:
         assert breakdown["trad_ira"] == pytest.approx(12_000.0)
 
     def test_contribution_change_overrides_contribution_percent(self):
-        """ContributionChange can override RetirementContributionPercent."""
+        """ContributionChange can override retirement_contribution_percent."""
         events = [
             {
                 "type": "ContributionChange",
                 "year": 2028,
                 "person": "person1",
-                "RetirementContributionPercent": 0.20,
+                "retirement_contribution_percent": 0.20,
             }
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "_person_key": "person1",
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
             },
             year=2028,
             simulation_start_year=2026,
@@ -230,7 +230,7 @@ class TestContributionChangePercent:
                 "type": "ContributionChange",
                 "year": 2028,
                 "person": "person1",
-                "RetirementContributionPercent": 0.20,
+                "retirement_contribution_percent": 0.20,
             }
         ]
         breakdown = model._person_retirement_contribution_breakdown(
@@ -276,8 +276,8 @@ class TestEmployerMatchPercent:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
                 "annual_401k_employer_match": 5_000,
             },
             year=2026,
@@ -291,8 +291,8 @@ class TestEmployerMatchPercent:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
                 "annual_401k_employer_match_mode": "percent_of_gross",
                 "annual_401k_employer_match_rate": 0.50,
                 "annual_401k_employer_match_max_percent": 0.06,
@@ -309,8 +309,8 @@ class TestEmployerMatchPercent:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.04,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.04,
                 "annual_401k_employer_match_mode": "percent_of_gross",
                 "annual_401k_employer_match_rate": 0.50,
                 "annual_401k_employer_match_max_percent": 0.06,
@@ -327,9 +327,9 @@ class TestEmployerMatchPercent:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "GrossIncomeAnnualIncreasePercent": 0.05,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "gross_income_annual_increase_percent": 0.05,
+                "retirement_contribution_percent": 0.10,
                 "annual_401k_employer_match_mode": "percent_of_gross",
                 "annual_401k_employer_match_rate": 0.50,
                 "annual_401k_employer_match_max_percent": 0.06,
@@ -347,8 +347,8 @@ class TestEmployerMatchPercent:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
                 "annual_401k_contribution_split": {"trad_ira": 0.60, "roth": 0.40},
                 "annual_401k_employer_match_mode": "percent_of_gross",
                 "annual_401k_employer_match_rate": 1.00,
@@ -367,8 +367,8 @@ class TestEmployerMatchPercent:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
                 "annual_401k_employer_match_mode": "percent_of_gross",
                 "annual_401k_employer_match_rate": 0.0,
                 "annual_401k_employer_match_max_percent": 0.06,
@@ -385,8 +385,8 @@ class TestEmployerMatchPercent:
         breakdown = model._person_retirement_contribution_breakdown(
             {
                 "contribution_method": "percent_of_gross",
-                "GrossIncome": 100_000,
-                "RetirementContributionPercent": 0.10,
+                "gross_income": 100_000,
+                "retirement_contribution_percent": 0.10,
                 "annual_401k_employer_match_mode": "percent_of_gross",
                 "annual_401k_employer_match_rate": 0.50,
                 "annual_401k_employer_match_max_percent": 0.0,
@@ -408,7 +408,7 @@ class TestContributionChangeDeltas:
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {"_person_key": "person1", "contribution_method": "percent_of_gross",
-             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "gross_income": 100_000, "retirement_contribution_percent": 0.10,
              "dob": "1980-01-01"},
             year=2028, simulation_start_year=2026,
             assumptions={"inflation": 0.0}, events=events)
@@ -421,7 +421,7 @@ class TestContributionChangeDeltas:
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {"_person_key": "person1", "contribution_method": "percent_of_gross",
-             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "gross_income": 100_000, "retirement_contribution_percent": 0.10,
              "dob": "1980-01-01"},
             year=2028, simulation_start_year=2026,
             assumptions={"inflation": 0.0}, events=events)
@@ -434,7 +434,7 @@ class TestContributionChangeDeltas:
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {"_person_key": "person1", "contribution_method": "percent_of_gross",
-             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "gross_income": 100_000, "retirement_contribution_percent": 0.10,
              "dob": "1980-01-01"},
             year=2028, simulation_start_year=2026,
             assumptions={"inflation": 0.0}, events=events)
@@ -447,7 +447,7 @@ class TestContributionChangeDeltas:
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {"_person_key": "person1", "contribution_method": "percent_of_gross",
-             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "gross_income": 100_000, "retirement_contribution_percent": 0.10,
              "annual_ira_contribution": 3_600},
             year=2028, simulation_start_year=2026,
             assumptions={"inflation": 0.0}, events=events)
@@ -460,7 +460,7 @@ class TestContributionChangeDeltas:
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {"_person_key": "person1", "contribution_method": "percent_of_gross",
-             "GrossIncome": 100_000, "RetirementContributionPercent": 0.10,
+             "gross_income": 100_000, "retirement_contribution_percent": 0.10,
              "annual_401k_employer_match": 5_000, "dob": "1980-01-01"},
             year=2028, simulation_start_year=2026,
             assumptions={"inflation": 0.0}, events=events)
@@ -486,8 +486,8 @@ class TestContributionChangeDeltas:
         ]
         breakdown = model._person_retirement_contribution_breakdown(
             {"_person_key": "person1", "contribution_method": "percent_of_gross",
-             "GrossIncome": 100_000, "GrossIncomeAnnualIncreasePercent": 0.05,
-             "RetirementContributionPercent": 0.10, "dob": "1980-01-01"},
+             "gross_income": 100_000, "gross_income_annual_increase_percent": 0.05,
+             "retirement_contribution_percent": 0.10, "dob": "1980-01-01"},
             year=2028, simulation_start_year=2026,
             assumptions={"inflation": 0.0}, events=events)
         assert breakdown["employee_401k_uncapped"] == pytest.approx(23_025.0)
