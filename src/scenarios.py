@@ -226,6 +226,17 @@ def write_scenarios_index(*, output_root: Path | None = None, cache_timestamp: s
     for scenario in scenarios:
         scenario_dir = output_root / scenario.slug
         mode_entries = []
+
+        # Determine data_source_mode from the scenario's own TOML
+        data_source_mode = "monarch"
+        try:
+            with open(scenario.config_path, "rb") as fh:
+                raw = tomllib.load(fh)
+            raw_ds = raw.get("data_source", {}) or {}
+            data_source_mode = str(raw_ds.get("mode", "monarch")).strip().lower()
+        except Exception:
+            pass
+
         for mode in AVAILABLE_RENDER_MODES:
             projection_path = scenario_dir / mode / "projection.html"
             if not projection_path.exists():
@@ -251,6 +262,7 @@ def write_scenarios_index(*, output_root: Path | None = None, cache_timestamp: s
                 "rendered_at": next((entry["rendered_at"] for entry in mode_entries if entry["mode"] == default_mode), None),
                 "default_mode": default_mode,
                 "modes": mode_entries,
+                "data_source_mode": data_source_mode,
                 "is_default": scenario.is_default,
             }
         )

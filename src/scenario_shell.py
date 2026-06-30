@@ -355,12 +355,17 @@ def build_scenario_shell(
       const frameWrap = document.getElementById("frame-wrap");
       const emptyState = document.getElementById("empty-state");
 
-      // Data freshness indicator
-      (function updateFreshness() {{
+      // Data freshness indicator — updates when scenario changes
+      function updateFreshnessForScenario(scenario) {{
         const bar = document.getElementById("freshness-bar");
         const dot = document.getElementById("freshness-dot");
         const label = document.getElementById("freshness-label");
         if (!bar || !dot || !label) return;
+        // Hide for synthetic scenarios (no live Monarch data)
+        if (!scenario || scenario.data_source_mode === "synthetic") {{
+          bar.classList.remove("visible");
+          return;
+        }}
         const ts = manifest.cache_timestamp;
         if (!ts) {{
           bar.classList.remove("visible");
@@ -380,7 +385,7 @@ def build_scenario_shell(
           dot.className = "dot healthy";
           label.textContent = "Live balances: " + dateStr;
         }}
-      }})();
+      }}
 
       const scenarios = Array.isArray(manifest.scenarios) ? manifest.scenarios : [];
 
@@ -494,6 +499,7 @@ def build_scenario_shell(
           }}
           compareLink.href = compareUrl.toString();
         }}
+        updateFreshnessForScenario(selected);
       }}
 
       select.addEventListener("change", () => activateScenario(select.value));
