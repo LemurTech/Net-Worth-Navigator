@@ -112,7 +112,7 @@ _TABS_CSS = """
   table.datatable tr.indent td.rowlabel { padding-left: 24px; }
   table.datatable tr:hover td, table.datatable tr:hover th { background: #162234; }
   td.year-highlight, th.year-highlight { box-shadow: inset 0 0 0 2px rgba(125, 211, 252, 0.35); background: rgba(125, 211, 252, 0.08); }
-  th[data-year] { cursor: pointer; }
+  th[data-year] { cursor: pointer; touch-action: manipulation; }
   .gantt-wrap { background: #111827; border-radius: 6px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.28); }
   .portfolio-table-panel { margin-top: 12px; }
@@ -533,18 +533,48 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Click a year header to highlight that column across all tables
-  document.querySelectorAll('th[data-year]').forEach(function(th) {
-    th.addEventListener('mousedown', function(e) {
-      e.stopPropagation();
+  // Uses event delegation — works on desktop and mobile regardless of
+  // when elements are added to the DOM or what scroll containers they're in.
+  var _lastYearClick = { col: null, time: 0 };
+
+  function clearAllHighlights() {
+    document.querySelectorAll('.year-highlight').forEach(function(cell) {
+      cell.classList.remove('year-highlight');
     });
-    th.addEventListener('click', function() {
-      var col = this.getAttribute('data-col');
-      if (!col) return;
-      var active = this.classList.toggle('year-highlight');
-      document.querySelectorAll('[data-col="' + col + '"]').forEach(function(cell) {
-        cell.classList.toggle('year-highlight', active);
-      });
+  }
+
+  // Click on year header → toggle column highlight
+  document.addEventListener('click', function(e) {
+    var th = e.target.closest('th[data-year]');
+    if (!th) return;
+    var col = th.getAttribute('data-col');
+    if (!col) return;
+
+    // Double-click / double-tap → deselect all
+    var now = Date.now();
+    if (col === _lastYearClick.col && now - _lastYearClick.time < 500) {
+      clearAllHighlights();
+      _lastYearClick = { col: null, time: 0 };
+      return;
+    }
+    _lastYearClick = { col: col, time: now };
+
+    var active = th.classList.toggle('year-highlight');
+    document.querySelectorAll('[data-col="' + col + '"]').forEach(function(cell) {
+      cell.classList.toggle('year-highlight', active);
     });
+  });
+
+  // Click on rowlabel header ("Account") → deselect all
+  document.addEventListener('click', function(e) {
+    var th = e.target.closest('th.rowlabel[data-col="0"]');
+    if (!th) return;
+    clearAllHighlights();
+  });
+
+  // Escape key → deselect all
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') clearAllHighlights();
   });
 });
 </script>
