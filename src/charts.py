@@ -89,7 +89,8 @@ _TABS_CSS = """
                                            border-bottom: 1px solid #1f2a3a; white-space: nowrap; }
   table.datatable th.rowlabel, table.datatable td.rowlabel { text-align: left;
       min-width: 190px; font-weight: normal; background: #111827; color: #e5edf7; }
-  table.datatable thead tr th { background: #182233; font-weight: 600;
+  table.datatable thead { position: sticky; top: 0; z-index: 3; }
+  table.datatable thead tr th { position: sticky; top: 0; z-index: 3; background: #182233; font-weight: 600;
                                  border-bottom: 2px solid #2b3a4e; color: #f8fafc; }
   table.datatable thead tr th.rowlabel { background: #182233; }
   table.datatable tr.section th { background: #162030; font-weight: 700;
@@ -103,6 +104,8 @@ _TABS_CSS = """
   table.datatable td.zero { color: #64748b; text-align: right; }
   table.datatable tr.indent td.rowlabel { padding-left: 24px; }
   table.datatable tr:hover td, table.datatable tr:hover th { background: #162234; }
+  .year-highlight td { outline: 2px solid rgba(125, 211, 252, 0.35); outline-offset: -2px; background: rgba(125, 211, 252, 0.06); }
+  .year-highlight th { outline: 2px solid rgba(125, 211, 252, 0.35); outline-offset: -2px; background: rgba(125, 211, 252, 0.06); }
   .gantt-wrap { background: #111827; border-radius: 6px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.28); }
   .portfolio-table-panel { margin-top: 12px; }
@@ -461,9 +464,15 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    // Redirect vertical wheel to horizontal scroll so mouse wheel works over the table
+    // Redirect vertical wheel to horizontal scroll only when the table has overflow
     panel.addEventListener('wheel', function(e) {
       if (e.deltaY !== 0) {
+        var canScroll = panel.scrollWidth > panel.clientWidth;
+        if (!canScroll) return;  // table fits — let page scroll normally
+        var atLeft = panel.scrollLeft <= 0;
+        var atRight = panel.scrollLeft >= panel.scrollWidth - panel.clientWidth - 1;
+        // At an edge — only consume the wheel if it would scroll toward content
+        if ((e.deltaY < 0 && atLeft) || (e.deltaY > 0 && atRight)) return;
         e.preventDefault();
         panel.scrollLeft += e.deltaY * 5;
       }
@@ -489,6 +498,25 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!isDragging) return;
       isDragging = false;
       panel.classList.remove('dragging');
+    });
+  });
+
+  // Click a year header to highlight that column across all tables
+  document.querySelectorAll('th[data-year]').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var active = this.classList.toggle('year-highlight');
+      // Find column index within this header row
+      var headers = this.parentElement.querySelectorAll('th');
+      var colIndex = Array.prototype.indexOf.call(headers, this);
+      // Highlight all cells at the same column index in all tables
+      document.querySelectorAll('table.datatable').forEach(function(table) {
+        table.querySelectorAll('tr').forEach(function(row) {
+          var cells = row.querySelectorAll('td, th');
+          if (cells[colIndex]) {
+            cells[colIndex].classList.toggle('year-highlight', active);
+          }
+        });
+      });
     });
   });
 });

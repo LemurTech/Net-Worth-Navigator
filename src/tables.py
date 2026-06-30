@@ -38,6 +38,33 @@ def _fmt(value: float) -> str:
     return f"<td class='{color}'>${value:>12,.0f}</td>"
 
 
+def _surplus_bar_cell(taxable: float, trad_ira: float, roth: float) -> str:
+    total = taxable + trad_ira + roth
+    if total <= 0:
+        return "<td style='text-align:right'>$      0</td>"
+    offsets = []
+    widths = []
+    colors = []
+    if taxable > 0:
+        offsets.append(0.0)
+        widths.append(taxable / total * 100)
+        colors.append('#34d399')
+    if trad_ira > 0:
+        offsets.append(sum(widths))
+        widths.append(trad_ira / total * 100)
+        colors.append('#38bdf8')
+    if roth > 0:
+        offsets.append(sum(widths))
+        widths.append(roth / total * 100)
+        colors.append('#f472b6')
+    rects = ''.join(
+        '<rect x="{:.1f}%" y="0" width="{:.1f}%" height="10" fill="{}" rx="1.5"/>'.format(offsets[i], widths[i], colors[i])
+        for i in range(len(offsets))
+    )
+    svg = '<svg width="48" height="10" viewBox="0 0 48 10" style="flex-shrink:0;border-radius:2px;overflow:hidden">' + rects + '</svg>'
+    return '<td style="text-align:right"><div style="display:inline-flex;align-items:center;gap:5px"><span>$' + '{:>8,.0f}'.format(total) + '</span>' + svg + '</div></td>'
+
+
 def _fmt_currency(value) -> str:
     try:
         amount = float(value)
@@ -1013,7 +1040,7 @@ def build_scenario_parameters_summary(
 
 
 def _header_row(years: list[int]) -> str:
-    cells = "".join(f"<th>{y}</th>" for y in years)
+    cells = "".join(f"<th data-year='{y}'>{y}</th>" for y in years)
     return f"<tr><th class='rowlabel'>Account</th>{cells}</tr>"
 
 
@@ -1211,7 +1238,18 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
             )
             for y in years
         ]
-        rows.append(_data_row("Total Surplus Routed", total_surplus_routed, bold=True))
+        # Total row with stacked bar visualization
+        bar_cells = []
+        for i, y in enumerate(years):
+            if y not in subset.index:
+                bar_cells.append("<td>—</td>")
+                continue
+            taxable = float(subset.loc[y, "surplus_to_taxable"]) if "surplus_to_taxable" in subset.columns else 0.0
+            trad_ira = float(subset.loc[y, "surplus_to_trad_ira"]) if "surplus_to_trad_ira" in subset.columns else 0.0
+            roth = float(subset.loc[y, "surplus_to_roth"]) if "surplus_to_roth" in subset.columns else 0.0
+            bar_cells.append(_surplus_bar_cell(taxable, trad_ira, roth))
+        bar_body = "".join(bar_cells)
+        rows.append(f"<tr class='total sep'><th class='rowlabel'>Total Surplus Routed</th>{bar_body}</tr>")
 
     # ── Retirement contributions (owner split when available) ─────────────────
     contribution_rows = [
@@ -1453,7 +1491,67 @@ def build_tax_table(df: pd.DataFrame) -> str:
 
     header = _header_row(years).replace("Account", "Tax Item", 1)
     body = "\n".join(rows)
-    return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
+    table_html = f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
+
+    # ── Cumulative lifetime summary card ────────────────────────────────────
+    cum_taxes = sum(
+        float(subset.loc[y, "annual_taxes"]) if (y in subset.index and "annual_taxes" in subset.columns and pd.notna(subset.loc[y, "annual_taxes"])) else 0.0
+        for y in years
+    )
+    cum_fed = sum(
+        float(subset.loc[y, "annual_federal_taxes"]) if (y in subset.index and "annual_federal_taxes" in subset.columns and pd.notna(subset.loc[y, "annual_federal_taxes"])) else 0.0
+        for y in years
+    )
+    cum_state = sum(
+        float(subset.loc[y, "annual_state_taxes"]) if (y in subset.index and "annual_state_taxes" in subset.columns and pd.notna(subset.loc[y, "annual_state_taxes"])) else 0.0
+        for y in years
+    )
+    cum_income = sum(
+        float(subset.loc[y, "taxable_income"]) if (y in subset.index and "taxable_income" in subset.columns and pd.notna(subset.loc[y, "taxable_income"])) else 0.0
+        for y in years
+    )
+    tax_years = sum(
+        1 for y in years
+        if y in subset.index and "annual_taxes" in subset.columns and pd.notna(subset.loc[y, "annual_taxes"]) and float(subset.loc[y, "annual_taxes"]) != 0.0
+    )
+    fed_rates = []
+    for y in years:
+        if y in subset.index and "federal_effective_rate" in subset.columns:
+            v = subset.loc[y, "federal_effective_rate"]
+            if pd.notna(v) and float(v) > 0:
+                fed_rates.append(float(v))
+    state_rates = []
+    for y in years:
+        if y in subset.index and "state_effective_rate" in subset.columns:
+            v = subset.loc[y, "state_effective_rate"]
+            if pd.notna(v) and float(v) > 0:
+                state_rates.append(float(v))
+    avg_fed = sum(fed_rates) / len(fed_rates) if fed_rates else 0.0
+    avg_state = sum(state_rates) / len(state_rates) if state_rates else 0.0
+    combined_rate = (cum_taxes / cum_income * 100.0) if cum_income > 0 else 0.0
+
+    summary_rows = [
+        ("Total taxes paid (all years)", _fmt_currency(cum_taxes), True),
+        ("Federal total", _fmt_currency(cum_fed), False),
+        ("State total", _fmt_currency(cum_state), False),
+        ("Average federal effective rate", _fmt_percent(avg_fed / 100.0), False),
+        ("Average state effective rate", _fmt_percent(avg_state / 100.0), False),
+        ("Combined lifetime effective rate", _fmt_percent(combined_rate / 100.0), True),
+        ("Years with tax liability", f"{tax_years} of {len(years)}", False),
+    ]
+    summary_body = ""
+    for label, value, is_total in summary_rows:
+        cls = "total" if is_total else "indent"
+        tag = "th" if is_total else "td"
+        summary_body += f"<tr class='{cls}'><{tag} class='rowlabel'>{label}</{tag}><td colspan='100' style='text-align:right;font-weight{':700;color:#f8fafc' if is_total else ''}'>{value}</td></tr>\n"
+
+    summary_html = (
+        "<div class='assumptions-wrap' style='margin-top:12px'>"
+        "<div class='assumptions-note'>Cumulative tax drag across the full projection.</div>"
+        f"<table class='assumptions-table assumptions-kv'><tbody>{summary_body}</tbody></table>"
+        "</div>"
+    )
+    return table_html + summary_html
 
 
 def build_simulation_outcomes_table(
