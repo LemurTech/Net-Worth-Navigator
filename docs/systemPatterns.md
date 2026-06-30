@@ -156,3 +156,34 @@ amount = -6000             # negative = cash outflow
 - **Keep TOML comments brief and move the handbook into the shared definitions page.** The repo now ships a static `definitions.html` reference page for grouped, simplified explanations of config parameters; scenario files should keep enough inline guidance to stay usable, but longer explanations belong in the shared page.
 - **Detailed yearly audit surfaces should mirror sidecar structure.** When a modeled output already has a normalized yearly sidecar (like taxes), the projection page can expose the same shape as a dedicated yearly tab instead of overloading summary cards or cash-flow rows.
 - **Static-page CSV parsing must handle quoted fields.** Pandas `to_csv()` correctly quotes fields containing commas, but a naive JS `split(',')` will split inside those quotes — corrupting column alignment for rows where quoted fields contain the delimiter character. The `events_active` column is the canonical trigger because it carries comma-separated event labels. The fix is a state-machine line parser (`parseCSVLine`) that tracks an `inQuotes` flag, strips wrapping double-quotes, and only treats commas as delimiters when outside quotes. This applies to any static HTML page that parses sidecar CSVs client-side.
+
+---
+
+## UI Engineering Lessons (hard-won) — 2026-06-30
+
+### Sticky table headers & overflow containers
+**`position: sticky` on `<thead>` or `<th>` fails inside any ancestor with `overflow-x: auto|scroll|hidden`.** The overflow container becomes the sticky scrollport, and since these containers only scroll horizontally, sticky never engages vertically. **Solution**: split each `<table>` into a header table (placed in a wrapper with no overflow ancestor → sticky works against the page viewport) and a body table (placed in a `.table-scroll` wrapper with `overflow-x: auto` for horizontal scroll). Both tables use `table-layout: fixed` with explicit `<colgroup>` pixel widths so column alignment is guaranteed identical — no runtime measurement or width-matching needed.
+
+### Header rowlabel pinning
+**`position: sticky; left: 0` on `<th>` is unreliably supported across browsers** when the `<th>` is inside a horizontally-scrolled container with `table-layout: fixed`. **Solution**: use JS transform in the scroll sync handler. Apply `transform: translateX(scrollX)` to the `th.rowlabel` to counter the horizontal scroll, keeping it visually pinned. Fill the gap where the cell was before translation with `boxShadow: scrollX + 'px 0 0 0 #182233'` (leftward box-shadow in the header background color) to prevent adjacent year headers from peeking through.
+
+### Overscroll dead space
+**Dead horizontal scroll space past the last column** is caused by cell content overflowing past the table boundary. Even with `table-layout: fixed` and `box-sizing: border-box`, inline elements (like `<span>` with `min-width`) can overflow cells and inflate `scrollWidth`. **Solution**: add `overflow: hidden` to `.datatable` to clip content at the table edge. Pair with wider year columns (130px, giving 110px content area after padding) to prevent number clipping.
+
+### Dual-scroll sync for header/body
+The header and body each have their own `.table-scroll` containers (`.header-scroll` and `.body-scroll`). The header scrollbar is hidden (`scrollbar-width: none`). On body scroll, sync `headerScroll.scrollLeft = bodyScroll.scrollLeft`. This avoids transform-based approaches that caused peeking/gap issues.
+
+### Plotly layout: matching chart configurations
+When two Plotly charts share identical responsive legend/margin logic, they must also share **height** and **margin**. A shorter chart (340px) with the same mobile legend position as a taller chart (420px) will have less room for the below-chart legend, causing overlap with x-axis titles. **Match height, margins, and legend config exactly** between charts that share layout behavior.
+
+### `overflow: clip` vs `overflow: hidden`
+**`overflow: hidden` creates a CSS scroll container** that traps `position: sticky` descendants — they stick to the hidden container (which can't scroll) instead of the page. **Use `overflow: clip`** to constrain width without creating a scroll container, allowing sticky to pass through to the page body.
+
+### Event delegation for dynamic content
+**Per-element event listeners can fail silently** when elements aren't in the DOM yet (e.g., `DOMContentLoaded` fires before all elements are parsed) or when elements are inside scrolled containers that interfere with events on mobile. **Use event delegation on `document`**: `document.addEventListener('click', e => { var th = e.target.closest('th[data-year]'); ... })`. This works on both desktop and mobile regardless of DOM timing.
+
+### `data-col` attributes must be on both header and body cells
+**The year-highlight feature requires `data-col` attributes on BOTH `<th>` (header) and `<td>` (body) cells.** The click handler queries `[data-col="N"]` globally to toggle the `year-highlight` class across all tables. If `git checkout` restores a pre-highlight version of `src/tables.py`, these attributes are lost. Verify with `search_files('data-col')` in the output.
+
+### Tabulator.js — when NOT to use it
+**Tabulator's `frozenColumns` and `headerVisible` features require Tabulator's own internal scroll container.** For full-height tables (all rows visible, page-level vertical scroll), Tabulator never creates its internal vertical scroll, so these features never engage. **Tabulator is a poor fit for full-height tables with page-level scrolling** — use native CSS/JS approaches instead. Tabulator is excellent for fixed-height viewport tables with internal scroll.

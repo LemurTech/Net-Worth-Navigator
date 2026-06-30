@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-06-29
-**Status:** Stable. Sticky table headers and horizontal overscroll fix deployed. Build-time table splitting with `table-layout: fixed` + explicit `<colgroup>` widths keeps header and body column alignment identical. All datatables (Accounts, Cash Flow, Tax, Portfolio, Simulation) now use `.sticky-header-wrap` + `.table-scroll` structure inside `.table-panel`.
+**Last updated:** 2026-06-30
+**Status:** Stable. Table UI layer stable: sticky headers, frozen first column, grab-to-pan horizontal scroll, year column highlighting with deselect-all (double-click/Esc/Account header), overscroll fixed via overflow:hidden + wider columns. Surplus bar visualization removed. Cash Flow chart mobile layout fixed by matching Portfolio chart height/margins. Tabulator.js evaluated and rejected — custom split-table approach is the right fit for full-height tables with page-level scrolling.
 
 ---
 
@@ -128,3 +128,7 @@ Grouped by implementation area.
 - **Plotly `add_vrect` annotation_text** collides with vline labels — use a separate `add_annotation` with `yref="paper"` instead.
 - **For routine UI/layout tweaks**, prefer targeted checks + `run.py --offline`. Reserve the full test suite for model changes or pre-commit passes.
 - **Table sticky headers require build-time splitting** (`src/charts.py:_wrap_table_with_sticky_header`). `position: sticky` on `<thead>` fails inside any ancestor with `overflow-x: auto` — the overflow container becomes the sticky scrollport. The fix: split each `<table>` into a header table (in `.sticky-header-wrap`, no overflow ancestor → sticky works) and a body table (in `.table-scroll`, overflow-x: auto). Both use `table-layout: fixed` with explicit `<colgroup>` pixel widths so columns align identically.
+- **`position: sticky; left: 0` on `<th>` is unreliable.** Use JS `transform: translateX(scrollX)` + `boxShadow` on the header rowlabel instead. The box-shadow fills the gap where the cell was before translation.
+- **`data-col` attributes must be on both header `<th>` and body `<td>` cells** for year-highlight to work. If `git checkout` restores an old version of `src/tables.py`, these are lost. Verify with `search_files('data-col')` in the output.
+- **Plotly chart height directly affects mobile legend spacing.** If two charts share identical responsive legend/margin logic, they must also share height and initial margins. A 340px chart with the same legend config as a 420px chart will overlap.
+- **Tabulator.js frozen/sticky features require Tabulator's own internal scroll container** — they won't engage in full-height tables with page-level scrolling.

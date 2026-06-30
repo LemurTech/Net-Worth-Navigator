@@ -3,6 +3,38 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-06-30
+
+### Added
+
+- **Deselect-all for column highlights** (`src/charts.py`): Double-click/double-tap any highlighted year header, click the "Account" rowlabel header, or press Escape to clear all column highlights.
+
+- **`.data-col` attributes on all header and body cells** (`src/tables.py`): `_header_row()` emits `data-col='N'` and `data-year='Y'` on each `<th>`. `_data_row()` injects `data-col='N'` into each `<td>`. Required for cross-table column highlighting via `document.querySelectorAll('[data-col="N"]')`.
+
+- **Mobile touch support for year highlighting** (`src/charts.py`): Event delegation on `document` with `e.target.closest('th[data-year]')` — works on both desktop and mobile regardless of DOM timing or scroll container nesting.
+
+- **UI Engineering Lessons section in systemPatterns.md**: 8 hard-won lessons documented: sticky headers & overflow containers, header rowlabel pinning, overscroll dead space, dual-scroll sync, Plotly chart height matching, `overflow: clip` vs `hidden`, event delegation, `data-col` attribute requirements, and Tabulator.js evaluation.
+
+### Changed
+
+- **Surplus bar visualization removed** (`src/tables.py`): `_surplus_bar_cell()` function deleted. "Total Surplus Routed" row now uses standard `_data_row()` — simple bold numeric row like every other total row. The per-bucket breakdown is already visible in the individual Surplus Routing rows above it.
+
+- **Cash Flow chart layout** (`src/charts.py`): Matched Portfolio chart exactly — height 420px (was 340px), margins `l=76,r=24,t=78,b=48` (was `l=80,r=24,t=72,b=48`), legend `bgcolor=rgba(0,0,0,0)` in Python layout, `Plotly.Plots.resize()` added after responsive relayout. Fixes legend-over-xaxis-title overlap and missing window-resize responsiveness on mobile.
+
+- **Overscroll fix** (`src/charts.py`): `overflow: hidden` on `.datatable` clips cell content at the table boundary, preventing `scrollWidth` inflation from overflowing inline elements. Year column width increased 110→130px to prevent number clipping. JS scrollLeft clamping added as safety net.
+
+- **Header rowlabel pinning** (`src/charts.py`): `syncHeaderScroll()` now applies `transform: translateX(scrollX)` to `th.rowlabel` and `boxShadow: scrollX + 'px 0 0 0 #182233'` to fill the translation gap.
+
+- **Year-highlight handler** (`src/charts.py`): Switched from per-element listeners to event delegation on `document` — more reliable across DOM timing and scroll containers.
+
+### Reverted
+
+- **Tabulator.js migration** (commits `a035716` through `70d2119`): Evaluated Tabulator 6.3 for frozen columns and sticky headers. Rejected because Tabulator's `frozenColumns` and `headerVisible` require Tabulator's own internal scroll container, incompatible with full-height page-scrolled tables. Custom split-table approach restored from `a1e901c`.
+
+### Decisions
+
+- **Tabulator.js is a poor fit for full-height tables with page-level scrolling.** Context: Tabulator's sticky/frozen features need the table to be inside a Tabulator-managed viewport with internal scroll. NWN tables show all rows (no internal vertical scroll). Use native CSS/JS for page-scrolled tables; Tabulator is excellent for fixed-height viewport tables. Status: Adopted.
+
 ## 2026-06-29
 
 ### Added

@@ -1,6 +1,15 @@
 # Net Worth Navigator — UI Improvement Ideas
 
-Brainstormed 2026-06-29. Last updated 2026-06-29. Unprioritized. Each idea is independent.
+| Idea | Status | Notes |
+|---|---|---|
+| Sticky table headers | ✅ Done | Build-time split: header wrapper (sticky) + body scroll wrapper |
+| Frozen first column (row labels) | ✅ Done | JS transform + box-shadow in scroll sync handler |
+| Horizontal grab-to-pan scroll | ✅ Done | Mousedown-drag on `.body-scroll` and `.tabulator-tableholder` |
+| Column highlighting (click year → highlight all tables) | ✅ Done | `data-col` attributes + event delegation on `document` |
+| Deselect all highlights (double-click / Esc / Account header) | ✅ Done | Double-click year header, click "Account" header, or press Escape |
+| Overscroll dead space fix | ✅ Done | `overflow: hidden` on `.datatable` + wider year columns (130px) |
+| Surplus bar visualization removed | ✅ Done | Replaced with simple numeric row; breakdown in individual rows above |
+| Mobile legend/x-axis overlap (Cash Flow chart) | ✅ Done | Matched Portfolio chart height (420px), margins, legend bgcolor |
 
 ---
 
