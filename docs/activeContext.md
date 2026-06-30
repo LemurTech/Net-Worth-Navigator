@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-06-30
-**Status:** Stable. Table UI layer stable: sticky headers, frozen first column, grab-to-pan horizontal scroll, year column highlighting with deselect-all (double-click/Esc/Account header), overscroll fixed via overflow:hidden + wider columns. Surplus bar visualization removed. Cash Flow chart mobile layout fixed by matching Portfolio chart height/margins. Tabulator.js evaluated and rejected — custom split-table approach is the right fit for full-height tables with page-level scrolling.
+**Status:** Stable. Liabilities Payoff Calendar shipped (Liabilities tab with debt trajectory chart + amortization table). Hover tooltips cleaned up across all charts — redundant year/age removed from `x unified` headers. Age labels rendered as separate Plotly annotations below the x-axis so hover stays clean. Axis title positioning uses `standoff`. Table UI layer stable: sticky headers, frozen first column, grab-to-pan horizontal scroll, year column highlighting with deselect-all. Tabulator.js evaluated and rejected.
 
 ---
 

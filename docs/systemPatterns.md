@@ -187,3 +187,15 @@ When two Plotly charts share identical responsive legend/margin logic, they must
 
 ### Tabulator.js — when NOT to use it
 **Tabulator's `frozenColumns` and `headerVisible` features require Tabulator's own internal scroll container.** For full-height tables (all rows visible, page-level vertical scroll), Tabulator never creates its internal vertical scroll, so these features never engage. **Tabulator is a poor fit for full-height tables with page-level scrolling** — use native CSS/JS approaches instead. Tabulator is excellent for fixed-height viewport tables with internal scroll.
+
+### Hover tooltips for `x unified` charts
+**Individual trace hovertemplates in `hovermode="x unified"` should NOT include `<b>%{x}</b>`.** The shared x unified header already shows the x-axis value (the year), and repeating it on every trace entry creates visual clutter on busy charts. **Rule**: each trace's `hovertemplate` should contain only `{label}: %{y...` and nothing about the x value. This applies to all charts on the projection and shell pages that use unified hover.
+
+### Age labels as annotations, not ticktext
+**Embedding age labels in x-axis `ticktext` (`"<year><br>(age1/age2)"`) causes two problems:** (1) the hover tooltip header inherits the multi-line tick text, showing ages where they shouldn't be; (2) intermediary unlabeled ticks lack ages entirely, creating inconsistency. **Solution**: keep ticktext as just the year, and render age labels as separate Plotly `add_annotation()` calls positioned at `y=-0.085` (paper coords below the x-axis) for each labeled tick. The hover header stays clean, and the axis still shows ages.
+
+### Axis title standoff
+**`margin.b` alone does not move the x-axis title away from tick labels.** Plotly positions the axis title relative to the tick labels, not the plot edge. **Solution**: use `xaxis=dict(title=dict(text="...", standoff=N))` where `standoff` controls the gap in pixels between the lowest tick/annotation and the title text.
+
+### Responsive annotation visibility
+**When rendering decorative annotations (age labels, helper text) that should disappear on small screens, don't rely on the compact-mode breakpoint alone.** Annotations have a `visible` property that can be toggled via `Plotly.relayout(chart, updates)` using the `annotations[N].visible` key pattern. **Solution**: in the responsive JS, iterate `chart.layout.annotations`, identify target annotations by text pattern (e.g., text starts with `(` for age labels), and set `'annotations[N].visible' = !compact` using a separate wider breakpoint if needed.

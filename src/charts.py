@@ -209,7 +209,7 @@ function applyResponsiveChartLayout() {
       'legend.font.size': 11,
       'title.font.size': 17,
       'margin.t': 132,
-      'margin.b': 92,
+      'margin.b': 104,
       'xaxis.tickvals': chart._halFullTickvals,
       'xaxis.ticktext': chart._halCompactTicktext
     } : {
@@ -221,10 +221,24 @@ function applyResponsiveChartLayout() {
       'legend.font.size': 12,
       'title.font.size': 20,
       'margin.t': 140,
-      'margin.b': 88,
+      'margin.b': 100,
       'xaxis.tickvals': chart._halFullTickvals,
       'xaxis.ticktext': chart._halFullTicktext
     });
+
+    // Hide age-labels-on-axis annotations sooner than full compact mode
+    var hideAges = window.innerWidth < 1000;
+    if (chart.layout && chart.layout.annotations) {
+      var ageUpdates = {};
+      chart.layout.annotations.forEach(function(a, i) {
+        if (a.text && a.text.indexOf('(') === 0) {
+          ageUpdates['annotations[' + i + '].visible'] = !hideAges;
+        }
+      });
+      if (Object.keys(ageUpdates).length > 0) {
+        Plotly.relayout(chart, ageUpdates);
+      }
+    }
   }
 
   var portfolio = document.getElementById('nwn-portfolio');
@@ -822,8 +836,7 @@ def _xaxis_tick_spec(config: dict, years: list[int]) -> tuple[list[int], list[st
 
     ticktext = []
     for year in tickvals:
-        age_label = _age_label_for_year(config, year)
-        ticktext.append(f"{year}<br>{age_label}" if age_label else str(year))
+        ticktext.append(str(year))
     return tickvals, ticktext
 
 
@@ -915,21 +928,21 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
     fig.add_trace(go.Scatter(
         x=df["year"], y=income, mode="lines", name="Total Income",
         line=dict(color="#34d399", width=1.8),
-        hovertemplate="<b>%{x}</b><br>Income: %{y:$,.0f}<extra></extra>",
-    ))
+        hovertemplate="Income: %{y:$,.0f}<extra></extra>",
+        ))
 
     fig.add_trace(go.Scatter(
         x=df["year"], y=spending, mode="lines", name="Total Spending",
         line=dict(color="#f87171", width=1.8, dash="dash"),
         opacity=0.70,
-        hovertemplate="<b>%{x}</b><br>Spending: %{y:$,.0f}<extra></extra>",
+        hovertemplate="Spending: %{y:$,.0f}<extra></extra>",
     ))
 
     fig.add_trace(go.Scatter(
         x=df["year"], y=net_flow, mode="lines", name="Net Flow",
         fill="tozeroy", fillcolor="rgba(52, 211, 153, 0.10)",
         line=dict(color="#e5edf7", width=2.2),
-        hovertemplate="<b>%{x}</b><br>Net Flow: %{y:$,.0f}<extra></extra>",
+        hovertemplate="Net Flow: %{y:$,.0f}<extra></extra>",
     ))
 
     fig.update_layout(
@@ -1000,8 +1013,7 @@ def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> st
             line=dict(color=color, width=2.4),
             fill="tozeroy",
             fillcolor=f"rgba{_hex_to_rgba(color, 0.08)}",
-            hovertemplate="<b>%{x}</b><br>"
-                          f"{name}: %{{y:$,.0f}}<extra></extra>",
+            hovertemplate=f"{name}: %{{y:$,.0f}}<extra></extra>",
         ))
 
         if payoff_year:
@@ -1113,7 +1125,7 @@ def _build_portfolio_chart(
                 x=years, y=outer_high, mode="lines",
                 fill="tonexty", fillcolor="rgba(56,189,248,0.16)",
                 line=dict(width=0), name="P10-P90 range",
-                hovertemplate="<b>%{x}</b><br>P90 portfolio: $%{y:,.0f}<extra></extra>",
+                hovertemplate="P90 portfolio: $%{y:,.0f}<extra></extra>",
             ))
         if inner_low is not None and inner_high is not None:
             fig.add_trace(go.Scatter(
@@ -1124,14 +1136,14 @@ def _build_portfolio_chart(
                 x=years, y=inner_high, mode="lines",
                 fill="tonexty", fillcolor="rgba(125,211,252,0.28)",
                 line=dict(width=0), name="P25-P75 range",
-                hovertemplate="<b>%{x}</b><br>P75 portfolio: $%{y:,.0f}<extra></extra>",
+                hovertemplate="P75 portfolio: $%{y:,.0f}<extra></extra>",
             ))
         if median is not None:
             fig.add_trace(go.Scatter(
                 x=years, y=median,
                 mode="lines", name="Median portfolio",
                 line=dict(color="#e5edf7", width=2.6),
-                hovertemplate="<b>%{x}</b><br>Median portfolio: $%{y:,.0f}<extra></extra>",
+                hovertemplate="Median portfolio: $%{y:,.0f}<extra></extra>",
             ))
 
         fig.update_layout(
@@ -1208,7 +1220,7 @@ def _build_portfolio_chart(
                 x=df["year"], y=df[category],
                 mode="lines", name=label,
                 line=dict(color=color, width=2.0),
-                hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
+                hovertemplate=f"{label}: $%{{y:,.0f}}<extra></extra>",
             ))
 
     portfolio_total = df[["taxable", "trad_ira", "roth"]].sum(axis=1)
@@ -1216,7 +1228,7 @@ def _build_portfolio_chart(
         x=df["year"], y=portfolio_total,
         mode="lines", name="Total Investable Portfolio",
         line=dict(color="#f8fafc", width=2.2, dash="dash"),
-        hovertemplate="<b>%{x}</b><br>Total Investable Portfolio: $%{y:,.0f}<extra></extra>",
+        hovertemplate="Total Investable Portfolio: $%{y:,.0f}<extra></extra>",
     ))
 
     fig.update_layout(
@@ -1529,30 +1541,31 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
         y=outcomes_df["success_through_year_rate"],
         mode="lines", name="Success through year",
         line=dict(color="#22c55e", width=2.5),
-        hovertemplate="<b>%{x}</b><br>Success through year: %{y:.1%}<extra></extra>",
+        hovertemplate="Success through year: %{y:.1%}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=outcomes_df["year"],
         y=outcomes_df["cumulative_failure_rate"],
         mode="lines", name="Cumulative failure rate",
         line=dict(color="#f87171", width=2.2),
-        hovertemplate="<b>%{x}</b><br>Cumulative failure rate: %{y:.1%}<extra></extra>",
+        hovertemplate="Cumulative failure rate: %{y:.1%}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=outcomes_df["year"],
         y=outcomes_df["current_failure_trigger_rate"],
         mode="lines", name="Current-year pressure trigger",
         line=dict(color="#fbbf24", width=2.0, dash="dot"),
-        hovertemplate="<b>%{x}</b><br>Current-year pressure trigger: %{y:.1%}<extra></extra>",
+        hovertemplate="Current-year pressure trigger: %{y:.1%}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=outcomes_df["year"],
         y=outcomes_df["temporary_pressure_rate"],
         mode="lines", name="Temporary pressure only",
         line=dict(color="#60a5fa", width=2.0, dash="dash"),
-        hovertemplate="<b>%{x}</b><br>Temporary pressure only: %{y:.1%}<extra></extra>",
+        hovertemplate="Temporary pressure only: %{y:.1%}<extra></extra>",
     ))
     fig.update_layout(
+        hovermode="x unified",
         font=dict(color="#e5edf7"),
         title=dict(text=f"{mode_label} Outcome Timing", font=dict(size=16)),
         xaxis=dict(title="Year", tickmode="linear", dtick=2, gridcolor="rgba(148,163,184,0.14)", zerolinecolor="rgba(148,163,184,0.14)", color="#e5edf7"),
@@ -1768,7 +1781,7 @@ def _build_figure(
                 x=years, y=total_outer_high, mode="lines",
                 fill="tonexty", fillcolor="rgba(45,212,191,0.14)",
                 line=dict(width=0), name="P10-P90 range",
-                hovertemplate="<b>%{x}</b><br>P90 net worth: $%{y:,.0f}<extra></extra>",
+                hovertemplate="P90 net worth: $%{y:,.0f}<extra></extra>",
             ))
         if total_inner_low is not None and total_inner_high is not None:
             fig.add_trace(go.Scatter(
@@ -1779,21 +1792,21 @@ def _build_figure(
                 x=years, y=total_inner_high, mode="lines",
                 fill="tonexty", fillcolor="rgba(45,212,191,0.28)",
                 line=dict(width=0), name="P25-P75 range",
-                hovertemplate="<b>%{x}</b><br>P75 net worth: $%{y:,.0f}<extra></extra>",
+                hovertemplate="P75 net worth: $%{y:,.0f}<extra></extra>",
             ))
         if total_median is not None:
             fig.add_trace(go.Scatter(
                 x=years, y=total_median,
                 mode="lines", name="Median total net worth",
                 line=dict(color="#f8fafc", width=2.8),
-                hovertemplate="<b>%{x}</b><br>Median total net worth: $%{y:,.0f}<extra></extra>",
+                hovertemplate="Median total net worth: $%{y:,.0f}<extra></extra>",
             ))
         if (df["home_equity"] != 0).any():
             fig.add_trace(go.Scatter(
                 x=df["year"], y=df["home_equity"],
                 mode="lines", name="Median home equity",
                 line=dict(color="rgba(237,194,148,0.88)", width=1.8, dash="dot"),
-                hovertemplate="<b>%{x}</b><br>Median home equity: $%{y:,.0f}<extra></extra>",
+                hovertemplate="Median home equity: $%{y:,.0f}<extra></extra>",
             ))
     else:
 
@@ -1804,7 +1817,7 @@ def _build_figure(
                 mode="lines", name="Home Equity (non-liquid)",
                 fill="tozeroy", fillcolor="rgba(217,168,120,0.30)",
                 line=dict(color="rgba(237,194,148,0.88)", width=1.8, dash="dot"),
-                hovertemplate="<b>%{x}</b><br>Home Equity: $%{y:,.0f}<extra></extra>",
+                hovertemplate="Home Equity: $%{y:,.0f}<extra></extra>",
             ))
 
         # ── Investable stacked area ────────────────────────────────────────────────
@@ -1819,7 +1832,7 @@ def _build_figure(
                     x=df["year"], y=df[category],
                     mode="lines", name=label,
                     stackgroup="investable", fillcolor=color, line=dict(width=0),
-                    hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
+                    hovertemplate=f"{label}: $%{{y:,.0f}}<extra></extra>",
                 ))
 
         # ── Total net worth line ───────────────────────────────────────────────────
@@ -1827,7 +1840,7 @@ def _build_figure(
             x=df["year"], y=df["total_net_worth"],
             mode="lines", name="Total Net Worth",
             line=dict(color="#f8fafc", width=2.5, dash="dash"),
-            hovertemplate="<b>%{x}</b><br>Total Net Worth: $%{y:,.0f}<extra></extra>",
+            hovertemplate="Total Net Worth: $%{y:,.0f}<extra></extra>",
         ))
 
     # ── Survivor period shading ────────────────────────────────────────────────
@@ -1868,6 +1881,16 @@ def _build_figure(
 
     title_text = config.get("display", {}).get("projection_title", "Household Projection")
 
+    # ── Age labels below x-axis (separate from tick text so hover stays clean) ─
+    for year in tickvals:
+        age_label = _age_label_for_year(config, year)
+        if age_label:
+            fig.add_annotation(
+                x=year, y=-0.085, xref="x", yref="paper",
+                text=age_label, showarrow=False,
+                font=dict(size=10, color="rgba(226,232,240,0.70)"),
+            )
+
     # ── Layout ─────────────────────────────────────────────────────────────────
     fig.update_layout(
         font=dict(color=font_color),
@@ -1879,7 +1902,7 @@ def _build_figure(
             ),
             font=dict(size=20),
         ),
-        xaxis=dict(title="Year", tickmode="array", tickvals=tickvals, ticktext=ticktext,
+        xaxis=dict(title=dict(text="Year", standoff=28), tickmode="array", tickvals=tickvals, ticktext=ticktext,
                    ticklabelstandoff=6,
                    gridcolor=grid,
                    zerolinecolor=grid,
@@ -1895,7 +1918,7 @@ def _build_figure(
         hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
         plot_bgcolor=plot_bg, paper_bgcolor=paper_bg,
         height=680,
-        margin=dict(l=80, r=40, t=140, b=88),
+        margin=dict(l=80, r=40, t=140, b=100),
     )
 
     return fig

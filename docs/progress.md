@@ -35,6 +35,22 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 - **Tabulator.js is a poor fit for full-height tables with page-level scrolling.** Context: Tabulator's sticky/frozen features need the table to be inside a Tabulator-managed viewport with internal scroll. NWN tables show all rows (no internal vertical scroll). Use native CSS/JS for page-scrolled tables; Tabulator is excellent for fixed-height viewport tables. Status: Adopted.
 
+---
+
+### Added
+
+- **Liabilities Payoff Calendar** (`src/model.py`, `src/tables.py`, `src/charts.py`): New Liabilities tab between Gantt and Assumptions. Per-liability year-end balance columns (`liability_<slug>_balance`) stored in the DataFrame. Debt payoff Plotly trajectory chart (lines that stop at payoff via null insertion, payoff-year annotations, area fill). Amortization table with uniform column widths, payoff-year callout (✓), and type-colored row labels. Config-driven — works with any `[[liabilities]]` in the scenario TOML.
+
+- **Hover tooltip cleanup** (`src/charts.py`): Removed redundant `<b>%{x}</b><br>` from every hovertemplate in all `hovermode="x unified"` charts (main net worth, cash flow, portfolio, liabilities, simulation). The shared x unified header already shows the year — repeating it per trace was clutter.
+
+- **Main chart age-labels-as-annotations** (`src/charts.py`): Age labels separated from x-axis ticktext to fix hover tooltip inconsistency. Ages now rendered as independent Plotly annotations below the x-axis (y=-0.085 paper coords) at each 2-year tick. Ticktext shows just the year. Hover tooltip headers stay clean. Responsive JS hides age annotations below 1000px by toggling `annotations[N].visible`.
+
+- **x-axis title standoff** (`src/charts.py`): Changed xaxis title from flat string to `dict(text="Year", standoff=28)` so the "Year" label can be independently positioned below tick labels and age annotations. Bottom margin bumped 88→100px (normal), 92→104px (compact).
+
+### Changed
+
+- **Debt payoff chart trace capping** (`src/charts.py`): After each liability's payoff year, subsequent balance values replaced with `None` so Plotly draws a gap instead of a flat zero line.
+
 ## 2026-06-29
 
 ### Added
