@@ -266,10 +266,11 @@ def build_scenario_shell(
         height: 150vh;
       }}
     }}
-    /* Data freshness indicator */
-    .freshness-bar {{ display: flex; align-items: center; gap: 6px;
+    /* Data freshness indicator — hidden by default, shown by JS only when cache exists */
+    .freshness-bar {{ display: none; align-items: center; gap: 6px;
                      margin: 2px 0 4px; padding: 0 2px;
                      font-size: 11px; color: var(--muted); }}
+    .freshness-bar.visible {{ display: flex; }}
     .freshness-bar .dot {{ display: inline-block; width: 7px; height: 7px;
                           border-radius: 50%; flex-shrink: 0; }}
     .freshness-bar .dot.healthy {{ background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.50); }}
@@ -282,7 +283,7 @@ def build_scenario_shell(
   <div class="page">
     <section class="topbar">
       <div class="topbar-title">Net Worth Navigator</div>
-      <div class="freshness-bar" id="freshness-bar" style="display:none">
+      <div class="freshness-bar" id="freshness-bar">
         <span class="dot missing" id="freshness-dot"></span>
         <span class="label" id="freshness-label">Syncing data…</span>
       </div>
@@ -362,10 +363,10 @@ def build_scenario_shell(
         if (!bar || !dot || !label) return;
         const ts = manifest.cache_timestamp;
         if (!ts) {{
-          bar.style.display = "none";
+          bar.classList.remove("visible");
           return;
         }}
-        bar.style.display = "flex";
+        bar.classList.add("visible");
         const cacheDate = new Date(ts);
         const now = new Date();
         const daysOld = (now - cacheDate) / (1000 * 60 * 60 * 24);
