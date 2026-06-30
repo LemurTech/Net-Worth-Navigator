@@ -1040,8 +1040,8 @@ def build_scenario_parameters_summary(
 
 
 def _header_row(years: list[int]) -> str:
-    cells = "".join(f"<th data-year='{y}'>{y}</th>" for y in years)
-    return f"<tr><th class='rowlabel'>Account</th>{cells}</tr>"
+    cells = "".join(f"<th data-col='{i+1}' data-year='{y}'>{y}</th>" for i, y in enumerate(years))
+    return f"<tr><th class='rowlabel' data-col='0'>Account</th>{cells}</tr>"
 
 
 def _data_row(label: str, values: list[float], indent: bool = False,
@@ -1052,7 +1052,9 @@ def _data_row(label: str, values: list[float], indent: bool = False,
     if separator: cls_parts.append("sep")
     cls = " ".join(cls_parts)
     tag = "th" if bold else "td"
-    cells = "".join(_fmt(v) for v in values)
+    cells = "".join(
+        _fmt(v).replace("<td", f"<td data-col='{i+1}'") for i, v in enumerate(values)
+    )
     return f"<tr class='{cls}'><{tag} class='rowlabel'>{label}</{tag}>{cells}</tr>"
 
 
