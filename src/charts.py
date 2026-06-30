@@ -299,12 +299,12 @@ function applyResponsiveChartLayout() {
       'legend.orientation': 'h',
       'legend.x': 0.5,
       'legend.xanchor': 'center',
-      'legend.y': -0.24,
+      'legend.y': -0.30,
       'legend.yanchor': 'top',
       'legend.font.size': 10,
       'title.font.size': 14,
-      'margin.t': 62,
-      'margin.b': 92
+      'margin.t': 72,
+      'margin.b': 136
     } : {
       'legend.orientation': 'h',
       'legend.x': 0.5,
@@ -313,9 +313,10 @@ function applyResponsiveChartLayout() {
       'legend.yanchor': 'bottom',
       'legend.font.size': 12,
       'title.font.size': 16,
-      'margin.t': 72,
+      'margin.t': 78,
       'margin.b': 48
     });
+    Plotly.Plots.resize(cashflow);
   }
 }
 
@@ -462,6 +463,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var headerScroll = panel.querySelector('.header-scroll');
         if (headerScroll) {
           headerScroll.scrollLeft = scrollX;
+          // Pin the rowlabel in place — transform counters the scroll,
+          // box-shadow fills the gap where the cell was before translation
+          var headerLabel = headerScroll.querySelector('th.rowlabel');
+          if (headerLabel) {
+            headerLabel.style.transform = 'translateX(' + scrollX + 'px)';
+            headerLabel.style.boxShadow = scrollX + 'px 0 0 0 #182233';
+          }
         }
       }
     }
@@ -902,11 +910,11 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
             zeroline=True, zerolinecolor="rgba(148,163,184,0.35)", zerolinewidth=1,
         ),
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5, bgcolor="rgba(0,0,0,0)"),
         hoverlabel=dict(bgcolor="#1e293b", bordercolor="#7dd3fc", font_color="#f8fafc"),
         plot_bgcolor=plot_bg, paper_bgcolor=paper_bg,
-        height=340,
-        margin=dict(l=80, r=24, t=72, b=48),
+        height=420,
+        margin=dict(l=76, r=24, t=78, b=48),
     )
 
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cashflow")
