@@ -7,7 +7,8 @@
 #
 # Household: Alex (person1, b. 1969) and Sam (person2, b. 1974).
 # Both work into their 60s, both contribute to 401(k)/IRA via percentage-of-gross
-# with employer matches, travel every other year, and carry a sample mortgage.
+# with employer matches, travel every other year, and carry a mortgage and an
+# auto loan.
 #
 # Scenario files are TOML. Fields can be commented out with #.
 # Events can be toggled on/off with enabled = true/false without deleting them.
@@ -40,17 +41,18 @@ cash     = 45000
 # roth_contribution_basis = 70000
 
 # Non-investable balances
-home_value = 520000
+home_value = 620000
 vehicles   = 0
 other      = 0
 
 # Named property balances for SellHome / property-tracking events
 [synthetic_start.property_values]
-"Sample Residence" = 520000
+"Sample Residence" = 620000
 
 # Named liability balances (must match [[liabilities]].name entries)
 [synthetic_start.liability_balances]
-"Sample Mortgage" = 265000
+"Home Mortgage" = 365000
+"RAV4 Hybrid Auto Loan" = 28000
 
 # ─── Simulation Controls ───────────────────────────────────────────────────────
 
@@ -256,11 +258,18 @@ start_age  = 73
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[liabilities]]
-name        = "Sample Mortgage"
+name        = "Home Mortgage"
 annual_rate = 0.0575
-monthly_base  = 2100
-monthly_extra = 200
+monthly_base  = 2163
+monthly_extra = 200                 
 type        = "mortgage"
+
+[[liabilities]]
+name          = "RAV4 Hybrid Auto Loan"
+annual_rate   = 0.065
+monthly_base  = 550
+monthly_extra = 0
+type          = "auto"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ─── Events ────────────────────────────────────────────────────────────────────
