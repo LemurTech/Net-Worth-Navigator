@@ -210,7 +210,7 @@ def _display_config_path(path: Path) -> str:
         return str(path)
 
 
-def write_scenarios_index(*, output_root: Path | None = None) -> Path:
+def write_scenarios_index(*, output_root: Path | None = None, cache_timestamp: str | None = None) -> Path:
     output_root = output_root or SCENARIO_OUTPUT_ROOT
     output_root.mkdir(parents=True, exist_ok=True)
     scenarios = discover_scenarios()
@@ -219,6 +219,7 @@ def write_scenarios_index(*, output_root: Path | None = None) -> Path:
 
     payload = {
         "generated_at": generated_at,
+        "cache_timestamp": cache_timestamp,
         "default_slug": default_slug,
         "scenarios": [],
     }

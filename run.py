@@ -268,7 +268,7 @@ def main():
         for label, path in sidecars.items():
             print(f"  {label}: {path}")
         rendered_modes.append(render_mode)
-    index_path = write_scenarios_index(output_root=SCENARIO_OUTPUT_ROOT)
+    index_path = write_scenarios_index(output_root=SCENARIO_OUTPUT_ROOT, cache_timestamp=cache_timestamp)
     print(f"  scenarios_index_json: {index_path}")
     shell_manifest = json.loads(index_path.read_text(encoding="utf-8"))
     shell_output_path = OUTPUT_DIR / "projection.html"

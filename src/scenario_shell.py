@@ -266,12 +266,26 @@ def build_scenario_shell(
         height: 150vh;
       }}
     }}
+    /* Data freshness indicator */
+    .freshness-bar {{ display: flex; align-items: center; gap: 6px;
+                     margin: 2px 0 4px; padding: 0 2px;
+                     font-size: 11px; color: var(--muted); }}
+    .freshness-bar .dot {{ display: inline-block; width: 7px; height: 7px;
+                          border-radius: 50%; flex-shrink: 0; }}
+    .freshness-bar .dot.healthy {{ background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.50); }}
+    .freshness-bar .dot.stale {{ background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.50); }}
+    .freshness-bar .dot.missing {{ background: #64748b; }}
+    .freshness-bar .label {{ color: var(--muted); }}
   </style>
 </head>
 <body>
   <div class="page">
     <section class="topbar">
       <div class="topbar-title">Net Worth Navigator</div>
+      <div class="freshness-bar" id="freshness-bar" style="display:none">
+        <span class="dot missing" id="freshness-dot"></span>
+        <span class="label" id="freshness-label">Syncing data…</span>
+      </div>
       <div class="selector-card">
         <div class="control-row">
           <div class="selector-main">
@@ -339,6 +353,33 @@ def build_scenario_shell(
       const editScenariosLink = document.getElementById("edit-scenarios-link");
       const frameWrap = document.getElementById("frame-wrap");
       const emptyState = document.getElementById("empty-state");
+
+      // Data freshness indicator
+      (function updateFreshness() {{
+        const bar = document.getElementById("freshness-bar");
+        const dot = document.getElementById("freshness-dot");
+        const label = document.getElementById("freshness-label");
+        if (!bar || !dot || !label) return;
+        const ts = manifest.cache_timestamp;
+        if (!ts) {{
+          bar.style.display = "none";
+          return;
+        }}
+        bar.style.display = "flex";
+        const cacheDate = new Date(ts);
+        const now = new Date();
+        const daysOld = (now - cacheDate) / (1000 * 60 * 60 * 24);
+        const dateStr = cacheDate.toLocaleDateString("en-US", {{
+          year: "numeric", month: "short", day: "numeric",
+        }});
+        if (daysOld > 30) {{
+          dot.className = "dot stale";
+          label.textContent = "Balances: " + dateStr + " (stale — " + Math.round(daysOld) + " days old)";
+        }} else {{
+          dot.className = "dot healthy";
+          label.textContent = "Live balances: " + dateStr;
+        }}
+      }})();
 
       const scenarios = Array.isArray(manifest.scenarios) ? manifest.scenarios : [];
 
