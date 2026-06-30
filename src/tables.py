@@ -1647,3 +1647,127 @@ def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
     header = _header_row(years)
     body = "\n".join(rows)
     return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
+
+
+# ── Liabilities Payoff Calendar ─────────────────────────────────────────────────
+
+
+def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str:
+    """
+    Amortization table showing each liability's remaining balance year-by-year
+    with payoff-year callout.  The UI idea is documented in docs/ui-ideas.md.
+
+    Requires per-liability balance columns named liability_<slug>_balance
+    added to the DataFrame by model.py's yearly loop.
+    """
+    years = _display_years(df)
+    subset = df[df["year"].isin(years)].set_index("year")
+
+    if config is None:
+        config = {}
+    liability_configs = config.get("liabilities", [])
+    if not liability_configs:
+        return (
+            "<div class='assumptions-wrap'><div class='assumptions-note'>"
+            "No liabilities configured in this scenario.</div></div>"
+        )
+
+    # Collect per-liability data from the DataFrame columns
+    liabilities_data: list[dict] = []
+    for lib in liability_configs:
+        name = lib["name"]
+        slug = name.lower().replace(" ", "_").replace("(", "").replace(")", "").replace("-", "_")
+        col = f"liability_{slug}_balance"
+        if col not in subset.columns:
+            continue
+
+        balances: list[float] = []
+        payoff_year: int | None = None
+        for y in years:
+            if y in subset.index:
+                bal = float(subset.loc[y, col])
+                balances.append(bal)
+                if bal <= 0 and payoff_year is None:
+                    payoff_year = y
+            else:
+                balances.append(0.0)
+        if payoff_year is None and balances:
+            payoff_year = years[-1] if balances[-1] <= 0 else None
+
+        annual_rate = float(lib.get("annual_rate", 0.0))
+        monthly_total = float(lib.get("monthly_base", 0.0)) + float(lib.get("monthly_extra", 0.0))
+        liabilities_data.append({
+            "name": name,
+            "type": lib.get("type", "other"),
+            "annual_rate": annual_rate,
+            "monthly_total": monthly_total,
+            "payoff_year": payoff_year,
+            "balances": balances,
+        })
+
+    if not liabilities_data:
+        return (
+            "<div class='assumptions-wrap'><div class='assumptions-note'>"
+            "Liability columns not found in projection data — run a full model "
+            "projection first.</div></div>"
+        )
+
+    rows_html: list[str] = []
+
+    # Helper: uniform-width span so dollar, "—", and "✓ Paid off" cells
+    # all share the same column width (matching the _fmt() min-width pattern)
+    def _cell(content: str, cls: str = "") -> str:
+        cls_attr = f" class='{cls}'" if cls else ""
+        return f"<td{cls_attr}><span style='display:inline-block;min-width:90px;text-align:right'>{content}</span></td>"
+
+    for ld in liabilities_data:
+        name = escape(ld["name"])
+        rate_pct = f"{ld['annual_rate'] * 100:.2f}%"
+        monthly = f"${ld['monthly_total']:,.0f}/mo"
+        label = f"{name} — {rate_pct} · {monthly}"
+        payoff_year = ld["payoff_year"]
+
+        cells: list[str] = []
+        for i, bal in enumerate(ld["balances"]):
+            bal_yr = years[i]
+            if bal <= 0:
+                if payoff_year is not None and bal_yr == payoff_year:
+                    cells.append(_cell("✓ Paid off", "payoff-cell"))
+                else:
+                    cells.append(_cell("—", "zero"))
+            else:
+                cells.append(_cell(f"${bal:>12,.0f}", "neg"))
+
+        row_class = f"liability-type-{escape(ld['type'])}"
+        rows_html.append(
+            f"<tr class='{row_class}'><th class='rowlabel'>{label}</th>"
+            + "".join(cells)
+            + "</tr>"
+        )
+
+    # Total row
+    total_balances = []
+    for i in range(len(years)):
+        total = sum(ld["balances"][i] for ld in liabilities_data if i < len(ld["balances"]))
+        total_balances.append(total)
+
+    total_cells = "".join(
+        _cell(f"${total_balances[i]:>12,.0f}", "neg")
+        if total_balances[i] > 0 else _cell("—", "zero")
+        for i in range(len(years))
+    )
+    rows_html.append(
+        "<tr class='total sep'><th class='rowlabel'>Total Liabilities</th>"
+        + total_cells
+        + "</tr>"
+    )
+
+    header = _header_row(years).replace("Account", "Liability — rate · payment", 1)
+    body = "\n".join(rows_html)
+    return (
+        "<div class='liabilities-note'>"
+        "<strong>Liabilities amortization:</strong> Year-end remaining balance "
+        "for each debt.  ✓ marks the payoff year when the loan is fully retired."
+        "</div>"
+        f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
+    )

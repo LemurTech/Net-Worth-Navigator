@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from src.tables import (
     build_accounts_table,
     build_cashflow_table,
+    build_liabilities_table,
     build_simulation_outcomes_table,
     build_tax_table,
     build_portfolio_table,
@@ -156,6 +157,15 @@ _TABS_CSS = """
     .kpi-value { font-size: 24px; }
     .assumptions-grid { grid-template-columns: 1fr; }
   }
+  /* Liabilities tab — payoff callout and note */
+  .payoff-cell { text-align: right; font-weight: 600; color: #34d399; white-space: nowrap; }
+  .liabilities-note { margin: 10px 6px 4px; padding: 10px 12px; border-radius: 8px;
+                      border: 1px solid #243142; background: #0f1725; color: #cbd5e1;
+                      font-size: 12px; line-height: 1.45; }
+  .liabilities-note strong { color: #f8fafc; }
+  tr.liability-type-mortgage th.rowlabel { color: #fca5a5; }
+  tr.liability-type-auto th.rowlabel { color: #fcd34d; }
+  tr.liability-type-other th.rowlabel { color: #93c5fd; }
 </style>
 """
 
@@ -317,6 +327,32 @@ function applyResponsiveChartLayout() {
       'margin.b': 48
     });
     Plotly.Plots.resize(cashflow);
+  }
+
+  var liabilities = document.getElementById('nwn-liabilities');
+  if (liabilities) {
+    Plotly.relayout(liabilities, compact ? {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': -0.30,
+      'legend.yanchor': 'top',
+      'legend.font.size': 10,
+      'title.font.size': 14,
+      'margin.t': 72,
+      'margin.b': 136
+    } : {
+      'legend.orientation': 'h',
+      'legend.x': 0.5,
+      'legend.xanchor': 'center',
+      'legend.y': 1.01,
+      'legend.yanchor': 'bottom',
+      'legend.font.size': 12,
+      'title.font.size': 16,
+      'margin.t': 78,
+      'margin.b': 48
+    });
+    Plotly.Plots.resize(liabilities);
   }
 }
 
@@ -920,6 +956,127 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cashflow")
 
 
+def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+    """Debt payoff trajectory chart: one line per liability, declining to zero."""
+    paper_bg = "#111827"
+    plot_bg = "#0f1725"
+    grid = "rgba(148,163,184,0.14)"
+    font_color = "#e5edf7"
+
+    liab_colors = ["#f87171", "#fbbf24", "#60a5fa", "#a78bfa", "#34d399", "#f472b6"]
+    fig = go.Figure()
+    years = df["year"].astype(int).tolist()
+
+    if config is None:
+        config = {}
+    liability_configs = config.get("liabilities", [])
+
+    for idx, lib in enumerate(liability_configs):
+        name = lib["name"]
+        slug = name.lower().replace(" ", "_").replace("(", "").replace(")", "").replace("-", "_")
+        col = f"liability_{slug}_balance"
+        if col not in df.columns:
+            continue
+
+        balances = df[col].fillna(0).tolist()
+
+        # Find payoff year and cap trace there so the line
+        # stops instead of continuing flat at $0
+        payoff_year = None
+        payoff_idx = None
+        for i, (y, bal) in enumerate(zip(years, balances)):
+            if bal <= 0 and payoff_year is None:
+                payoff_year = y
+                payoff_idx = i
+            if payoff_idx is not None and i > payoff_idx:
+                balances[i] = None  # null beyond payoff → line stops
+
+        color = liab_colors[idx % len(liab_colors)]
+
+        fig.add_trace(go.Scatter(
+            x=years, y=balances,
+            mode="lines",
+            name=name,
+            line=dict(color=color, width=2.4),
+            fill="tozeroy",
+            fillcolor=f"rgba{_hex_to_rgba(color, 0.08)}",
+            hovertemplate="<b>%{x}</b><br>"
+                          f"{name}: %{{y:$,.0f}}<extra></extra>",
+        ))
+
+        if payoff_year:
+            fig.add_annotation(
+                x=payoff_year,
+                y=0,
+                text=f"✓ {name} paid off",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1.2,
+                arrowcolor=color,
+                ax=0,
+                ay=-48,
+                font=dict(size=11, color=color),
+                bgcolor="rgba(17,24,39,0.85)",
+                borderpad=3,
+                bordercolor=color,
+            )
+
+    # Horizontal zero line
+    fig.add_hline(
+        y=0,
+        line=dict(color="rgba(148,163,184,0.35)", width=1, dash="dash"),
+    )
+
+    fig.update_layout(
+        font=dict(color=font_color),
+        title=dict(text="Debt Payoff Trajectory", font=dict(size=16)),
+        xaxis=dict(
+            title="Year",
+            tickmode="linear",
+            dtick=2,
+            ticklabelstandoff=6,
+            gridcolor=grid,
+            zerolinecolor=grid,
+            color=font_color,
+        ),
+        yaxis=dict(
+            title="Remaining Balance (USD)",
+            tickformat="$,.0f",
+            ticklabelstandoff=6,
+            automargin=True,
+            gridcolor=grid,
+            color=font_color,
+            zeroline=True,
+            zerolinecolor="rgba(148,163,184,0.35)",
+            zerolinewidth=1,
+        ),
+        hovermode="x unified",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.01,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        hoverlabel=dict(bgcolor="#1e293b", bordercolor="#7dd3fc", font_color="#f8fafc"),
+        plot_bgcolor=plot_bg,
+        paper_bgcolor=paper_bg,
+        height=420,
+        margin=dict(l=76, r=24, t=78, b=48),
+    )
+
+    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-liabilities")
+
+
+def _hex_to_rgba(hex_color: str, alpha: float) -> tuple:
+    """Convert '#f87171' to (248, 113, 113) for rgba()."""
+    h = hex_color.lstrip("#")
+    if len(h) != 6:
+        return (128, 128, 128)
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
 def _build_portfolio_chart(
     df: pd.DataFrame,
     config: dict | None = None,
@@ -1479,6 +1636,14 @@ def build_chart(
         projection_result=projection_result,
     )
 
+    # Liabilities tab: debt payoff chart + amortization table
+    liabilities_chart_html = _build_liabilities_chart(df, config=config)
+    liabilities_table_html = build_liabilities_table(df, config=config)
+    liabilities_html = (
+        "<div class='gantt-wrap'>" + liabilities_chart_html + "</div>"
+        + liabilities_table_html
+    )
+
     scenario_slug = getattr(scenario, "slug", None)
     edit_config_href = f"/finances/config/?scenario={scenario_slug}" if scenario_slug else "/finances/config/"
     definitions_href = "/finances/definitions.html"
@@ -1520,6 +1685,8 @@ def build_chart(
             onclick="switchTab('portfolio')">Portfolio</button>
     <button class="tab-btn" id="btn-gantt"
             onclick="switchTab('gantt')">Gantt</button>
+    <button class="tab-btn" id="btn-liabilities"
+            onclick="switchTab('liabilities')">Liabilities</button>
     <button class="tab-btn" id="btn-assumptions"
             onclick="switchTab('assumptions')">Assumptions</button>
     <button class="tab-btn" id="btn-scenario-parameters"
@@ -1543,6 +1710,9 @@ def build_chart(
   </div>
   <div class="tab-panel gantt-panel" id="panel-gantt">
     {gantt_html}
+  </div>
+  <div class="tab-panel" id="panel-liabilities">
+    {liabilities_html}
   </div>
   <div class="tab-panel assumptions-panel" id="panel-assumptions">
     {assumptions_html}

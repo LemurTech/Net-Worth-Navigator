@@ -71,7 +71,7 @@ One or two sliders (e.g., stock return ±, retirement year ±) that re-render on
 ## New Views
 
 ### Liabilities payoff calendar
-Separate from the Gantt (which shows events), a dedicated amortization table showing each loan's remaining balance year-by-year with a payoff-year callout. Currently you only see the freed payment appear in cash flow after payoff. Seeing the balance decline and the exact freed year would make debt decisions more tangible.
+✅ Done — See the new Liabilities tab. Shows a Plotly debt payoff trajectory chart above a year-by-year amortization table with per-liability balance decline, payoff-year callout (✓), rate and monthly payment in the row label.
 
 ### Export buttons in page chrome
 Download current chart as PNG, projection data as CSV, event schedule as CSV. The sidecars already write these files — surface them with download links in the shell page toolbar.

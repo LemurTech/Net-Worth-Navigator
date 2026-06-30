@@ -3812,6 +3812,15 @@ def _run_projection_yearly(
             "cash":           portfolio["cash"],
         })
 
+        # ── Record per-liability year-end balances ──────────────────────────
+        # These become columns like liability_mortgage_5156_balance so the
+        # Liabilities tab (charts.py / tables.py) can render an amortization
+        # table and debt trajectory chart.
+        last_row = rows[-1]
+        for lib in lib_state:
+            slug = lib["name"].lower().replace(" ", "_").replace("(", "").replace(")", "").replace("-", "_")
+            last_row[f"liability_{slug}_balance"] = lib["balance"]
+
     return pd.DataFrame(rows)
 
 
