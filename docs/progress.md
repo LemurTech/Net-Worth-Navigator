@@ -3,7 +3,21 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
-## 2026-06-27
+## 2026-06-29
+
+### Added
+
+- **Sticky table headers** (`src/charts.py`): Build-time table splitting via `_wrap_table_with_sticky_header()`. Each `<table class='datatable'>` is split into a `.sticky-header-wrap` (sticky header, no overflow ancestor → `position: sticky; top: 0` works) + `.table-scroll` (horizontal scroll container). Both tables use `table-layout: fixed` with explicit `<colgroup>` pixel widths (label=210px, each year=110px) so column alignment is guaranteed identical — no runtime measurement or clone-syncing needed.
+
+- **Horizontal overscroll fix** (`src/charts.py`): Fixed by `table-layout: fixed` + explicit total width on both tables. `scrollWidth` now exactly matches sum of column widths — no overshoot past the last column. The `.table-scroll` wrapper handles all scroll/wheel/drag behavior.
+
+### Changed
+
+- **CSS** (`src/charts.py`): `.table-panel` loses `overflow-x: auto; cursor: grab` and gains `position: relative`. New `.sticky-header-wrap` (sticky, top:0, z-index:10, background/border-bottom) and `.table-scroll` (overflow-x:auto, cursor:grab, drag states). Split tables use `border-radius: 6px 6px 0 0` (header) and `border-radius: 0 0 6px 6px` (body) for continuous visual.
+
+- **JS** (`src/charts.py`): Scroll/wheel/drag handlers now target `.table-scroll` instead of `.table-panel`. `syncLabels()` scoped to each `.table-scroll`'s child rowlabels. Year-highlight click handler unchanged — works across both tables via shared `data-col` attributes.
+
+- **All datatable call sites** (`src/charts.py`): `accounts_html`, `cashflow_html`, `tax_html`, `portfolio_table_html` (×2), `table_html` (simulation) all pass through `_wrap_table_with_sticky_header()` in their respective build functions.
 
 ### Added
 

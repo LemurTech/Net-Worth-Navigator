@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-06-27
-**Status:** Stable. Freed-payment calculation fixed: now uses `monthly_base` (contractual P&I) instead of `monthly_total` (which included voluntary `monthly_extra`). Cash Flow table restructured with employee-only contribution rows and separate employer match rows. Employee 401k/IRA columns added to model output. All household scenarios updated: 24% 401k contribution hitting $31K IRS cap from year 1, 70/30 trad/Roth split, cash targets lowered to $40K/$50K/$30K. Three early-mortgage scenarios deleted. Favicon added. Event vlines sync with annotation visibility.
+**Last updated:** 2026-06-29
+**Status:** Stable. Sticky table headers and horizontal overscroll fix deployed. Build-time table splitting with `table-layout: fixed` + explicit `<colgroup>` widths keeps header and body column alignment identical. All datatables (Accounts, Cash Flow, Tax, Portfolio, Simulation) now use `.sticky-header-wrap` + `.table-scroll` structure inside `.table-panel`.
 
 ---
 
@@ -127,3 +127,4 @@ Grouped by implementation area.
 - **Employer match is always prefunded** — never a cash outflow from take-home. Routes into same `annual_401k_contribution_split` as the employee contribution. Do not double-count as income.
 - **Plotly `add_vrect` annotation_text** collides with vline labels — use a separate `add_annotation` with `yref="paper"` instead.
 - **For routine UI/layout tweaks**, prefer targeted checks + `run.py --offline`. Reserve the full test suite for model changes or pre-commit passes.
+- **Table sticky headers require build-time splitting** (`src/charts.py:_wrap_table_with_sticky_header`). `position: sticky` on `<thead>` fails inside any ancestor with `overflow-x: auto` — the overflow container becomes the sticky scrollport. The fix: split each `<table>` into a header table (in `.sticky-header-wrap`, no overflow ancestor → sticky works) and a body table (in `.table-scroll`, overflow-x: auto). Both use `table-layout: fixed` with explicit `<colgroup>` pixel widths so columns align identically.

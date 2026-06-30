@@ -80,8 +80,16 @@ _TABS_CSS = """
   .tab-btn.active { color: #f8fafc; border-bottom-color: #7dd3fc; font-weight: 600; }
   .tab-panel { display: none; max-width: 100%; }
   .tab-panel.active { display: block; }
-  .table-panel { overflow-x: auto; cursor: grab; }
-  .table-panel.dragging, .table-panel.dragging * { cursor: grabbing !important; user-select: none; }
+  .table-panel { position: relative; }
+  .sticky-header-wrap { position: sticky; top: 0; z-index: 10;
+                        background: #111827; border-bottom: 2px solid #2b3a4e; }
+  .sticky-header-wrap .header-only { margin-bottom: 0; border-radius: 6px 6px 0 0; }
+  .sticky-header-wrap th.rowlabel { position: sticky; left: 0; z-index: 2; }
+  .table-scroll { overflow-x: auto; cursor: grab; }
+  .table-scroll .body-only { margin-top: 0; border-radius: 0 0 6px 6px; }
+  .header-scroll { overflow-x: scroll; scrollbar-width: none; }
+  .header-scroll::-webkit-scrollbar { display: none; }
+  .table-scroll.dragging, .table-scroll.dragging * { cursor: grabbing !important; user-select: none; }
   table.datatable { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px;
                     background: #111827; border-radius: 6px;
                     box-shadow: 0 8px 24px rgba(0,0,0,.28); }
@@ -89,8 +97,7 @@ _TABS_CSS = """
                                            border-bottom: 1px solid #1f2a3a; white-space: nowrap; }
   table.datatable th.rowlabel, table.datatable td.rowlabel { text-align: left;
       min-width: 190px; font-weight: normal; background: #111827; color: #e5edf7; }
-  table.datatable thead { position: sticky; top: 0; z-index: 3; }
-  table.datatable thead tr th { position: sticky; top: 0; z-index: 3; background: #182233; font-weight: 600;
+  table.datatable thead tr th { background: #182233; font-weight: 600;
                                  border-bottom: 2px solid #2b3a4e; color: #f8fafc; }
   table.datatable thead tr th.rowlabel { background: #182233; }
   table.datatable tr.section th { background: #162030; font-weight: 700;
@@ -104,8 +111,8 @@ _TABS_CSS = """
   table.datatable td.zero { color: #64748b; text-align: right; }
   table.datatable tr.indent td.rowlabel { padding-left: 24px; }
   table.datatable tr:hover td, table.datatable tr:hover th { background: #162234; }
-  .year-highlight td { outline: 2px solid rgba(125, 211, 252, 0.35); outline-offset: -2px; background: rgba(125, 211, 252, 0.06); }
-  .year-highlight th { outline: 2px solid rgba(125, 211, 252, 0.35); outline-offset: -2px; background: rgba(125, 211, 252, 0.06); }
+  td.year-highlight, th.year-highlight { box-shadow: inset 0 0 0 2px rgba(125, 211, 252, 0.35); background: rgba(125, 211, 252, 0.08); }
+  th[data-year] { cursor: pointer; }
   .gantt-wrap { background: #111827; border-radius: 6px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.28); }
   .portfolio-table-panel { margin-top: 12px; }
@@ -442,22 +449,34 @@ document.addEventListener('DOMContentLoaded', function() {
     updateAssumptionsDiffVisibility();
   }
 
-  document.querySelectorAll('.table-panel').forEach(function(panel) {
+  document.querySelectorAll('.body-scroll').forEach(function(scrollEl) {
     var ticking = false;
     var isDragging = false;
     var dragStartX = 0;
     var dragStartScrollLeft = 0;
 
+    function syncHeaderScroll() {
+      var scrollX = scrollEl.scrollLeft;
+      var panel = scrollEl.closest('.table-panel');
+      if (panel) {
+        var headerScroll = panel.querySelector('.header-scroll');
+        if (headerScroll) {
+          headerScroll.scrollLeft = scrollX;
+        }
+      }
+    }
+
     function syncLabels() {
-      var scrollX = panel.scrollLeft;
-      panel.querySelectorAll('td.rowlabel, th.rowlabel, tr.section th').forEach(function(cell) {
+      var scrollX = scrollEl.scrollLeft;
+      scrollEl.querySelectorAll('td.rowlabel, th.rowlabel, tr.section th').forEach(function(cell) {
         cell.style.transform = 'translateX(' + scrollX + 'px)';
       });
+      syncHeaderScroll();
       ticking = false;
     }
 
     // Use rAF to sync label shift to the browser paint cycle — eliminates jitter
-    panel.addEventListener('scroll', function() {
+    scrollEl.addEventListener('scroll', function() {
       if (!ticking) {
         requestAnimationFrame(syncLabels);
         ticking = true;
@@ -465,63 +484,135 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Redirect vertical wheel to horizontal scroll only when the table has overflow
-    panel.addEventListener('wheel', function(e) {
+    scrollEl.addEventListener('wheel', function(e) {
       if (e.deltaY !== 0) {
-        var canScroll = panel.scrollWidth > panel.clientWidth;
+        var canScroll = scrollEl.scrollWidth > scrollEl.clientWidth;
         if (!canScroll) return;  // table fits — let page scroll normally
-        var atLeft = panel.scrollLeft <= 0;
-        var atRight = panel.scrollLeft >= panel.scrollWidth - panel.clientWidth - 1;
+        var atLeft = scrollEl.scrollLeft <= 0;
+        var atRight = scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 1;
         // At an edge — only consume the wheel if it would scroll toward content
         if ((e.deltaY < 0 && atLeft) || (e.deltaY > 0 && atRight)) return;
         e.preventDefault();
-        panel.scrollLeft += e.deltaY * 5;
+        scrollEl.scrollLeft += e.deltaY * 5;
       }
     }, { passive: false });
 
     // Click-and-drag panning on the table body — faster and more natural than the scrollbar thumb
-    panel.addEventListener('mousedown', function(e) {
+    scrollEl.addEventListener('mousedown', function(e) {
       if (e.button !== 0) return;
       isDragging = true;
       dragStartX = e.clientX;
-      dragStartScrollLeft = panel.scrollLeft;
-      panel.classList.add('dragging');
+      dragStartScrollLeft = scrollEl.scrollLeft;
+      scrollEl.classList.add('dragging');
       e.preventDefault();
     });
 
     window.addEventListener('mousemove', function(e) {
       if (!isDragging) return;
       var dx = e.clientX - dragStartX;
-      panel.scrollLeft = dragStartScrollLeft - (dx * 1.5);
+      scrollEl.scrollLeft = dragStartScrollLeft - (dx * 1.5);
     });
 
     window.addEventListener('mouseup', function() {
       if (!isDragging) return;
       isDragging = false;
-      panel.classList.remove('dragging');
+      scrollEl.classList.remove('dragging');
     });
   });
 
   // Click a year header to highlight that column across all tables
   document.querySelectorAll('th[data-year]').forEach(function(th) {
+    th.addEventListener('mousedown', function(e) {
+      e.stopPropagation();
+    });
     th.addEventListener('click', function() {
+      var col = this.getAttribute('data-col');
+      if (!col) return;
       var active = this.classList.toggle('year-highlight');
-      // Find column index within this header row
-      var headers = this.parentElement.querySelectorAll('th');
-      var colIndex = Array.prototype.indexOf.call(headers, this);
-      // Highlight all cells at the same column index in all tables
-      document.querySelectorAll('table.datatable').forEach(function(table) {
-        table.querySelectorAll('tr').forEach(function(row) {
-          var cells = row.querySelectorAll('td, th');
-          if (cells[colIndex]) {
-            cells[colIndex].classList.toggle('year-highlight', active);
-          }
-        });
+      document.querySelectorAll('[data-col="' + col + '"]').forEach(function(cell) {
+        cell.classList.toggle('year-highlight', active);
       });
     });
   });
 });
 </script>
 """
+
+# ── Sticky header wrapper ────────────────────────────────────────────────────
+
+import re as _re
+
+
+def _wrap_table_with_sticky_header(
+    table_html: str,
+    label_width: int = 210,
+    year_width: int = 110,
+) -> str:
+    """Split a datatable into sticky header + scrollable body.
+
+    Extracts <thead> and <tbody>, counts year columns, and generates
+    matching <colgroup> width declarations so ``table-layout: fixed``
+    keeps both header and body tables aligned identically.
+
+    Returns the full HTML with the table portion wrapped in
+    .sticky-header-wrap + .table-scroll, preserving any non-table
+    content that appears before or after the <table> element.
+    """
+    # Find the <table> element boundaries — use the first </table> after
+    # the opening tag (some callers emit multiple tables, e.g. tax table
+    # plus a summary card table).
+    table_start = table_html.find("<table")
+    if table_start == -1:
+        return f'<div class="table-scroll">{table_html}</div>'
+
+    table_end = table_html.find("</table>", table_start)
+    if table_end == -1:
+        return f'<div class="table-scroll">{table_html}</div>'
+
+    prefix = table_html[:table_start]
+    table_part = table_html[table_start : table_end + len("</table>")]
+    suffix = table_html[table_end + len("</table>") :]
+
+    # Extract thead and tbody
+    thead_m = _re.search(r"<thead>(.*?)</thead>", table_part, _re.DOTALL)
+    tbody_m = _re.search(r"<tbody>(.*?)</tbody>", table_part, _re.DOTALL)
+    if not thead_m or not tbody_m:
+        return f'{prefix}<div class="table-scroll">{table_part}</div>{suffix}'
+
+    thead_inner = thead_m.group(1)
+    tbody_inner = tbody_m.group(1)
+
+    # Count year columns (every <th> with a data-year attribute)
+    n_year_cols = len(_re.findall(r"<th[^>]*data-year", thead_inner))
+    if n_year_cols == 0:
+        n_year_cols = 10  # safety fallback
+
+    # Build colgroup
+    col_parts = [f'<col style="width:{label_width}px;">']
+    col_parts.extend(
+        [f'<col style="width:{year_width}px;">' for _ in range(n_year_cols)]
+    )
+    colgroup = f"<colgroup>{''.join(col_parts)}</colgroup>"
+
+    total_width = label_width + n_year_cols * year_width
+
+    sticky = (
+        f'<div class="sticky-header-wrap">'
+        f'<div class="table-scroll header-scroll">'
+        f'<table class="datatable header-only"'
+        f' style="table-layout:fixed;min-width:{total_width}px;margin-bottom:0;"'
+        f">{colgroup}<thead>{thead_inner}</thead></table>"
+        f"</div>"
+        f"</div>"
+        f'<div class="table-scroll body-scroll">'
+        f'<table class="datatable body-only"'
+        f' style="table-layout:fixed;min-width:{total_width}px;"'
+        f">{colgroup}<tbody>{tbody_inner}</tbody></table>"
+        f"</div>"
+    )
+
+    return prefix + sticky + suffix
+
 
 EVENT_TYPE_COLORS = {
     "EndOfPlan": "rgba(120,120,120,0.75)",
@@ -875,7 +966,7 @@ def _build_portfolio_chart(
             "<div class='modeling-note'><strong>Portfolio range note:</strong> "
             "Bands show stochastic portfolio ranges by year. The table below reflects the median simulated path.</div>"
         )
-        portfolio_table_html = build_portfolio_table(df, config=config)
+        portfolio_table_html = _wrap_table_with_sticky_header(build_portfolio_table(df, config=config))
         return (
             f"<div class='gantt-wrap'>{portfolio_div}</div>"
             f"{portfolio_note}"
@@ -973,7 +1064,7 @@ def _build_portfolio_chart(
             "all investable surplus routes directly into retirement accounts in this scenario.</div>"
         )
 
-    portfolio_table_html = build_portfolio_table(df, config=config)
+    portfolio_table_html = _wrap_table_with_sticky_header(build_portfolio_table(df, config=config))
     return (
         f"<div class='gantt-wrap'>{portfolio_div}</div>"
         f"{portfolio_note}"
@@ -1267,7 +1358,7 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
         margin=dict(l=64, r=24, t=70, b=56),
     )
     chart_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-simulation")
-    table_html = build_simulation_outcomes_table(outcomes_df, summary=summary)
+    table_html = _wrap_table_with_sticky_header(build_simulation_outcomes_table(outcomes_df, summary=summary))
     summary_html = (
         "<div class='assumptions-note'>"
         f"{mode_label} outcome detail for the current rendered result path. "
@@ -1314,10 +1405,10 @@ def build_chart(
     tax_note_html = _build_tax_semantics_note()
 
     # Build table HTML
-    accounts_html  = build_accounts_table(df, config=config)
-    cashflow_html  = build_cashflow_table(df, config=config)
+    accounts_html  = _wrap_table_with_sticky_header(build_accounts_table(df, config=config))
+    cashflow_html  = _wrap_table_with_sticky_header(build_cashflow_table(df, config=config))
     cashflow_chart_html = _build_cashflow_chart(df, config=config)
-    tax_html       = build_tax_table(df)
+    tax_html       = _wrap_table_with_sticky_header(build_tax_table(df))
     simulation_html = (
         _build_simulation_results_panel(projection_result)
         if projection_result.mode in {"monte_carlo", "historical"}
