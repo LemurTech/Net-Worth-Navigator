@@ -1238,18 +1238,8 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
             )
             for y in years
         ]
-        # Total row with stacked bar visualization
-        bar_cells = []
-        for i, y in enumerate(years):
-            if y not in subset.index:
-                bar_cells.append("<td>—</td>")
-                continue
-            taxable = float(subset.loc[y, "surplus_to_taxable"]) if "surplus_to_taxable" in subset.columns else 0.0
-            trad_ira = float(subset.loc[y, "surplus_to_trad_ira"]) if "surplus_to_trad_ira" in subset.columns else 0.0
-            roth = float(subset.loc[y, "surplus_to_roth"]) if "surplus_to_roth" in subset.columns else 0.0
-            bar_cells.append(_surplus_bar_cell(taxable, trad_ira, roth))
-        bar_body = "".join(bar_cells)
-        rows.append(f"<tr class='total sep'><th class='rowlabel'>Total Surplus Routed</th>{bar_body}</tr>")
+        # Total row — simple numeric, no bar
+        rows.append(_data_row("Total Surplus Routed", total_surplus_routed, bold=True))
 
     # ── Retirement contributions (owner split when available) ─────────────────
     contribution_rows = [
