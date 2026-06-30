@@ -92,7 +92,7 @@ _TABS_CSS = """
   .table-scroll.dragging, .table-scroll.dragging * { cursor: grabbing !important; user-select: none; }
   table.datatable { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px;
                     background: #111827; border-radius: 6px;
-                    box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+                    box-shadow: 0 8px 24px rgba(0,0,0,.28); overflow: hidden; }
   table.datatable th, table.datatable td { padding: 6px 10px; text-align: right;
                                            border-bottom: 1px solid #1f2a3a; white-space: nowrap; }
   table.datatable th.rowlabel, table.datatable td.rowlabel { text-align: left;
@@ -475,6 +475,18 @@ document.addEventListener('DOMContentLoaded', function() {
       ticking = false;
     }
 
+    // Clamp scrollLeft to prevent native scrollbar overshoot past content
+    var _clamping = false;
+    scrollEl.addEventListener('scroll', function() {
+      if (_clamping) return;
+      var maxScroll = Math.max(0, scrollEl.scrollWidth - scrollEl.clientWidth);
+      if (scrollEl.scrollLeft > maxScroll) {
+        _clamping = true;
+        scrollEl.scrollLeft = maxScroll;
+        _clamping = false;
+      }
+    });
+
     // Use rAF to sync label shift to the browser paint cycle — eliminates jitter
     scrollEl.addEventListener('scroll', function() {
       if (!ticking) {
@@ -546,7 +558,7 @@ import re as _re
 def _wrap_table_with_sticky_header(
     table_html: str,
     label_width: int = 210,
-    year_width: int = 110,
+    year_width: int = 130,
 ) -> str:
     """Split a datatable into sticky header + scrollable body.
 
