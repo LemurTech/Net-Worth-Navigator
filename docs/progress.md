@@ -36,6 +36,9 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - **Owner column** (`templates/setup_panel.html`, `admin_app.py`): New Owner column between Category and Disabled with dropdown showing person names from Metadata + "n/a". Values stored as "person1"/"person2" matching TOML convention; API writes inline dicts when owner is set, plain strings otherwise. Dict-classified accounts (401k Person 1, OregonSaves) correctly show their owner pre-selected.
 - **Selector brightness lowered** (`templates/setup_panel.html`): `.acct-category select` and `.acct-owner select` background changed to `#0d1524`.
 - **All old-editor functions ported** (`templates/setup_panel.html`): Quick-panel action bar now has Validate, Save + Render All, Clone Scenario (prompt-based), and Delete Scenario (confirmation dialog with slug-typing). Delete disabled for default scenario.
+- **Edit Scenarios button removed** (`src/scenario_shell.py`, `run.py`): Projection shell toolbar cleaned up — only "Scenario Setup" remains. `editor_url` parameter removed from `build_scenario_shell()`.
+- **Definitions page link fixed** (`src/definitions_page.py`, `run.py`): "Open Config Editor" now points to `/finances/config/setup` instead of `/finances/config/`.
+- **Cash Reserve tab** (`src/charts.py`): New projection tab between Liabilities and Assumptions. Plotly chart shows cash balance trace (blue), stepped phase-aware cash target (amber dashed), and below-target highlight (red, connectgaps=False) with phase-boundary vlines. Summary card below with per-phase target, minimum, years below, and status emoji.
 
 ## 2026-06-30
 

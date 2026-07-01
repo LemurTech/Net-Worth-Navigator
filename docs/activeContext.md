@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Scenario Setup Panel now fully replaces the old config editor. Quick-panel action bar includes Validate, Save + Re-render, Save + Render All, Clone Scenario (with prompts for name/slug/description), and Delete Scenario (confirmation dialog, disabled for default). Data Sources & Accounts tab groups accounts by category with live row movement. Owner column with person-name dropdowns; API writes inline dicts when owner set. Old raw editor remains at `/finances/config/` for fallback.
+**Status:** Scenario Setup Panel now fully replaces the old config editor. Quick-panel action bar includes Validate, Save + Re-render, Save + Render All, Clone Scenario, Delete Scenario. Data Sources & Accounts tab groups accounts by category with live row movement and owner column. Cash Reserve tab (between Liabilities and Assumptions) shows cash balance vs phase-target chart with below-target highlighting and summary card. Old raw editor remains at `/finances/config/` for fallback.
 
 ---
 

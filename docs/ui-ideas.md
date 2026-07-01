@@ -16,7 +16,7 @@
 ## Chart & KPI Layer
 
 ### Goal / reference lines on the chart
-Horizontal target lines overlaid on the net worth area for configurable milestones: financial independence number, mortgage payoff zero-line, cash reserve target. Currently no visual cue for "how close are we?" — just the trajectory.
+🔄 Partially done — Cash Reserve tab shows dashed stepped target lines for cash reserves per phase. Main-chart milestone lines not yet implemented.
 
 ### Year-range scrubber
 A dual-handle range slider below the chart to zoom into a specific decade (e.g., 2030–2040). The full start→end view compresses the interesting transition years (retirement, mortgage payoff, SS start). A scrubber lets you focus on the decade that matters without editing projection parameters.
@@ -25,7 +25,7 @@ A dual-handle range slider below the chart to zoom into a specific decade (e.g.,
 The main chart is a stacked area showing net worth composition over time. The tooltip currently shows only the total. Show the per-bucket breakdown at hover (cash / taxable / trad IRA / Roth / home equity) plus the year-over-year delta.
 
 ### Cash reserve gauge
-A small always-visible indicator (green/yellow/red dot or bar) showing whether predicted cash levels stay above the phase-appropriate reserve target across the full projection. The cash target is one of the most important controls, yet you have to scan the Cash Flow table to see if reserves hold.
+✅ Done — New Cash Reserve tab with cash-balance vs phase-target chart, below-target highlighting (red/orange fill), and summary card with per-phase status.
 
 ---
 
@@ -61,7 +61,7 @@ Left/right arrow to cycle scenarios, number keys to switch render modes (1=deter
 ✅ Done — Structured controls above the raw editor with data source radio, cash targets, returns, retirement years, drag-reorder chips. Backed by tomlkit API endpoints.
 
 ### Scenario cloning from the UI
-Currently cloning is a filesystem operation (copy TOML, edit slug, re-run). A "Clone scenario" button in the editor that opens a name/slug dialog, copies the current scenario config, and auto-saves to a new TOML under `scenarios/` would eliminate the terminal step.
+✅ Done — "Clone Scenario" button in the quick-panel action bar prompts for name/slug/description, creates the new TOML file, and redirects.
 
 ### "What-if" quick re-render
 One or two sliders (e.g., stock return ±, retirement year ±) that re-render only the deterministic chart in real-time — no full model run, just a live chart update. Useful for exploring sensitivity without committing to a new scenario TOML.
