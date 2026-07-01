@@ -520,8 +520,11 @@
 
       <div class="actions">
         <button type="button" class="primary" id="save-quick-btn">Save Quick Controls</button>
+        <button type="button" id="validate-btn">Validate</button>
         <button type="button" id="save-render-quick-btn">Save + Re-render</button>
-        <button type="button" id="reset-quick-btn" style="margin-left:auto">Reset to defaults</button>
+        <button type="button" id="save-render-all-btn">Save + Render All</button>
+        <button type="button" id="clone-scenario-btn" style="margin-left:auto">Clone Scenario</button>
+        <button type="button" id="delete-scenario-btn" class="danger">Delete Scenario</button>
       </div>
     </div>
 
@@ -2041,6 +2044,154 @@
         });
       }
 
+      function initValidate() {
+        var btn = document.getElementById('validate-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var content = document.getElementById('raw-toml-content');
+          if (!content) return;
+          var formData = new FormData();
+          formData.set('content', content.value);
+          formData.set('scenario_slug', currentScenarioSlug);
+          formData.set('action', 'validate');
+          fetch(editorRelativeUrl(''), {
+            method: 'POST',
+            body: formData,
+          }).then(function (r) {
+            if (r.ok) {
+              showSuccess('TOML validation passed.');
+            } else {
+              return r.text().then(function (t) { throw new Error('Validation failed: ' + t.slice(0, 200)); });
+            }
+          }).catch(function (err) {
+            showError('Validation error: ' + err.message);
+          });
+        });
+      }
+
+      function initSaveRenderAll() {
+        var btn = document.getElementById('save-render-all-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var content = document.getElementById('raw-toml-content');
+          if (!content) return;
+          var formData = new FormData();
+          formData.set('content', content.value);
+          formData.set('scenario_slug', currentScenarioSlug);
+          formData.set('action', 'save_render_all');
+          formData.set('_response_format', 'json');
+          startAsyncRenderAction(formData);
+        });
+      }
+
+      function initCloneScenario() {
+        var btn = document.getElementById('clone-scenario-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var name = prompt('New scenario name:', '');
+          if (!name || !name.trim()) return;
+          var slug = prompt('New scenario slug (e.g., "my-plan"):', '');
+          if (!slug || !slug.trim()) return;
+          var desc = prompt('Description (optional):', '');
+          var content = document.getElementById('raw-toml-content');
+          if (!content) return;
+          btn.disabled = true;
+          btn.textContent = 'Cloning…';
+          var formData = new FormData();
+          formData.set('content', content.value);
+          formData.set('scenario_slug', currentScenarioSlug);
+          formData.set('action', 'clone');
+          formData.set('clone_name', name.trim());
+          formData.set('clone_slug', slug.trim());
+          formData.set('clone_description', (desc || '').trim());
+          fetch(editorRelativeUrl(''), {
+            method: 'POST',
+            body: formData,
+            headers: { 'x-requested-with': 'fetch' },
+          }).then(function (r) { return r.text(); }).then(function () {
+            showSuccess('Scenario "' + name.trim() + '" cloned.');
+            window.location.href = window.location.href.split('?')[0] + '?scenario=' + slug.trim();
+          }).catch(function (err) {
+            showError('Clone failed: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = 'Clone Scenario';
+          });
+        });
+      }
+
+      function initDeleteScenario() {
+        var deleteBtn = document.getElementById('delete-scenario-btn');
+        if (!deleteBtn) return;
+
+        // Disable on default scenario
+        var isDefault = {{ 'true' if ns.is_def else 'false' }};
+        if (isDefault) {
+          deleteBtn.disabled = true;
+          deleteBtn.title = 'The default scenario cannot be deleted.';
+          return;
+        }
+
+        var overlay = document.getElementById('delete-dialog-overlay');
+        var cancelBtn = document.getElementById('cancel-delete-btn');
+        var confirmBtn = document.getElementById('confirm-delete-btn');
+        var confirmInput = document.getElementById('delete-confirm-input');
+        var dialogName = document.getElementById('delete-dialog-name');
+        var slugHint = document.getElementById('delete-dialog-slug-hint');
+
+        deleteBtn.addEventListener('click', function () {
+          dialogName.textContent = '{{ scenario_name }}';
+          slugHint.textContent = '{{ scenario_slug }}';
+          confirmInput.value = '';
+          confirmBtn.disabled = true;
+          overlay.classList.add('active');
+          confirmInput.focus();
+        });
+
+        confirmInput.addEventListener('input', function () {
+          confirmBtn.disabled = confirmInput.value.trim() !== '{{ scenario_slug }}';
+        });
+
+        cancelBtn.addEventListener('click', function () {
+          overlay.classList.remove('active');
+        });
+
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) overlay.classList.remove('active');
+        });
+
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && overlay.classList.contains('active')) {
+            overlay.classList.remove('active');
+          }
+        });
+
+        confirmBtn.addEventListener('click', function () {
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = 'Deleting…';
+          var body = new URLSearchParams();
+          body.set('scenario_slug', '{{ scenario_slug }}');
+          body.set('confirm', '{{ scenario_slug }}');
+          fetch(editorRelativeUrl('delete-scenario'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-requested-with': 'fetch' },
+            body: body.toString(),
+          }).then(function (r) { return r.json(); }).then(function (data) {
+            if (data.ok) {
+              overlay.classList.remove('active');
+              window.location.href = '/finances/config/setup';
+            } else {
+              showError('Delete failed: ' + (data.error || 'Unknown error.'));
+              confirmBtn.disabled = false;
+              confirmBtn.textContent = 'Delete Permanently';
+            }
+          }).catch(function (err) {
+            showError('Delete request failed: ' + err);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Delete Permanently';
+          });
+        });
+      }
+
       /* ── Init ──────────────────────────────────────────────────── */
       function init() {
         installRadioStyles();
@@ -2062,6 +2213,10 @@
         installSynthRadioHandlers();
         initRenameScenario();
         installCategoryMoveHandler();
+        initValidate();
+        initSaveRenderAll();
+        initCloneScenario();
+        initDeleteScenario();
         initRawTomlActions();
       }
 
@@ -2073,5 +2228,40 @@
       }
     })();
   </script>
+
+  <!-- ── Delete scenario dialog ─────────────────────────────────────── -->
+  <div class="delete-dialog-overlay" id="delete-dialog-overlay" aria-modal="true" role="dialog" aria-labelledby="delete-dialog-title">
+    <div class="delete-dialog">
+      <h3 id="delete-dialog-title">⚠ Delete Scenario</h3>
+      <p>This will permanently delete <strong id="delete-dialog-name"></strong> and its rendered output. This cannot be undone.<br><br>Type the scenario slug to confirm:</p>
+      <label class="confirm-label" for="delete-confirm-input">Scenario slug: <code id="delete-dialog-slug-hint"></code></label>
+      <input type="text" id="delete-confirm-input" autocomplete="off" spellcheck="false" placeholder="">
+      <div class="dialog-actions">
+        <button type="button" id="cancel-delete-btn">Cancel</button>
+        <button type="button" id="confirm-delete-btn" class="danger" disabled>Delete Permanently</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .delete-dialog-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(8,13,24,0.76); align-items: center; justify-content: center;
+      z-index: 10000; backdrop-filter: blur(2px);
+    }
+    .delete-dialog-overlay.active { display: flex; }
+    .delete-dialog {
+      background: #111827; border: 1px solid rgba(248,113,113,0.35);
+      border-radius: 14px; padding: 28px 28px 22px; max-width: 420px; width: 100%;
+      box-shadow: 0 24px 60px rgba(0,0,0,.48);
+    }
+    .delete-dialog h3 { margin: 0 0 8px; font-size: 17px; font-weight: 700; color: #fca5a5; }
+    .delete-dialog p { margin: 0 0 16px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .delete-dialog .confirm-label { font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px; }
+    .delete-dialog input { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font-size: 13px; font-family: inherit; margin-bottom: 16px; }
+    .delete-dialog input:focus { outline: none; border-color: #f87171; }
+    .delete-dialog .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    #confirm-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
 </body>
 </html>

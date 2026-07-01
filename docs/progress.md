@@ -35,6 +35,7 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - **Grouped accounts display** (`templates/setup_panel.html`): Data Sources & Accounts tab groups matched accounts by category with section headers (── Cash (4) ──) in order: Cash → Taxable → Roth → Trad IRA → Real Estate → Vehicle → Liability → Ignore. Alphabetical sort within groups. Changing a category dropdown moves the row live to the correct group; empty groups collapse; group counts update automatically.
 - **Owner column** (`templates/setup_panel.html`, `admin_app.py`): New Owner column between Category and Disabled with dropdown showing person names from Metadata + "n/a". Values stored as "person1"/"person2" matching TOML convention; API writes inline dicts when owner is set, plain strings otherwise. Dict-classified accounts (401k Person 1, OregonSaves) correctly show their owner pre-selected.
 - **Selector brightness lowered** (`templates/setup_panel.html`): `.acct-category select` and `.acct-owner select` background changed to `#0d1524`.
+- **All old-editor functions ported** (`templates/setup_panel.html`): Quick-panel action bar now has Validate, Save + Render All, Clone Scenario (prompt-based), and Delete Scenario (confirmation dialog with slug-typing). Delete disabled for default scenario.
 
 ## 2026-06-30
 
