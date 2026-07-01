@@ -9,7 +9,7 @@ import sys
 import threading
 import tomllib
 import tomlkit
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs
 from uuid import uuid4
@@ -53,14 +53,25 @@ def _read_config_text(scenario_slug: str | None = None) -> str:
     return _config_path(scenario_slug).read_text(encoding="utf-8")
 
 
-def _prune_backups(backup_dir: Path, keep: int = 10) -> None:
+def _prune_backups(backup_dir: Path, keep_days: int = 14, keep_min: int = 5) -> None:
+    """Remove backups older than keep_days, but always keep the keep_min most recent."""
+    cutoff = datetime.now() - timedelta(days=keep_days)
+    cutoff_ts = cutoff.timestamp()
     backups = sorted(
         backup_dir.glob("config-*.toml"),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
-    for old_backup in backups[keep:]:
-        old_backup.unlink(missing_ok=True)
+    # Always protect the keep_min most recent, regardless of age
+    protected = set(backups[:keep_min])
+    for backup in backups:
+        if backup in protected:
+            continue
+        try:
+            if backup.stat().st_mtime < cutoff_ts:
+                backup.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _validate_config_text(content: str) -> dict:
@@ -69,13 +80,42 @@ def _validate_config_text(content: str) -> dict:
     return merge_tax_tables(tomllib.loads(content))
 
 
+def _last_backup_content(backup_dir: Path) -> str | None:
+    """Return content of the most recent backup, or None if no backups exist."""
+    backups = sorted(
+        backup_dir.glob("config-*.toml"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if not backups:
+        return None
+    try:
+        return backups[0].read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+
 def _backup_and_write(content: str, scenario_slug: str | None = None) -> Path:
     OUTPUT_DIR.mkdir(exist_ok=True)
     backup_dir = _backup_dir(scenario_slug)
     backup_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_path = backup_dir / f"config-{ts}.toml"
-    backup_path.write_text(_read_config_text(scenario_slug), encoding="utf-8")
+
+    current_content = _read_config_text(scenario_slug)
+
+    # Deduplicate: skip creating a new backup if the last backup matches current state
+    last_content = _last_backup_content(backup_dir)
+    if last_content is not None and last_content == current_content:
+        backups = sorted(
+            backup_dir.glob("config-*.toml"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        backup_path = backups[0]
+    else:
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = backup_dir / f"config-{ts}.toml"
+        backup_path.write_text(current_content, encoding="utf-8")
+
     _config_path(scenario_slug).write_text(content, encoding="utf-8")
     _prune_backups(backup_dir)
     return backup_path
@@ -1049,10 +1089,24 @@ def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None 
     OUTPUT_DIR.mkdir(exist_ok=True)
     backup_dir = _backup_dir(scenario_slug)
     backup_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_path = backup_dir / f"config-{ts}.toml"
+
     config_path = _config_path(scenario_slug)
-    backup_path.write_text(config_path.read_text(encoding="utf-8"), encoding="utf-8")
+    current_content = config_path.read_text(encoding="utf-8")
+
+    # Deduplicate: skip creating a new backup if the last backup matches current state
+    last_content = _last_backup_content(backup_dir)
+    if last_content is not None and last_content == current_content:
+        backups = sorted(
+            backup_dir.glob("config-*.toml"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        backup_path = backups[0]
+    else:
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = backup_dir / f"config-{ts}.toml"
+        backup_path.write_text(current_content, encoding="utf-8")
+
     config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
     _prune_backups(backup_dir)
     return backup_path

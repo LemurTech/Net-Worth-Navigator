@@ -7,6 +7,12 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 ### Added
 
+- **Config backup deduplication** (`admin_app.py`): Both `_backup_and_write()` and `_backup_and_write_toml()` now compare the current config content against the most recent backup before creating a new one. If unchanged, the backup write is skipped — preventing redundant backups from repeated no-op saves.
+
+### Changed
+
+- **Backup retention policy** (`admin_app.py`): `_prune_backups()` changed from count-based (`keep=10`) to time-based (`keep_days=14`, `keep_min=5`). Backups older than 14 days are pruned, but the 5 most recent are always protected regardless of age. Fixes issue where 10 saves in a single editing session would wipe out all historical backups for a scenario.
+
 - **Scenario Setup Panel** (`templates/setup_panel.html`, `admin_app.py`): New structured config editor at `/finances/config/setup` with three sub-tabs:
   - **Quick-edit strip**: Data source radio, cash targets, returns, retirement years, drag-reorder withdrawal/surplus order chips, Save + Re-render.
   - **Data Sources & Accounts**: Account table from cache with category dropdowns, disabled checkbox, unmatched accounts section, explicit Refresh from Monarch button, Save Classification.

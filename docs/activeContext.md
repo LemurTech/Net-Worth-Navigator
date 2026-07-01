@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Scenario Setup Panel now fully replaces the old config editor. Quick-panel action bar includes Validate, Save + Re-render, Save + Render All, Clone Scenario, Delete Scenario. Data Sources & Accounts tab groups accounts by category with live row movement and owner column. Cash Reserve tab (between Liabilities and Assumptions) shows cash balance vs phase-target chart with below-target highlighting and summary card. Old raw editor remains at `/finances/config/` for fallback.
+**Status:** Backup policy overhauled — deduplication prevents redundant backups on no-op saves; time-based retention (14 days, min 5) replaces count-based (keep=10) so scenario config backups survive dense edit sessions.
 
 ---
 
@@ -120,7 +120,7 @@ Grouped by implementation area.
 - **Monarch auth expires** → re-auth: `cd /opt/monarch-mcp-server && uv run python login_setup.py`
 - **`nwn-config-editor` must be restarted after any `admin_app.py` change.** `cd /opt/hal-pages && docker compose restart nwn-config-editor`. Symptom: `{"detail":"Not Found"}` from `/render-jobs` or `/jobs/{id}`.
 - **`output/` is gitignored.** Do not commit generated HTML or sidecar data.
-- **Scenario TOMLs are local-only** (gitignored). Rollback via backups in `output/config-backups/<slug>/`.
+- **Scenario TOMLs are local-only** (gitignored). Rollback via backups in `output/config-backups/<slug>/`. Backups are kept for 14 days (min 5 most recent); deduplication prevents redundant backups when saving the same state.
 - **Plotly y-axis title standoff** alone is insufficient when `margin.l` is too narrow. Fix: `automargin: true` + `margin.l >= 80` for `$X.XXM`-format tick labels.
 - **CSV fields containing the delimiter must be quoted.** Pandas `to_csv()` quotes fields containing commas by default, but a naive JS `split(',')` parser will still split inside quotes. Use a state-machine parser (`parseCSVLine`) that tracks `inQuotes` and strips wrapping double-quotes. The `events_active` column is the primary offender — it contains comma-separated event labels.
 - **Delta chart y-axis labels with `+` prefix are wider.** The `tickformat: '+$.2f'` format adds a `+` sign to all values, making labels wider than the standard `$.2f` format used in other charts. This can cause bottom-left corner overlap with x-axis year labels. Increase `margin.l` (≥100) and `margin.b` (≥72) beyond the values used for other charts.

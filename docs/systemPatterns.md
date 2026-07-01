@@ -199,3 +199,12 @@ When two Plotly charts share identical responsive legend/margin logic, they must
 
 ### Responsive annotation visibility
 **When rendering decorative annotations (age labels, helper text) that should disappear on small screens, don't rely on the compact-mode breakpoint alone.** Annotations have a `visible` property that can be toggled via `Plotly.relayout(chart, updates)` using the `annotations[N].visible` key pattern. **Solution**: in the responsive JS, iterate `chart.layout.annotations`, identify target annotations by text pattern (e.g., text starts with `(` for age labels), and set `'annotations[N].visible' = !compact` using a separate wider breakpoint if needed.
+
+### Config backup retention
+
+**Backup deduplication and time-based retention prevent dense edit sessions from wiping out historical backups.** `_prune_backups()` uses time-based pruning (14-day cutoff) with a minimum-count floor (5 most recent always kept). Both `_backup_and_write()` and `_backup_and_write_toml()` check whether the last backup matches the current config content before creating a new file — redundant backups from no-op saves are skipped.
+
+- Context: The old `keep=10` count-based policy meant 10 saves in a single session would overwrite all older backups. Now a burst of saves preserves history going back 14 days.
+- Callers: Both the raw TOML editor endpoints and the new API endpoints (save-quick-controls, save-classification, save-synthetic-start, save-render) go through these functions.
+- Retention parameters: `keep_days=14, keep_min=5` — tunable via the function signature, not a constant.
+- Rollback instructions: Backups live in `output/config-backups/<slug>/config-YYYYMMDD-HHMMSS.toml`. Restore by copying the desired backup over `scenarios/<slug>.toml` (or using the raw TOML editor).

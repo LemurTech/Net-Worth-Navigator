@@ -1165,7 +1165,7 @@ def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> s
             x=yr,
             line=dict(color="rgba(148,163,184,0.25)", width=1, dash="dot"),
             annotation_text=lbl,
-            annotation_position="top left",
+            annotation_position="top right",
             annotation_font=dict(size=11, color="#9fb2c8"),
         )
 
