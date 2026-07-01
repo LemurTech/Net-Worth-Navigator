@@ -96,7 +96,7 @@ A new page or panel that shows where every balance comes from — Monarch-pulled
 A structured form in the config editor for entering starting balances into `[synthetic_start]` — investable buckets (taxable, trad_ira, roth, cash), home value, liability balances, monthly contributions. This would let someone use the full app with zero Monarch setup. The form writes the TOML; the user never touches data_source.mode directly.
 
 ### Data freshness indicator on the shell page
-Show when balances were last synced from Monarch and whether the cache is stale. Something minimal: "Live balances: June 15, 2026" in the page chrome. If older than 30 days, yellow flag. The user currently has no UI signal for data age.
+✅ Done — Green/yellow dot + "Live balances: <date>" shown below the title in the scenario shell page. Hidden when no cache is available (synthetic mode). Turns yellow with days-old count when cached data is >30 days stale.
 
 ### Account classification editor
 The `[accounts]` section maps Monarch account names to model categories (taxable, trad_ira, roth, cash, etc.). A UI that lists all accounts returned from Monarch with their current classification, lets you reassign categories with a dropdown, and toggles disabled accounts on/off — all without editing the TOML by hand.
