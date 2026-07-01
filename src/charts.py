@@ -1081,6 +1081,191 @@ def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> st
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-liabilities")
 
 
+def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+    """Cash balance vs phase-appropriate target chart."""
+    paper_bg = "#111827"
+    plot_bg = "#0f1725"
+    grid = "rgba(148,163,184,0.14)"
+    font_color = "#e5edf7"
+
+    years = df["year"].astype(int).tolist()
+    cash_balances = df["cash"].fillna(0).tolist()
+
+    # Phase-aware cash targets
+    wp = config.get("withdrawal_policy", {})
+    targets = {
+        "pre_retirement": float(wp.get("accumulation_cash_target", 40000)),
+        "retirement": float(wp.get("retirement_cash_target", 50000)),
+        "survivor": float(wp.get("survivor_cash_target", 30000)),
+    }
+    phase_map = config.get("tax_phase", {})
+
+    # Build per-year target from tax_phase column
+    cash_target = []
+    phase_labels: list[tuple[int, str]] = []
+    prev_phase = None
+    for i, row in df.iterrows():
+        phase = str(row.get("tax_phase", "pre_retirement")).strip().lower()
+        if phase not in targets:
+            phase = "pre_retirement"
+        cash_target.append(targets[phase])
+        if phase != prev_phase:
+            phase_labels.append((int(row["year"]), phase))
+            prev_phase = phase
+
+    fig = go.Figure()
+
+    # Cash balance trace
+    fig.add_trace(go.Scatter(
+        x=years, y=cash_balances,
+        mode="lines",
+        name="Cash Balance",
+        line=dict(color="#7dd3fc", width=2.4),
+        fill="tozeroy",
+        fillcolor="rgba(125,211,252,0.06)",
+        hovertemplate="Cash Balance: %{y:$,.0f}<extra></extra>",
+    ))
+
+    # Target stepped line
+    fig.add_trace(go.Scatter(
+        x=years, y=cash_target,
+        mode="lines",
+        name="Cash Target",
+        line=dict(color="#fbbf24", width=1.8, dash="dash"),
+        hovertemplate="Target: %{y:$,.0f}<extra></extra>",
+    ))
+
+    # Highlight below-target years with a third trace
+    below_years = []
+    below_balances = []
+    for y, bal, tgt in zip(years, cash_balances, cash_target):
+        if bal < tgt:
+            below_years.append(y)
+            below_balances.append(bal)
+        else:
+            below_years.append(y)
+            below_balances.append(None)
+
+    fig.add_trace(go.Scatter(
+        x=years, y=below_balances,
+        mode="lines",
+        name="Below Target",
+        line=dict(color="#f87171", width=2.4),
+        fill="tozeroy",
+        fillcolor="rgba(248,113,113,0.10)",
+        connectgaps=False,
+        hovertemplate="Cash Balance: %{y:$,.0f} ⚠ below target<extra></extra>",
+    ))
+
+    # Phase boundary annotations
+    phase_label_map = {"pre_retirement": "Accumulation", "retirement": "Retirement", "survivor": "Survivor"}
+    for yr, phase in phase_labels:
+        lbl = phase_label_map.get(phase, phase)
+        fig.add_vline(
+            x=yr,
+            line=dict(color="rgba(148,163,184,0.25)", width=1, dash="dot"),
+            annotation_text=lbl,
+            annotation_position="top left",
+            annotation_font=dict(size=11, color="#9fb2c8"),
+        )
+
+    fig.update_layout(
+        font=dict(color=font_color),
+        title=dict(text="Cash Reserve vs Target", font=dict(size=16)),
+        xaxis=dict(
+            title="Year",
+            tickmode="linear",
+            dtick=2,
+            ticklabelstandoff=6,
+            gridcolor=grid,
+            zerolinecolor=grid,
+            color=font_color,
+        ),
+        yaxis=dict(
+            title="Cash (USD)",
+            tickformat="$,.0f",
+            ticklabelstandoff=6,
+            automargin=True,
+            gridcolor=grid,
+            color=font_color,
+            zeroline=True,
+            zerolinecolor="rgba(148,163,184,0.35)",
+            zerolinewidth=1,
+        ),
+        hovermode="x unified",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.01,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        hoverlabel=dict(bgcolor="#1e293b", bordercolor="#7dd3fc", font_color="#f8fafc"),
+        plot_bgcolor=plot_bg,
+        paper_bgcolor=paper_bg,
+        height=420,
+        margin=dict(l=76, r=24, t=78, b=48),
+    )
+
+    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cash-reserve")
+
+
+def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) -> str:
+    """Compact summary card for Cash Reserve tab."""
+    wp = config.get("withdrawal_policy", {}) if config else {}
+    targets = {
+        "pre_retirement": float(wp.get("accumulation_cash_target", 40000)),
+        "retirement": float(wp.get("retirement_cash_target", 50000)),
+        "survivor": float(wp.get("survivor_cash_target", 30000)),
+    }
+    phase_label_map = {"pre_retirement": "Accumulation", "retirement": "Retirement", "survivor": "Survivor"}
+
+    rows_html = []
+    for phase in ["pre_retirement", "retirement", "survivor"]:
+        phase_df = df[df["tax_phase"].str.strip().str.lower() == phase]
+        if phase_df.empty:
+            continue
+        tgt = targets[phase]
+        cash_vals = phase_df["cash"].fillna(0)
+        min_cash = cash_vals.min()
+        years_below = int((cash_vals < tgt).sum())
+        label = phase_label_map.get(phase, phase)
+        yr_start = int(phase_df["year"].min())
+        yr_end = int(phase_df["year"].max())
+        status = "✅" if years_below == 0 else f"⚠️ {years_below}y below"
+        status_class = "status-ok" if years_below == 0 else "status-warn"
+
+        rows_html.append(
+            f"<tr>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4)'><strong>{label}</strong><br><span style='font-size:11px;color:var(--muted)'>{yr_start}–{yr_end}</span></td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>${tgt:,.0f}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>${min_cash:,.0f}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:center' class='{status_class}'>{status}</td>"
+            f"</tr>"
+        )
+
+    return f"""<div class="card" style="margin-top:14px;padding:16px">
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead>
+      <tr>
+        <th style="padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;font-weight:600;color:var(--muted)">Phase</th>
+        <th style="padding:8px 12px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;color:var(--muted)">Target</th>
+        <th style="padding:8px 12px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;color:var(--muted)">Minimum</th>
+        <th style="padding:8px 12px;border-bottom:1px solid var(--border);text-align:center;font-weight:600;color:var(--muted)">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {''.join(rows_html)}
+    </tbody>
+  </table>
+  <style>
+    .status-ok {{ color: #22c55e; }}
+    .status-warn {{ color: #fbbf24; }}
+  </style>
+</div>"""
+
+
 def _hex_to_rgba(hex_color: str, alpha: float) -> tuple:
     """Convert '#f87171' to (248, 113, 113) for rgba()."""
     h = hex_color.lstrip("#")
@@ -1657,6 +1842,14 @@ def build_chart(
         + liabilities_table_html
     )
 
+    # Cash Reserve tab: cash balance vs target chart + summary card
+    cash_reserve_chart_html = _build_cash_reserve_chart(df, config=config)
+    cash_reserve_summary_html = _build_cash_reserve_summary(df, config=config)
+    cash_reserve_html = (
+        "<div class='gantt-wrap'>" + cash_reserve_chart_html + "</div>"
+        + cash_reserve_summary_html
+    )
+
     scenario_slug = getattr(scenario, "slug", None)
     edit_config_href = f"/finances/config/?scenario={scenario_slug}" if scenario_slug else "/finances/config/"
     definitions_href = "/finances/definitions.html"
@@ -1700,6 +1893,8 @@ def build_chart(
             onclick="switchTab('gantt')">Gantt</button>
     <button class="tab-btn" id="btn-liabilities"
             onclick="switchTab('liabilities')">Liabilities</button>
+    <button class="tab-btn" id="btn-cash-reserve"
+            onclick="switchTab('cash-reserve')">Cash Reserve</button>
     <button class="tab-btn" id="btn-assumptions"
             onclick="switchTab('assumptions')">Assumptions</button>
     <button class="tab-btn" id="btn-scenario-parameters"
@@ -1726,6 +1921,9 @@ def build_chart(
   </div>
   <div class="tab-panel" id="panel-liabilities">
     {liabilities_html}
+  </div>
+  <div class="tab-panel gantt-panel" id="panel-cash-reserve">
+    {cash_reserve_html}
   </div>
   <div class="tab-panel assumptions-panel" id="panel-assumptions">
     {assumptions_html}
