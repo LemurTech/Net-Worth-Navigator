@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-06-30
-**Status:** Stable. Liabilities Payoff Calendar shipped (Liabilities tab with debt trajectory chart + amortization table). Hover tooltips cleaned up across all charts — redundant year/age removed from `x unified` headers. Age labels rendered as separate Plotly annotations below the x-axis so hover stays clean. Axis title positioning uses `standoff`. Table UI layer stable: sticky headers, frozen first column, grab-to-pan horizontal scroll, year column highlighting with deselect-all. Tabulator.js evaluated and rejected.
+**Last updated:** 2026-07-01
+**Status:** Scenario Setup Panel deployed alongside existing raw editor. New `/finances/config/setup` page provides structured quick-edit controls, Data Sources & Accounts management, and Synthetic Setup form — all backed by tomlkit-based API endpoints. Old raw editor remains available at `/finances/config/`. "Scenario Setup" button added to the projection shell page toolbar with dynamic scenario-slug routing. Person-name labels update dynamically from `person1.name`/`person2.name`.
 
 ---
 
@@ -19,7 +19,8 @@ cd /home/lemurtech/Net-Worth-Navigator
 |---|---|
 | http://casalemuria.lan/finances/projection.html | Shell / scenario selector |
 | http://casalemuria.lan/finances/compare.html | Scenario comparison page |
-| http://casalemuria.lan/finances/config/ | Raw TOML config editor |
+| http://casalemuria.lan/finances/config/ | Raw TOML config editor (legacy) |
+| http://casalemuria.lan/finances/config/setup | Scenario Setup Panel (new) |
 | http://casalemuria.lan/finances/definitions.html | Parameter glossary |
 
 ## Active Scenarios
@@ -127,6 +128,7 @@ Grouped by implementation area.
 - **Employer match is always prefunded** — never a cash outflow from take-home. Routes into same `annual_401k_contribution_split` as the employee contribution. Do not double-count as income.
 - **Plotly `add_vrect` annotation_text** collides with vline labels — use a separate `add_annotation` with `yref="paper"` instead.
 - **For routine UI/layout tweaks**, prefer targeted checks + `run.py --offline`. Reserve the full test suite for model changes or pre-commit passes.
+- **`POST /api/save-classification` replaces the entire `[accounts]` section.** The client must send ALL accounts, not just changed ones. Any account omitted from the request body is removed from the TOML. If you test with a single-account payload, the accounts section will be wiped and the next render will produce $0 investable/home values. Restore from a backup in `output/config-backups/<slug>/`.
 - **Table sticky headers require build-time splitting** (`src/charts.py:_wrap_table_with_sticky_header`). `position: sticky` on `<thead>` fails inside any ancestor with `overflow-x: auto` — the overflow container becomes the sticky scrollport. The fix: split each `<table>` into a header table (in `.sticky-header-wrap`, no overflow ancestor → sticky works) and a body table (in `.table-scroll`, overflow-x: auto). Both use `table-layout: fixed` with explicit `<colgroup>` pixel widths so columns align identically.
 - **`position: sticky; left: 0` on `<th>` is unreliable.** Use JS `transform: translateX(scrollX)` + `boxShadow` on the header rowlabel instead. The box-shadow fills the gap where the cell was before translation.
 - **`data-col` attributes must be on both header `<th>` and body `<td>` cells** for year-highlight to work. If `git checkout` restores an old version of `src/tables.py`, these are lost. Verify with `search_files('data-col')` in the output.

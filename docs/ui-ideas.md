@@ -58,7 +58,7 @@ Left/right arrow to cycle scenarios, number keys to switch render modes (1=deter
 ## Config Editor
 
 ### Quick-edit panel for frequent controls
-The TOML editor is the right power tool. The top 5 levers (cash targets, withdrawal order, retirement year, stock/bond return, surplus order) could live as structured controls above the raw editor — sliders, number inputs, drag-reorder chips. The raw TOML stays for everything else.
+✅ Done — Structured controls above the raw editor with data source radio, cash targets, returns, retirement years, drag-reorder chips. Backed by tomlkit API endpoints.
 
 ### Scenario cloning from the UI
 Currently cloning is a filesystem operation (copy TOML, edit slug, re-run). A "Clone scenario" button in the editor that opens a name/slug dialog, copies the current scenario config, and auto-saves to a new TOML under `scenarios/` would eliminate the terminal step.
@@ -90,16 +90,16 @@ The render modal already shows progress. When the user navigates away or closes 
 ## Data Source & Monarch Bridge
 
 ### Data source management UI
-A new page or panel that shows where every balance comes from — Monarch-pulled, cache, or manually entered. For each account: live balance, cache timestamp, and category. Annotate failures (e.g., "Monarch returned 401 — re-auth required") so the user knows data quality without reading terminal output.
+✅ Done — Data Sources & Accounts tab in the Setup Panel shows each account's source (cache/Monarch), balance, category dropdown, and disabled checkbox. Refresh from Monarch button. Cache timestamp displayed.
 
 ### Manual balance entry (non-Monarch path)
-A structured form in the config editor for entering starting balances into `[synthetic_start]` — investable buckets (taxable, trad_ira, roth, cash), home value, liability balances, monthly contributions. This would let someone use the full app with zero Monarch setup. The form writes the TOML; the user never touches data_source.mode directly.
+✅ Done — Synthetic Setup tab with structured form for investable balances, non-investable assets, property values (add/remove), auto-detected liability balances. Writes `[synthetic_start]` and toggles `data_source.mode`.
 
 ### Data freshness indicator on the shell page
 ✅ Done — Green/yellow dot + "Live balances: <date>" shown below the title in the scenario shell page. Hidden when no cache is available (synthetic mode). Turns yellow with days-old count when cached data is >30 days stale.
 
 ### Account classification editor
-The `[accounts]` section maps Monarch account names to model categories (taxable, trad_ira, roth, cash, etc.). A UI that lists all accounts returned from Monarch with their current classification, lets you reassign categories with a dropdown, and toggles disabled accounts on/off — all without editing the TOML by hand.
+✅ Done — Data Sources & Accounts tab lists Monarch accounts with category dropdowns, disabled checkbox, and unmatched accounts section. Saves to `[accounts]` via tomlkit.
 
 ### Balance import/export
 Support importing starting balances from CSV or JSON for users who track accounts in a spreadsheet or different tool. One-shot import populates `[synthetic_start]`. Export current cached balances as CSV for external analysis.

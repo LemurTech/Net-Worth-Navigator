@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Net Worth Navigator — Scenario Setup</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel-2: #0f1725;
+      --text: #e5edf7;
+      --muted: #9fb2c8;
+      --border: #243142;
+      --accent: #7dd3fc;
+      --accent-2: #38bdf8;
+      --success-bg: rgba(34, 197, 94, 0.12);
+      --success-border: rgba(74, 222, 128, 0.45);
+      --error-bg: rgba(239, 68, 68, 0.12);
+      --error-border: rgba(248, 113, 113, 0.45);
+      --info-bg: rgba(56, 189, 248, 0.10);
+      --info-border: rgba(125, 211, 252, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .page {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 20px 18px 32px;
+    }
+    .header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .title h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      font-weight: 650;
+    }
+    .title p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 760px;
+    }
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    .scenario-picker { min-width: 260px; }
+    .scenario-picker select {
+      width: 100%;
+      min-width: 260px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #111827;
+      color: #e5edf7;
+      font-size: 14px;
+      line-height: 1.2;
+      height: 40px;
+    }
+    .linkbtn {
+      display: inline-block;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--panel);
+      height: 40px;
+      line-height: 20px;
+      white-space: nowrap;
+    }
+    .linkbtn:hover { border-color: var(--accent); }
+    .meta, .card, .status {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.24);
+    }
+    .meta { padding: 14px 16px; margin-bottom: 14px; color: var(--muted); font-size: 14px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; }
+    .meta-item { min-width: 0; }
+    .meta-label { display: block; color: #d5e2f1; font-weight: 600; margin-bottom: 4px; }
+    .meta-value { min-width: 0; color: var(--muted); line-height: 1.45; }
+    .meta-value a { color: #d1e9ff; text-decoration: none; word-break: break-all; }
+    .meta-value a:hover { text-decoration: underline; }
+    .meta-value code {
+      display: inline-block; max-width: 100%; white-space: normal;
+      overflow-wrap: anywhere; word-break: break-word; color: #d1e9ff;
+      background: rgba(15, 23, 37, 0.9); padding: 1px 5px; border-radius: 5px;
+    }
+    .status { padding: 14px 16px; margin-bottom: 14px; }
+    .status.info { background: linear-gradient(180deg, var(--panel), var(--info-bg)); border-color: var(--info-border); }
+    .status.success { background: linear-gradient(180deg, var(--panel), var(--success-bg)); border-color: var(--success-border); }
+    .status.error { background: linear-gradient(180deg, var(--panel), var(--error-bg)); border-color: var(--error-border); }
+    .status h2 { margin: 0 0 6px; font-size: 18px; }
+    .status p { margin: 0 0 8px; }
+    .status code, .meta code {
+      color: #d1e9ff; background: rgba(15, 23, 37, 0.9); padding: 1px 5px; border-radius: 5px;
+    }
+    .details {
+      margin-top: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--panel-2); color: #d7e5f4; white-space: pre-wrap; overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px;
+    }
+    .card { padding: 0; overflow: hidden; }
+    .toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 10001;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto; padding: 12px 18px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--panel);
+      box-shadow: 0 10px 28px rgba(0,0,0,.24); font-size: 14px;
+      animation: toast-in 0.3s ease-out; max-width: 380px;
+    }
+    .toast.success { border-color: var(--success-border); background: linear-gradient(180deg, var(--panel), var(--success-bg)); }
+    .toast.error { border-color: var(--error-border); background: linear-gradient(180deg, var(--panel), var(--error-bg)); }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Quick-edit panel ──────────────────────────────────────────── */
+    .quick-panel {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px; margin-bottom: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.24);
+    }
+    .quick-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px 20px; margin-bottom: 14px;
+    }
+    .quick-field { min-width: 0; }
+    .quick-field label {
+      display: block; font-size: 12px; color: var(--muted); font-weight: 600;
+      margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .quick-field input, .quick-field select {
+      width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--panel-2); color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    .quick-field input:focus, .quick-field select:focus { outline: none; border-color: var(--accent); }
+    .quick-field input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
+    .quick-section-title {
+      font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.06em; margin: 16px 0 10px; padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .quick-section-title:first-of-type { margin-top: 0; border-top: none; padding-top: 0; }
+    .inline-row {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    }
+    .inline-field { min-width: 0; }
+    .inline-field label {
+      display: block; font-size: 11px; color: var(--muted); font-weight: 600;
+      margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .inline-field input {
+      width: 120px; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border);
+      background: var(--panel-2); color: var(--text); font-size: 13px; font-family: inherit;
+    }
+    .inline-field input:focus { outline: none; border-color: var(--accent); }
+    .inline-field input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* ── Radio cards ───────────────────────────────────────────────── */
+    .radio-group { display: flex; gap: 8px; }
+    .radio-card {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+      border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+      background: var(--panel-2); font-size: 13px; transition: border-color 0.15s;
+    }
+    .radio-card:hover { border-color: var(--accent); }
+    .radio-card.active { border-color: var(--accent-2); background: rgba(56,189,248,0.08); }
+    .radio-card input[type="radio"] { accent-color: var(--accent-2); margin: 0; }
+
+    /* ── Withdrawal order chips ─────────────────────────────────────── */
+    .chip-row {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px;
+      border-radius: 6px; border: 1px solid var(--border); background: var(--panel-2);
+      font-size: 12px; cursor: grab; user-select: none; transition: border-color 0.15s;
+    }
+    .chip:active { cursor: grabbing; }
+    .chip.drag-over { border-color: var(--accent-2); background: rgba(56,189,248,0.12); }
+    .chip .chip-handle { color: var(--muted); font-size: 11px; margin-right: 2px; }
+    .expander-toggle {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+      color: var(--accent); cursor: pointer; margin-top: 6px; background: none;
+      border: none; padding: 4px 0; font-family: inherit;
+    }
+    .expander-toggle:hover { color: var(--accent-2); }
+    .expander-content { display: none; margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: rgba(15,23,37,0.6); }
+    .expander-content.open { display: block; }
+
+    /* ── Action buttons ─────────────────────────────────────────────── */
+    .actions {
+      display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 0 0;
+      border-top: 1px solid var(--border); margin-top: 8px;
+    }
+    button {
+      appearance: none; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 16px; background: #162234; color: var(--text); cursor: pointer;
+      font-size: 14px; font-weight: 600; font-family: inherit;
+    }
+    button:hover { border-color: var(--accent); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary {
+      background: linear-gradient(180deg, #0ea5e9, #0284c7);
+      border-color: #38bdf8; color: #08111d;
+    }
+    button.danger {
+      background: linear-gradient(180deg, rgba(239,68,68,0.18), rgba(220,38,38,0.14));
+      border-color: rgba(248,113,113,0.4); color: #fca5a5;
+    }
+
+    /* ── Tabs ────────────────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex; gap: 0; border-bottom: 1px solid var(--border);
+      background: var(--panel); border-radius: 10px 10px 0 0;
+    }
+    .tab-btn {
+      padding: 12px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
+      color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent;
+      margin-bottom: -1px; border-radius: 0; transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-content { display: none; padding: 0; }
+    .tab-content.active { display: block; }
+    .tab-card { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; background: var(--panel); }
+
+    /* ── Raw TOML tab ───────────────────────────────────────────────── */
+    .tab-card textarea {
+      width: 100%; min-height: 60vh; resize: vertical; border: none; outline: none;
+      padding: 18px; background: #0d1524; color: #e5edf7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px; line-height: 1.5; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow-x: auto;
+    }
+    .editor-head { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--panel-2); color: var(--muted); font-size: 14px; }
+    .hint { padding: 0 16px 18px; color: var(--muted); font-size: 13px; }
+    .tab-actions {
+      display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 16px 18px;
+      border-top: 1px solid var(--border); background: var(--panel);
+    }
+
+    /* ── Accounts table ─────────────────────────────────────────────── */
+    .accounts-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .accounts-table th {
+      text-align: left; padding: 10px 12px; font-weight: 600; color: var(--muted);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+      background: var(--panel-2); position: sticky; top: 0;
+    }
+    .accounts-table td { padding: 8px 12px; border-bottom: 1px solid rgba(36,49,66,0.4); vertical-align: middle; }
+    .accounts-table tr:hover td { background: rgba(125,211,252,0.04); }
+    .acct-name { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .acct-balance { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .acct-source { display: inline-flex; align-items: center; gap: 5px; }
+    .source-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    }
+    .source-dot.green { background: #22c55e; }
+    .source-dot.yellow { background: #eab308; }
+    .source-dot.gray { background: #6b7280; }
+    .acct-category select {
+      padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--panel-2); color: var(--text); font-size: 12px; max-width: 120px;
+    }
+    .acct-category select:focus { outline: none; border-color: var(--accent); }
+    .acct-disabled input { accent-color: var(--accent-2); width: 16px; height: 16px; cursor: pointer; }
+    .accounts-section-title {
+      padding: 14px 16px 8px; font-size: 14px; font-weight: 700; color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+    .account-toolbar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+    }
+    .account-toolbar .cache-info { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; }
+
+    /* ── Synthetic form ─────────────────────────────────────────────── */
+    .synth-form { padding: 18px; }
+    .synth-section { margin-bottom: 20px; }
+    .synth-section h3 {
+      font-size: 14px; font-weight: 700; color: var(--muted); margin: 0 0 10px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .synth-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    .synth-row label {
+      width: 190px; font-size: 13px; color: var(--text); flex-shrink: 0;
+    }
+    .synth-row label .optional { color: var(--muted); font-size: 11px; }
+    .synth-row input {
+      flex: 1; max-width: 220px; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+      font-size: 14px; font-family: inherit; text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .synth-row input:focus { outline: none; border-color: var(--accent); }
+    .add-property-btn {
+      font-size: 12px; color: var(--accent); cursor: pointer; background: none;
+      border: 1px dashed var(--border); padding: 6px 14px; border-radius: 7px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .add-property-btn:hover { border-color: var(--accent); }
+
+    /* ── Overlay ────────────────────────────────────────────────────── */
+    .render-overlay {
+      position: fixed; inset: 0; background: rgba(8, 13, 24, 0.72);
+      display: none; align-items: center; justify-content: center;
+      padding: 24px 16px; overflow-y: auto; z-index: 9999; backdrop-filter: blur(1px);
+    }
+    .render-overlay.active { display: flex; }
+    .render-card {
+      display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px;
+      padding: 16px 18px; border-radius: 10px; border: 1px solid var(--border);
+      background: #0f1725; box-shadow: 0 10px 28px rgba(0,0,0,.24);
+      color: #e5edf7; width: min(560px, calc(100vw - 32px)); max-width: 100%; margin: auto;
+    }
+    .render-copy { min-width: 0; }
+    .render-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .render-detail, .render-progress, .render-hint { font-size: 13px; color: var(--muted); }
+    .render-progress { color: #d5e2f1; margin-top: 6px; }
+    .render-hint { margin-top: 8px; }
+    .spinner {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid rgba(125, 211, 252, 0.25);
+      border-top-color: var(--accent-2); animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      .header { grid-template-columns: 1fr; }
+      .links { justify-content: flex-start; }
+      .meta-grid { grid-template-columns: 1fr; }
+      .quick-grid { grid-template-columns: 1fr 1fr; }
+      .scenario-picker, .scenario-picker select { min-width: 100%; }
+      .inline-field input { width: 90px; }
+      .synth-row { flex-wrap: wrap; }
+      .synth-row label { width: 100%; }
+      .synth-row input { max-width: 100%; }
+      .tab-btn { padding: 10px 14px; font-size: 13px; }
+    }
+    @media (max-width: 600px) {
+      .quick-grid { grid-template-columns: 1fr; }
+      .inline-row { flex-direction: column; align-items: stretch; }
+      .inline-field input { width: 100%; }
+      .radio-group { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="title">
+        <h1>Net Worth Navigator — Scenario Setup</h1>
+        <p>Structured controls for scenario parameters, data sources, and starting balances. <a href="{{ editor_url }}" style="color:var(--accent)">Switch to raw editor</a></p>
+      </div>
+      <div class="links">
+        <form method="get" action="" class="scenario-picker">
+          <select id="scenario" name="scenario" onchange="this.form.submit()">
+            {% for scenario in scenario_options %}
+            <option value="{{ scenario.slug }}" {% if scenario.slug == scenario_slug %}selected{% endif %}>{{ scenario.name }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        <a class="linkbtn" href="{{ definitions_url }}" target="_blank" rel="noreferrer">Definitions</a>
+        <a class="linkbtn" id="open-projection-btn" href="{{ projection_url }}">Open projection</a>
+      </div>
+    </div>
+
+    <!-- ── Status area ──────────────────────────────────────────────── -->
+    <div class="status info" id="status-panel">
+      <h2 id="status-title">{{ status_title }}</h2>
+      <p id="status-message">{{ status_message }}</p>
+    </div>
+
+    <!-- ── Quick-edit panel ─────────────────────────────────────────── -->
+    <div class="quick-panel" id="quick-panel">
+      <div class="quick-section-title">Data Source</div>
+      <div class="radio-group" id="ds-radio-group" style="margin-bottom:12px">
+        <label class="radio-card" id="ds-radio-monarch">
+          <input type="radio" name="ds_mode" value="monarch"> Monarch (live/cached)
+        </label>
+        <label class="radio-card" id="ds-radio-synthetic">
+          <input type="radio" name="ds_mode" value="synthetic"> Manual entry (synthetic)
+        </label>
+      </div>
+
+      <div class="quick-section-title">Cash Targets</div>
+      <div class="inline-row">
+        <div class="inline-field"><label>Accumulation</label><input type="number" id="cash_accumulation" step="1000"></div>
+        <div class="inline-field"><label>Retirement</label><input type="number" id="cash_retirement" step="1000"></div>
+        <div class="inline-field"><label>Survivor</label><input type="number" id="cash_survivor" step="1000"></div>
+      </div>
+
+      <div class="quick-section-title">Assumptions &amp; Years</div>
+      <div class="inline-row">
+        <div class="inline-field"><label>Stock Return</label><input type="number" id="stock_return" step="0.01" min="0" max="1"></div>
+        <div class="inline-field"><label>Bond Return</label><input type="number" id="bond_return" step="0.01" min="0" max="1"></div>
+        <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="0.001" min="0" max="1"></div>
+        <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="0.05" min="0" max="1"></div>
+        <div class="inline-field"><label id="label-person1-retires">Person 1 Retires</label><input type="number" id="person1_retirement_year" step="1"></div>
+        <div class="inline-field"><label id="label-person2-retires">Person 2 Retires</label><input type="number" id="person2_retirement_year" step="1"></div>
+      </div>
+
+      <div class="quick-section-title">Withdrawal Priority</div>
+      <div class="inline-row" style="margin-bottom:6px">
+        <span style="font-size:12px;color:var(--muted);margin-right:8px">Retirement:</span>
+        <div class="chip-row" id="retirement-order-chips"></div>
+      </div>
+      <div style="margin-bottom:4px">
+        <button class="expander-toggle" id="advanced-order-toggle" type="button">▼ Accumulation &amp; Survivor phases</button>
+      </div>
+      <div class="expander-content" id="advanced-order-content">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Accumulation:</span>
+            <div class="chip-row" id="accumulation-order-chips"></div>
+          </div>
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Survivor:</span>
+            <div class="chip-row" id="survivor-order-chips"></div>
+          </div>
+        </div>
+      </div>
+      <div class="quick-section-title" style="margin-top:10px">Surplus Priority</div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Retirement surplus:</div>
+        <div class="chip-row" id="retirement-surplus-chips"></div>
+      </div>
+      <div class="expander-content" id="advanced-surplus-content" style="margin-top:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Accumulation surplus:</span>
+            <div class="chip-row" id="accumulation-surplus-chips"></div>
+          </div>
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Survivor surplus:</span>
+            <div class="chip-row" id="survivor-surplus-chips"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="primary" id="save-quick-btn">Save Quick Controls</button>
+        <button type="button" id="save-render-quick-btn">Save + Re-render</button>
+        <button type="button" id="reset-quick-btn" style="margin-left:auto">Reset to defaults</button>
+      </div>
+    </div>
+
+    <!-- ── Tab bar ──────────────────────────────────────────────────── -->
+    <div class="card" id="tab-card">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="toml">Raw TOML</button>
+        <button class="tab-btn" data-tab="accounts">Data Sources &amp; Accounts</button>
+        <button class="tab-btn" data-tab="synthetic">Synthetic Setup</button>
+      </div>
+
+      <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
+      <div class="tab-content tab-card active" id="tab-toml">
+        <div class="editor-head">Edit the raw scenario TOML below.</div>
+        <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
+        <div class="tab-actions">
+          <button type="button" id="raw-validate-btn">Validate</button>
+          <button type="button" id="raw-save-btn">Save</button>
+          <button type="button" class="primary" id="raw-save-render-btn">Save + Re-render</button>
+          <button type="button" id="raw-save-all-btn">Save + Render All</button>
+        </div>
+      </div>
+
+      <!-- ── Tab: Data Sources & Accounts ───────────────────────────── -->
+      <div class="tab-content tab-card" id="tab-accounts">
+        <div class="account-toolbar" id="accounts-toolbar">
+          <span class="cache-info" id="cache-info">Accounts loaded from cache as of <span id="cache-ts-display">—</span></span>
+          <button type="button" id="refresh-monarch-btn">Refresh from Monarch</button>
+        </div>
+        <div class="editor-head" style="font-size:12px;line-height:1.5;padding:10px 16px">
+          <strong>Guidelines:</strong>
+          <code>ignore</code> = exclude this account from the model entirely (hidden from all projections).
+          <code>disabled</code> checkbox = keep the category but skip this account during live Monarch pulls (useful for accounts you don't want counted).
+          Use <code>ignore</code> for test accounts, closed accounts, or unused credit lines.
+          Use <strong>disabled</strong> for live accounts you want to exclude from your net worth.
+        </div>
+        <div id="accounts-loading" style="padding:24px;text-align:center;color:var(--muted)">Loading accounts…</div>
+        <div id="accounts-content" style="display:none">
+          <table class="accounts-table" id="accounts-table">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th style="text-align:right">Balance</th>
+                <th>Source</th>
+                <th>Category</th>
+                <th>Disabled</th>
+              </tr>
+            </thead>
+            <tbody id="accounts-tbody"></tbody>
+          </table>
+          <div id="unmatched-section" style="display:none">
+            <div class="accounts-section-title">Unmatched Monarch Accounts</div>
+            <table class="accounts-table">
+              <thead>
+                <tr><th>Account</th><th style="text-align:right">Balance</th><th>Source</th><th>Category</th><th>Disabled</th></tr>
+              </thead>
+              <tbody id="unmatched-tbody"></tbody>
+            </table>
+          </div>
+          <div class="tab-actions">
+            <button type="button" class="primary" id="save-classification-btn">Save Classification</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Synthetic Setup ─────────────────────────────────── -->
+      <div class="tab-content tab-card" id="tab-synthetic">
+        <div class="synth-form">
+          <div class="synth-section">
+            <h3>Data Source Mode</h3>
+            <div class="radio-group" id="synth-ds-radio-group">
+              <label class="radio-card" id="synth-ds-monarch">
+                <input type="radio" name="synth_ds_mode" value="monarch"> Monarch (live/cached)
+              </label>
+              <label class="radio-card" id="synth-ds-synthetic">
+                <input type="radio" name="synth_ds_mode" value="synthetic"> Manual entry
+              </label>
+            </div>
+          </div>
+          <div class="synth-section">
+            <h3>Investable Balances</h3>
+            <div class="synth-row"><label>Taxable</label><input type="text" id="synth-taxable" class="synth-dollar" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Traditional IRA / 401k</label><input type="text" id="synth-trad_ira" class="synth-dollar" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Roth</label><input type="text" id="synth-roth" class="synth-dollar" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Cash</label><input type="text" id="synth-cash" class="synth-dollar" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Taxable cost basis <span class="optional">(optional)</span></label><input type="text" id="synth-taxable_cost_basis" class="synth-dollar" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Roth contribution basis <span class="optional">(optional)</span></label><input type="text" id="synth-roth_contribution_basis" class="synth-dollar" placeholder="$ 0"></div>
+          </div>
+          <div class="synth-section">
+            <h3>Non-Investable</h3>
+            <div class="synth-row"><label>Home Value</label><input type="text" id="synth-home_value" class="synth-dollar" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Vehicles</label><input type="text" id="synth-vehicles" class="synth-dollar" placeholder="$ 0"></div>
+          </div>
+          <div class="synth-section" id="synth-property-section">
+            <h3>Property Values <span class="optional">(for SellHome events)</span></h3>
+            <div id="property-rows"></div>
+            <button type="button" class="add-property-btn" id="add-property-btn">+ Add another property</button>
+          </div>
+          <div class="synth-section" id="synth-liability-section">
+            <h3>Liability Balances</h3>
+            <div id="liability-rows"></div>
+            <div id="liability-empty" style="font-size:13px;color:var(--muted)">No liabilities configured in this scenario.</div>
+          </div>
+          <div class="actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
+            <button type="button" class="primary" id="save-synth-btn">Save Synthetic Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /.page -->
+
+  <!-- ── Toast container ──────────────────────────────────────────── -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ── Render overlay ───────────────────────────────────────────── -->
+  <div class="render-overlay" id="render-overlay" aria-live="polite" aria-hidden="true">
+    <div class="render-card">
+      <span class="spinner" aria-hidden="true"></span>
+      <div class="render-copy">
+        <div class="render-title" id="render-title">Rendering projection…</div>
+        <div class="render-detail" id="render-detail">Preparing render plan…</div>
+        <div class="render-progress" id="render-progress">Starting…</div>
+        <div class="render-hint" id="render-hint">This page will refresh when the render completes.<span id="render-elapsed" style="opacity:0.55;margin-left:0.5em"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <script id="render-plan-data" type="application/json">{{ render_plan_json | safe }}</script>
+  <script>
+    (function () {
+      'use strict';
+
+      /* ── State ──────────────────────────────────────────────────── */
+      var _accountsData = null;       // cache of latest GET /api/accounts
+      var _syntheticData = null;      // cache of latest GET /api/synthetic-start
+      var _withdrawalDefaults = null; // from config load
+
+      var currentScenarioSlug = '{{ scenario_slug }}';
+      var editorBaseUrl = '{{ editor_url }}';
+
+      /* ── Helper: fetch JSON ─────────────────────────────────────── */
+      function apiUrl(path) {
+        var base = window.location.pathname;
+        if (!base.endsWith('/')) base += '/';
+        return base + '../' + path.replace(/^\//, '');
+      }
+
+      function apiGet(path) {
+        return fetch(apiUrl(path), { headers: { Accept: 'application/json' } })
+          .then(function (r) { return r.json(); });
+      }
+
+      function apiPost(path, body) {
+        return fetch(apiUrl(path), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(body),
+        }).then(function (r) { return r.json(); });
+      }
+
+      /* ── Toast ─────────────────────────────────────────────────── */
+      function showToast(message, kind) {
+        kind = kind || 'success';
+        var container = document.getElementById('toast-container');
+        var el = document.createElement('div');
+        el.className = 'toast ' + kind;
+        el.textContent = message;
+        container.appendChild(el);
+        setTimeout(function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, 4000);
+      }
+
+      function showError(message) { showToast(message, 'error'); }
+      function showSuccess(message) { showToast(message, 'success'); }
+
+      /* ── Status panel ──────────────────────────────────────────── */
+      function setStatus(kind, title, message) {
+        var panel = document.getElementById('status-panel');
+        var titleEl = document.getElementById('status-title');
+        var msgEl = document.getElementById('status-message');
+        panel.className = 'status ' + kind;
+        titleEl.textContent = title;
+        msgEl.textContent = message || '';
+      }
+
+      /* ── Dollar input helpers ──────────────────────────────────── */
+      function parseDollar(val) {
+        if (!val) return 0;
+        return parseFloat(String(val).replace(/[^0-9.\-]/g, '')) || 0;
+      }
+
+      function formatDollar(val) {
+        if (!val || isNaN(val)) return '';
+        return '$ ' + Number(val).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
+
+      function installDollarFormat() {
+        document.querySelectorAll('.synth-dollar').forEach(function (input) {
+          input.addEventListener('blur', function () {
+            var v = parseDollar(input.value);
+            input.value = v ? formatDollar(v) : '';
+          });
+          input.addEventListener('focus', function () {
+            input.value = parseDollar(input.value).toString();
+          });
+        });
+      }
+
+      /* ── Chip reorder (HTML5 drag & drop) ──────────────────────── */
+      function makeChips(containerId, items, onChange) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        items.forEach(function (item) {
+          var chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.draggable = true;
+          chip.textContent = item.replace(/_/g, ' ');
+          chip.setAttribute('data-value', item);
+
+          var handle = document.createElement('span');
+          handle.className = 'chip-handle';
+          handle.textContent = '⠿';
+          chip.prepend(handle);
+
+          chip.addEventListener('dragstart', function (e) {
+            e.dataTransfer.setData('text/plain', item);
+            chip.classList.add('drag-over');
+          });
+          chip.addEventListener('dragend', function () {
+            chip.classList.remove('drag-over');
+            container.querySelectorAll('.chip.drag-over').forEach(function (c) { c.classList.remove('drag-over'); });
+          });
+          chip.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            chip.classList.add('drag-over');
+          });
+          chip.addEventListener('dragleave', function () {
+            chip.classList.remove('drag-over');
+          });
+          chip.addEventListener('drop', function (e) {
+            e.preventDefault();
+            var draggedValue = e.dataTransfer.getData('text/plain');
+            if (!draggedValue || draggedValue === item) return;
+            var chips = Array.from(container.querySelectorAll('.chip'));
+            var fromIdx = chips.findIndex(function (c) { return c.getAttribute('data-value') === draggedValue; });
+            var toIdx = chips.findIndex(function (c) { return c.getAttribute('data-value') === item; });
+            if (fromIdx < 0 || toIdx < 0) return;
+            chips.splice(fromIdx, 1);
+            chips.splice(toIdx, 0, { _tmp: true }); // placeholder
+            var result = chips.map(function (c) { return c.getAttribute && c.getAttribute('data-value') ? c.getAttribute('data-value') : (draggedValue); });
+            // rebuild with new order
+            makeChips(containerId, result, onChange);
+            if (onChange) onChange(result);
+          });
+          container.appendChild(chip);
+        });
+      }
+
+      var chipChangeHandlers = {};
+
+      function setupChipGroup(containerId, inputFieldId, initialValues) {
+        var currentValues = initialValues.slice();
+        var handler = function (newOrder) { currentValues = newOrder; };
+        chipChangeHandlers[containerId] = handler;
+        makeChips(containerId, currentValues, handler);
+        // Sync to hidden field or just keep in memory
+      }
+
+      function getChipValues(containerId) {
+        var container = document.getElementById(containerId);
+        if (!container) return [];
+        return Array.from(container.querySelectorAll('.chip')).map(function (c) { return c.getAttribute('data-value'); });
+      }
+
+      /* ── Initialise quick-edit from config ─────────────────────── */
+      function initQuickEdit(configContent) {
+        // Parse key values from TOML text via regex
+        var c = {};
+
+        var m;
+        m = configContent.match(/^\s*accumulation_cash_target\s*=\s*(\d+)/m);
+        if (m && m[1]) c.cash_accumulation = parseInt(m[1], 10);
+        m = configContent.match(/^\s*retirement_cash_target\s*=\s*(\d+)/m);
+        if (m && m[1]) c.cash_retirement = parseInt(m[1], 10);
+        m = configContent.match(/^\s*survivor_cash_target\s*=\s*(\d+)/m);
+        if (m && m[1]) c.cash_survivor = parseInt(m[1], 10);
+
+        m = configContent.match(/^\s*stock_return\s*=\s*([\d.]+)/m);
+        if (m && m[1]) c.stock_return = parseFloat(m[1]);
+        m = configContent.match(/^\s*bond_return\s*=\s*([\d.]+)/m);
+        if (m && m[1]) c.bond_return = parseFloat(m[1]);
+        m = configContent.match(/^\s*inflation\s*=\s*([\d.]+)/m);
+        if (m && m[1]) c.inflation = parseFloat(m[1]);
+        m = configContent.match(/^\s*equity_allocation\s*=\s*([\d.]+)/m);
+        if (m && m[1]) c.equity_allocation = parseFloat(m[1]);
+
+        m = configContent.match(/^\[person1\]\s*[\s\S]*?^\s*retirement_year\s*=\s*(\d+)/m);
+        if (m && m[1]) c.person1_retirement = parseInt(m[1], 10);
+        m = configContent.match(/^\[person2\]\s*[\s\S]*?^\s*retirement_year\s*=\s*(\d+)/m);
+        if (m && m[1]) c.person2_retirement = parseInt(m[1], 10);
+
+        // Person display names (for dynamic labels)
+        var person1Name = 'Person 1';
+        var person2Name = 'Person 2';
+        m = configContent.match(/^\[person1\]\s*[\s\S]*?^\s*name\s*=\s*"([^"]+)"/m);
+        if (m && m[1]) person1Name = m[1];
+        m = configContent.match(/^\[person2\]\s*[\s\S]*?^\s*name\s*=\s*"([^"]+)"/m);
+        if (m && m[1]) person2Name = m[1];
+        var label1 = document.getElementById('label-person1-retires');
+        var label2 = document.getElementById('label-person2-retires');
+        if (label1) label1.textContent = person1Name + ' Retires';
+        if (label2) label2.textContent = person2Name + ' Retires';
+
+        var dsMode = 'monarch';
+        m = configContent.match(/^\s*mode\s*=\s*\"(monarch|synthetic)\"/m);
+        if (m) dsMode = m[1];
+
+        // Withdrawal orders
+        var orders = {
+          retirement: [], accumulation: [], survivor: [],
+          retirement_surplus: [], accumulation_surplus: [], survivor_surplus: [],
+        };
+        var orderKeyMap = {
+          retirement_withdrawal_order: 'retirement',
+          accumulation_withdrawal_order: 'accumulation',
+          survivor_withdrawal_order: 'survivor',
+          retirement_surplus_order: 'retirement_surplus',
+          accumulation_surplus_order: 'accumulation_surplus',
+          survivor_surplus_order: 'survivor_surplus',
+        };
+        var defaultOrders = {
+          retirement: ['cash_above_target','trad_ira','taxable','roth','cash_below_target'],
+          accumulation: ['cash_above_target','taxable','roth','trad_ira','cash_below_target'],
+          survivor: ['cash_above_target','trad_ira','taxable','roth','cash_below_target'],
+          retirement_surplus: ['roth','taxable'],
+          accumulation_surplus: ['roth','taxable'],
+          survivor_surplus: ['roth','taxable'],
+        };
+
+        Object.keys(orderKeyMap).forEach(function (key) {
+          var re = new RegExp('^\\s*' + key.replace(/_/g, '[_\\s]*') + '\\s*=\\s*\\[([^\\]]*)\\]', 'm');
+          var match = configContent.match(re);
+          if (match) {
+            var items = match[1].match(/"([^"]+)"/g) || [];
+            orders[orderKeyMap[key]] = items.map(function (s) { return s.replace(/"/g, ''); });
+          }
+        });
+
+        // Fill in defaults for empty orders
+        Object.keys(orders).forEach(function (k) {
+          if (!orders[k].length) orders[k] = defaultOrders[k] || [];
+        });
+
+        // Apply to fields
+        setField('cash_accumulation', c.cash_accumulation);
+        setField('cash_retirement', c.cash_retirement);
+        setField('cash_survivor', c.cash_survivor);
+        setField('stock_return', c.stock_return != null ? (c.stock_return * 100).toFixed(1) : '');
+        setField('bond_return', c.bond_return != null ? (c.bond_return * 100).toFixed(1) : '');
+        setField('inflation', c.inflation != null ? (c.inflation * 100).toFixed(1) : '');
+        setField('equity_allocation', c.equity_allocation != null ? (c.equity_allocation * 100).toFixed(1) : '');
+        setField('person1_retirement_year', c.person1_retirement);
+        setField('person2_retirement_year', c.person2_retirement);
+
+        // Data source radio
+        var dsRadios = document.querySelectorAll('input[name="ds_mode"]');
+        dsRadios.forEach(function (r) {
+          r.checked = r.value === dsMode;
+          updateRadioCard(r);
+        });
+
+        // Chip groups
+        makeChips('retirement-order-chips', orders.retirement);
+        makeChips('accumulation-order-chips', orders.accumulation);
+        makeChips('survivor-order-chips', orders.survivor);
+        makeChips('retirement-surplus-chips', orders.retirement_surplus);
+        makeChips('accumulation-surplus-chips', orders.accumulation_surplus);
+        makeChips('survivor-surplus-chips', orders.survivor_surplus);
+
+        // Expander
+        var advToggle = document.getElementById('advanced-order-toggle');
+        var advContent = document.getElementById('advanced-order-content');
+        var advSurplusContent = document.getElementById('advanced-surplus-content');
+        if (advToggle) {
+          advToggle.addEventListener('click', function () {
+            var open = advContent.classList.toggle('open');
+            advToggle.innerHTML = (open ? '▲' : '▼') + ' Accumulation &amp; Survivor phases';
+            advSurplusContent.classList.toggle('open', open);
+          });
+        }
+      }
+
+      function setField(id, val) {
+        var el = document.getElementById(id);
+        if (el && val != null) el.value = val;
+      }
+
+      function getField(id) {
+        var el = document.getElementById(id);
+        if (!el) return null;
+        var v = el.value.trim();
+        return v === '' ? null : v;
+      }
+
+      function updateRadioCard(input) {
+        var card = input.closest('.radio-card');
+        if (card) card.classList.toggle('active', input.checked);
+      }
+
+      function installRadioStyles() {
+        document.querySelectorAll('.radio-card input[type="radio"]').forEach(function (input) {
+          input.addEventListener('change', function () {
+            document.querySelectorAll('input[name="' + input.name + '"]').forEach(function (r) {
+              updateRadioCard(r);
+            });
+          });
+          updateRadioCard(input);
+        });
+      }
+
+      /* ── Save quick controls ───────────────────────────────────── */
+      function collectQuickControls() {
+        var body = {};
+        var cash_a = getField('cash_accumulation');
+        var cash_r = getField('cash_retirement');
+        var cash_s = getField('cash_survivor');
+        if (cash_a) body.cash_target_accumulation = parseFloat(cash_a);
+        if (cash_r) body.cash_target_retirement = parseFloat(cash_r);
+        if (cash_s) body.cash_target_survivor = parseFloat(cash_s);
+
+        var sr = getField('stock_return');
+        var br = getField('bond_return');
+        var inf = getField('inflation');
+        var eq = getField('equity_allocation');
+        if (sr) body.stock_return = parseFloat(sr) / 100;
+        if (br) body.bond_return = parseFloat(br) / 100;
+        if (inf) body.inflation = parseFloat(inf) / 100;
+        if (eq) body.equity_allocation = parseFloat(eq) / 100;
+
+        var mr = getField('person1_retirement_year');
+        var wr = getField('person2_retirement_year');
+        if (mr) body.person1_retirement_year = parseInt(mr, 10);
+        if (wr) body.person2_retirement_year = parseInt(wr, 10);
+
+        // Data source
+        var dsChecked = document.querySelector('input[name="ds_mode"]:checked');
+        if (dsChecked) body.data_source = dsChecked.value;
+
+        // Withdrawal orders
+        body.retirement_withdrawal_order = getChipValues('retirement-order-chips');
+        body.accumulation_withdrawal_order = getChipValues('accumulation-order-chips');
+        body.survivor_withdrawal_order = getChipValues('survivor-order-chips');
+        body.retirement_surplus_order = getChipValues('retirement-surplus-chips');
+        body.accumulation_surplus_order = getChipValues('accumulation-surplus-chips');
+        body.survivor_surplus_order = getChipValues('survivor-surplus-chips');
+
+        return body;
+      }
+
+      function initSaveQuick() {
+        var btn = document.getElementById('save-quick-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          var body = collectQuickControls();
+          apiPost('api/save-quick-controls', body).then(function (data) {
+            btn.disabled = false;
+            if (data.ok) {
+              showSuccess(data.message || 'Quick controls saved.');
+            } else {
+              showError(data.error || 'Save failed.');
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            showError('Save failed: ' + err.message);
+          });
+        });
+      }
+
+      /* ── Save + Re-render from quick panel ────────────────────── */
+      function initSaveRenderQuick() {
+        var btn = document.getElementById('save-render-quick-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          var body = collectQuickControls();
+          apiPost('api/save-quick-controls', body).then(function (data) {
+            if (!data.ok) {
+              btn.disabled = false;
+              showError(data.error || 'Save failed.');
+              return;
+            }
+            // Now trigger re-render via the raw TOML flow
+            var contentEl = document.getElementById('raw-toml-content');
+            if (contentEl) {
+              // Refresh TOML content first
+              apiGet('api/synthetic-start').then(function () {
+                window.location.reload();
+              });
+              // Actually just trigger render
+              var formData = new FormData();
+              formData.set('content', contentEl.value);
+              formData.set('scenario_slug', currentScenarioSlug);
+              formData.set('action', 'save_render');
+              formData.set('_response_format', 'json');
+              startAsyncRenderAction(formData);
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            showError('Save + Render failed: ' + err.message);
+          });
+        });
+      }
+
+      /* ── Load accounts tab ─────────────────────────────────────── */
+      function initAccountsTab() {
+        var loadingEl = document.getElementById('accounts-loading');
+        var contentEl = document.getElementById('accounts-content');
+        var tbody = document.getElementById('accounts-tbody');
+        var unmatchedTbody = document.getElementById('unmatched-tbody');
+        var unmatchedSection = document.getElementById('unmatched-section');
+        var cacheTsDisplay = document.getElementById('cache-ts-display');
+
+        apiGet('api/accounts').then(function (data) {
+          loadingEl.style.display = 'none';
+          contentEl.style.display = 'block';
+          _accountsData = data;
+
+          // Cache timestamp
+          var ts = data.cache_timestamp || null;
+          cacheTsDisplay.textContent = ts ? new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+
+          // Build table
+          var accounts = data.accounts || [];
+          var classification = data.classification || {};
+          var disabled = data.disabled || [];
+          var matched = [];
+
+          accounts.forEach(function (acct) {
+            var name = acct.name;
+            var existingCat = classification[name] || 'unclassified';
+            var isDisabled = disabled.indexOf(name) >= 0;
+            matched.push({ name: name, balance: acct.balance, category: existingCat, disabled: isDisabled, matched: true });
+          });
+
+          // Find unmatched (in classification but not in accounts)
+          var unmatched = [];
+          Object.keys(classification).forEach(function (name) {
+            if (name === 'disabled') return;
+            var found = accounts.some(function (a) { return a.name === name; });
+            if (!found) {
+              unmatched.push({ name: name, balance: 0, category: classification[name] });
+            }
+          });
+
+          renderAccountRows(tbody, matched, 'matched');
+          if (unmatched.length) {
+            unmatchedSection.style.display = 'block';
+            renderAccountRows(unmatchedTbody, unmatched, 'unmatched');
+          } else {
+            unmatchedSection.style.display = 'none';
+          }
+        }).catch(function (err) {
+          loadingEl.textContent = 'Failed to load accounts: ' + err.message;
+          loadingEl.style.color = '#fca5a5';
+        });
+      }
+
+      var CATEGORY_OPTIONS = ['taxable','trad_ira','roth','cash','real_estate','vehicle','liability','ignore'];
+
+      function renderAccountRows(tbody, items, type) {
+        tbody.innerHTML = '';
+        items.forEach(function (item) {
+          var tr = document.createElement('tr');
+
+          // Name
+          var tdName = document.createElement('td');
+          tdName.className = 'acct-name';
+          tdName.textContent = item.name;
+          tr.appendChild(tdName);
+
+          // Balance
+          var tdBal = document.createElement('td');
+          tdBal.className = 'acct-balance';
+          tdBal.textContent = item.balance ? '$' + Number(item.balance).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—';
+          tr.appendChild(tdBal);
+
+          // Source — matched rows get dot + label, unmatched get placeholder
+          var tdSrc = document.createElement('td');
+          if (type === 'matched') {
+            var srcSpan = document.createElement('span');
+            srcSpan.className = 'acct-source';
+            var dot = document.createElement('span');
+            dot.className = 'source-dot gray';
+            if (_accountsData && _accountsData.source === 'cached') {
+              dot.className = 'source-dot green';
+            }
+            srcSpan.appendChild(dot);
+            srcSpan.appendChild(document.createTextNode(' ' + (_accountsData ? (_accountsData.source === 'cached' ? 'Cache' : '—') : '—')));
+            tdSrc.appendChild(srcSpan);
+          } else {
+            tdSrc.textContent = '—';
+            tdSrc.className = 'acct-source-empty';
+          }
+          tr.appendChild(tdSrc);
+
+          if (type === 'matched') {
+            // Category dropdown
+            var tdCat = document.createElement('td');
+            tdCat.className = 'acct-category';
+            var sel = document.createElement('select');
+            sel.setAttribute('data-account', item.name);
+            CATEGORY_OPTIONS.forEach(function (opt) {
+              var option = document.createElement('option');
+              option.value = opt;
+              option.textContent = opt;
+              if (opt === item.category || (item.category === 'unclassified' && opt === 'ignore')) {
+                option.selected = true;
+              }
+              sel.appendChild(option);
+            });
+            tdCat.appendChild(sel);
+            tr.appendChild(tdCat);
+
+            // Disabled checkbox
+            var tdDis = document.createElement('td');
+            tdDis.className = 'acct-disabled';
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = item.disabled;
+            cb.setAttribute('data-account', item.name);
+            tdDis.appendChild(cb);
+            tr.appendChild(tdDis);
+          } else {
+            // Unmatched — category dropdown
+            var tdCat2 = document.createElement('td');
+            tdCat2.className = 'acct-category';
+            var sel2 = document.createElement('select');
+            sel2.setAttribute('data-account', item.name);
+            CATEGORY_OPTIONS.forEach(function (opt) {
+              var option = document.createElement('option');
+              option.value = opt;
+              option.textContent = opt;
+              if (opt === item.category || (typeof item.category === 'object' && opt === 'ignore')) {
+                option.selected = true;
+              }
+              sel2.appendChild(option);
+            });
+            tdCat2.appendChild(sel2);
+            tr.appendChild(tdCat2);
+
+            // Disabled — empty placeholder cell to maintain 5-column alignment
+            var tdDis2 = document.createElement('td');
+            tdDis2.textContent = '—';
+            tdDis2.style.color = 'var(--muted)';
+            tr.appendChild(tdDis2);
+          }
+
+          tbody.appendChild(tr);
+        });
+      }
+
+      function collectClassification() {
+        var entries = [];
+        var rows = document.querySelectorAll('#accounts-tbody tr');
+        rows.forEach(function (tr) {
+          var nameEl = tr.querySelector('.acct-name');
+          var sel = tr.querySelector('.acct-category select');
+          var cb = tr.querySelector('.acct-disabled input');
+          if (!nameEl || !sel) return;
+          var name = nameEl.textContent;
+          entries.push({
+            name: name,
+            category: sel.value,
+            disabled: cb ? cb.checked : false,
+          });
+        });
+        // Also unmatched
+        var unmatchedRows = document.querySelectorAll('#unmatched-tbody tr');
+        unmatchedRows.forEach(function (tr) {
+          var nameEl = tr.querySelector('.acct-name');
+          var sel = tr.querySelector('.acct-category select');
+          if (!nameEl || !sel) return;
+          entries.push({
+            name: nameEl.textContent,
+            category: sel.value,
+            disabled: false,
+          });
+        });
+        return entries;
+      }
+
+      function initSaveClassification() {
+        var btn = document.getElementById('save-classification-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          var entries = collectClassification();
+          apiPost('api/save-classification', { accounts: entries }).then(function (data) {
+            btn.disabled = false;
+            if (data.ok) {
+              showSuccess(data.message || 'Classification saved.');
+            } else {
+              showError(data.error || 'Save failed.');
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            showError('Save failed: ' + err.message);
+          });
+        });
+      }
+
+      function initRefreshMonarch() {
+        var btn = document.getElementById('refresh-monarch-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          btn.textContent = 'Refreshing…';
+          apiPost('api/refresh-monarch', {}).then(function (data) {
+            btn.disabled = false;
+            btn.textContent = 'Refresh from Monarch';
+            if (data.ok) {
+              showSuccess('Refreshed ' + (data.account_count || 0) + ' accounts from Monarch.');
+              // Reload the accounts tab
+              initAccountsTab();
+            } else {
+              showError(data.error || 'Refresh failed.');
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            btn.textContent = 'Refresh from Monarch';
+            showError('Refresh failed: ' + err.message);
+          });
+        });
+      }
+
+      /* ── Synthetic tab ─────────────────────────────────────────── */
+      function loadSyntheticTab() {
+        apiGet('api/synthetic-start').then(function (data) {
+          _syntheticData = data;
+          var syn = data.synthetic_start || {};
+
+          // Data source radio
+          var mode = data.data_source_mode || 'monarch';
+          var dsRadios = document.querySelectorAll('input[name="synth_ds_mode"]');
+          dsRadios.forEach(function (r) {
+            r.checked = r.value === mode;
+            updateRadioCard(r);
+          });
+
+          // Fill fields
+          setSynthField('synth-taxable', syn.taxable);
+          setSynthField('synth-trad_ira', syn.trad_ira);
+          setSynthField('synth-roth', syn.roth);
+          setSynthField('synth-cash', syn.cash);
+          setSynthField('synth-taxable_cost_basis', syn.taxable_cost_basis);
+          setSynthField('synth-roth_contribution_basis', syn.roth_contribution_basis);
+          setSynthField('synth-home_value', syn.home_value);
+          setSynthField('synth-vehicles', syn.vehicles);
+
+          // Property values
+          var propContainer = document.getElementById('property-rows');
+          propContainer.innerHTML = '';
+          var propertyValues = syn.property_values || {};
+          Object.keys(propertyValues).forEach(function (name) {
+            addPropertyRow(name, propertyValues[name]);
+          });
+
+          // Liability balances
+          var liabilityContainer = document.getElementById('liability-rows');
+          var liabilityEmpty = document.getElementById('liability-empty');
+          liabilityContainer.innerHTML = '';
+          var liabilityBalances = syn.liability_balances || {};
+          var liabilityNames = syn._liability_names || [];
+          var hasLiabilities = false;
+
+          // Show all liability names from config + any saved balances
+          var allLiabilities = {};
+          liabilityNames.forEach(function (n) { allLiabilities[n] = liabilityBalances[n] || 0; });
+          Object.keys(liabilityBalances).forEach(function (n) {
+            if (!(n in allLiabilities)) allLiabilities[n] = liabilityBalances[n];
+          });
+
+          Object.keys(allLiabilities).forEach(function (name) {
+            if (!name) return;
+            hasLiabilities = true;
+            addLiabilityRow(name, allLiabilities[name]);
+          });
+
+          if (hasLiabilities) {
+            liabilityEmpty.style.display = 'none';
+          } else {
+            liabilityEmpty.style.display = 'block';
+          }
+        }).catch(function (err) {
+          showError('Failed to load synthetic settings: ' + err.message);
+        });
+      }
+
+      function setSynthField(id, val) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (val) {
+          el.value = formatDollar(val);
+        } else {
+          el.value = '';
+        }
+      }
+
+      function addPropertyRow(name, value) {
+        var container = document.getElementById('property-rows');
+        var row = document.createElement('div');
+        row.className = 'synth-row property-row';
+
+        var label = document.createElement('label');
+        label.textContent = name || 'Property';
+        var nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'prop-name';
+        nameInput.value = name || '';
+        nameInput.style.maxWidth = '140px';
+        nameInput.style.marginRight = '6px';
+        nameInput.placeholder = 'Name';
+
+        var valueInput = document.createElement('input');
+        valueInput.type = 'text';
+        valueInput.className = 'synth-dollar prop-value';
+        valueInput.value = value ? formatDollar(value) : '';
+        valueInput.placeholder = '$ 0';
+
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '×';
+        removeBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 8px;cursor:pointer';
+        removeBtn.addEventListener('click', function () { row.parentNode.removeChild(row); });
+        removeBtn.addEventListener('mouseenter', function () { removeBtn.style.color = '#fca5a5'; });
+        removeBtn.addEventListener('mouseleave', function () { removeBtn.style.color = 'var(--muted)'; });
+
+        row.appendChild(label);
+        row.appendChild(nameInput);
+        row.appendChild(valueInput);
+        row.appendChild(removeBtn);
+        container.appendChild(row);
+
+        // Install dollar format
+        valueInput.addEventListener('blur', function () {
+          var v = parseDollar(valueInput.value);
+          valueInput.value = v ? formatDollar(v) : '';
+        });
+        valueInput.addEventListener('focus', function () {
+          valueInput.value = parseDollar(valueInput.value).toString();
+        });
+      }
+
+      function addLiabilityRow(name, value) {
+        var container = document.getElementById('liability-rows');
+        var row = document.createElement('div');
+        row.className = 'synth-row liability-row';
+
+        var label = document.createElement('label');
+        label.textContent = name;
+
+        var valueInput = document.createElement('input');
+        valueInput.type = 'text';
+        valueInput.className = 'synth-dollar liability-value';
+        valueInput.value = value ? formatDollar(value) : '';
+        valueInput.placeholder = '$ 0';
+        valueInput.setAttribute('data-liability-name', name);
+
+        row.appendChild(label);
+        row.appendChild(valueInput);
+        container.appendChild(row);
+
+        valueInput.addEventListener('blur', function () {
+          var v = parseDollar(valueInput.value);
+          valueInput.value = v ? formatDollar(v) : '';
+        });
+        valueInput.addEventListener('focus', function () {
+          valueInput.value = parseDollar(valueInput.value).toString();
+        });
+      }
+
+      function initAddProperty() {
+        var btn = document.getElementById('add-property-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          addPropertyRow('', '');
+        });
+      }
+
+      function collectSyntheticData() {
+        var dsRadio = document.querySelector('input[name="synth_ds_mode"]:checked');
+        var dataSource = dsRadio ? dsRadio.value : 'monarch';
+
+        var balances = {};
+        document.querySelectorAll('.synth-dollar').forEach(function (input) {
+          var id = input.id || '';
+          // Map id to key name
+          var key = id.replace(/^synth-/, '');
+          if (!key || input.closest('.property-row') || input.closest('.liability-row')) return;
+          balances[key] = parseDollar(input.value);
+        });
+
+        // Property values
+        var propertyValues = {};
+        document.querySelectorAll('.property-row').forEach(function (row) {
+          var nameInput = row.querySelector('.prop-name');
+          var valueInput = row.querySelector('.prop-value');
+          if (nameInput && valueInput) {
+            var name = nameInput.value.trim();
+            if (name) {
+              propertyValues[name] = parseDollar(valueInput.value);
+            }
+          }
+        });
+        if (Object.keys(propertyValues).length) {
+          balances.property_values = propertyValues;
+        }
+
+        // Liability balances
+        var liabilityBalances = {};
+        document.querySelectorAll('.liability-row .liability-value').forEach(function (input) {
+          var name = input.getAttribute('data-liability-name');
+          if (name) {
+            liabilityBalances[name] = parseDollar(input.value);
+          }
+        });
+        if (Object.keys(liabilityBalances).length) {
+          balances.liability_balances = liabilityBalances;
+        }
+
+        return { data_source: dataSource, balances: balances };
+      }
+
+      function initSaveSynthetic() {
+        var btn = document.getElementById('save-synth-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          var payload = collectSyntheticData();
+          apiPost('api/save-synthetic-start', payload).then(function (data) {
+            btn.disabled = false;
+            if (data.ok) {
+              showSuccess(data.message || 'Synthetic settings saved.');
+              // Update the raw TOML textarea with fresh content
+              apiGet('api/synthetic-start').then(function () {
+                // Reload page to refresh TOML content
+                window.location.reload();
+              });
+            } else {
+              showError(data.error || 'Save failed.');
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            showError('Save failed: ' + err.message);
+          });
+        });
+      }
+
+      /* ── Tab switching ─────────────────────────────────────────── */
+      function initTabs() {
+        var tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            tabBtns.forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(function (tc) { tc.classList.remove('active'); });
+            var target = document.getElementById('tab-' + btn.getAttribute('data-tab'));
+            if (target) target.classList.add('active');
+
+            // Lazy load accounts/synthetic tabs
+            var tab = btn.getAttribute('data-tab');
+            if (tab === 'accounts' && !_accountsData) {
+              initAccountsTab();
+            }
+            if (tab === 'synthetic' && !_syntheticData) {
+              loadSyntheticTab();
+            }
+          });
+        });
+      }
+
+      /* ── Raw TOML actions ──────────────────────────────────────── */
+      function initRawTomlActions() {
+        var contentEl = document.getElementById('raw-toml-content');
+        var validateBtn = document.getElementById('raw-validate-btn');
+        var saveBtn = document.getElementById('raw-save-btn');
+        var saveRenderBtn = document.getElementById('raw-save-render-btn');
+        var saveAllBtn = document.getElementById('raw-save-all-btn');
+
+        if (validateBtn) {
+          validateBtn.addEventListener('click', function () {
+            var content = contentEl.value;
+            var payload = new FormData();
+            payload.set('content', content);
+            payload.set('scenario_slug', currentScenarioSlug);
+            payload.set('action', 'validate');
+
+            fetch(window.location.pathname.replace('/setup', ''), {
+              method: 'POST',
+              body: payload,
+            }).then(function (r) { return r.text(); }).then(function () {
+              showSuccess('TOML validation passed.');
+            }).catch(function (err) {
+              showError('Validation error: ' + err.message);
+            });
+          });
+        }
+
+        if (saveRenderBtn) {
+          saveRenderBtn.addEventListener('click', function () {
+            var payload = new FormData();
+            payload.set('content', contentEl.value);
+            payload.set('scenario_slug', currentScenarioSlug);
+            payload.set('action', 'save_render');
+            payload.set('_response_format', 'json');
+            startAsyncRenderAction(payload);
+          });
+        }
+
+        if (saveAllBtn) {
+          saveAllBtn.addEventListener('click', function () {
+            var payload = new FormData();
+            payload.set('content', contentEl.value);
+            payload.set('scenario_slug', currentScenarioSlug);
+            payload.set('action', 'save_render_all');
+            payload.set('_response_format', 'json');
+            startAsyncRenderAction(payload);
+          });
+        }
+
+        if (saveBtn) {
+          saveBtn.addEventListener('click', function () {
+            var content = contentEl.value;
+            var payload = new FormData();
+            payload.set('content', content);
+            payload.set('scenario_slug', currentScenarioSlug);
+            payload.set('action', 'save');
+
+            fetch(window.location.pathname.replace('/setup', ''), {
+              method: 'POST',
+              body: payload,
+            }).then(function () {
+              showSuccess('TOML saved.');
+            }).catch(function (err) {
+              showError('Save error: ' + err.message);
+            });
+          });
+        }
+      }
+
+      /* ── Render overlay (reuse from config_editor) ────────────── */
+      function modeLabel(mode) {
+        if (mode === 'deterministic') return 'Deterministic';
+        if (mode === 'historical') return 'Historical';
+        if (mode === 'monte_carlo') return 'Monte Carlo';
+        return String(mode || '').replace(/_/g, ' ');
+      }
+
+      function joinModes(modes) {
+        return (modes || []).map(modeLabel).join(', ');
+      }
+
+      function showRenderOverlay(title, detail, progress) {
+        var overlay = document.getElementById('render-overlay');
+        if (!overlay) return;
+        document.getElementById('render-title').textContent = title || 'Rendering projection…';
+        document.getElementById('render-detail').textContent = detail || '';
+        document.getElementById('render-progress').textContent = progress || 'Starting…';
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+
+      function hideRenderOverlay() {
+        var overlay = document.getElementById('render-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+
+      function editorRelativeUrl(path) {
+        var base = new URL(window.location.href);
+        var pathname = (base.pathname || '/').replace(/\/setup.*$/, '');
+        if (!pathname.endsWith('/')) pathname += '/';
+        return pathname + path;
+      }
+
+      function updateOverlayFromJob(job) {
+        if (!job) return;
+        var scenarioCount = Number(job.scenario_count || 0);
+        var totalRenderCount = Number(job.total_render_count || 0);
+        var currentScenarioIndex = Number(job.current_scenario_index || 0);
+        var currentScenarioName = job.current_scenario_name || '';
+        var currentMode = job.current_mode ? modeLabel(job.current_mode) : '';
+        var completedRenderCount = Number(job.completed_render_count || 0);
+
+        var title = job.action === 'save_render_all' ? 'Rendering All Scenarios' : 'Rendering Scenario';
+        var detail = totalRenderCount > 0
+          ? scenarioCount + ' scenario' + (scenarioCount === 1 ? '' : 's') + ', ' + totalRenderCount + ' mode page' + (totalRenderCount === 1 ? '' : 's')
+          : (job.detail || '');
+        var progress = job.progress || '';
+        if (job.state === 'running' && totalRenderCount > 0) {
+          if (currentScenarioName && currentMode) {
+            progress = 'Scenario ' + Math.max(1, currentScenarioIndex) + ' of ' + Math.max(1, scenarioCount) + ', mode page ' + Math.min(totalRenderCount, Math.max(1, completedRenderCount + 1)) + ' of ' + totalRenderCount + ': ' + currentScenarioName + ' — ' + currentMode;
+          } else {
+            progress = completedRenderCount + ' of ' + totalRenderCount + ' mode pages complete…';
+          }
+        }
+        document.getElementById('render-title').textContent = title;
+        document.getElementById('render-detail').textContent = detail;
+        document.getElementById('render-progress').textContent = progress;
+      }
+
+      function startAsyncRenderAction(formData) {
+        showRenderOverlay('Starting render job…', '');
+        fetch(editorRelativeUrl('render-jobs'), {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: formData,
+        }).then(function (response) {
+          if (!response.ok) throw new Error('Render submit failed.');
+          return response.json();
+        }).then(function (payload) {
+          if (!payload.ok) throw new Error(payload.error || 'Render submit failed.');
+          if (!payload.job_id) throw new Error('No job id returned.');
+          var jobId = payload.job_id;
+          var pollTimer = setInterval(function () {
+            fetch(editorRelativeUrl('jobs/' + encodeURIComponent(jobId)), {
+              headers: { Accept: 'application/json' },
+            }).then(function (r) { return r.json(); }).then(function (job) {
+              if (!job.ok) return;
+              updateOverlayFromJob(job);
+              if (job.state === 'completed' || job.state === 'failed') {
+                clearInterval(pollTimer);
+                window.location.href = window.location.href.split('?')[0] + '?scenario=' + encodeURIComponent(currentScenarioSlug);
+              }
+            }).catch(function () {});
+          }, 1000);
+        }).catch(function (err) {
+          hideRenderOverlay();
+          showError('Render failed: ' + err.message);
+        });
+      }
+
+      /* ── Init ──────────────────────────────────────────────────── */
+      function init() {
+        installRadioStyles();
+        installDollarFormat();
+
+        // Parse initial config from the textarea content
+        var initialContent = document.getElementById('raw-toml-content');
+        if (initialContent) {
+          initQuickEdit(initialContent.value);
+        }
+
+        initTabs();
+        initSaveQuick();
+        initSaveRenderQuick();
+        initSaveClassification();
+        initRefreshMonarch();
+        initAddProperty();
+        initSaveSynthetic();
+        initRawTomlActions();
+      }
+
+      // Run on DOM ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>

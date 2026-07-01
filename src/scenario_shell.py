@@ -29,6 +29,7 @@ def build_scenario_shell(
     output_path: Path,
     manifest_relpath: str = "scenarios/index.json",
     editor_url: str = "/finances/config/",
+    setup_url: str = "/finances/config/setup",
     definitions_url: str = "/finances/definitions.html",
 ) -> None:
     default_slug = str(manifest.get("default_slug", "default"))
@@ -303,7 +304,8 @@ def build_scenario_shell(
             <a class="linkbtn" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
             <a class="linkbtn" id="compare-link" href="/finances/compare.html" target="_blank" rel="noreferrer">Compare Scenarios</a>
             <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
-            <a class="linkbtn primary" id="edit-scenarios-link" href="{editor_url}">Edit Scenarios</a>
+            <a class="linkbtn" id="edit-scenarios-link" href="{editor_url}">Edit Scenarios</a>
+            <a class="linkbtn primary" id="setup-scenarios-link" href="{setup_url}">Scenario Setup</a>
           </div>
         </div>
       </div>
@@ -422,6 +424,14 @@ def build_scenario_shell(
         return url.toString();
       }}
 
+      function setupUrlFor(selected) {{
+        const url = new URL("{setup_url}", window.location.origin);
+        if (selected && selected.slug) {{
+          url.searchParams.set("scenario", selected.slug);
+        }}
+        return url.toString();
+      }}
+
       function currentSelectedScenario() {{
         const slug = select.value || getScenarioFromQuery();
         return scenarios.find((scenario) => scenario.slug === slug) || null;
@@ -470,6 +480,10 @@ def build_scenario_shell(
           if (editScenariosLink) {{
             editScenariosLink.setAttribute("href", "{editor_url}");
           }}
+          const emptySetupLink = document.getElementById("setup-scenarios-link");
+          if (emptySetupLink) {{
+            emptySetupLink.setAttribute("href", "{setup_url}");
+          }}
           return;
         }}
 
@@ -483,6 +497,10 @@ def build_scenario_shell(
         openLink.href = projectionUrlFor(selected, resolvedMode, {{ embed: false }});
         if (editScenariosLink) {{
           editScenariosLink.href = editorUrlFor(selected);
+        }}
+        const setupLink = document.getElementById("setup-scenarios-link");
+        if (setupLink) {{
+          setupLink.href = setupUrlFor(selected);
         }}
         frameWrap.classList.remove("empty");
         emptyState.classList.remove("active");

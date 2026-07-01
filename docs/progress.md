@@ -3,6 +3,29 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-01
+
+### Added
+
+- **Scenario Setup Panel** (`templates/setup_panel.html`, `admin_app.py`): New structured config editor at `/finances/config/setup` with three sub-tabs:
+  - **Quick-edit strip**: Data source radio, cash targets, returns, retirement years, drag-reorder withdrawal/surplus order chips, Save + Re-render.
+  - **Data Sources & Accounts**: Account table from cache with category dropdowns, disabled checkbox, unmatched accounts section, explicit Refresh from Monarch button, Save Classification.
+  - **Synthetic Setup**: Structured form for investable balances, non-investable assets, property values (add/remove), auto-detected liability balances from `[[liabilities]]`, Save Synthetic Settings.
+- **7 new API endpoints** (`admin_app.py`): `GET /api/accounts`, `POST /api/save-classification`, `GET /api/synthetic-start`, `POST /api/save-synthetic-start`, `POST /api/save-quick-controls`, `POST /api/refresh-monarch`, `GET /api/data-source-status` — all backed by `tomlkit` for comment-preserving TOML writes.
+- **`tomlkit` dependency** to `requirements.txt` and Docker image.
+
+### Changed
+
+- **Nginx config** (`/opt/hal-pages/default.conf`): `/finances/config` redirects to `/finances/config/setup`. Old raw editor stays at `/finances/config/` (trailing slash). Separate `/finances/config/api/` and `/finances/config/setup` location blocks for clean routing.
+- **Docker image** rebuilt with tomlkit.
+- **Setup panel fixes** (`templates/setup_panel.html`):
+  - Status panel moved from bottom to top of page.
+  - Source cell uses `display: inline-flex` on inner `<span>` (not `<td>`) for vertical alignment with other cells.
+  - Unmatched rows produce 5 cells matching 5-column header (was 6 cells from duplicate source cell).
+  - Added guidelines card explaining `ignore` vs `disabled` checkbox in the Data Sources tab.
+  - Person retirement labels ("Person 1 Retires" / "Person 2 Retires") update dynamically from `person1.name`/`person2.name` in the TOML config.
+- **Projection shell page** (`src/scenario_shell.py`): "Scenario Setup" primary button added to toolbar, linked to `/finances/config/setup?scenario=<slug>`. `run.py` passes `setup_url` parameter.
+
 ## 2026-06-30
 
 ### Added

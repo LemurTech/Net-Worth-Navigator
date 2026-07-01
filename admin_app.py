@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import tomllib
+import tomlkit
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -616,6 +617,25 @@ async def editor_home(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "config_editor.html", context)
 
 
+@app.get("/setup", response_class=HTMLResponse)
+@app.get("/finances/config/setup", response_class=HTMLResponse)
+async def setup_panel(request: Request) -> HTMLResponse:
+    scenario_slug = request.query_params.get("scenario")
+    content = _read_config_text(scenario_slug)
+    context = _build_context(
+        request,
+        content=content,
+        scenario_slug=scenario_slug,
+        status_kind="info",
+        status_title="Scenario Setup",
+        status_message="Configure scenario parameters, data sources, and starting balances.",
+        clone_name="",
+        clone_slug="",
+        clone_description="",
+    )
+    return templates.TemplateResponse(request, "setup_panel.html", context)
+
+
 @app.get("/definitions", response_class=HTMLResponse)
 @app.get("/finances/config/definitions", response_class=HTMLResponse)
 async def definitions_page() -> HTMLResponse:
@@ -1018,6 +1038,417 @@ async def start_render_job(request: Request) -> JSONResponse:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
+# ── tomlkit helpers ──────────────────────────────────────────────────────────
+
+def _toml_open(scenario_slug: str | None = None) -> tuple[tomlkit.TOMLDocument, Path]:
+    path = _config_path(scenario_slug)
+    return tomlkit.parse(path.read_text(encoding="utf-8")), path
+
+
+def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None = None) -> Path:
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    backup_dir = _backup_dir(scenario_slug)
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_path = backup_dir / f"config-{ts}.toml"
+    config_path = _config_path(scenario_slug)
+    backup_path.write_text(config_path.read_text(encoding="utf-8"), encoding="utf-8")
+    config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    _prune_backups(backup_dir)
+    return backup_path
+
+
+def _cache_path() -> Path:
+    return OUTPUT_DIR / "balances_cache.json"
+
+
+def _load_cached_raw_accounts() -> tuple[list[dict], str | None]:
+    cache_p = _cache_path()
+    if not cache_p.exists():
+        return [], None
+    try:
+        data = json.loads(cache_p.read_text())
+        raw = data.get("raw_accounts", [])
+        ts = data.get("timestamp")
+        return raw, ts
+    except Exception:
+        return [], None
+
+
+def _tombstone_accounts_section(doc: tomlkit.TOMLDocument) -> None:
+    """Remove all account-name keys from [accounts], keep the section itself."""
+    accounts = doc.get("accounts")
+    if accounts is None or not isinstance(accounts, dict):
+        return
+    keys_to_remove = [k for k in accounts if k != "disabled"]
+    for k in keys_to_remove:
+        accounts.remove(k)  # tomlkit dicts have .remove()
+
+
+def _classify_raw_accounts(
+    raw: list[dict], config: dict | None = None,
+) -> dict[str, str | dict]:
+    """Build a name→category map from the current config."""
+    if config is None:
+        config = {}
+    raw_map: dict = config.get("accounts", {})
+    return {acct["name"]: raw_map.get(acct["name"], "unclassified") for acct in raw}
+
+
+# ── API: data-source status ─────────────────────────────────────────────────
+
+@app.get("/api/data-source-status")
+async def api_data_source_status(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    raw_accounts, cache_ts = _load_cached_raw_accounts()
+    cache_age_days: float | None = None
+    if cache_ts:
+        try:
+            parsed_ts = datetime.fromisoformat(cache_ts)
+            cache_age_days = (datetime.now() - parsed_ts).total_seconds() / 86400
+        except Exception:
+            pass
+
+    config_text = _read_config_text(scenario_slug)
+    parsed = tomllib.loads(config_text)
+    data_source_mode = "monarch"
+    if isinstance(parsed.get("data_source"), dict):
+        data_source_mode = parsed["data_source"].get("mode") or "monarch"
+
+    status_per_account: dict = {}
+    for acct in raw_accounts:
+        name = acct["name"]
+        status_per_account[name] = {
+            "source": data_source_mode,
+            "cache_age_days": cache_age_days,
+        }
+
+    return JSONResponse({
+        "ok": True,
+        "mode": data_source_mode,
+        "cache_timestamp": cache_ts,
+        "cache_age_days": cache_age_days,
+        "accounts": status_per_account,
+        "total_accounts": len(raw_accounts),
+    })
+
+
+# ── API: refresh monarch ────────────────────────────────────────────────────
+
+@app.post("/api/refresh-monarch")
+async def api_refresh_monarch() -> JSONResponse:
+    from src.monarch_bridge import fetch_raw_accounts, classify_accounts, load_config as monarch_config
+
+    try:
+        raw = fetch_raw_accounts()
+        config = monarch_config()
+        portfolio, extras = classify_accounts(raw, config)
+
+        OUTPUT_DIR.mkdir(exist_ok=True)
+        now = datetime.now().isoformat()
+        cache_path = _cache_path()
+        cache_path.write_text(
+            json.dumps({
+                "timestamp": now,
+                "raw_accounts": raw,
+                "portfolio": portfolio,
+                "extras": extras,
+            }, indent=2),
+        )
+
+        return JSONResponse({
+            "ok": True,
+            "accounts": raw,
+            "cache_timestamp": now,
+            "source": "live",
+            "account_count": len(raw),
+        })
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"Monarch refresh failed: {exc}"}, status_code=502)
+
+
+# ── API: accounts (cached) ──────────────────────────────────────────────────
+
+@app.get("/api/accounts")
+async def api_accounts(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    raw_accounts, cache_ts = _load_cached_raw_accounts()
+    source = "cached" if cache_ts else "none"
+
+    config_text = _read_config_text(scenario_slug)
+    parsed = tomllib.loads(config_text)
+    accounts_section = parsed.get("accounts", {})
+    disabled: list[str] = []
+    classification: dict[str, str | dict] = {}
+    if isinstance(accounts_section, dict):
+        disabled = list(accounts_section.get("disabled", []))
+        for key, value in accounts_section.items():
+            if key == "disabled":
+                continue
+            classification[str(key)] = value
+
+    source_mode = "monarch"
+    if isinstance(parsed.get("data_source"), dict):
+        source_mode = parsed["data_source"].get("mode") or "monarch"
+
+    return JSONResponse({
+        "ok": True,
+        "accounts": raw_accounts,
+        "cache_timestamp": cache_ts,
+        "source": source,
+        "source_mode": source_mode,
+        "classification": classification,
+        "disabled": disabled,
+        "account_count": len(raw_accounts),
+    })
+
+
+# ── API: save classification ────────────────────────────────────────────────
+
+@app.post("/api/save-classification")
+async def api_save_classification(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+
+    entries: list[dict] | None = body.get("accounts")
+    if entries is None:
+        return JSONResponse({"ok": False, "error": "Missing 'accounts' list."}, status_code=400)
+
+    disabled_names: list[str] = [e["name"] for e in entries if e.get("disabled")]
+    active = [e for e in entries if not e.get("disabled")]
+
+    doc, _ = _toml_open(scenario_slug)
+    accounts = doc.get("accounts")
+    if accounts is None or not isinstance(accounts, dict):
+        # create a new table if none exists
+        doc["accounts"] = {}
+        accounts = doc["accounts"]
+
+    # Remove old account-name keys, keep disabled key
+    _tombstone_accounts_section(doc)
+
+    # Set disabled list
+    accounts["disabled"] = disabled_names
+
+    # Add each active account classification
+    for entry in active:
+        name: str = entry["name"]
+        category: str = entry.get("category", "ignore")
+        accounts[name] = category
+
+    backup_path = _backup_and_write_toml(doc, scenario_slug)
+    return JSONResponse({
+        "ok": True,
+        "message": f"Classification saved for {len(entries)} account(s).",
+        "backup_path": str(backup_path),
+    })
+
+
+# ── API: synthetic-start GET ────────────────────────────────────────────────
+
+@app.get("/api/synthetic-start")
+async def api_synthetic_start(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    config_text = _read_config_text(scenario_slug)
+    parsed = tomllib.loads(config_text)
+    synthetic = parsed.get("synthetic_start", {})
+    if not isinstance(synthetic, dict):
+        synthetic = {}
+
+    data_source = parsed.get("data_source", {})
+    mode = "monarch"
+    if isinstance(data_source, dict):
+        mode = data_source.get("mode", "monarch")
+
+    defaults = {"taxable": 0, "trad_ira": 0, "roth": 0, "cash": 0,
+                 "taxable_cost_basis": 0, "roth_contribution_basis": 0,
+                 "home_value": 0, "vehicles": 0}
+    for key in defaults:
+        if key not in synthetic:
+            synthetic[key] = defaults[key]
+
+    if "liability_balances" not in synthetic or not isinstance(synthetic.get("liability_balances"), dict):
+        synthetic["liability_balances"] = {}
+    if "property_values" not in synthetic or not isinstance(synthetic.get("property_values"), dict):
+        synthetic["property_values"] = {}
+
+    # Read liabilities list from config for auto-detected field names
+    liabilities_list = parsed.get("liabilities", [])
+    if isinstance(liabilities_list, list):
+        synthetic["_liability_names"] = [item.get("name", "") for item in liabilities_list if isinstance(item, dict)]
+
+    return JSONResponse({
+        "ok": True,
+        "data_source_mode": mode,
+        "synthetic_start": synthetic,
+    })
+
+
+# ── API: save synthetic-start ───────────────────────────────────────────────
+
+@app.post("/api/save-synthetic-start")
+async def api_save_synthetic_start(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+
+    data_source: str = body.get("data_source", "monarch")
+    balances: dict = body.get("balances", {})
+
+    if data_source == "synthetic":
+        # Require at least some balances
+        total = sum(
+            float(v) for v in balances.values()
+            if isinstance(v, (int, float)) or (isinstance(v, str) and v.strip())
+        )
+        if total <= 0:
+            # Check nested dicts too
+            nested_total = 0
+            for v in balances.values():
+                if isinstance(v, dict):
+                    nested_total += sum(float(sv) for sv in v.values() if isinstance(sv, (int, float)))
+            if total + nested_total <= 0:
+                return JSONResponse({
+                    "ok": False,
+                    "error": "Synthetic mode requires at least one non-zero starting balance.",
+                }, status_code=400)
+
+    # Separate out structured sub-maps
+    liability_balances: dict = {}
+    property_values: dict = {}
+    clean_balances: dict = {}
+    for key, value in balances.items():
+        if isinstance(value, dict):
+            if key == "liability_balances":
+                liability_balances = {k: float(v) for k, v in value.items() if isinstance(v, (int, float, str)) and str(v).strip()}
+            elif key == "property_values":
+                property_values = {k: float(v) for k, v in value.items() if isinstance(v, (int, float, str)) and str(v).strip()}
+            continue
+        clean_balances[key] = float(value) if isinstance(value, (int, float)) else 0
+
+    doc, _ = _toml_open(scenario_slug)
+
+    # Set data_source.mode
+    if "data_source" not in doc or doc["data_source"] is None:
+        doc["data_source"] = tomlkit.table()
+    doc["data_source"]["mode"] = data_source
+
+    # Set synthetic_start
+    if clean_balances or liability_balances or property_values:
+        syn = tomlkit.table()
+        for k, v in clean_balances.items():
+            if v != 0:
+                syn[k] = v
+        if liability_balances:
+            syn["liability_balances"] = liability_balances
+        if property_values:
+            syn["property_values"] = property_values
+        doc["synthetic_start"] = syn
+    else:
+        # Clear the section
+        doc.pop("synthetic_start", None)
+
+    backup_path = _backup_and_write_toml(doc, scenario_slug)
+    return JSONResponse({
+        "ok": True,
+        "message": f"Data source set to '{data_source}' and synthetic balances saved.",
+        "backup_path": str(backup_path),
+    })
+
+
+# ── API: save quick controls ────────────────────────────────────────────────
+
+_QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
+    "cash_target_accumulation": ("withdrawal_policy.accumulation_cash_target", float),
+    "cash_target_retirement": ("withdrawal_policy.retirement_cash_target", float),
+    "cash_target_survivor": ("withdrawal_policy.survivor_cash_target", float),
+    "stock_return": ("assumptions.stock_return", float),
+    "bond_return": ("assumptions.bond_return", float),
+    "person1_retirement_year": ("person1.retirement_year", int),
+    "person2_retirement_year": ("person2.retirement_year", int),
+    "inflation": ("assumptions.inflation", float),
+    "equity_allocation": ("assumptions.equity_allocation", float),
+    "simulation_start_year": ("simulation.start_year", int),
+    "simulation_end_year": ("simulation.end_year", int),
+}
+
+_QUICK_ARRAY_MAP: dict[str, str] = {
+    "retirement_withdrawal_order": "withdrawal_policy.retirement_withdrawal_order",
+    "accumulation_withdrawal_order": "withdrawal_policy.accumulation_withdrawal_order",
+    "survivor_withdrawal_order": "withdrawal_policy.survivor_withdrawal_order",
+    "retirement_surplus_order": "withdrawal_policy.retirement_surplus_order",
+    "accumulation_surplus_order": "withdrawal_policy.accumulation_surplus_order",
+    "survivor_surplus_order": "withdrawal_policy.survivor_surplus_order",
+}
+
+
+def _resolve_toml_path(doc: tomlkit.TOMLDocument, dotted: str) -> tuple:
+    """Walk a dotted path like 'assumptions.stock_return' and return (parent, key)."""
+    parts = dotted.split(".")
+    current = doc
+    for part in parts[:-1]:
+        if part not in current or current[part] is None:
+            current[part] = tomlkit.table()
+        current = current[part]
+    return current, parts[-1]
+
+
+@app.post("/api/save-quick-controls")
+async def api_save_quick_controls(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+
+    doc, _ = _toml_open(scenario_slug)
+    changed_keys: list[str] = []
+
+    # Scalar fields
+    for field_name, (toml_path, value_type) in _QUICK_CONTROL_MAP.items():
+        raw = body.get(field_name)
+        if raw is None:
+            continue
+        try:
+            typed = value_type(raw) if not isinstance(raw, str) or isinstance(raw, bool) else value_type(raw)
+        except (TypeError, ValueError):
+            continue
+        parent, key = _resolve_toml_path(doc, toml_path)
+        parent[key] = typed
+        changed_keys.append(toml_path)
+
+    # Array fields
+    for field_name, toml_path in _QUICK_ARRAY_MAP.items():
+        raw = body.get(field_name)
+        if raw is None or not isinstance(raw, list):
+            continue
+        parent, key = _resolve_toml_path(doc, toml_path)
+        parent[key] = raw
+        changed_keys.append(toml_path)
+
+    # data_source mode (special case — radio button)
+    ds_mode = body.get("data_source")
+    if ds_mode in ("monarch", "synthetic"):
+        if "data_source" not in doc or doc["data_source"] is None:
+            doc["data_source"] = tomlkit.table()
+        doc["data_source"]["mode"] = ds_mode
+        changed_keys.append("data_source.mode")
+
+    if not changed_keys:
+        return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)
+
+    backup_path = _backup_and_write_toml(doc, scenario_slug)
+    return JSONResponse({
+        "ok": True,
+        "message": f"Updated {len(changed_keys)} field(s).",
+        "changed_keys": changed_keys,
+        "backup_path": str(backup_path),
+    })
 if __name__ == "__main__":
     import uvicorn
 

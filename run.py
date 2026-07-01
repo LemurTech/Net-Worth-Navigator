@@ -277,6 +277,7 @@ def main():
         output_path=shell_output_path,
         manifest_relpath="scenarios/index.json",
         editor_url="/finances/config/",
+        setup_url="/finances/config/setup",
         definitions_url="/finances/definitions.html",
     )
     print(f"  scenario_shell_html: {shell_output_path}")
