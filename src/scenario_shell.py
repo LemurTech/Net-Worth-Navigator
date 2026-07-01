@@ -28,7 +28,6 @@ def build_scenario_shell(
     manifest: dict,
     output_path: Path,
     manifest_relpath: str = "scenarios/index.json",
-    editor_url: str = "/finances/config/",
     setup_url: str = "/finances/config/setup",
     definitions_url: str = "/finances/definitions.html",
 ) -> None:
@@ -304,7 +303,6 @@ def build_scenario_shell(
             <a class="linkbtn" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
             <a class="linkbtn" id="compare-link" href="/finances/compare.html" target="_blank" rel="noreferrer">Compare Scenarios</a>
             <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
-            <a class="linkbtn" id="edit-scenarios-link" href="{editor_url}">Edit Scenarios</a>
             <a class="linkbtn primary" id="setup-scenarios-link" href="{setup_url}">Scenario Setup</a>
           </div>
         </div>
@@ -353,7 +351,6 @@ def build_scenario_shell(
       const frame = document.getElementById("scenario-frame");
       const openLink = document.getElementById("open-scenario-link");
       const refreshButton = document.getElementById("refresh-frame-btn");
-      const editScenariosLink = document.getElementById("edit-scenarios-link");
       const frameWrap = document.getElementById("frame-wrap");
       const emptyState = document.getElementById("empty-state");
 
@@ -416,14 +413,6 @@ def build_scenario_shell(
         return `${{base}}?${{params.toString()}}`;
       }}
 
-      function editorUrlFor(selected) {{
-        const url = new URL("{editor_url}", window.location.origin);
-        if (selected && selected.slug) {{
-          url.searchParams.set("scenario", selected.slug);
-        }}
-        return url.toString();
-      }}
-
       function setupUrlFor(selected) {{
         const url = new URL("{setup_url}", window.location.origin);
         if (selected && selected.slug) {{
@@ -477,9 +466,6 @@ def build_scenario_shell(
           openLink.setAttribute("href", "#");
           modeSelect.innerHTML = "";
           modeSelect.disabled = true;
-          if (editScenariosLink) {{
-            editScenariosLink.setAttribute("href", "{editor_url}");
-          }}
           const emptySetupLink = document.getElementById("setup-scenarios-link");
           if (emptySetupLink) {{
             emptySetupLink.setAttribute("href", "{setup_url}");
@@ -495,9 +481,6 @@ def build_scenario_shell(
         description.textContent = scenarioText;
         frame.src = projectionUrlFor(selected, resolvedMode, {{ embed: true }});
         openLink.href = projectionUrlFor(selected, resolvedMode, {{ embed: false }});
-        if (editScenariosLink) {{
-          editScenariosLink.href = editorUrlFor(selected);
-        }}
         const setupLink = document.getElementById("setup-scenarios-link");
         if (setupLink) {{
           setupLink.href = setupUrlFor(selected);

@@ -506,7 +506,7 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
 
 def build_definitions_page_html(
     *,
-    editor_url: str = "/finances/config/",
+    editor_url: str = "/finances/config/setup",
     projection_url: str = "/finances/projection.html",
 ) -> str:
     nav_links = "".join(
@@ -737,7 +737,7 @@ def build_definitions_page_html(
 def write_definitions_page(
     output_path: Path,
     *,
-    editor_url: str = "/finances/config/",
+    editor_url: str = "/finances/config/setup",
     projection_url: str = "/finances/projection.html",
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)

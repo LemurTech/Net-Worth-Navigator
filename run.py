@@ -276,7 +276,6 @@ def main():
         manifest=shell_manifest,
         output_path=shell_output_path,
         manifest_relpath="scenarios/index.json",
-        editor_url="/finances/config/",
         setup_url="/finances/config/setup",
         definitions_url="/finances/definitions.html",
     )
@@ -284,7 +283,7 @@ def main():
     definitions_output_path = OUTPUT_DIR / "definitions.html"
     write_definitions_page(
         definitions_output_path,
-        editor_url="/finances/config/",
+        editor_url="/finances/config/setup",
         projection_url="/finances/projection.html",
     )
     print(f"  definitions_html: {definitions_output_path}")
