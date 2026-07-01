@@ -1237,7 +1237,12 @@ async def api_save_classification(request: Request) -> JSONResponse:
     for entry in active:
         name: str = entry["name"]
         category: str = entry.get("category", "ignore")
-        accounts[name] = category
+        owner: str = entry.get("owner", "n/a")
+        if owner and owner != "n/a":
+            # Write inline dict with owner metadata
+            accounts[name] = {"category": category, "owner": owner}
+        else:
+            accounts[name] = category
 
     backup_path = _backup_and_write_toml(doc, scenario_slug)
     return JSONResponse({

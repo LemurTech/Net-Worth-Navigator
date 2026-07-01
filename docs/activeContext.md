@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Scenario Setup Panel deployed alongside existing raw editor. Metadata section (name, description, slug) editable at top. Person names, birth years, retirement years, and age sliders in dedicated People section. Cash targets, assumptions, start/end year, drag-reorder withdrawal/surplus order chips all in structured controls. Synthetic Setup inputs disabled when Monarch selected. Old raw editor remains at `/finances/config/`.
+**Status:** Scenario Setup Panel deployed alongside existing raw editor. Metadata section (name, description, slug) editable at top. Person names, birth years, retirement years, and age sliders in dedicated People section. Cash targets, assumptions, start/end year, drag-reorder withdrawal/surplus order chips all in structured controls. Synthetic Setup inputs disabled when Monarch selected. Data Sources & Accounts tab groups accounts by category (Cash→Taxable→Roth→Trad IRA→Real Estate→Vehicle→Liability→Ignore) with live row movement on category change. Owner column with person-name dropdowns; API writes inline dicts when owner set. Old raw editor remains at `/finances/config/`.
 
 ---
 

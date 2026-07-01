@@ -274,12 +274,18 @@
     .source-dot.green { background: #22c55e; }
     .source-dot.yellow { background: #eab308; }
     .source-dot.gray { background: #6b7280; }
-    .acct-category select {
+    .acct-category select, .acct-owner select {
       padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
-      background: var(--panel-2); color: var(--text); font-size: 12px; max-width: 120px;
+      background: #0d1524; color: var(--text); font-size: 12px; max-width: 120px;
     }
-    .acct-category select:focus { outline: none; border-color: var(--accent); }
+    .acct-category select:focus, .acct-owner select:focus { outline: none; border-color: var(--accent); }
     .acct-disabled input { accent-color: var(--accent-2); width: 16px; height: 16px; cursor: pointer; }
+    .group-header td {
+      padding: 10px 12px; font-weight: 700; font-size: 13px; color: var(--accent);
+      border-bottom: 1px solid var(--border); background: rgba(15,23,37,0.5);
+      letter-spacing: 0.03em;
+    }
+    .group-header:not(:first-child) td { border-top: 1px solid var(--border); }
     .accounts-section-title {
       padding: 14px 16px 8px; font-size: 14px; font-weight: 700; color: var(--text);
       border-bottom: 1px solid var(--border);
@@ -561,6 +567,7 @@
                 <th style="text-align:right">Balance</th>
                 <th>Source</th>
                 <th>Category</th>
+                <th>Owner</th>
                 <th>Disabled</th>
               </tr>
             </thead>
@@ -570,7 +577,7 @@
             <div class="accounts-section-title">Unmatched Monarch Accounts</div>
             <table class="accounts-table">
               <thead>
-                <tr><th>Account</th><th style="text-align:right">Balance</th><th>Source</th><th>Category</th><th>Disabled</th></tr>
+                <tr><th>Account</th><th style="text-align:right">Balance</th><th>Source</th><th>Category</th><th>Owner</th><th>Disabled</th></tr>
               </thead>
               <tbody id="unmatched-tbody"></tbody>
             </table>
@@ -1178,9 +1185,15 @@
 
           accounts.forEach(function (acct) {
             var name = acct.name;
-            var existingCat = classification[name] || 'unclassified';
+            var rawCat = classification[name] || 'unclassified';
+            var itemOwner = 'n/a';
+            var itemCat = rawCat;
+            if (typeof rawCat === 'object' && rawCat !== null) {
+              itemCat = rawCat.category || 'ignore';
+              itemOwner = rawCat.owner || 'n/a';
+            }
             var isDisabled = disabled.indexOf(name) >= 0;
-            matched.push({ name: name, balance: acct.balance, category: existingCat, disabled: isDisabled, matched: true });
+            matched.push({ name: name, balance: acct.balance, category: itemCat, owner: itemOwner, disabled: isDisabled, matched: true });
           });
 
           // Find unmatched (in classification but not in accounts)
@@ -1189,7 +1202,16 @@
             if (name === 'disabled') return;
             var found = accounts.some(function (a) { return a.name === name; });
             if (!found) {
-              unmatched.push({ name: name, balance: 0, category: classification[name] });
+              var unmatchedRaw = classification[name];
+              var unmatchedCat = 'ignore';
+              var unmatchedOwner = 'n/a';
+              if (typeof unmatchedRaw === 'object' && unmatchedRaw !== null) {
+                unmatchedCat = unmatchedRaw.category || 'ignore';
+                unmatchedOwner = unmatchedRaw.owner || 'n/a';
+              } else if (typeof unmatchedRaw === 'string') {
+                unmatchedCat = unmatchedRaw;
+              }
+              unmatched.push({ name: name, balance: 0, category: unmatchedCat, owner: unmatchedOwner });
             }
           });
 
@@ -1206,97 +1228,254 @@
         });
       }
 
-      var CATEGORY_OPTIONS = ['taxable','trad_ira','roth','cash','real_estate','vehicle','liability','ignore'];
+      var CATEGORY_OPTIONS = ['cash','taxable','roth','trad_ira','real_estate','vehicle','liability','ignore'];
+
+      var GROUP_ORDER = ['cash','taxable','roth','trad_ira','real_estate','vehicle','liability','ignore'];
+      var GROUP_LABELS = {
+        cash: 'Cash', taxable: 'Taxable', roth: 'Roth', trad_ira: 'Trad IRA',
+        real_estate: 'Real Estate', vehicle: 'Vehicle', liability: 'Liability', ignore: 'Ignore',
+      };
+
+      function buildAccountRow(item, type) {
+        var tr = document.createElement('tr');
+
+        // Name
+        var tdName = document.createElement('td');
+        tdName.className = 'acct-name';
+        tdName.textContent = item.name;
+        tr.appendChild(tdName);
+
+        // Balance
+        var tdBal = document.createElement('td');
+        tdBal.className = 'acct-balance';
+        tdBal.textContent = item.balance ? '$' + Number(item.balance).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—';
+        tr.appendChild(tdBal);
+
+        // Source
+        var tdSrc = document.createElement('td');
+        if (type === 'matched') {
+          var srcSpan = document.createElement('span');
+          srcSpan.className = 'acct-source';
+          var dot = document.createElement('span');
+          dot.className = 'source-dot gray';
+          if (_accountsData && _accountsData.source === 'cached') {
+            dot.className = 'source-dot green';
+          }
+          srcSpan.appendChild(dot);
+          srcSpan.appendChild(document.createTextNode(' ' + (_accountsData ? (_accountsData.source === 'cached' ? 'Cache' : '—') : '—')));
+          tdSrc.appendChild(srcSpan);
+        } else {
+          tdSrc.textContent = '—';
+          tdSrc.className = 'acct-source-empty';
+        }
+        tr.appendChild(tdSrc);
+
+        if (type === 'matched') {
+          // Category dropdown
+          var tdCat = document.createElement('td');
+          tdCat.className = 'acct-category';
+          var sel = document.createElement('select');
+          sel.setAttribute('data-account', item.name);
+          CATEGORY_OPTIONS.forEach(function (opt) {
+            var option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            if (opt === item.category || (item.category === 'unclassified' && opt === 'ignore')) {
+              option.selected = true;
+            }
+            sel.appendChild(option);
+          });
+          tdCat.appendChild(sel);
+          tr.appendChild(tdCat);
+
+          // Owner dropdown
+          var tdOwner = document.createElement('td');
+          tdOwner.className = 'acct-owner';
+          var ownerSel = document.createElement('select');
+          ownerSel.setAttribute('data-account', item.name);
+          var n1 = document.getElementById('person1_name');
+          var n2 = document.getElementById('person2_name');
+          var ownerOptions = [
+            {value: 'n/a', label: 'n/a'},
+            {value: 'person1', label: n1 && n1.value.trim() ? n1.value.trim() : 'Person 1'},
+            {value: 'person2', label: n2 && n2.value.trim() ? n2.value.trim() : 'Person 2'},
+          ];
+          ownerOptions.forEach(function (opt) {
+            var option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            if (opt.value === (item.owner || 'n/a')) option.selected = true;
+            ownerSel.appendChild(option);
+          });
+          tdOwner.appendChild(ownerSel);
+          tr.appendChild(tdOwner);
+
+          // Disabled checkbox
+          var tdDis = document.createElement('td');
+          tdDis.className = 'acct-disabled';
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = item.disabled;
+          cb.setAttribute('data-account', item.name);
+          tdDis.appendChild(cb);
+          tr.appendChild(tdDis);
+        } else {
+          // Unmatched — category dropdown
+          var tdCat2 = document.createElement('td');
+          tdCat2.className = 'acct-category';
+          var sel2 = document.createElement('select');
+          sel2.setAttribute('data-account', item.name);
+          CATEGORY_OPTIONS.forEach(function (opt) {
+            var option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            if (opt === item.category || (typeof item.category === 'object' && opt === 'ignore')) {
+              option.selected = true;
+            }
+            sel2.appendChild(option);
+          });
+          tdCat2.appendChild(sel2);
+          tr.appendChild(tdCat2);
+
+          // Owner — empty placeholder
+          var tdOwner2 = document.createElement('td');
+          tdOwner2.textContent = '—';
+          tdOwner2.style.color = 'var(--muted)';
+          tr.appendChild(tdOwner2);
+
+          // Disabled — empty placeholder
+          var tdDis2 = document.createElement('td');
+          tdDis2.textContent = '—';
+          tdDis2.style.color = 'var(--muted)';
+          tr.appendChild(tdDis2);
+        }
+        return tr;
+      }
+
+      function updateGroupCounts(tbody) {
+        tbody.querySelectorAll('.group-header').forEach(function (hdr) {
+          var cat = hdr.getAttribute('data-group');
+          if (!cat) return;
+          var next = hdr.nextElementSibling;
+          var count = 0;
+          while (next && !next.classList.contains('group-header')) {
+            count++;
+            next = next.nextElementSibling;
+          }
+          var label = GROUP_LABELS[cat] || cat;
+          hdr.firstChild.textContent = '\u2500\u2500 ' + label + ' (' + count + ') \u2500\u2500';
+        });
+      }
 
       function renderAccountRows(tbody, items, type) {
         tbody.innerHTML = '';
+        if (type !== 'matched') {
+          // Unmatched: flat list
+          items.forEach(function (item) {
+            tbody.appendChild(buildAccountRow(item, type));
+          });
+          return;
+        }
+
+        // Group matched accounts by category
+        var buckets = {};
+        GROUP_ORDER.forEach(function (c) { buckets[c] = []; });
         items.forEach(function (item) {
-          var tr = document.createElement('tr');
+          var cat = item.category;
+          if (cat === 'unclassified' || typeof cat === 'object') cat = 'ignore';
+          if (!buckets[cat]) buckets[cat] = [];
+          buckets[cat].push(item);
+        });
 
-          // Name
-          var tdName = document.createElement('td');
-          tdName.className = 'acct-name';
-          tdName.textContent = item.name;
-          tr.appendChild(tdName);
+        // Render each non-empty group
+        GROUP_ORDER.forEach(function (cat) {
+          var group = buckets[cat];
+          if (!group || group.length === 0) return;
 
-          // Balance
-          var tdBal = document.createElement('td');
-          tdBal.className = 'acct-balance';
-          tdBal.textContent = item.balance ? '$' + Number(item.balance).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—';
-          tr.appendChild(tdBal);
+          // Sort alphabetically by name
+          group.sort(function (a, b) { return a.name.localeCompare(b.name); });
 
-          // Source — matched rows get dot + label, unmatched get placeholder
-          var tdSrc = document.createElement('td');
-          if (type === 'matched') {
-            var srcSpan = document.createElement('span');
-            srcSpan.className = 'acct-source';
-            var dot = document.createElement('span');
-            dot.className = 'source-dot gray';
-            if (_accountsData && _accountsData.source === 'cached') {
-              dot.className = 'source-dot green';
+          // Group header row
+          var hdrTr = document.createElement('tr');
+          hdrTr.className = 'group-header';
+          hdrTr.setAttribute('data-group', cat);
+          var hdrTd = document.createElement('td');
+          hdrTd.colSpan = 6;
+          hdrTd.textContent = '\u2500\u2500 ' + (GROUP_LABELS[cat] || cat) + ' (' + group.length + ') \u2500\u2500';
+          hdrTr.appendChild(hdrTd);
+          tbody.appendChild(hdrTr);
+
+          // Account rows
+          group.forEach(function (item) {
+            tbody.appendChild(buildAccountRow(item, type));
+          });
+        });
+      }
+
+      function installCategoryMoveHandler() {
+        var table = document.getElementById('accounts-table');
+        if (!table) return;
+        table.addEventListener('change', function (e) {
+          var sel = e.target.closest('.acct-category select');
+          if (!sel) return;
+          var tr = sel.closest('tr');
+          if (!tr || tr.classList.contains('group-header')) return;
+
+          var newCat = sel.value;
+          var tbody = document.getElementById('accounts-tbody');
+          if (!tbody) return;
+
+          // Find the target group header
+          var targetHeader = null;
+          Array.from(tbody.querySelectorAll('.group-header')).forEach(function (h) {
+            if (h.getAttribute('data-group') === newCat) {
+              targetHeader = h;
             }
-            srcSpan.appendChild(dot);
-            srcSpan.appendChild(document.createTextNode(' ' + (_accountsData ? (_accountsData.source === 'cached' ? 'Cache' : '—') : '—')));
-            tdSrc.appendChild(srcSpan);
-          } else {
-            tdSrc.textContent = '—';
-            tdSrc.className = 'acct-source-empty';
-          }
-          tr.appendChild(tdSrc);
+          });
+          if (!targetHeader) return;
 
-          if (type === 'matched') {
-            // Category dropdown
-            var tdCat = document.createElement('td');
-            tdCat.className = 'acct-category';
-            var sel = document.createElement('select');
-            sel.setAttribute('data-account', item.name);
-            CATEGORY_OPTIONS.forEach(function (opt) {
-              var option = document.createElement('option');
-              option.value = opt;
-              option.textContent = opt;
-              if (opt === item.category || (item.category === 'unclassified' && opt === 'ignore')) {
-                option.selected = true;
-              }
-              sel.appendChild(option);
-            });
-            tdCat.appendChild(sel);
-            tr.appendChild(tdCat);
-
-            // Disabled checkbox
-            var tdDis = document.createElement('td');
-            tdDis.className = 'acct-disabled';
-            var cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.checked = item.disabled;
-            cb.setAttribute('data-account', item.name);
-            tdDis.appendChild(cb);
-            tr.appendChild(tdDis);
-          } else {
-            // Unmatched — category dropdown
-            var tdCat2 = document.createElement('td');
-            tdCat2.className = 'acct-category';
-            var sel2 = document.createElement('select');
-            sel2.setAttribute('data-account', item.name);
-            CATEGORY_OPTIONS.forEach(function (opt) {
-              var option = document.createElement('option');
-              option.value = opt;
-              option.textContent = opt;
-              if (opt === item.category || (typeof item.category === 'object' && opt === 'ignore')) {
-                option.selected = true;
-              }
-              sel2.appendChild(option);
-            });
-            tdCat2.appendChild(sel2);
-            tr.appendChild(tdCat2);
-
-            // Disabled — empty placeholder cell to maintain 5-column alignment
-            var tdDis2 = document.createElement('td');
-            tdDis2.textContent = '—';
-            tdDis2.style.color = 'var(--muted)';
-            tr.appendChild(tdDis2);
+          // Move this row to just after the target header (or after existing rows in that group)
+          var insertAfter = targetHeader;
+          var next = targetHeader.nextElementSibling;
+          while (next && !next.classList.contains('group-header')) {
+            insertAfter = next;
+            next = next.nextElementSibling;
           }
 
-          tbody.appendChild(tr);
+          // Sort destination group
+          var destRows = [];
+          var walk = targetHeader.nextElementSibling;
+          while (walk && !walk.classList.contains('group-header')) {
+            destRows.push({ el: walk, name: (walk.querySelector('.acct-name') || {}).textContent || '' });
+            walk = walk.nextElementSibling;
+          }
+          destRows.push({ el: tr, name: (tr.querySelector('.acct-name') || {}).textContent || '' });
+          destRows.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+          // Remove from current position, re-insert in sorted order within target group
+          tr.parentNode.removeChild(tr);
+          var reinsertAfter = targetHeader;
+          destRows.forEach(function (entry) {
+            tbody.insertBefore(entry.el, reinsertAfter.nextElementSibling);
+            // Only advance if this isn't our moved row (it's already in the right spot)
+            if (entry.el !== tr) {
+              reinsertAfter = entry.el;
+            } else {
+              reinsertAfter = tr;
+            }
+          });
+
+          // If the source group is now empty, remove its header
+          var prevHeader = tr.previousElementSibling;
+          if (prevHeader && prevHeader.classList.contains('group-header')) {
+            var hasRows = prevHeader.nextElementSibling && !prevHeader.nextElementSibling.classList.contains('group-header');
+            if (!hasRows) {
+              prevHeader.parentNode.removeChild(prevHeader);
+            }
+          }
+          // If a previously-empty target group was revived, its header already exists (rendered with 0 count)
+
+          updateGroupCounts(tbody);
         });
       }
 
@@ -1306,12 +1485,15 @@
         rows.forEach(function (tr) {
           var nameEl = tr.querySelector('.acct-name');
           var sel = tr.querySelector('.acct-category select');
+          var ownerSel = tr.querySelector('.acct-owner select');
           var cb = tr.querySelector('.acct-disabled input');
           if (!nameEl || !sel) return;
           var name = nameEl.textContent;
+          var owner = ownerSel ? ownerSel.value : 'n/a';
           entries.push({
             name: name,
             category: sel.value,
+            owner: owner,
             disabled: cb ? cb.checked : false,
           });
         });
@@ -1324,6 +1506,7 @@
           entries.push({
             name: nameEl.textContent,
             category: sel.value,
+            owner: 'n/a',
             disabled: false,
           });
         });
@@ -1878,6 +2061,7 @@
         initSaveSynthetic();
         installSynthRadioHandlers();
         initRenameScenario();
+        installCategoryMoveHandler();
         initRawTomlActions();
       }
 

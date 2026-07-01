@@ -32,6 +32,9 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
   - **Start/end year** inputs added to Assumptions & Years section.
   - Person names and retirement years moved to dedicated People section above Data Source.
 - **Synthetic Setup tab UX** (`templates/setup_panel.html`): Balance inputs disabled (greyed) when data source is Monarch, enabled when Manual entry. Liability balances help text explains names are auto-detected from `[[liabilities]]` and match Monarch accounts by convention.
+- **Grouped accounts display** (`templates/setup_panel.html`): Data Sources & Accounts tab groups matched accounts by category with section headers (── Cash (4) ──) in order: Cash → Taxable → Roth → Trad IRA → Real Estate → Vehicle → Liability → Ignore. Alphabetical sort within groups. Changing a category dropdown moves the row live to the correct group; empty groups collapse; group counts update automatically.
+- **Owner column** (`templates/setup_panel.html`, `admin_app.py`): New Owner column between Category and Disabled with dropdown showing person names from Metadata + "n/a". Values stored as "person1"/"person2" matching TOML convention; API writes inline dicts when owner is set, plain strings otherwise. Dict-classified accounts (401k Person 1, OregonSaves) correctly show their owner pre-selected.
+- **Selector brightness lowered** (`templates/setup_panel.html`): `.acct-category select` and `.acct-owner select` background changed to `#0d1524`.
 
 ## 2026-06-30
 
