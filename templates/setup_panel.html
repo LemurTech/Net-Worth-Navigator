@@ -1965,11 +1965,16 @@
       }
 
       function startAsyncRenderAction(formData) {
+        // Convert FormData to URLSearchParams (backend expects url-encoded, not multipart)
+        var params = new URLSearchParams();
+        formData.forEach(function (value, key) {
+          params.append(key, String(value));
+        });
         showRenderOverlay('Starting render job…', '');
         fetch(editorRelativeUrl('render-jobs'), {
           method: 'POST',
-          headers: { Accept: 'application/json' },
-          body: formData,
+          headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: params.toString(),
         }).then(function (response) {
           if (!response.ok) throw new Error('Render submit failed.');
           return response.json();
@@ -2050,13 +2055,14 @@
         btn.addEventListener('click', function () {
           var content = document.getElementById('raw-toml-content');
           if (!content) return;
-          var formData = new FormData();
-          formData.set('content', content.value);
-          formData.set('scenario_slug', currentScenarioSlug);
-          formData.set('action', 'validate');
+          var params = new URLSearchParams();
+          params.set('content', content.value);
+          params.set('scenario_slug', currentScenarioSlug);
+          params.set('action', 'validate');
           fetch(editorRelativeUrl(''), {
             method: 'POST',
-            body: formData,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: params.toString(),
           }).then(function (r) {
             if (r.ok) {
               showSuccess('TOML validation passed.');
