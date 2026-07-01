@@ -1143,11 +1143,6 @@
             // Now trigger re-render via the raw TOML flow
             var contentEl = document.getElementById('raw-toml-content');
             if (contentEl) {
-              // Refresh TOML content first
-              apiGet('api/synthetic-start').then(function () {
-                window.location.reload();
-              });
-              // Actually just trigger render
               var formData = new FormData();
               formData.set('content', contentEl.value);
               formData.set('scenario_slug', currentScenarioSlug);
