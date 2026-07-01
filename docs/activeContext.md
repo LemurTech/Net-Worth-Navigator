@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Scenario Setup Panel deployed alongside existing raw editor. New `/finances/config/setup` page provides structured quick-edit controls, Data Sources & Accounts management, and Synthetic Setup form — all backed by tomlkit-based API endpoints. Old raw editor remains available at `/finances/config/`. "Scenario Setup" button added to the projection shell page toolbar with dynamic scenario-slug routing. Person-name labels update dynamically from `person1.name`/`person2.name`.
+**Status:** Scenario Setup Panel deployed alongside existing raw editor. Metadata section (name, description, slug) editable at top. Person names, birth years, retirement years, and age sliders in dedicated People section. Cash targets, assumptions, start/end year, drag-reorder withdrawal/surplus order chips all in structured controls. Synthetic Setup inputs disabled when Monarch selected. Old raw editor remains at `/finances/config/`.
 
 ---
 

@@ -391,6 +391,61 @@
 
     <!-- ── Quick-edit panel ─────────────────────────────────────────── -->
     <div class="quick-panel" id="quick-panel">
+      <div class="quick-section-title">Metadata</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <div class="inline-row">
+          <div class="inline-field" style="flex:1 1 auto">
+            <label>Plan Name</label>
+            <input type="text" id="scenario_name" value="{{ scenario_name }}" style="width:100%;font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-family:inherit">
+          </div>
+        </div>
+        <div class="inline-row">
+          <div class="inline-field" style="flex:1 1 auto">
+            <label>Description</label>
+            <input type="text" id="scenario_description" value="{{ scenario_description or '' }}" placeholder="Scenario description" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-family:inherit">
+          </div>
+        </div>
+        <div class="inline-row">
+          <div class="inline-field" style="flex:0 0 auto">
+            <label>Slug</label>
+            <input type="text" id="scenario_slug" value="{{ scenario_slug }}" readonly style="width:180px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(15,23,37,0.5);color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px">
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:1px">
+            <button type="button" id="rename-scenario-btn" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:#162234;color:var(--text);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap">Rename Slug</button>
+            {%- set ns = namespace(is_def=false) %}
+            {%- for opt in scenario_options %}
+            {%- if opt.slug == scenario_slug and opt.is_default %}{% set ns.is_def = true %}{% endif %}
+            {%- endfor %}
+            {%- if ns.is_def %} <span style="font-size:11px;font-weight:600;color:var(--muted);background:var(--panel-2);border:1px solid var(--border);padding:4px 10px;border-radius:5px;white-space:nowrap">DEFAULT</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="quick-section-title">People</div>
+      <div class="inline-row" style="margin-bottom:6px">
+        <div class="inline-field"><label id="label-person1-name">Person 1 Name</label><input type="text" id="person1_name" style="width:160px"></div>
+        <div class="inline-field"><label>Birth Year</label><input type="number" id="person1_birth_year" step="1" min="1900" max="2100" style="width:90px"></div>
+        <div class="inline-field"><label id="label-person1-retires">Retires (year)</label><input type="number" id="person1_retirement_year" step="1" style="width:100px"></div>
+        <div class="inline-field">
+          <label>or age</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="person1-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
+            <input type="range" id="person1-retire-slider" min="40" max="80" step="1" style="width:160px">
+          </div>
+        </div>
+      </div>
+      <div class="inline-row" style="margin-bottom:14px">
+        <div class="inline-field"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:160px"></div>
+        <div class="inline-field"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:90px"></div>
+        <div class="inline-field"><label id="label-person2-retires">Retires (year)</label><input type="number" id="person2_retirement_year" step="1" style="width:100px"></div>
+        <div class="inline-field">
+          <label>or age</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="person2-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
+            <input type="range" id="person2-retire-slider" min="40" max="80" step="1" style="width:160px">
+          </div>
+        </div>
+      </div>
+
       <div class="quick-section-title">Data Source</div>
       <div class="radio-group" id="ds-radio-group" style="margin-bottom:12px">
         <label class="radio-card" id="ds-radio-monarch">
@@ -402,10 +457,11 @@
       </div>
 
       <div class="quick-section-title">Cash Targets</div>
+      <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Cash reserves set aside for expenses outside normal spending — emergencies, vacations, large purchases, home repairs, and other lumpy costs not modeled as individual events.</div>
       <div class="inline-row">
-        <div class="inline-field"><label>Accumulation</label><input type="number" id="cash_accumulation" step="1000"></div>
-        <div class="inline-field"><label>Retirement</label><input type="number" id="cash_retirement" step="1000"></div>
-        <div class="inline-field"><label>Survivor</label><input type="number" id="cash_survivor" step="1000"></div>
+        <div class="inline-field"><label>Accumulation Phase</label><input type="number" id="cash_accumulation" step="1000" style="width:145px"></div>
+        <div class="inline-field"><label>Retirement Phase</label><input type="number" id="cash_retirement" step="1000" style="width:145px"></div>
+        <div class="inline-field"><label>Survivor Phase</label><input type="number" id="cash_survivor" step="1000" style="width:145px"></div>
       </div>
 
       <div class="quick-section-title">Assumptions &amp; Years</div>
@@ -414,8 +470,8 @@
         <div class="inline-field"><label>Bond Return</label><input type="number" id="bond_return" step="0.01" min="0" max="1"></div>
         <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="0.001" min="0" max="1"></div>
         <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="0.05" min="0" max="1"></div>
-        <div class="inline-field"><label id="label-person1-retires">Person 1 Retires</label><input type="number" id="person1_retirement_year" step="1"></div>
-        <div class="inline-field"><label id="label-person2-retires">Person 2 Retires</label><input type="number" id="person2_retirement_year" step="1"></div>
+        <div class="inline-field"><label>Start Year</label><input type="number" id="simulation_start_year" step="1" style="width:100px"></div>
+        <div class="inline-field"><label>End Year</label><input type="number" id="simulation_end_year" step="1" style="width:100px"></div>
       </div>
 
       <div class="quick-section-title">Withdrawal Priority</div>
@@ -559,7 +615,8 @@
             <button type="button" class="add-property-btn" id="add-property-btn">+ Add another property</button>
           </div>
           <div class="synth-section" id="synth-liability-section">
-            <h3>Liability Balances</h3>
+            <h3>Liability Balances <span class="optional">(initial balances for each amortized loan)</span></h3>
+            <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Liability names are auto-detected from your <code>[[liabilities]]</code> config entries. By convention these match your Monarch account names so the model can pull live opening balances — in synthetic mode, enter starting balances here directly.</div>
             <div id="liability-rows"></div>
             <div id="liability-empty" style="font-size:13px;color:var(--muted)">No liabilities configured in this scenario.</div>
           </div>
@@ -758,22 +815,115 @@
         m = configContent.match(/^\s*equity_allocation\s*=\s*([\d.]+)/m);
         if (m && m[1]) c.equity_allocation = parseFloat(m[1]);
 
+        m = configContent.match(/^\s*start_year\s*=\s*(\d+)/m);
+        if (m && m[1]) c.sim_start = parseInt(m[1], 10);
+        m = configContent.match(/^\s*end_year\s*=\s*(\d+)/m);
+        if (m && m[1]) c.sim_end = parseInt(m[1], 10);
+
         m = configContent.match(/^\[person1\]\s*[\s\S]*?^\s*retirement_year\s*=\s*(\d+)/m);
         if (m && m[1]) c.person1_retirement = parseInt(m[1], 10);
         m = configContent.match(/^\[person2\]\s*[\s\S]*?^\s*retirement_year\s*=\s*(\d+)/m);
         if (m && m[1]) c.person2_retirement = parseInt(m[1], 10);
 
-        // Person display names (for dynamic labels)
+        // Person display names (for dynamic labels + inputs)
         var person1Name = 'Person 1';
         var person2Name = 'Person 2';
         m = configContent.match(/^\[person1\]\s*[\s\S]*?^\s*name\s*=\s*"([^"]+)"/m);
         if (m && m[1]) person1Name = m[1];
         m = configContent.match(/^\[person2\]\s*[\s\S]*?^\s*name\s*=\s*"([^"]+)"/m);
         if (m && m[1]) person2Name = m[1];
-        var label1 = document.getElementById('label-person1-retires');
-        var label2 = document.getElementById('label-person2-retires');
-        if (label1) label1.textContent = person1Name + ' Retires';
-        if (label2) label2.textContent = person2Name + ' Retires';
+
+        function updatePersonLabels() {
+          var n1 = document.getElementById('person1_name');
+          var n2 = document.getElementById('person2_name');
+          var p1n = (n1 && n1.value.trim()) || 'Person 1';
+          var p2n = (n2 && n2.value.trim()) || 'Person 2';
+          var l1 = document.getElementById('label-person1-retires');
+          var l2 = document.getElementById('label-person2-retires');
+          if (l1) l1.textContent = p1n + ' Retires';
+          if (l2) l2.textContent = p2n + ' Retires';
+        }
+
+        // Populate name inputs
+        var n1Input = document.getElementById('person1_name');
+        var n2Input = document.getElementById('person2_name');
+        if (n1Input) { n1Input.value = person1Name; n1Input.addEventListener('input', updatePersonLabels); }
+        if (n2Input) { n2Input.value = person2Name; n2Input.addEventListener('input', updatePersonLabels); }
+        updatePersonLabels();
+
+        // Parse birth years from dob fields for slider calculations
+        var p1BirthYear = 0, p2BirthYear = 0;
+        m = configContent.match(/^\[person1\]\s*[\s\S]*?^\s*dob\s*=\s*"(\d{4})/m);
+        if (m && m[1]) p1BirthYear = parseInt(m[1], 10);
+        m = configContent.match(/^\[person2\]\s*[\s\S]*?^\s*dob\s*=\s*"(\d{4})/m);
+        if (m && m[1]) p2BirthYear = parseInt(m[1], 10);
+
+        // Populate birth year inputs
+        setField('person1_birth_year', p1BirthYear);
+        setField('person2_birth_year', p2BirthYear);
+
+        function getBirthYear(inputId) {
+          var el = document.getElementById(inputId);
+          return el ? (parseInt(el.value, 10) || 0) : 0;
+        }
+
+        function wireSlider(sliderId, yearInputId, ageLabelId, birthYearInputId, retYear) {
+          var slider = document.getElementById(sliderId);
+          var yearInput = document.getElementById(yearInputId);
+          var ageLabel = document.getElementById(ageLabelId);
+          if (!slider || !yearInput || !ageLabel) return;
+
+          function currentBirthYear() { return getBirthYear(birthYearInputId); }
+
+          function sliderToYear(age) {
+            var by = currentBirthYear();
+            return by ? by + parseInt(age, 10) : 0;
+          }
+
+          function yearToSlider(yr) {
+            var by = currentBirthYear();
+            return by ? Math.max(40, Math.min(80, parseInt(yr, 10) - by)) : 40;
+          }
+
+          function syncFromSlider() {
+            var age = parseInt(slider.value, 10);
+            ageLabel.textContent = age;
+            var yr = sliderToYear(age);
+            if (yr) yearInput.value = yr;
+          }
+
+          function syncFromYear() {
+            var yr = parseInt(yearInput.value, 10);
+            if (!yr) return;
+            var by = currentBirthYear();
+            if (!by) return;
+            var age = yearToSlider(yr);
+            slider.value = age;
+            ageLabel.textContent = age;
+          }
+
+          // Set initial slider position from retirement year
+          if (retYear && currentBirthYear()) {
+            slider.value = yearToSlider(retYear);
+            ageLabel.textContent = slider.value;
+          }
+
+          slider.addEventListener('input', syncFromSlider);
+          yearInput.addEventListener('change', syncFromYear);
+
+          // When birth year changes, refresh slider from year input
+          var byInput = document.getElementById(birthYearInputId);
+          if (byInput) {
+            byInput.addEventListener('change', function () {
+              syncFromYear();
+              // If year input is empty, sync from slider
+              if (!yearInput.value) syncFromSlider();
+            });
+          }
+        }
+
+        wireSlider('person1-retire-slider', 'person1_retirement_year', 'person1-age-label', 'person1_birth_year', c.person1_retirement);
+        wireSlider('person2-retire-slider', 'person2_retirement_year', 'person2-age-label', 'person2_birth_year', c.person2_retirement);
 
         var dsMode = 'monarch';
         m = configContent.match(/^\s*mode\s*=\s*\"(monarch|synthetic)\"/m);
@@ -825,6 +975,8 @@
         setField('equity_allocation', c.equity_allocation != null ? (c.equity_allocation * 100).toFixed(1) : '');
         setField('person1_retirement_year', c.person1_retirement);
         setField('person2_retirement_year', c.person2_retirement);
+        setField('simulation_start_year', c.sim_start);
+        setField('simulation_end_year', c.sim_end);
 
         // Data source radio
         var dsRadios = document.querySelectorAll('input[name="ds_mode"]');
@@ -905,6 +1057,30 @@
         var wr = getField('person2_retirement_year');
         if (mr) body.person1_retirement_year = parseInt(mr, 10);
         if (wr) body.person2_retirement_year = parseInt(wr, 10);
+
+        // Person names
+        var p1n = getField('person1_name');
+        var p2n = getField('person2_name');
+        if (p1n) body.person1_name = p1n.trim();
+        if (p2n) body.person2_name = p2n.trim();
+
+        // Birth years
+        var by1 = getField('person1_birth_year');
+        var by2 = getField('person2_birth_year');
+        if (by1) body.person1_birth_year = parseInt(by1, 10);
+        if (by2) body.person2_birth_year = parseInt(by2, 10);
+
+        // Scenario metadata
+        var sn = getField('scenario_name');
+        var sd = getField('scenario_description');
+        if (sn) body.scenario_name = sn.trim();
+        if (sd) body.scenario_description = sd.trim();
+
+        // Start / End year
+        var ss = getField('simulation_start_year');
+        var se = getField('simulation_end_year');
+        if (ss) body.simulation_start_year = parseInt(ss, 10);
+        if (se) body.simulation_end_year = parseInt(se, 10);
 
         // Data source
         var dsChecked = document.querySelector('input[name="ds_mode"]:checked');
@@ -1211,6 +1387,7 @@
             r.checked = r.value === mode;
             updateRadioCard(r);
           });
+          toggleSynthInputs(mode !== 'synthetic');
 
           // Fill fields
           setSynthField('synth-taxable', syn.taxable);
@@ -1258,6 +1435,32 @@
           }
         }).catch(function (err) {
           showError('Failed to load synthetic settings: ' + err.message);
+        });
+      }
+
+      function toggleSynthInputs(disabled) {
+        var form = document.getElementById('tab-synthetic');
+        if (!form) return;
+        var inputs = form.querySelectorAll('.synth-dollar, .prop-name, .prop-value, .liability-value');
+        inputs.forEach(function (el) {
+          el.disabled = disabled;
+          el.style.opacity = disabled ? '0.5' : '1';
+        });
+        // Also toggle property add button
+        var addBtn = document.getElementById('add-property-btn');
+        if (addBtn) {
+          addBtn.disabled = disabled;
+          addBtn.style.opacity = disabled ? '0.5' : '1';
+        }
+      }
+
+      function installSynthRadioHandlers() {
+        var radios = document.querySelectorAll('input[name="synth_ds_mode"]');
+        radios.forEach(function (r) {
+          r.addEventListener('change', function () {
+            var isManual = r.value === 'synthetic';
+            toggleSynthInputs(!isManual);
+          });
         });
       }
 
@@ -1606,6 +1809,55 @@
         });
       }
 
+      function initRenameScenario() {
+        var btn = document.getElementById('rename-scenario-btn');
+        if (!btn) return;
+
+        var isDefault = {{ 'true' if ns.is_def else 'false' }};
+        if (isDefault) {
+          btn.disabled = true;
+          btn.title = 'The default scenario cannot be renamed.';
+          return;
+        }
+
+        btn.addEventListener('click', function () {
+          var newName = (document.getElementById('scenario_name').value || '').trim();
+          var newSlug = prompt('Enter a new slug for this scenario (e.g., "my-plan"):', '{{ scenario_slug }}');
+          if (!newSlug || newSlug === '{{ scenario_slug }}') return;
+          var newDesc = (document.getElementById('scenario_description').value || '').trim();
+
+          btn.disabled = true;
+          btn.textContent = 'Renaming…';
+
+          var body = new URLSearchParams();
+          body.set('scenario_slug', '{{ scenario_slug }}');
+          body.set('new_name', newName);
+          body.set('new_slug', newSlug);
+          body.set('new_description', newDesc);
+
+          fetch(editorRelativeUrl('rename-scenario'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-requested-with': 'fetch' },
+            body: body.toString(),
+          })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              window.location.href = data.redirect_url || (window.location.href.split('?')[0] + '?scenario=' + data.new_slug);
+            } else {
+              alert('Rename failed: ' + (data.error || 'Unknown error.'));
+              btn.disabled = false;
+              btn.textContent = 'Rename slug';
+            }
+          })
+          .catch(function (err) {
+            alert('Rename request failed: ' + err);
+            btn.disabled = false;
+            btn.textContent = 'Rename slug';
+          });
+        });
+      }
+
       /* ── Init ──────────────────────────────────────────────────── */
       function init() {
         installRadioStyles();
@@ -1624,6 +1876,8 @@
         initRefreshMonarch();
         initAddProperty();
         initSaveSynthetic();
+        installSynthRadioHandlers();
+        initRenameScenario();
         initRawTomlActions();
       }
 

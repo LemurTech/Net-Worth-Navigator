@@ -1371,10 +1371,14 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "bond_return": ("assumptions.bond_return", float),
     "person1_retirement_year": ("person1.retirement_year", int),
     "person2_retirement_year": ("person2.retirement_year", int),
+    "person1_name": ("person1.name", str),
+    "person2_name": ("person2.name", str),
     "inflation": ("assumptions.inflation", float),
     "equity_allocation": ("assumptions.equity_allocation", float),
     "simulation_start_year": ("simulation.start_year", int),
     "simulation_end_year": ("simulation.end_year", int),
+    "scenario_name": ("scenario.name", str),
+    "scenario_description": ("scenario.description", str),
 }
 
 _QUICK_ARRAY_MAP: dict[str, str] = {
@@ -1438,6 +1442,25 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
             doc["data_source"] = tomlkit.table()
         doc["data_source"]["mode"] = ds_mode
         changed_keys.append("data_source.mode")
+
+    # Birth years (reconstruct dob string from year)
+    for person_key, field_name in [("person1", "person1_birth_year"), ("person2", "person2_birth_year")]:
+        raw_by = body.get(field_name)
+        if raw_by is not None:
+            try:
+                birth_year = int(raw_by)
+            except (TypeError, ValueError):
+                continue
+            if person_key not in doc or doc[person_key] is None:
+                doc[person_key] = tomlkit.table()
+            current_dob = str(doc[person_key].get("dob", ""))
+            # Preserve existing month/day if present, else default to Jan 1
+            if current_dob and "-" in current_dob and len(current_dob.split("-")) == 3:
+                month_day = "-".join(current_dob.split("-")[1:])
+            else:
+                month_day = "01-01"
+            doc[person_key]["dob"] = f"{birth_year}-{month_day}"
+            changed_keys.append(f"{person_key}.dob")
 
     if not changed_keys:
         return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)

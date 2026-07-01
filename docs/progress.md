@@ -25,6 +25,13 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
   - Added guidelines card explaining `ignore` vs `disabled` checkbox in the Data Sources tab.
   - Person retirement labels ("Person 1 Retires" / "Person 2 Retires") update dynamically from `person1.name`/`person2.name` in the TOML config.
 - **Projection shell page** (`src/scenario_shell.py`): "Scenario Setup" primary button added to toolbar, linked to `/finances/config/setup?scenario=<slug>`. `run.py` passes `setup_url` parameter.
+- **Quick-edit refinements** (`templates/setup_panel.html`, `admin_app.py`):
+  - **Metadata section** at top with editable Plan Name, Description, read-only Slug + Rename Slug button, DEFAULT badge.
+  - **People section** with name inputs, birth-year inputs, retires-year inputs, and age sliders (40-80) synced bidirectionally from birth year.
+  - **Cash Target phase labels** changed to "Accumulation Phase", "Retirement Phase", "Survivor Phase" (25px wider inputs).
+  - **Start/end year** inputs added to Assumptions & Years section.
+  - Person names and retirement years moved to dedicated People section above Data Source.
+- **Synthetic Setup tab UX** (`templates/setup_panel.html`): Balance inputs disabled (greyed) when data source is Monarch, enabled when Manual entry. Liability balances help text explains names are auto-detected from `[[liabilities]]` and match Monarch accounts by convention.
 
 ## 2026-06-30
 
