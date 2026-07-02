@@ -3,6 +3,32 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-02 (Phase 3 — Task 2.1-2.2: Optional Help Mode)
+
+### Added
+
+- **Help Mode toggle button** (`src/charts.py`): New `?` button in projection page toolbar (bottom-right, next to "Edit Config" and "Definitions"). Toggles help mode on/off. State persists in localStorage (`nwn-help-mode`). Button shows active state (blue background) when help mode is on.
+
+- **Help Mode CSS** (`src/charts.py:_TABS_CSS`): Styling for help button, info icons, and tooltips. Info icons (ℹ️) are hidden by default, only visible when `body.help-mode-active` class is present. Tooltips appear on hover over info icons.
+
+- **Help Mode JavaScript** (`src/charts.py:_TABS_JS`): Toggle logic restores state from localStorage on page load, adds/removes `help-mode-active` class on body element, persists preference across sessions.
+
+- **KPI tooltips** (`src/charts.py:_build_kpi_summary`): Each KPI box now includes help icon + tooltip with explanation. Tooltips explain "Starting Net Worth", "Net Worth at Retirement", "Retirement Age", and "Net Worth at End" in plain language. Only visible when help mode is active.
+
+### Design Decisions
+
+- **Opt-in by default:** Help mode starts OFF (clean interface), user must click `?` to enable it.
+- **Persistent preference:** LocalStorage remembers help mode state across page loads.
+- **Visual feedback:** Active button gets blue background, info icons appear when active.
+- **Contextual tooltips:** Tooltips are positioned above their target, with arrow pointer.
+
+### Next
+
+- Task 2.3: Add "First Projection" welcome overlay (one-time orientation for new users)
+- Task 3: Guided sample exploration (sample-specific annotations and "About This Sample" card)
+
+---
+
 ## 2026-07-02 (Phase 3 — Preflight Validation, Task 1.1-1.3 COMPLETE)
 
 ### Added

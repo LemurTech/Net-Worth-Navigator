@@ -55,9 +55,29 @@ _TABS_CSS = """
   .event-label-controls label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
   .event-label-controls input[type='checkbox'] { accent-color: #38bdf8; }
   .toolbar-link { display: inline-block; padding: 10px 14px; border-radius: 999px;
-                  border: 1px solid #243142; background: rgba(17,24,39,0.94); color: #e5edf7;
-                  text-decoration: none; font-size: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+                  background: #111827; color: #f8fafc; border: 1px solid #475569;
+                  text-decoration: none; font-size: 13px; transition: all .2s; }
   .toolbar-link:hover { border-color: #7dd3fc; }
+  .help-mode-toggle { display: inline-flex; align-items: center; justify-content: center;
+                      width: 36px; height: 36px; border-radius: 50%; margin-left: 10px;
+                      background: #111827; border: 1px solid #475569; color: #94a3b8;
+                      cursor: pointer; transition: all .2s; }
+  .help-mode-toggle:hover { border-color: #7dd3fc; color: #7dd3fc; }
+  .help-mode-toggle.active { background: #0369a1; border-color: #0284c7; color: #fff; }
+  .help-icon { font-size: 18px; font-weight: 600; }
+  .help-info-icon { display: none; cursor: help; margin-left: 6px; color: #7dd3fc;
+                    font-size: 14px; font-weight: 600; vertical-align: middle; }
+  body.help-mode-active .help-info-icon { display: inline; }
+  .help-tooltip { position: relative; }
+  .help-tooltip .tooltip-content { display: none; position: absolute; bottom: 100%; left: 50%;
+                                   transform: translateX(-50%); margin-bottom: 8px; padding: 8px 12px;
+                                   background: #1e293b; border: 1px solid #475569; border-radius: 6px;
+                                   color: #e2e8f0; font-size: 12px; white-space: nowrap; z-index: 1000;
+                                   box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+  .help-tooltip .tooltip-content::after { content: ''; position: absolute; top: 100%; left: 50%;
+                                          transform: translateX(-50%); border: 6px solid transparent;
+                                          border-top-color: #475569; }
+  body.help-mode-active .help-tooltip:hover .tooltip-content { display: block; }
   .chart-wrap { background: #111827; border-radius: 8px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.32); margin-bottom: 16px; }
   .modeling-note { margin: 10px 6px 4px; padding: 10px 12px; border-radius: 8px;
@@ -641,6 +661,23 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') clearAllHighlights();
   });
+  
+  // Help mode toggle
+  var helpModeBtn = document.getElementById('help-mode-toggle');
+  if (helpModeBtn) {
+    // Restore help mode state from localStorage
+    var helpModeActive = localStorage.getItem('nwn-help-mode') === 'true';
+    if (helpModeActive) {
+      document.body.classList.add('help-mode-active');
+      helpModeBtn.classList.add('active');
+    }
+    
+    helpModeBtn.addEventListener('click', function() {
+      var isActive = document.body.classList.toggle('help-mode-active');
+      helpModeBtn.classList.toggle('active', isActive);
+      localStorage.setItem('nwn-help-mode', isActive ? 'true' : 'false');
+    });
+  }
 });
 </script>
 """
@@ -912,10 +949,29 @@ def _build_kpi_summary(
         ]
 
     boxes = "".join(
-        f"<div class='kpi-box'><div class='kpi-label'>{label}</div><div class='kpi-value'>{value}</div></div>"
+        f"<div class='kpi-box help-tooltip'>"
+        f"<div class='kpi-label'>{label}"
+        f"<span class='help-info-icon' title='Help'>ℹ️</span>"
+        f"<span class='tooltip-content'>{_kpi_tooltip(label, config)}</span>"
+        f"</div>"
+        f"<div class='kpi-value'>{value}</div>"
+        f"</div>"
         for label, value in cards
     )
     return f"<div class='kpi-strip'>{boxes}</div>"
+
+
+def _kpi_tooltip(label: str, config: dict) -> str:
+    """Return help tooltip text for a given KPI label."""
+    end_year = config.get("simulation", {}).get("end_year", "end of plan")
+    
+    tooltips = {
+        "Starting Net Worth": "Your household's total assets minus liabilities at the start of the projection.",
+        "Net Worth at Retirement": "Your projected net worth in the year you retire (when wages stop).",
+        "Retirement Age": "The age of the first person to retire in your household.",
+        "Net Worth at End": f"Your projected net worth at the end of the plan (year {end_year}).",
+    }
+    return tooltips.get(label, "Key financial metric for your projection.")
 
 
 def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
@@ -1906,6 +1962,9 @@ def build_chart(
   <div class="page-toolbar">
     <a class="toolbar-link" href="{definitions_href}" target="_blank" rel="noreferrer">Definitions</a>
     <a class="toolbar-link" href="{edit_config_href}">Edit Config</a>
+    <button class="help-mode-toggle" id="help-mode-toggle" title="Toggle help mode">
+      <span class="help-icon">?</span>
+    </button>
   </div>
   <div class="chart-wrap">
     {setup_warning_html}
