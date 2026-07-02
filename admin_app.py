@@ -1191,7 +1191,21 @@ async def api_data_source_status(request: Request) -> JSONResponse:
 
 @app.post("/api/refresh-monarch")
 async def api_refresh_monarch() -> JSONResponse:
-    from src.monarch_bridge import fetch_raw_accounts, classify_accounts, load_config as monarch_config
+    from src.monarch_bridge import MCP_PYTHON, fetch_raw_accounts, classify_accounts, load_config as monarch_config
+
+    if not MCP_PYTHON.exists():
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": (
+                    "Monarch MCP server is not installed on this system. "
+                    "Switch to Manual Entry (synthetic) mode instead, or install and "
+                    "configure the Monarch MCP server. "
+                    f"(Expected: {MCP_PYTHON})"
+                ),
+            },
+            status_code=503,
+        )
 
     try:
         raw = fetch_raw_accounts()

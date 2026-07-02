@@ -295,6 +295,14 @@
       padding: 12px 16px; border-bottom: 1px solid var(--border);
     }
     .account-toolbar .cache-info { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; }
+    .accounts-mode-banner {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 16px; font-size: 13px; line-height: 1.5;
+      color: #93c5fd; background: rgba(59,130,246,0.08);
+      border-bottom: 1px solid rgba(59,130,246,0.2);
+    }
+    .accounts-mode-banner .banner-icon { font-style: normal; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    #refresh-monarch-btn:disabled { opacity: 0.38; cursor: not-allowed; }
 
     /* ── Synthetic form ─────────────────────────────────────────────── */
     .synth-form { padding: 18px; }
@@ -1220,6 +1228,10 @@
           } else {
             unmatchedSection.style.display = 'none';
           }
+
+          // ── Mode-aware banner & Refresh button state ──────────────────
+          applyAccountsTabModeState(data.source_mode || 'monarch');
+
         }).catch(function (err) {
           loadingEl.textContent = 'Failed to load accounts: ' + err.message;
           loadingEl.style.color = '#fca5a5';
@@ -1531,6 +1543,38 @@
         });
       }
 
+      /* ── Accounts tab: mode-aware banner ──────────────────────────── */
+      function applyAccountsTabModeState(sourceMode) {
+        var btn = document.getElementById('refresh-monarch-btn');
+        var toolbar = document.getElementById('accounts-toolbar');
+        var existingBanner = document.getElementById('accounts-mode-banner');
+        if (existingBanner) existingBanner.remove();
+
+        if (sourceMode === 'synthetic') {
+          // Insert info banner above toolbar
+          var banner = document.createElement('div');
+          banner.id = 'accounts-mode-banner';
+          banner.className = 'accounts-mode-banner';
+          banner.innerHTML =
+            '<span class="banner-icon">ℹ</span> ' +
+            'This scenario uses <strong>Manual Entry (synthetic)</strong> balances. ' +
+            'The accounts table is for Monarch classification only and does not affect your projection. ' +
+            'Switch to <em>Monarch (live/cached)</em> in the Data Source control to enable it.';
+          toolbar.parentNode.insertBefore(banner, toolbar);
+          // Disable Refresh button
+          if (btn) {
+            btn.disabled = true;
+            btn.title = 'Not available in synthetic mode';
+          }
+        } else {
+          // Monarch mode — ensure button is enabled
+          if (btn) {
+            btn.disabled = false;
+            btn.title = '';
+          }
+        }
+      }
+
       function initRefreshMonarch() {
         var btn = document.getElementById('refresh-monarch-btn');
         if (!btn) return;
@@ -1635,12 +1679,35 @@
         }
       }
 
+      /* ── Two-way sync between quick-edit and Synthetic Setup radios ── */
+      function syncDataSourceRadios(changedName, newValue) {
+        // Sync the other radio group to match
+        var otherName = changedName === 'ds_mode' ? 'synth_ds_mode' : 'ds_mode';
+        document.querySelectorAll('input[name="' + otherName + '"]').forEach(function (r) {
+          r.checked = r.value === newValue;
+          updateRadioCard(r);
+        });
+        // Update synthetic-tab input state
+        toggleSynthInputs(newValue !== 'synthetic');
+        // Update accounts tab banner if it's already loaded
+        if (_accountsData) {
+          applyAccountsTabModeState(newValue);
+        }
+      }
+
       function installSynthRadioHandlers() {
-        var radios = document.querySelectorAll('input[name="synth_ds_mode"]');
-        radios.forEach(function (r) {
+        // Synthetic Setup tab radios
+        document.querySelectorAll('input[name="synth_ds_mode"]').forEach(function (r) {
           r.addEventListener('change', function () {
-            var isManual = r.value === 'synthetic';
-            toggleSynthInputs(!isManual);
+            updateRadioCard(r);
+            syncDataSourceRadios('synth_ds_mode', r.value);
+          });
+        });
+        // Quick-edit strip radios
+        document.querySelectorAll('input[name="ds_mode"]').forEach(function (r) {
+          r.addEventListener('change', function () {
+            updateRadioCard(r);
+            syncDataSourceRadios('ds_mode', r.value);
           });
         });
       }

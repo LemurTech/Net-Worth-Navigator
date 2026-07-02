@@ -3,6 +3,16 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-01 (Phase 2 — Monarch-optional Setup Panel UI)
+
+### Changed
+
+- **`api/refresh-monarch` endpoint** (`admin_app.py`): Returns `503` with a clean JSON error message when the Monarch MCP binary is not present (uses the same `MCP_PYTHON.exists()` pre-flight check from Phase 1). No stack trace, no subprocess failure propagated to the browser.
+
+- **Accounts tab mode-aware banner** (`templates/setup_panel.html`): After `initAccountsTab()` resolves, `applyAccountsTabModeState(source_mode)` is called. When `source_mode === "synthetic"`, a blue info banner is inserted above the account toolbar explaining the tab is inactive in synthetic mode. The "Refresh from Monarch" button is disabled (`opacity: 0.38`, `cursor: not-allowed`). When mode is `"monarch"`, the button stays enabled and no banner appears.
+
+- **Two-way radio sync** (`templates/setup_panel.html`): `installSynthRadioHandlers()` now installs `change` listeners on both the quick-edit strip `ds_mode` radios and the Synthetic Setup tab `synth_ds_mode` radios. Any change to either group syncs the other, updates `toggleSynthInputs()`, and — if the Accounts tab is already loaded — calls `applyAccountsTabModeState()` to update the banner live without a page reload.
+
 ## 2026-07-01 (Phase 1 — Monarch-optional error handling)
 
 ### Added

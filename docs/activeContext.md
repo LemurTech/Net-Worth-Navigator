@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Phase 1 of the Monarch-optional plan complete — clean error handling for non-Monarch environments. Scenario Setup Panel shipped. Planning document for full Monarch-optional support filed.
+**Status:** Phase 2 of the Monarch-optional plan complete — Setup Panel UI conditioning for non-Monarch scenarios.
 
 ---
 
@@ -92,7 +92,7 @@ Plan: `docs/plans/2026-07-01-monarch-optional.md`
 | Phase | Status | Description |
 |---|---|---|
 | 1 — Error handling | ✅ Done | Pre-flight check in `fetch_raw_accounts()`; `MONARCH_MCP_PATH` env var; clean error in `run.py` |
-| 2 — Setup Panel UI | 🔲 Next | Synthetic-mode banner in Accounts tab; disable Refresh button; clean 503 from API; radio sync |
+| 2 — Setup Panel UI | ✅ Done | Synthetic-mode banner in Accounts tab; disable Refresh button; clean 503 from API; radio sync |
 | 3 — Starter template | 🔲 Next | `scenarios/starter.toml` blank-slate TOML; README "Getting Started Without Monarch" section |
 | 4 — New-scenario flow | 🔲 Later | "New from Template" button in Setup Panel; clone-source warning |
 | 5 — Structural / CSV | 🔲 Future | CSV import, DataSourceProvider abstraction, Docker portability |
