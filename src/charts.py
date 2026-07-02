@@ -166,6 +166,13 @@ _TABS_CSS = """
   tr.liability-type-mortgage th.rowlabel { color: #fca5a5; }
   tr.liability-type-auto th.rowlabel { color: #fcd34d; }
   tr.liability-type-other th.rowlabel { color: #93c5fd; }
+  /* Setup status warning for placeholder/sample scenarios */
+  .setup-status-warning { margin: 4px 4px 8px; padding: 12px 16px; border-radius: 10px;
+                          border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.12);
+                          color: #fbbf24; font-size: 13px; line-height: 1.5; }
+  .setup-status-warning strong { color: #fcd34d; }
+  .setup-status-warning a { color: #60a5fa; text-decoration: none; border-bottom: 1px solid transparent; }
+  .setup-status-warning a:hover { border-bottom-color: #60a5fa; }
 </style>
 """
 
@@ -1853,6 +1860,37 @@ def build_chart(
     scenario_slug = getattr(scenario, "slug", None)
     edit_config_href = f"/finances/config/?scenario={scenario_slug}" if scenario_slug else "/finances/config/"
     definitions_href = "/finances/definitions.html"
+    
+    # Conditional simulation tab button (avoid backslash in f-string)
+    simulation_tab_html = (
+        '<button class="tab-btn" id="btn-simulation" onclick="switchTab(\'simulation\')">Simulation</button>'
+        if simulation_html
+        else ""
+    )
+    
+    # Setup status warning for placeholder/starter data
+    setup_warning_html = ""
+    if config:
+        # Check for common placeholder indicators
+        has_placeholder_data = (
+            scenario_slug in ("starter", "sample") or  # Using template scenarios
+            config.get("scenario", {}).get("name") == "Your Household Name" or  # Unchanged starter template
+            config.get("scenario", {}).get("description", "").startswith("A household scenario") or  # Default description
+            any(  # Check for placeholder person names
+                person_cfg.get("name") in ("Person 1", "Person 2", "Alex", "Sam", "Your Name")
+                for key, person_cfg in config.items()
+                if key.startswith("person") and isinstance(person_cfg, dict)
+            )
+        )
+        
+        if has_placeholder_data:
+            setup_warning_html = f"""
+    <div class="setup-status-warning">
+      <strong>⚠️ Setup Incomplete</strong> — This projection uses placeholder or sample data.
+      <a href="{edit_config_href}">Edit your scenario</a> to enter real household values, or
+      <a href="/finances/config/setup">use the Setup Panel</a> to create a new scenario from scratch.
+    </div>
+"""
 
     # Assemble full page
     html = f"""<!DOCTYPE html>
@@ -1870,6 +1908,7 @@ def build_chart(
     <a class="toolbar-link" href="{edit_config_href}">Edit Config</a>
   </div>
   <div class="chart-wrap">
+    {setup_warning_html}
     {kpi_html}
     {chart_div}
     <div class="event-label-controls" id="event-label-controls">
@@ -1886,7 +1925,7 @@ def build_chart(
             onclick="switchTab('cashflow')">Cash Flow</button>
     <button class="tab-btn" id="btn-tax"
             onclick="switchTab('tax')">Tax</button>
-    {'<button class="tab-btn" id="btn-simulation" onclick="switchTab(\'simulation\')">Simulation</button>' if simulation_html else ''}
+    {simulation_tab_html}
     <button class="tab-btn" id="btn-portfolio"
             onclick="switchTab('portfolio')">Portfolio</button>
     <button class="tab-btn" id="btn-gantt"

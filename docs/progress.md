@@ -3,6 +3,28 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-02 (Phase 2 — Onboarding Quick Wins)
+
+### Added
+
+- **Installation verification script** (`scripts/verify_install.py`): Health check that verifies Python version (3.11+), dependencies, TOML parsing, model imports, and output directory. On success, shows clear next steps (try sample, create scenario, use web UI). Exit code 0 on pass, 1 on fail for CI/CD integration.
+
+- **First-run welcome message** (`run.py`): Detects first run via `.initialized` marker in `output/` directory. Shows a welcome banner with numbered tips: try sample first, create your own scenario, use the web UI, run verify_install. Runs once per installation, not per scenario.
+
+- **Setup status warning** (`src/charts.py`): Orange warning banner in projection HTML output when using placeholder/sample data. Detects: scenario slug is "starter" or "sample", person names are "Person 1"/"Person 2"/"Alex"/"Sam", scenario name is "Your Household Name", or description starts with "A household scenario". Links directly to the Edit Config page and Setup Panel. Warning disappears when user replaces placeholder values.
+
+- **Quick Start section** (`README.md`): Moved to top of README (before "What It Does"). Three-step flow: 1) Install and Verify (with `verify_install.py`), 2) Try the Sample Scenario (recommended first step), 3) Create Your Own Scenario (copy starter or use web UI). Replaces separate "Getting Started Without Monarch" and "Quick Start (with Monarch)" sections.
+
+### Changed
+
+- **README structure**: "Getting Started" moved above feature descriptions for better onboarding flow. "Quick Start (with Monarch)" renamed to "Advanced: Using Monarch Money (Live Balance Sync)" and moved below the basic Quick Start. Reduced duplication between sections.
+
+- **Project Structure listing** (`README.md`): Added `scripts/verify_install.py` to the file tree with description.
+
+### Fixed
+
+- **F-string syntax error** (`src/charts.py:1914`): Replaced inline conditional with escaped quotes (`switchTab(\\'simulation\\')`) with a pre-built `simulation_tab_html` variable to avoid backslash-in-f-string Python syntax error.
+
 ## 2026-07-02 (Windows Compatibility)
 
 ### Added

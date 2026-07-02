@@ -2,6 +2,82 @@
 
 A local net worth projection and financial event modeling system originally built for the Household household, but general enough to adapt to other households with similar planning needs. **Monarch Money is optional** — the app runs fully from manually entered balances.
 
+## Quick Start
+
+### 1. Install and Verify
+
+```bash
+# Clone the repository
+git clone https://github.com/YourOrg/Net-Worth-Navigator.git
+cd Net-Worth-Navigator
+
+# Create virtual environment and install dependencies
+# Linux/macOS:
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+
+# Windows:
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# Verify installation
+python scripts/verify_install.py
+```
+
+### 2. Try the Sample Scenario (Recommended First Step)
+
+See the app in action with a working example before creating your own scenario:
+
+```bash
+# Linux/macOS:
+.venv/bin/python run.py --scenario sample
+
+# Windows:
+.venv\Scripts\python.exe run.py --scenario sample
+
+# Open the output
+# Linux/macOS: open output/scenarios/sample/deterministic/projection.html
+# Windows: start output\scenarios\sample\deterministic\projection.html
+```
+
+The sample scenario uses **fictional household data** (Alex & Sam) with synthetic balances. This shows you what the projection looks like before you enter your own data.
+
+### 3. Create Your Own Scenario
+
+Once you've seen the sample, create your household scenario:
+
+```bash
+# Linux/macOS:
+cp scenarios/starter.toml scenarios/myhousehold.toml
+nano scenarios/myhousehold.toml
+# Fill in every field marked  ← YOUR VALUE
+# Update [scenario].slug to "myhousehold"
+.venv/bin/python run.py --scenario myhousehold
+
+# Windows:
+copy scenarios\starter.toml scenarios\myhousehold.toml
+notepad scenarios\myhousehold.toml
+# Fill in every field marked  ← YOUR VALUE
+# Update [scenario].slug to "myhousehold"
+.venv\Scripts\python.exe run.py --scenario myhousehold
+```
+
+**Or use the web UI:** Start the config editor and use the Setup Panel for a GUI-based experience:
+
+```bash
+# Linux/macOS:
+.venv/bin/python admin_app.py
+# Open http://localhost:8010/setup
+
+# Windows:
+.venv\Scripts\python.exe admin_app.py
+# Open http://localhost:8010/setup
+```
+
+Click **"New from Template"** to create a scenario from the starter template, then use the **Synthetic Setup** tab to enter your balances.
+
+---
+
 ## What It Does
 
 Net Worth Navigator projects household net worth forward over time, anchored to live account balances from Monarch Money. It models:
@@ -71,116 +147,59 @@ Even with those limitations, the app is already useful for many real planning qu
 - comparing cash-reserve and withdrawal-order policies
 - rough decumulation stress testing before using a more specialized withdrawal optimizer
 
-## Getting Started Without Monarch
+## Advanced: Using Monarch Money (Live Balance Sync)
 
-Monarch Money is **not required**. You can run a full projection using manually entered balances.
+If you subscribe to Monarch Money and want automatic balance updates instead of manual entry, you can connect the Monarch MCP server.
+
+### Prerequisites
+
+1. Active Monarch Money subscription
+2. [Monarch MCP Server](https://github.com/Agentic-Insights/monarch-mcp) installed on your system
+3. Authenticated Monarch MCP session (run `uv run python login_setup.py` in the MCP directory)
 
 ### Linux / macOS
 
 ```bash
-# 1. Install dependencies
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+# 1. Set the Monarch MCP path (if not at default /opt/monarch-mcp-server)
+export MONARCH_MCP_PATH=/path/to/your/monarch-mcp-server
 
-# 2. Copy the starter template and give it your own name
-cp scenarios/starter.toml scenarios/myhousehold.toml
-
-# 3. Edit your copy — fill in every  ← YOUR VALUE  field
+# 2. Copy and edit a Monarch-mode scenario
+cp scenarios/sample.toml scenarios/myhousehold.toml
 nano scenarios/myhousehold.toml
+# Keep [data_source].mode = "monarch"
+# Update person details, assumptions, and events
 
-# 4. Update [scenario].slug to match your filename (e.g. "myhousehold")
-
-# 5. Run the projection
+# 3. Run with live Monarch data
 .venv/bin/python run.py --scenario myhousehold
+
+# 4. Or run offline (uses cached balances from last successful fetch)
+.venv/bin/python run.py --scenario myhousehold --offline
 ```
 
 ### Windows
 
 ```powershell
-# 1. Install dependencies
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+# 1. Set the Monarch MCP path (persistent)
+# System Properties → Environment Variables → New user variable:
+#   Name: MONARCH_MCP_PATH
+#   Value: C:\path\to\monarch-mcp-server
 
-# 2. Copy the starter template and give it your own name
-copy scenarios\starter.toml scenarios\myhousehold.toml
-
-# 3. Edit your copy — fill in every  ← YOUR VALUE  field
+# 2. Copy and edit a Monarch-mode scenario
+copy scenarios\sample.toml scenarios\myhousehold.toml
 notepad scenarios\myhousehold.toml
+# Keep [data_source].mode = "monarch"
+# Update person details, assumptions, and events
 
-# 4. Update [scenario].slug to match your filename (e.g. "myhousehold")
-
-# 5. Run the projection
+# 3. Run with live Monarch data
 .venv\Scripts\python.exe run.py --scenario myhousehold
+
+# 4. Or run offline (uses cached balances)
+.venv\Scripts\python.exe run.py --scenario myhousehold --offline
 ```
 
-The starter template has `[data_source].mode = "synthetic"`, which means the model reads your account balances from the `[synthetic_start]` section of the TOML — no Monarch account, no API key, no external service needed.
+See `docs/windows-compatibility.md` for detailed Windows setup instructions.
 
-**Using the web UI instead of editing TOML directly:**
-If you have the config editor running (see the deployment section below), open
-`/finances/config/setup?scenario=myhousehold` and use the **Synthetic Setup** tab
-to enter and update your balances through a form interface.
-
-**Keeping balances current:**
-With synthetic mode you update your balances manually — typically once a year or
-before a major planning decision. Edit `[synthetic_start]` in your scenario TOML
-(or use the Synthetic Setup tab) and re-run the projection.
-
-**Connecting Monarch later (optional):**
-If you later subscribe to Monarch Money and install the Monarch MCP server, you can
-switch any scenario to live balances by changing `[data_source].mode` from
-`"synthetic"` to `"monarch"` in the TOML. The `[accounts]` section maps your
-Monarch account names to the model's buckets (taxable, trad_ira, roth, etc.).
-
-## Quick Start (with Monarch)
-
-### Linux / macOS
-
-```bash
-# Install dependencies into the local venv
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-
-# Edit assumptions/scenario inputs
-nano scenarios/default.toml
-
-# Run projection (live Monarch)
-.venv/bin/python run.py
-
-# Fast offline rerender (uses cache)
-.venv/bin/python run.py --offline
-
-# View output
-open /srv/web-projects/finances/projection.html
-# or visit http://casalemuria.lan/finances/ on the LAN
-```
-
-### Windows
-
-```powershell
-# Install dependencies into the local venv
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-
-# Edit assumptions/scenario inputs
-notepad scenarios\default.toml
-
-# Run projection (live Monarch)
-.venv\Scripts\python.exe run.py
-
-# Fast offline rerender (uses cache)
-.venv\Scripts\python.exe run.py --offline
-
-# View output in browser
-start output\projection.html
-```
-
-**Note for Monarch users on Windows:** Set the `MONARCH_MCP_PATH` environment variable to point to your Monarch MCP server installation directory (the folder containing `.venv` and `src`), for example:
-
-```powershell
-$env:MONARCH_MCP_PATH = "C:\Users\YourName\monarch-mcp-server"
-```
-
-The default Linux path (`/opt/monarch-mcp-server`) won't work on Windows.
+---
 
 ## Project Structure
 
@@ -193,6 +212,8 @@ Net-Worth-Navigator/
 │   ├── starter.toml     ← Blank-slate template for new users (no Monarch required)
 │   ├── sample.toml      ← Synthetic demo scenario (Alex & Sam household)
 │   └── default.toml     ← Active default scenario (gitignored for personal data)
+├── scripts/
+│   └── verify_install.py ← Installation health check
 ├── run.py               ← Entry point
 ├── src/
 │   ├── model.py         ← Year-by-year simulation engine

@@ -154,7 +154,46 @@ def config_for_render_mode(config: dict, mode: str) -> dict:
     return rendered
 
 
+def check_first_run():
+    """Detect first run and show welcome message."""
+    first_run_marker = OUTPUT_DIR / ".initialized"
+    
+    if first_run_marker.exists():
+        return False  # Not first run
+    
+    print("=" * 70)
+    print("Welcome to Net Worth Navigator!")
+    print("=" * 70)
+    print()
+    print("This appears to be your first run. A few tips:")
+    print()
+    print("1. If you're new, try the sample scenario first:")
+    print("   python run.py --scenario sample")
+    print()
+    print("2. To create your own scenario:")
+    print("   - Copy scenarios/starter.toml to scenarios/myhousehold.toml")
+    print("   - Fill in your household data")
+    print("   - Run: python run.py --scenario myhousehold")
+    print()
+    print("3. Use the web UI for easier setup:")
+    print("   python admin_app.py")
+    print("   Open http://localhost:8010/setup")
+    print()
+    print("4. Run scripts/verify_install.py anytime to check your installation")
+    print()
+    print("=" * 70)
+    print()
+    
+    # Create marker file
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    first_run_marker.write_text(f"First run: {datetime.now().isoformat()}\n")
+    
+    return True
+
+
 def main():
+    # Check for first run and show welcome message
+    is_first_run = check_first_run()
     scenario = get_scenario(selected_scenario_slug(sys.argv))
     config = load_config(scenario.config_path)
     default_scenario = get_default_scenario()
