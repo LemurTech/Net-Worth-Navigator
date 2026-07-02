@@ -531,7 +531,8 @@
         <button type="button" id="validate-btn">Validate</button>
         <button type="button" id="save-render-quick-btn">Save + Re-render</button>
         <button type="button" id="save-render-all-btn">Save + Render All</button>
-        <button type="button" id="clone-scenario-btn" style="margin-left:auto">Clone Scenario</button>
+        <button type="button" id="new-scenario-btn" style="margin-left:auto">New from Template</button>
+        <button type="button" id="clone-scenario-btn">Clone Scenario</button>
         <button type="button" id="delete-scenario-btn" class="danger">Delete Scenario</button>
       </div>
     </div>
@@ -2151,6 +2152,42 @@
         });
       }
 
+      /* ── New scenario from starter template ──────────────────────── */
+      function initNewScenario() {
+        var btn = document.getElementById('new-scenario-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var name = prompt('New scenario name:', '');
+          if (!name || !name.trim()) return;
+          var slug = prompt('Scenario slug (e.g. "smith-household"):', '');
+          if (!slug || !slug.trim()) return;
+          var desc = prompt('Brief description (optional):', '');
+
+          btn.disabled = true;
+          btn.textContent = 'Creating…';
+
+          apiPost('api/new-scenario', {
+            name: name.trim(),
+            slug: slug.trim(),
+            description: (desc || '').trim(),
+          }).then(function (data) {
+            btn.disabled = false;
+            btn.textContent = 'New from Template';
+            if (data.ok) {
+              showSuccess('Scenario "' + data.name + '" created.');
+              window.location.href =
+                window.location.href.split('?')[0] + '?scenario=' + data.slug;
+            } else {
+              showError(data.error || 'Could not create scenario.');
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            btn.textContent = 'New from Template';
+            showError('Create failed: ' + err.message);
+          });
+        });
+      }
+
       function initCloneScenario() {
         var btn = document.getElementById('clone-scenario-btn');
         if (!btn) return;
@@ -2162,6 +2199,20 @@
           var desc = prompt('Description (optional):', '');
           var content = document.getElementById('raw-toml-content');
           if (!content) return;
+
+          // Soft warning when cloning a Monarch-mode scenario
+          var sourceMode = (_accountsData && _accountsData.source_mode) || 'monarch';
+          if (sourceMode !== 'synthetic') {
+            var proceed = confirm(
+              'The source scenario is configured for Monarch data.\n\n' +
+              'The cloned scenario will also require Monarch until you switch to ' +
+              'Manual Entry mode in the Data Source control.\n\n' +
+              'If you don\'t use Monarch, consider using "New from Template" instead.\n\n' +
+              'Continue cloning?'
+            );
+            if (!proceed) return;
+          }
+
           btn.disabled = true;
           btn.textContent = 'Cloning…';
           var formData = new FormData();
@@ -2282,6 +2333,7 @@
         installCategoryMoveHandler();
         initValidate();
         initSaveRenderAll();
+        initNewScenario();
         initCloneScenario();
         initDeleteScenario();
         initRawTomlActions();

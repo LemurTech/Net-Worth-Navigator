@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
 from src.definitions_page import build_definitions_page_html
-from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes
+from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes, SCENARIOS_DIR
 
 APP_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_ROOT / "output"
@@ -1147,6 +1147,51 @@ def _classify_raw_accounts(
         config = {}
     raw_map: dict = config.get("accounts", {})
     return {acct["name"]: raw_map.get(acct["name"], "unclassified") for acct in raw}
+
+
+# ── API: new scenario from starter template ─────────────────────────────────
+
+@app.post("/api/new-scenario")
+async def api_new_scenario(request: Request) -> JSONResponse:
+    """Create a new scenario by copying starter.toml and rewriting its metadata."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Invalid JSON body."}, status_code=400)
+
+    name = str(body.get("name", "")).strip()
+    slug = str(body.get("slug", "")).strip()
+    description = str(body.get("description", "")).strip()
+
+    if not name:
+        return JSONResponse({"ok": False, "error": "Scenario name is required."}, status_code=400)
+    if not slug:
+        return JSONResponse({"ok": False, "error": "Scenario slug is required."}, status_code=400)
+
+    starter_path = SCENARIOS_DIR / "starter.toml"
+    if not starter_path.exists():
+        # Fallback: use the minimal required TOML inline if starter.toml isn't present
+        source_content = (
+            '[scenario]\nname = ""\nslug = ""\ndescription = ""\nis_default = false\n\n'
+            '[data_source]\nmode = "synthetic"\n\n[synthetic_start]\ntaxable = 0\n'
+            'trad_ira = 0\nroth = 0\ncash = 0\nhome_value = 0\nvehicles = 0\nother = 0\n'
+        )
+    else:
+        source_content = starter_path.read_text(encoding="utf-8")
+
+    try:
+        ref = create_scenario_from_content(
+            source_content,
+            name=name,
+            slug=slug,
+            description=description or f"Created from starter template.",
+        )
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=409)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"Failed to create scenario: {exc}"}, status_code=500)
+
+    return JSONResponse({"ok": True, "slug": ref.slug, "name": ref.name})
 
 
 # ── API: data-source status ─────────────────────────────────────────────────

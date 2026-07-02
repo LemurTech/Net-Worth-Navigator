@@ -3,6 +3,16 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-01 (Phase 4 — New-scenario workflow)
+
+### Added
+
+- **`POST /api/new-scenario` endpoint** (`admin_app.py`): Creates a new scenario by reading `scenarios/starter.toml` as the source template and passing it through `create_scenario_from_content()` with the user-supplied name, slug, and description. Falls back to an inline minimal synthetic TOML if `starter.toml` is missing. Returns `{ok, slug, name}` on success; `409` on duplicate slug; `400` on missing fields.
+
+- **"New from Template" button** (`templates/setup_panel.html`): Added to the action bar to the left of Clone Scenario. `initNewScenario()` prompts for name and slug, calls `api/new-scenario`, and redirects to the new scenario in the Setup Panel. Backend errors (duplicate slug, etc.) surface via `showError()`.
+
+- **Clone-source warning** (`templates/setup_panel.html`): `initCloneScenario()` now checks `_accountsData.source_mode` before submitting the clone form. When the source scenario is Monarch-mode, a `confirm()` dialog warns the user that the clone will also require Monarch and suggests "New from Template" as the non-Monarch alternative. Clone proceeds or aborts based on the user's choice.
+
 ## 2026-07-01 (Phase 3 — Starter template and README)
 
 ### Added

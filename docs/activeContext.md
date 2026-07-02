@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Phase 3 of the Monarch-optional plan complete — starter template and README onboarding section shipped.
+**Status:** Phases 1–4 of the Monarch-optional plan complete. All acceptance criteria met except push to GitHub.
 
 ---
 
@@ -94,7 +94,7 @@ Plan: `docs/plans/2026-07-01-monarch-optional.md`
 | 1 — Error handling | ✅ Done | Pre-flight check in `fetch_raw_accounts()`; `MONARCH_MCP_PATH` env var; clean error in `run.py` |
 | 2 — Setup Panel UI | ✅ Done | Synthetic-mode banner in Accounts tab; disable Refresh button; clean 503 from API; radio sync |
 | 3 — Starter template | ✅ Done | `scenarios/starter.toml` blank-slate TOML; README "Getting Started Without Monarch" section |
-| 4 — New-scenario flow | 🔲 Later | "New from Template" button in Setup Panel; clone-source warning |
+| 4 — New-scenario flow | ✅ Done | "New from Template" button in Setup Panel; clone-source warning |
 | 5 — Structural / CSV | 🔲 Future | CSV import, DataSourceProvider abstraction, Docker portability |
 
 
