@@ -680,7 +680,11 @@
       function apiUrl(path) {
         var base = window.location.pathname;
         if (!base.endsWith('/')) base += '/';
-        return base + '../' + path.replace(/^\//, '');
+        var url = base + '../' + path.replace(/^\//, '');
+        if (currentScenarioSlug) {
+          url += (url.indexOf('?') >= 0 ? '&' : '?') + 'scenario=' + encodeURIComponent(currentScenarioSlug);
+        }
+        return url;
       }
 
       function apiGet(path) {
