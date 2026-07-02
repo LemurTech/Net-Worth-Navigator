@@ -78,6 +78,33 @@ _TABS_CSS = """
                                           transform: translateX(-50%); border: 6px solid transparent;
                                           border-top-color: #475569; }
   body.help-mode-active .help-tooltip:hover .tooltip-content { display: block; }
+  .welcome-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                     background: rgba(0, 0, 0, 0.85); z-index: 20000;
+                     display: flex; align-items: center; justify-content: center;
+                     animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .welcome-content { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                     border: 2px solid #0284c7; border-radius: 12px; padding: 32px 40px;
+                     max-width: 560px; color: #e2e8f0; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .welcome-content h2 { margin: 0 0 16px 0; color: #7dd3fc; font-size: 24px;
+                        display: flex; align-items: center; gap: 12px; }
+  .welcome-content h2::before { content: '👋'; font-size: 28px; }
+  .welcome-content p { margin: 0 0 20px 0; line-height: 1.6; color: #cbd5e1; }
+  .welcome-highlights { list-style: none; padding: 0; margin: 0 0 24px 0; }
+  .welcome-highlights li { padding: 10px 0; border-bottom: 1px solid #334155;
+                           display: flex; align-items: start; gap: 12px; }
+  .welcome-highlights li:last-child { border-bottom: none; }
+  .welcome-highlights li::before { content: '✓'; color: #10b981; font-weight: 700;
+                                   font-size: 18px; flex-shrink: 0; }
+  .welcome-actions { display: flex; gap: 12px; justify-content: flex-end; }
+  .welcome-btn { padding: 10px 20px; border-radius: 6px; font-size: 14px;
+                 font-weight: 600; cursor: pointer; transition: all 0.2s;
+                 border: 1px solid transparent; }
+  .welcome-btn-primary { background: #0284c7; color: #fff; border-color: #0369a1; }
+  .welcome-btn-primary:hover { background: #0369a1; }
+  .welcome-btn-secondary { background: transparent; color: #94a3b8;
+                           border-color: #475569; }
+  .welcome-btn-secondary:hover { border-color: #64748b; color: #cbd5e1; }
   .chart-wrap { background: #111827; border-radius: 8px; padding: 8px;
                 box-shadow: 0 8px 24px rgba(0,0,0,.32); margin-bottom: 16px; }
   .modeling-note { margin: 10px 6px 4px; padding: 10px 12px; border-radius: 8px;
@@ -676,6 +703,54 @@ document.addEventListener('DOMContentLoaded', function() {
       var isActive = document.body.classList.toggle('help-mode-active');
       helpModeBtn.classList.toggle('active', isActive);
       localStorage.setItem('nwn-help-mode', isActive ? 'true' : 'false');
+    });
+  }
+  
+  // First-time welcome overlay
+  var hasSeenWelcome = localStorage.getItem('nwn-welcome-seen') === 'true';
+  if (!hasSeenWelcome) {
+    showWelcomeOverlay();
+  }
+  
+  function showWelcomeOverlay() {
+    var overlay = document.createElement('div');
+    overlay.className = 'welcome-overlay';
+    
+    var content = document.createElement('div');
+    content.className = 'welcome-content';
+    
+    content.innerHTML = `
+      <h2>Welcome to Your Projection!</h2>
+      <p>Here's a quick tour of the key features:</p>
+      <ul class="welcome-highlights">
+        <li><strong>Your chart shows net worth over time</strong> — Hover over any point to see details</li>
+        <li><strong>Click year columns in tables</strong> to highlight that year across all data</li>
+        <li><strong>Switch tabs below</strong> to explore detailed breakdowns (Accounts, Cash Flow, Tax, etc.)</li>
+        <li><strong>Need help?</strong> Click the <strong>?</strong> button (bottom-right) to enable contextual tooltips</li>
+      </ul>
+      <div class="welcome-actions">
+        <button class="welcome-btn welcome-btn-secondary" id="welcome-later">Remind me later</button>
+        <button class="welcome-btn welcome-btn-primary" id="welcome-dismiss">Got it, don't show again</button>
+      </div>
+    `;
+    
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+    
+    document.getElementById('welcome-dismiss').addEventListener('click', function() {
+      localStorage.setItem('nwn-welcome-seen', 'true');
+      document.body.removeChild(overlay);
+    });
+    
+    document.getElementById('welcome-later').addEventListener('click', function() {
+      document.body.removeChild(overlay);
+    });
+    
+    // Close on background click
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+      }
     });
   }
 });

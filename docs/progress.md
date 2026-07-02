@@ -3,7 +3,7 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
-## 2026-07-02 (Phase 3 — Task 2.1-2.2: Optional Help Mode)
+## 2026-07-02 (Phase 3 — Task 2: Optional Help Mode COMPLETE)
 
 ### Added
 
@@ -15,16 +15,19 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 - **KPI tooltips** (`src/charts.py:_build_kpi_summary`): Each KPI box now includes help icon + tooltip with explanation. Tooltips explain "Starting Net Worth", "Net Worth at Retirement", "Retirement Age", and "Net Worth at End" in plain language. Only visible when help mode is active.
 
+- **First-time welcome overlay** (`src/charts.py:_TABS_JS`): One-time modal that appears when user first opens a projection. Highlights key features: chart hover, year-column highlighting, tab navigation, and help mode button. Two action buttons: "Remind me later" (dismisses without marking seen) and "Got it, don't show again" (sets localStorage flag `nwn-welcome-seen`). Styled with gradient background, border glow, and fade-in animation.
+
 ### Design Decisions
 
 - **Opt-in by default:** Help mode starts OFF (clean interface), user must click `?` to enable it.
 - **Persistent preference:** LocalStorage remembers help mode state across page loads.
 - **Visual feedback:** Active button gets blue background, info icons appear when active.
 - **Contextual tooltips:** Tooltips are positioned above their target, with arrow pointer.
+- **Non-intrusive welcome:** One-time orientation overlay, easily dismissed, never blocks workflow.
+- **Remind-later option:** Users can defer the welcome without permanently dismissing it.
 
 ### Next
 
-- Task 2.3: Add "First Projection" welcome overlay (one-time orientation for new users)
 - Task 3: Guided sample exploration (sample-specific annotations and "About This Sample" card)
 
 ---
