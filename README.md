@@ -1,6 +1,6 @@
 # Net Worth Navigator
 
-A local net worth projection and financial event modeling system originally built for the Household household, but general enough to adapt to other households with similar planning needs.
+A local net worth projection and financial event modeling system originally built for the Household household, but general enough to adapt to other households with similar planning needs. **Monarch Money is optional** — the app runs fully from manually entered balances.
 
 ## What It Does
 
@@ -71,7 +71,46 @@ Even with those limitations, the app is already useful for many real planning qu
 - comparing cash-reserve and withdrawal-order policies
 - rough decumulation stress testing before using a more specialized withdrawal optimizer
 
-## Quick Start
+## Getting Started Without Monarch
+
+Monarch Money is **not required**. You can run a full projection using manually entered balances.
+
+```bash
+# 1. Install dependencies
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+
+# 2. Copy the starter template and give it your own name
+cp scenarios/starter.toml scenarios/myhousehold.toml
+
+# 3. Edit your copy — fill in every  ← YOUR VALUE  field
+nano scenarios/myhousehold.toml
+
+# 4. Update [scenario].slug to match your filename (e.g. "myhousehold")
+
+# 5. Run the projection
+.venv/bin/python run.py --scenario myhousehold
+```
+
+The starter template has `[data_source].mode = "synthetic"`, which means the model reads your account balances from the `[synthetic_start]` section of the TOML — no Monarch account, no API key, no external service needed.
+
+**Using the web UI instead of editing TOML directly:**
+If you have the config editor running (see the deployment section below), open
+`/finances/config/setup?scenario=myhousehold` and use the **Synthetic Setup** tab
+to enter and update your balances through a form interface.
+
+**Keeping balances current:**
+With synthetic mode you update your balances manually — typically once a year or
+before a major planning decision. Edit `[synthetic_start]` in your scenario TOML
+(or use the Synthetic Setup tab) and re-run the projection.
+
+**Connecting Monarch later (optional):**
+If you later subscribe to Monarch Money and install the Monarch MCP server, you can
+switch any scenario to live balances by changing `[data_source].mode` from
+`"synthetic"` to `"monarch"` in the TOML. The `[accounts]` section maps your
+Monarch account names to the model's buckets (taxable, trad_ira, roth, etc.).
+
+## Quick Start (with Monarch)
 
 ```bash
 # Install dependencies into the local venv
@@ -100,7 +139,9 @@ Net-Worth-Navigator/
 ├── config/
 │   └── tax_tables/      ← Shared tax reference files
 ├── scenarios/
-│   └── default.toml     ← Active default scenario
+│   ├── starter.toml     ← Blank-slate template for new users (no Monarch required)
+│   ├── sample.toml      ← Synthetic demo scenario (Alex & Sam household)
+│   └── default.toml     ← Active default scenario (gitignored for personal data)
 ├── run.py               ← Entry point
 ├── src/
 │   ├── model.py         ← Year-by-year simulation engine

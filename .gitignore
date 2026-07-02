@@ -5,6 +5,10 @@ output/
 config.toml
 scenarios/*.toml
 !scenarios/.gitkeep
+!scenarios/starter.toml
+!scenarios/sample.toml
+!scenarios/sample-a.toml
+!scenarios/sample-b.toml
 
 # Python
 __pycache__/

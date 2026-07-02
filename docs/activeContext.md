@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Phase 2 of the Monarch-optional plan complete — Setup Panel UI conditioning for non-Monarch scenarios.
+**Status:** Phase 3 of the Monarch-optional plan complete — starter template and README onboarding section shipped.
 
 ---
 
@@ -34,7 +34,7 @@ cd /home/lemurtech/Net-Worth-Navigator
 | `early-death-person1` | Person 1 passes in his 60s |
 | `early-death-person2` | Person 2 passes in her 60s |
 | `sample` / `sample-a` / `sample-b` | Synthetic share-safe demo scenarios (Alex & Sam) |
-| `starter` | *(planned — Phase 3)* Blank-slate template for new non-Monarch users |
+| `starter` | Blank-slate template for new non-Monarch users |
 
 All household TOMLs use 24% 401k contribution ($31K IRS cap), 70/30 trad/Roth split, and $40K/$50K/$30K cash targets.
 
@@ -93,7 +93,7 @@ Plan: `docs/plans/2026-07-01-monarch-optional.md`
 |---|---|---|
 | 1 — Error handling | ✅ Done | Pre-flight check in `fetch_raw_accounts()`; `MONARCH_MCP_PATH` env var; clean error in `run.py` |
 | 2 — Setup Panel UI | ✅ Done | Synthetic-mode banner in Accounts tab; disable Refresh button; clean 503 from API; radio sync |
-| 3 — Starter template | 🔲 Next | `scenarios/starter.toml` blank-slate TOML; README "Getting Started Without Monarch" section |
+| 3 — Starter template | ✅ Done | `scenarios/starter.toml` blank-slate TOML; README "Getting Started Without Monarch" section |
 | 4 — New-scenario flow | 🔲 Later | "New from Template" button in Setup Panel; clone-source warning |
 | 5 — Structural / CSV | 🔲 Future | CSV import, DataSourceProvider abstraction, Docker portability |
 

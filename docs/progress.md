@@ -3,6 +3,20 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-01 (Phase 3 — Starter template and README)
+
+### Added
+
+- **`scenarios/starter.toml`**: Blank-slate household template for users without Monarch. `[data_source].mode = "synthetic"`, all balances at zero, every required field annotated with `← YOUR VALUE`. Correct TOML ordering (bare keys before sub-tables within each person block). Runs cleanly with zero balances out of the box. Versioned in git (excluded from the `scenarios/*.toml` gitignore via an explicit exception in `.gitignore`).
+
+- **README "Getting Started Without Monarch" section**: Placed before the existing "Quick Start (with Monarch)" section. Covers: copy starter, fill in values, update slug, run projection, use the Synthetic Setup tab in the web UI, keep balances current manually, optionally connect Monarch later.
+
+### Changed
+
+- **`.gitignore`**: Added explicit `!scenarios/starter.toml`, `!scenarios/sample.toml`, `!scenarios/sample-a.toml`, `!scenarios/sample-b.toml` exceptions so shareable scenarios are tracked in git alongside personal scenarios that remain excluded.
+
+- **`README.md`**: Opening description updated to note Monarch is optional. Project Structure section updated to list `starter.toml` and `sample.toml` with descriptions.
+
 ## 2026-07-01 (Phase 2 — Monarch-optional Setup Panel UI)
 
 ### Changed
