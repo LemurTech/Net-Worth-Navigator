@@ -1007,6 +1007,7 @@
           r.checked = r.value === dsMode;
           updateRadioCard(r);
         });
+        setAccountsTabVisibility(dsMode);
 
         // Chip groups
         makeChips('retirement-order-chips', orders.retirement);
@@ -1549,6 +1550,21 @@
       }
 
       /* ── Accounts tab: mode-aware banner ──────────────────────────── */
+      function setAccountsTabVisibility(mode) {
+        var btn = document.querySelector('.tab-btn[data-tab="accounts"]');
+        if (!btn) return;
+        if (mode === 'synthetic') {
+          btn.style.display = 'none';
+          // If the accounts tab is currently active, fall back to the TOML tab
+          if (btn.classList.contains('active')) {
+            var tomlBtn = document.querySelector('.tab-btn[data-tab="toml"]');
+            if (tomlBtn) tomlBtn.click();
+          }
+        } else {
+          btn.style.display = '';
+        }
+      }
+
       function applyAccountsTabModeState(sourceMode) {
         var btn = document.getElementById('refresh-monarch-btn');
         var toolbar = document.getElementById('accounts-toolbar');
@@ -1694,6 +1710,8 @@
         });
         // Update synthetic-tab input state
         toggleSynthInputs(newValue !== 'synthetic');
+        // Show/hide the Accounts tab
+        setAccountsTabVisibility(newValue);
         // Update accounts tab banner if it's already loaded
         if (_accountsData) {
           applyAccountsTabModeState(newValue);
