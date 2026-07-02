@@ -75,6 +75,8 @@ Even with those limitations, the app is already useful for many real planning qu
 
 Monarch Money is **not required**. You can run a full projection using manually entered balances.
 
+### Linux / macOS
+
 ```bash
 # 1. Install dependencies
 python3 -m venv .venv
@@ -90,6 +92,25 @@ nano scenarios/myhousehold.toml
 
 # 5. Run the projection
 .venv/bin/python run.py --scenario myhousehold
+```
+
+### Windows
+
+```powershell
+# 1. Install dependencies
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# 2. Copy the starter template and give it your own name
+copy scenarios\starter.toml scenarios\myhousehold.toml
+
+# 3. Edit your copy — fill in every  ← YOUR VALUE  field
+notepad scenarios\myhousehold.toml
+
+# 4. Update [scenario].slug to match your filename (e.g. "myhousehold")
+
+# 5. Run the projection
+.venv\Scripts\python.exe run.py --scenario myhousehold
 ```
 
 The starter template has `[data_source].mode = "synthetic"`, which means the model reads your account balances from the `[synthetic_start]` section of the TOML — no Monarch account, no API key, no external service needed.
@@ -112,6 +133,8 @@ Monarch account names to the model's buckets (taxable, trad_ira, roth, etc.).
 
 ## Quick Start (with Monarch)
 
+### Linux / macOS
+
 ```bash
 # Install dependencies into the local venv
 python3 -m venv .venv
@@ -130,6 +153,34 @@ nano scenarios/default.toml
 open /srv/web-projects/finances/projection.html
 # or visit http://casalemuria.lan/finances/ on the LAN
 ```
+
+### Windows
+
+```powershell
+# Install dependencies into the local venv
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# Edit assumptions/scenario inputs
+notepad scenarios\default.toml
+
+# Run projection (live Monarch)
+.venv\Scripts\python.exe run.py
+
+# Fast offline rerender (uses cache)
+.venv\Scripts\python.exe run.py --offline
+
+# View output in browser
+start output\projection.html
+```
+
+**Note for Monarch users on Windows:** Set the `MONARCH_MCP_PATH` environment variable to point to your Monarch MCP server installation directory (the folder containing `.venv` and `src`), for example:
+
+```powershell
+$env:MONARCH_MCP_PATH = "C:\Users\YourName\monarch-mcp-server"
+```
+
+The default Linux path (`/opt/monarch-mcp-server`) won't work on Windows.
 
 ## Project Structure
 

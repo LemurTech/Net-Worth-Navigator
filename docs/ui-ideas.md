@@ -112,15 +112,19 @@ Detect whether Monarch is available on first launch. If yes, walk through the Mo
 
 ---
 
-## Windows Compatibility
+## ~~Windows Compatibility~~ ✅ DONE (2026-07-02)
 
-The app is mostly cross-platform already: pure Python 3.14, Plotly HTML output, FastAPI config editor, `pathlib.Path` throughout. The friction points are few and concentrated:
+**Status:** Implemented. Cross-platform path detection added to `monarch_bridge.py` via `_mcp_python_binary()` function. README and `starter.toml` now show both Linux/macOS and Windows commands. New `docs/windows-compatibility.md` guide added.
 
-### Monarch bridge paths (the main blocker)
-`monarch_bridge.py` hardcodes Linux paths (`/opt/monarch-mcp-server/.venv/bin/python3`, `/opt/monarch-mcp-server/src`). Fix: make these configurable via environment variables or the scenario TOML. On Windows they'd point to the Monarch MCP's Python executable and source directory inside the project. In synthetic mode (no Monarch), these paths aren't used at all.
+The app is cross-platform: pure Python 3.14, Plotly HTML output, FastAPI config editor, `pathlib.Path` throughout.
 
-### Run commands
-The skill documents `.venv/bin/python run.py`. Windows uses `.venv\Scripts\python run.py` (or just `python run.py` if the venv is active). Trivial doc fix — the code itself doesn't hardcode the shell path.
+### ~~Monarch bridge paths (the main blocker)~~ ✅ FIXED
+**Was:** `monarch_bridge.py` hardcoded Linux paths (`/opt/monarch-mcp-server/.venv/bin/python3`).  
+**Now:** Uses `sys.platform` detection — Windows gets `.venv\Scripts\python.exe`, Unix gets `.venv/bin/python3`. Configurable via `MONARCH_MCP_PATH` env var.
+
+### ~~Run commands~~ ✅ FIXED
+**Was:** Docs showed only `.venv/bin/python run.py`.  
+**Now:** README and `starter.toml` show both Linux/macOS and Windows examples side-by-side.
 
 ### Deployment / serving output
 Currently served via nginx (Docker) at casalemuria.lan. On Windows, options:
@@ -131,11 +135,8 @@ Currently served via nginx (Docker) at casalemuria.lan. On Windows, options:
 ### Persistent state paths
 The app writes output and cache to relative paths (`output/`, `output/balances_cache.json`). Already portable. No registry, no `/var`, no systemd.
 
-### Summary of the work
-- ~10 lines of path configuration in one file (`monarch_bridge.py`)
-- An environment-variable or TOML-based remapping for the MCP paths
+### Summary of remaining work (optional enhancements)
 - A `run.py --serve` or `run.py --open` flag for convenience
-- Updated docs with Windows setup instructions
 - Optionally: a `pyproject.toml` entry point so `pip install` makes `nwn` a CLI command
 
 

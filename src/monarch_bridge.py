@@ -33,7 +33,21 @@ def _mcp_root() -> Path:
     return Path(env) if env else _DEFAULT_MCP_ROOT
 
 
-MCP_PYTHON = _mcp_root() / ".venv/bin/python3"
+def _mcp_python_binary() -> Path:
+    """
+    Return the MCP venv's Python binary, cross-platform.
+    
+    Windows uses .venv\\Scripts\\python.exe
+    Unix/macOS uses .venv/bin/python3
+    """
+    root = _mcp_root()
+    if sys.platform == "win32":
+        return root / ".venv" / "Scripts" / "python.exe"
+    else:
+        return root / ".venv" / "bin" / "python3"
+
+
+MCP_PYTHON = _mcp_python_binary()
 MCP_SRC    = _mcp_root() / "src"
 
 # Inline script run inside the MCP venv — fetches accounts as JSON to stdout

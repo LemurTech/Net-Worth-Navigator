@@ -6,7 +6,8 @@
 # HOW TO USE THIS FILE
 # ──────────────────────────────────────────────────────────────────────
 # 1. Copy this file to a new scenario:
-#       cp scenarios/starter.toml scenarios/myhousehold.toml
+#       Linux/macOS:  cp scenarios/starter.toml scenarios/myhousehold.toml
+#       Windows:      copy scenarios\starter.toml scenarios\myhousehold.toml
 #
 # 2. Open your copy and replace every value marked  ← YOUR VALUE  with
 #    your real household data.
@@ -15,7 +16,8 @@
 #    (e.g.  name = "Smith Household"  /  slug = "smith").
 #
 # 4. Run the projection:
-#       .venv/bin/python run.py --scenario <slug>
+#       Linux/macOS:  .venv/bin/python run.py --scenario <slug>
+#       Windows:      .venv\Scripts\python.exe run.py --scenario <slug>
 #
 # 5. Optionally edit via the web UI at /finances/config/setup and use
 #    the "Synthetic Setup" tab to manage your starting balances.

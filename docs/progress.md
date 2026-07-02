@@ -3,6 +3,22 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-02 (Windows Compatibility)
+
+### Added
+
+- **Cross-platform venv detection** (`src/monarch_bridge.py`): New `_mcp_python_binary()` function detects `sys.platform` and returns the correct Python binary path for Windows (`.venv\Scripts\python.exe`) vs Unix/macOS (`.venv/bin/python3`). Monarch users on Windows can now use the MCP integration by setting `MONARCH_MCP_PATH` to their Windows-style installation directory.
+
+- **Windows compatibility guide** (`docs/windows-compatibility.md`): Comprehensive guide covering installation, synthetic mode setup, Monarch configuration on Windows, path handling, common issues, WSL2 option, and troubleshooting. Includes side-by-side command examples for PowerShell vs bash.
+
+### Changed
+
+- **README.md**: "Getting Started Without Monarch" and "Quick Start (with Monarch)" sections now split into Linux/macOS and Windows subsections with platform-specific commands (`cp` vs `copy`, `.venv/bin/python` vs `.venv\Scripts\python.exe`, etc.). Added explicit `MONARCH_MCP_PATH` setup instructions for Windows Monarch users.
+
+- **`scenarios/starter.toml`**: Header comments updated to show both Linux/macOS and Windows commands for copying the template and running projections. Windows users now have clear guidance without needing to translate Unix commands.
+
+- **`docs/ui-ideas.md`**: Windows Compatibility section marked as ✅ DONE with summary of what was fixed. Remaining work (optional enhancements like `--serve` flag) moved to "Summary of remaining work" subsection.
+
 ## 2026-07-01 (Phase 4 — New-scenario workflow)
 
 ### Added
