@@ -2137,26 +2137,106 @@
         var btn = document.getElementById('validate-btn');
         if (!btn) return;
         btn.addEventListener('click', function () {
-          var content = document.getElementById('raw-toml-content');
-          if (!content) return;
-          var params = new URLSearchParams();
-          params.set('content', content.value);
-          params.set('scenario_slug', currentScenarioSlug);
-          params.set('action', 'validate');
-          fetch(editorRelativeUrl(''), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-            body: params.toString(),
-          }).then(function (r) {
-            if (r.ok) {
-              showSuccess('TOML validation passed.');
-            } else {
-              return r.text().then(function (t) { throw new Error('Validation failed: ' + t.slice(0, 200)); });
-            }
-          }).catch(function (err) {
-            showError('Validation error: ' + err.message);
-          });
+          btn.disabled = true;
+          btn.textContent = 'Validating...';
+          
+          fetch('/api/validate-scenario?scenario=' + encodeURIComponent(currentScenarioSlug))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              btn.disabled = false;
+              btn.textContent = 'Validate';
+              
+              if (!data.ok) {
+                showError('Validation request failed: ' + (data.error || 'unknown error'));
+                return;
+              }
+              
+              if (data.is_valid) {
+                showSuccess('✓ Scenario validation passed. No issues found.');
+              } else {
+                // Show validation errors in a modal
+                showValidationErrorsModal(data.errors, data.config_path);
+              }
+            })
+            .catch(function (err) {
+              btn.disabled = false;
+              btn.textContent = 'Validate';
+              showError('Validation error: ' + err.message);
+            });
         });
+      }
+      
+      function showValidationErrorsModal(errors, configPath) {
+        var modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
+        
+        var content = document.createElement('div');
+        content.style.cssText = 'background:#1e1e1e;border:1px solid #444;border-radius:8px;padding:24px;max-width:700px;max-height:80vh;overflow-y:auto;color:#e0e0e0;';
+        
+        var title = document.createElement('h2');
+        title.textContent = '❌ Scenario Validation Failed';
+        title.style.cssText = 'margin:0 0 16px 0;color:#ff6b6b;font-size:20px;';
+        content.appendChild(title);
+        
+        var subtitle = document.createElement('p');
+        subtitle.textContent = 'Found ' + errors.length + ' issue(s) that must be fixed:';
+        subtitle.style.cssText = 'margin:0 0 16px 0;color:#aaa;';
+        content.appendChild(subtitle);
+        
+        var list = document.createElement('ol');
+        list.style.cssText = 'margin:0 0 20px 0;padding-left:20px;';
+        errors.forEach(function (error) {
+          var item = document.createElement('li');
+          item.style.cssText = 'margin-bottom:12px;line-height:1.5;';
+          // Handle multi-line errors (indent continuation lines)
+          var lines = error.split('\\n');
+          item.innerHTML = lines[0];
+          if (lines.length > 1) {
+            lines.slice(1).forEach(function (line) {
+              var continuation = document.createElement('div');
+              continuation.style.cssText = 'margin-left:20px;color:#999;';
+              continuation.textContent = line;
+              item.appendChild(continuation);
+            });
+          }
+          list.appendChild(item);
+        });
+        content.appendChild(list);
+        
+        var configInfo = document.createElement('p');
+        configInfo.textContent = 'Config file: ' + configPath;
+        configInfo.style.cssText = 'margin:0 0 16px 0;color:#666;font-size:12px;font-family:monospace;';
+        content.appendChild(configInfo);
+        
+        var actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:12px;justify-content:flex-end;';
+        
+        var closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Close';
+        closeBtn.style.cssText = 'padding:8px 16px;background:#444;border:1px solid #666;border-radius:4px;color:#fff;cursor:pointer;';
+        closeBtn.onclick = function () { document.body.removeChild(modal); };
+        actions.appendChild(closeBtn);
+        
+        var editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit Raw TOML';
+        editBtn.style.cssText = 'padding:8px 16px;background:#0066cc;border:1px solid #0077dd;border-radius:4px;color:#fff;cursor:pointer;';
+        editBtn.onclick = function () {
+          document.body.removeChild(modal);
+          // Switch to Raw TOML tab
+          var tomlTab = document.querySelector('.tab-btn[data-tab="toml"]');
+          if (tomlTab) tomlTab.click();
+        };
+        actions.appendChild(editBtn);
+        
+        content.appendChild(actions);
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        // Close on background click
+        modal.onclick = function (e) {
+          if (e.target === modal) document.body.removeChild(modal);
+        };
       }
 
       function initSaveRenderAll() {

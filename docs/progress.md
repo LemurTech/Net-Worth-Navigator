@@ -3,7 +3,7 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
-## 2026-07-02 (Phase 3 — Preflight Validation, Task 1.1-1.2)
+## 2026-07-02 (Phase 3 — Preflight Validation, Task 1.1-1.3 COMPLETE)
 
 ### Added
 
@@ -13,10 +13,13 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 - **Validation API endpoint** (`admin_app.py:/api/validate-scenario`): POST endpoint for Setup Panel integration. Returns JSON with `is_valid` boolean and `errors` array. Query param `?scenario=<slug>`.
 
+- **Setup Panel validation UI** (`templates/setup_panel.html`): Enhanced existing "Validate" button to call new semantic validation endpoint. On failure, shows modal with numbered error list, config path, "Close" and "Edit Raw TOML" actions. On success, shows green success message.
+
 ### Next
 
-- Task 1.3: Add "Validate Configuration" button to Setup Panel UI
-- Task 2.x: Optional help mode (tooltips on demand, not always-on)
+- Task 2.1: Add "Help Mode" toggle to projection output (opt-in tooltips)
+- Task 2.2: Add help tooltips to key UI elements (KPIs, charts, tables)
+- Task 2.3: Add "First Projection" welcome overlay (one-time orientation)
 
 ## 2026-07-02 (Phase 2 — Onboarding Quick Wins)
 
