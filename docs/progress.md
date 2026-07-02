@@ -3,6 +3,21 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-02 (Phase 3 — Preflight Validation, Task 1.1-1.2)
+
+### Added
+
+- **Scenario validation function** (`src/model.py:validate_scenario`): Comprehensive pre-flight check for scenario configuration. Validates required fields ([scenario], [simulation], [assumptions], [spending], [person1/2]), date formats, life expectancy reasonableness (<120 years, 10-year buffer allowed), retirement age (warns <50 or >80), simulation year ranges, income specification methods, and synthetic-mode liability consistency. Returns `(is_valid, errors)` tuple.
+
+- **CLI validation integration** (`run.py`): Automatic validation before every projection run. On failure, prints numbered error list with file paths and actionable fixes, exits with code 1. On success, continues silently.
+
+- **Validation API endpoint** (`admin_app.py:/api/validate-scenario`): POST endpoint for Setup Panel integration. Returns JSON with `is_valid` boolean and `errors` array. Query param `?scenario=<slug>`.
+
+### Next
+
+- Task 1.3: Add "Validate Configuration" button to Setup Panel UI
+- Task 2.x: Optional help mode (tooltips on demand, not always-on)
+
 ## 2026-07-02 (Phase 2 — Onboarding Quick Wins)
 
 ### Added

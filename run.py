@@ -196,6 +196,33 @@ def main():
     is_first_run = check_first_run()
     scenario = get_scenario(selected_scenario_slug(sys.argv))
     config = load_config(scenario.config_path)
+    
+    # Validate scenario configuration before running projection
+    from src.model import validate_scenario
+    is_valid, validation_errors = validate_scenario(config, scenario.config_path)
+    
+    if not is_valid:
+        print("=" * 70)
+        print("❌ Scenario Validation Failed")
+        print("=" * 70)
+        print()
+        print(f"Scenario: {scenario.name} ({scenario.slug})")
+        print(f"Config: {scenario.config_path}")
+        print()
+        print(f"Found {len(validation_errors)} issue(s) that must be fixed:")
+        print()
+        for i, error in enumerate(validation_errors, 1):
+            # Multi-line errors get indented continuation
+            lines = error.split("\n")
+            print(f"{i}. {lines[0]}")
+            for continuation in lines[1:]:
+                print(f"   {continuation}")
+            print()
+        print("=" * 70)
+        print("Fix these issues in your scenario file, then try again.")
+        print("=" * 70)
+        sys.exit(1)
+    
     default_scenario = get_default_scenario()
     baseline_config = load_config(default_scenario.config_path)
     scenario_dir = scenario_output_dir(scenario.slug)

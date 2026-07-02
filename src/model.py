@@ -420,6 +420,170 @@ def load_config(config_path: Path | None = None) -> dict:
     return shared_load_config(config_path or CONFIG_PATH)
 
 
+def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bool, list[str]]:
+    """
+    Validate scenario configuration for common errors and missing required fields.
+    
+    Returns:
+        (is_valid, errors) tuple where errors is a list of human-readable error messages.
+    """
+    errors = []
+    path_hint = f" in {config_path}" if config_path else ""
+    
+    # Check [scenario] metadata
+    scenario = config.get("scenario", {})
+    if not scenario.get("name"):
+        errors.append(f"Missing required field: [scenario].name{path_hint}")
+    if not scenario.get("slug"):
+        errors.append(f"Missing required field: [scenario].slug{path_hint}")
+    
+    # Check [simulation] parameters
+    simulation = config.get("simulation", {})
+    start_year = simulation.get("start_year")
+    end_year = simulation.get("end_year")
+    
+    if start_year is None:
+        errors.append(f"Missing required field: [simulation].start_year{path_hint}")
+    if end_year is None:
+        errors.append(f"Missing required field: [simulation].end_year{path_hint}")
+    
+    if start_year is not None and end_year is not None:
+        try:
+            if int(start_year) > int(end_year):
+                errors.append(
+                    f"Invalid simulation range: start_year ({start_year}) > end_year ({end_year}){path_hint}"
+                )
+        except (TypeError, ValueError):
+            errors.append(f"Invalid simulation years: start_year or end_year must be integers{path_hint}")
+    
+    # Check [assumptions] required fields
+    assumptions = config.get("assumptions", {})
+    for field in ["stock_return", "bond_return", "inflation"]:
+        if field not in assumptions:
+            errors.append(f"Missing required field: [assumptions].{field}{path_hint}")
+    
+    # Check [spending] required fields
+    spending = config.get("spending", {})
+    if "retirement_annual" not in spending:
+        errors.append(f"Missing required field: [spending].retirement_annual{path_hint}")
+    
+    # Check person configurations
+    person_keys = [k for k in config.keys() if k.startswith("person") and isinstance(config.get(k), dict)]
+    
+    if not person_keys:
+        errors.append(f"At least one [person1] configuration is required{path_hint}")
+    
+    for person_key in person_keys:
+        person = config.get(person_key, {})
+        person_display = f"[{person_key}]"
+        
+        # Required person fields
+        required_person_fields = {
+            "name": "Person's name",
+            "dob": "Date of birth (YYYY-MM-DD format)",
+            "life_expectancy": "Life expectancy in years",
+            "retirement_year": "Planned retirement year",
+        }
+        
+        for field, description in required_person_fields.items():
+            if not person.get(field):
+                errors.append(f"Missing required field: {person_display}.{field} ({description}){path_hint}")
+        
+        # Check income/contribution method
+        has_take_home = person.get("annual_take_home") is not None
+        has_401k = person.get("annual_401k_contribution") is not None
+        has_gross_and_percent = (
+            person.get("gross_income") is not None 
+            and person.get("contribution_percent") is not None
+        )
+        
+        if not (has_take_home or has_401k or has_gross_and_percent):
+            errors.append(
+                f"{person_display}: Must specify either annual_take_home, "
+                f"annual_401k_contribution, or (gross_income + contribution_percent){path_hint}"
+            )
+        
+        # Validate date of birth format
+        dob = person.get("dob")
+        if dob:
+            try:
+                if not isinstance(dob, str) or len(str(dob).split("-")) != 3:
+                    errors.append(f"{person_display}.dob must be in YYYY-MM-DD format (got: {dob}){path_hint}")
+                else:
+                    birth_year = int(str(dob).split("-")[0])
+                    if birth_year < 1900 or birth_year > 2100:
+                        errors.append(f"{person_display}.dob year looks invalid: {birth_year}{path_hint}")
+            except (TypeError, ValueError, IndexError):
+                errors.append(f"{person_display}.dob must be in YYYY-MM-DD format (got: {dob}){path_hint}")
+        
+        # Validate life expectancy creates a reasonable death year
+        if dob and person.get("life_expectancy") is not None:
+            try:
+                birth_year = int(str(dob).split("-")[0])
+                life_exp = int(person["life_expectancy"])
+                death_year = birth_year + life_exp
+                
+                if life_exp > 120:
+                    errors.append(
+                        f"{person_display}: life_expectancy of {life_exp} years exceeds reasonable maximum (120){path_hint}"
+                    )
+                
+                # Allow a 10-year buffer beyond life expectancy for safety margin
+                if end_year and death_year + 10 < int(end_year):
+                    age_at_end = int(end_year) - birth_year
+                    errors.append(
+                        f"{person_display}: projection extends significantly beyond life expectancy "
+                        f"(would be {age_at_end} years old in {end_year}, but life_expectancy is {life_exp}){path_hint}"
+                    )
+            except (TypeError, ValueError, KeyError):
+                pass  # Already flagged as format error above
+        
+        # Validate retirement year is sensible
+        retirement_year = person.get("retirement_year")
+        if retirement_year and dob:
+            try:
+                birth_year = int(str(dob).split("-")[0])
+                ret_year = int(retirement_year)
+                age_at_retirement = ret_year - birth_year
+                
+                if age_at_retirement < 50:
+                    errors.append(
+                        f"{person_display}: retirement_year {ret_year} means retiring at age {age_at_retirement} "
+                        f"(before age 50, is this intentional?){path_hint}"
+                    )
+                
+                if age_at_retirement > 80:
+                    errors.append(
+                        f"{person_display}: retirement_year {ret_year} means retiring at age {age_at_retirement} "
+                        f"(after age 80, check your dates){path_hint}"
+                    )
+                
+                if start_year and ret_year < int(start_year):
+                    errors.append(
+                        f"{person_display}: retirement_year ({ret_year}) is before simulation start_year ({start_year}){path_hint}"
+                    )
+            except (TypeError, ValueError):
+                pass
+    
+    # Check liability consistency (synthetic mode only)
+    data_source = config.get("data_source", {})
+    if isinstance(data_source, dict) and data_source.get("mode") == "synthetic":
+        synthetic_start = config.get("synthetic_start", {})
+        liability_balances = synthetic_start.get("liability_balances", {})
+        
+        liabilities = config.get("liabilities", [])
+        for liability in liabilities:
+            liability_name = liability.get("name")
+            if liability_name and liability_name not in liability_balances:
+                errors.append(
+                    f"Liability '{liability_name}' defined in [[liabilities]] but missing from "
+                    f"[synthetic_start.liability_balances]{path_hint}\n"
+                    f"  → Add: [synthetic_start.liability_balances.\"{liability_name}\"] = <current_balance>"
+                )
+    
+    return (len(errors) == 0, errors)
+
+
 def resolve_runtime_config(config: dict) -> dict:
     """Return a runtime-safe config with recurring events expanded to concrete events."""
     runtime = deepcopy(config)

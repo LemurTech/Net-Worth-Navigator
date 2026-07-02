@@ -1590,6 +1590,38 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         "changed_keys": changed_keys,
         "backup_path": str(backup_path),
     })
+
+
+@app.post("/api/validate-scenario")
+async def api_validate_scenario(request: Request) -> JSONResponse:
+    """
+    Validate the current scenario configuration for common errors.
+    Returns validation status and list of issues if any.
+    """
+    scenario_slug = request.query_params.get("scenario") or None
+    config_path = _config_path(scenario_slug)
+    
+    try:
+        with open(config_path, "rb") as f:
+            config = tomllib.load(f)
+    except Exception as exc:
+        return JSONResponse({
+            "ok": False,
+            "is_valid": False,
+            "errors": [f"Failed to load config file: {exc}"]
+        }, status_code=500)
+    
+    from src.model import validate_scenario
+    is_valid, validation_errors = validate_scenario(config, config_path)
+    
+    return JSONResponse({
+        "ok": True,
+        "is_valid": is_valid,
+        "errors": validation_errors,
+        "config_path": str(config_path),
+    })
+
+
 if __name__ == "__main__":
     import uvicorn
 
