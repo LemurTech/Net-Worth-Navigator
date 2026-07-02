@@ -5,26 +5,28 @@
 ## Architectural Overview
 
 ```
-Monarch MCP (live balances)
-        ↓
-monarch_bridge.py
-  → classifies accounts: taxable / trad_ira / roth / cash
-  → returns dict of {account_type: balance}
-        ↓
+Monarch MCP (live balances)         [data_source].mode = "synthetic"
+        ↓                                     ↓
+monarch_bridge.py              _synthetic_inputs_from_config()
+  → classifies accounts               → reads [synthetic_start]
+  → returns {account_type: balance}   → returns same dict shape
+        ↓                                     ↓
+        └──────────────────┬──────────────────┘
+                           ↓
+                     run.py (orchestrator)
+                           ↓
 model.py (simulation engine)
-  → reads config.toml via tomllib
-  → anchors year-0 balances from monarch_bridge
-  → deterministic core iterates year by year from simulation_start to max(life_expectancy)
-  → applies: income, contributions, growth, events, retirement transitions, SS income
-  → wraps outputs in ProjectionResult: deterministic yearly path or Monte Carlo median path + percentile bands + summary metrics
+  → reads scenario TOML via tomllib
+  → anchors year-0 balances from above
+  → deterministic core iterates year by year
+  → applies: income, contributions, growth, events, retirement, SS
+  → wraps outputs in ProjectionResult
         ↓
 charts.py
-  → receives ProjectionResult-compatible output
-  → produces deterministic charts or Monte Carlo probability-band charts
-  → writes self-contained output/projection.html
+  → produces deterministic / Monte Carlo / historical charts
+  → writes self-contained output/scenarios/<slug>/<mode>/projection.html
         ↓
-run.py
-  → orchestrates the above
+run.py (deploy)
   → copies output to /srv/web-projects/finances/
   → sets correct file permissions
 ```
@@ -35,6 +37,7 @@ run.py
 - **Events are typed.** Each `[[events]]` entry has a `type` field that determines how it impacts the model. Event types have defined property schemas.
 - **Events are togglable.** Every event has `enabled = true/false`. Disabling never requires deleting the entry.
 - **Monarch bridge is the live anchor.** Year 0 balances come from Monarch. All prior-year assumptions are overridden by live data on each run.
+- **Monarch is optional.** Setting `[data_source].mode = "synthetic"` in a scenario bypasses `monarch_bridge.py` entirely; `_synthetic_inputs_from_config()` in `run.py` supplies all starting balances from `[synthetic_start]`. The model engine has no Monarch dependency. The MCP server root is configurable via `MONARCH_MCP_PATH` env var (default: `/opt/monarch-mcp-server`).
 - **Withdrawal behavior is phase-aware.** The model uses `[withdrawal_policy]` to select cash reserve targets and withdrawal order separately for accumulation, retirement, and survivor phases.
 - **Tax behavior is phase-aware too.** The model can now choose filing status by lifecycle phase and apply bracket-based federal ordinary-income tax from `[taxes]`, with effective-rate fallback retained for compatibility.
 - **RMD behavior is configurable and tax-coupled.** Optional `taxes.rmd` settings can force annual traditional-account withdrawals from IRS life-expectancy factors, and those forced withdrawals feed both modeled cash flow and taxable-income calculations.
@@ -125,8 +128,10 @@ amount = -6000             # negative = cash outflow
 
 ## Critical Paths
 
-- `run.py` → `monarch_bridge.py` → `model.py` → `charts.py` → write output → set permissions
+- **Live Monarch run:** `run.py` → `monarch_bridge.py` → `model.py` → `charts.py` → write output → set permissions
+- **Synthetic / offline run:** `run.py` → `_synthetic_inputs_from_config()` or cache → `model.py` → `charts.py` → write output → set permissions
 - If Monarch auth is stale: `uv run python login_setup.py` in `/opt/monarch-mcp-server`
+- If Monarch is not installed: set `[data_source].mode = "synthetic"` in the scenario TOML
 
 ## Key Technical Decisions
 

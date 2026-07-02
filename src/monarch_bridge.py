@@ -15,6 +15,7 @@ Run standalone to list/verify accounts:
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -23,8 +24,17 @@ from src.config_loader import load_config as shared_load_config
 
 CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
 
-MCP_PYTHON = Path("/opt/monarch-mcp-server/.venv/bin/python3")
-MCP_SRC    = Path("/opt/monarch-mcp-server/src")
+_DEFAULT_MCP_ROOT = Path("/opt/monarch-mcp-server")
+
+
+def _mcp_root() -> Path:
+    """Return the Monarch MCP server root, configurable via MONARCH_MCP_PATH env var."""
+    env = os.environ.get("MONARCH_MCP_PATH")
+    return Path(env) if env else _DEFAULT_MCP_ROOT
+
+
+MCP_PYTHON = _mcp_root() / ".venv/bin/python3"
+MCP_SRC    = _mcp_root() / "src"
 
 # Inline script run inside the MCP venv — fetches accounts as JSON to stdout
 _FETCH_SCRIPT = """
@@ -57,7 +67,21 @@ def fetch_raw_accounts() -> list[dict]:
     """
     Call the MCP server's Python to fetch accounts as JSON.
     Uses the already-authenticated session token.
+
+    Raises RuntimeError with a clear message if the Monarch MCP server is not
+    installed at the expected path. Set MONARCH_MCP_PATH env var to override
+    the default location (/opt/monarch-mcp-server).
+    To run without Monarch entirely, set [data_source].mode = "synthetic" in
+    your scenario and provide starting balances in [synthetic_start].
     """
+    if not MCP_PYTHON.exists():
+        raise RuntimeError(
+            f"Monarch MCP server not found at expected path: {MCP_PYTHON}\n"
+            "To run without Monarch, set  [data_source].mode = \"synthetic\"  in your\n"
+            "scenario TOML and provide starting balances in [synthetic_start].\n"
+            "To use a custom Monarch MCP install location, set the MONARCH_MCP_PATH\n"
+            "environment variable to your server's root directory before running."
+        )
     result = subprocess.run(
         [str(MCP_PYTHON), "-c", _FETCH_SCRIPT],
         capture_output=True,

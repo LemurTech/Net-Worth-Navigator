@@ -203,7 +203,17 @@ def main():
             print("  WARNING: legacy cache lacks raw account data; config-only account changes require one full run")
     else:
         print("→ Fetching account balances from Monarch...")
-        raw_accounts = fetch_raw_accounts()
+        try:
+            raw_accounts = fetch_raw_accounts()
+        except RuntimeError as exc:
+            print(f"\nERROR: Could not fetch Monarch balances.\n")
+            for line in str(exc).splitlines():
+                print(f"  {line}")
+            print()
+            print("Alternatives:")
+            print("  Offline (cached):  python run.py --offline")
+            print("  No Monarch:        set [data_source].mode = \"synthetic\" in your scenario")
+            sys.exit(1)
         portfolio, extras = classify_accounts(raw_accounts, config=config)
         liability_balances = extract_liability_balances(raw_accounts, config=config)
         property_values = extract_real_estate_accounts(raw_accounts, config=config)

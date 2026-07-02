@@ -3,6 +3,22 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-01 (Phase 1 — Monarch-optional error handling)
+
+### Added
+
+- **Monarch-optional plan** (`docs/plans/2026-07-01-monarch-optional.md`): 5-phase implementation plan for making NWN fully usable without Monarch Money. Assessment of current gaps, phased task breakdown, dependency map, acceptance criteria, and pitfalls section. Phase 1 shipped in the same session; Phases 2–5 are documented and ready for handoff.
+
+- **Pre-flight check in `fetch_raw_accounts()`** (`src/monarch_bridge.py`): If the MCP Python binary doesn't exist at its expected path, raises a clean `RuntimeError` with a plain-English explanation pointing to `data_source.mode = "synthetic"` as the fix, and the `MONARCH_MCP_PATH` env var as the path override. No subprocess is attempted. No Person 1-specific re-auth advice is shown.
+
+- **`MONARCH_MCP_PATH` env var support** (`src/monarch_bridge.py`): `_mcp_root()` function reads `MONARCH_MCP_PATH` from the environment and uses it as the MCP server root, falling back to the hardcoded default `/opt/monarch-mcp-server`. `MCP_PYTHON` and `MCP_SRC` module-level constants are derived from this function so any user can point to their own install without modifying source code.
+
+- **Clean error exit in `run.py`** (`run.py`): `fetch_raw_accounts()` call in `main()` is now wrapped in `try/except RuntimeError`. On failure: prints each line of the error message cleanly, lists the two alternatives (offline cache, synthetic mode), and calls `sys.exit(1)`. No Python traceback is shown to the user.
+
+### Decisions
+
+- **Monarch integration is now cleanly optional at the error-handling layer.** A user on a machine without Monarch, or with Monarch installed at a non-default path, receives an actionable message instead of a confusing subprocess failure. Status: Adopted.
+
 ## 2026-07-01
 
 ### Added

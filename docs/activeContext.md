@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-01
-**Status:** Backup policy overhauled — deduplication prevents redundant backups on no-op saves; time-based retention (14 days, min 5) replaces count-based (keep=10) so scenario config backups survive dense edit sessions.
+**Status:** Phase 1 of the Monarch-optional plan complete — clean error handling for non-Monarch environments. Scenario Setup Panel shipped. Planning document for full Monarch-optional support filed.
 
 ---
 
@@ -34,6 +34,7 @@ cd /home/lemurtech/Net-Worth-Navigator
 | `early-death-person1` | Person 1 passes in his 60s |
 | `early-death-person2` | Person 2 passes in her 60s |
 | `sample` / `sample-a` / `sample-b` | Synthetic share-safe demo scenarios (Alex & Sam) |
+| `starter` | *(planned — Phase 3)* Blank-slate template for new non-Monarch users |
 
 All household TOMLs use 24% 401k contribution ($31K IRS cap), 70/30 trad/Roth split, and $40K/$50K/$30K cash targets.
 
@@ -84,7 +85,19 @@ All household TOMLs use 24% 401k contribution ($31K IRS cap), 70/30 trad/Roth sp
 - Oregon state tax refinement and validation.
 - Gross-income migration for wages is optional unless targeting a full household tax return.
 
-### Immediate Roadmap
+### Monarch-optional roadmap
+
+Plan: `docs/plans/2026-07-01-monarch-optional.md`
+
+| Phase | Status | Description |
+|---|---|---|
+| 1 — Error handling | ✅ Done | Pre-flight check in `fetch_raw_accounts()`; `MONARCH_MCP_PATH` env var; clean error in `run.py` |
+| 2 — Setup Panel UI | 🔲 Next | Synthetic-mode banner in Accounts tab; disable Refresh button; clean 503 from API; radio sync |
+| 3 — Starter template | 🔲 Next | `scenarios/starter.toml` blank-slate TOML; README "Getting Started Without Monarch" section |
+| 4 — New-scenario flow | 🔲 Later | "New from Template" button in Setup Panel; clone-source warning |
+| 5 — Structural / CSV | 🔲 Future | CSV import, DataSourceProvider abstraction, Docker portability |
+
+
 
 Grouped by implementation area.
 
@@ -117,6 +130,7 @@ Grouped by implementation area.
 
 ## Known Pitfalls
 
+- **Monarch not installed:** `run.py` now exits cleanly with an actionable message rather than a Python traceback. Set `[data_source].mode = "synthetic"` in the scenario to bypass Monarch entirely. Set `MONARCH_MCP_PATH` env var to override the default `/opt/monarch-mcp-server` location.
 - **Monarch auth expires** → re-auth: `cd /opt/monarch-mcp-server && uv run python login_setup.py`
 - **`nwn-config-editor` must be restarted after any `admin_app.py` change.** `cd /opt/hal-pages && docker compose restart nwn-config-editor`. Symptom: `{"detail":"Not Found"}` from `/render-jobs` or `/jobs/{id}`.
 - **`output/` is gitignored.** Do not commit generated HTML or sidecar data.
