@@ -215,11 +215,34 @@ _TABS_CSS = """
   tr.liability-type-other th.rowlabel { color: #93c5fd; }
   /* Setup status warning for placeholder/sample scenarios */
   .setup-status-warning { margin: 4px 4px 8px; padding: 12px 16px; border-radius: 10px;
-                          border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.12);
-                          color: #fbbf24; font-size: 13px; line-height: 1.5; }
+                          background: rgba(251, 146, 60, 0.12); border: 1px solid rgba(251, 146, 60, 0.3);
+                          color: #fde68a; font-size: 13px; line-height: 1.5; }
   .setup-status-warning strong { color: #fcd34d; }
   .setup-status-warning a { color: #60a5fa; text-decoration: none; border-bottom: 1px solid transparent; }
   .setup-status-warning a:hover { border-bottom-color: #60a5fa; }
+  .sample-guide-card { margin: 4px 4px 12px; padding: 20px 24px; border-radius: 10px;
+                       background: linear-gradient(135deg, rgba(14, 116, 144, 0.15) 0%, rgba(6, 78, 59, 0.12) 100%);
+                       border: 1px solid rgba(45, 212, 191, 0.25); color: #cbd5e1; }
+  .sample-guide-card h3 { margin: 0 0 12px 0; color: #5eead4; font-size: 18px; display: flex;
+                          align-items: center; gap: 8px; }
+  .sample-guide-card p { margin: 0 0 12px 0; line-height: 1.6; color: #cbd5e1; }
+  .sample-highlights { list-style: none; padding: 0; margin: 0 0 16px 0; }
+  .sample-highlights li { padding: 8px 0; border-bottom: 1px solid rgba(71, 85, 105, 0.4);
+                          display: flex; align-items: start; gap: 10px; }
+  .sample-highlights li:last-child { border-bottom: none; }
+  .sample-highlights li::before { content: '▸'; color: #5eead4; font-size: 16px;
+                                  flex-shrink: 0; margin-top: 2px; }
+  .sample-guide-tip { background: rgba(14, 165, 233, 0.08); border-left: 3px solid #0ea5e9;
+                      padding: 10px 12px; border-radius: 4px; margin: 16px 0 20px 0; }
+  .sample-guide-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .sample-guide-btn { display: inline-block; padding: 10px 18px; border-radius: 6px;
+                      font-size: 13px; font-weight: 600; text-decoration: none;
+                      transition: all 0.2s; border: 1px solid rgba(100, 116, 139, 0.5);
+                      background: rgba(30, 41, 59, 0.6); color: #cbd5e1; }
+  .sample-guide-btn:hover { border-color: #5eead4; background: rgba(30, 41, 59, 0.9); }
+  .sample-guide-btn-primary { background: rgba(14, 116, 144, 0.3); border-color: #14b8a6;
+                              color: #5eead4; }
+  .sample-guide-btn-primary:hover { background: rgba(14, 116, 144, 0.5); }
 </style>
 """
 
@@ -2022,6 +2045,28 @@ def build_chart(
       <a href="/finances/config/setup">use the Setup Panel</a> to create a new scenario from scratch.
     </div>
 """
+    
+    # About This Sample card (only for the sample scenario)
+    sample_guide_html = ""
+    if scenario_slug == "sample":
+        sample_guide_html = """
+    <div class="sample-guide-card">
+      <h3>📘 About This Sample</h3>
+      <p>This is a <strong>reference demo scenario</strong> showing Net Worth Navigator's features with realistic synthetic data:</p>
+      <ul class="sample-highlights">
+        <li><strong>Alex (b. 1969) and Sam (b. 1974)</strong> — dual-income household</li>
+        <li><strong>Retirement in early 60s</strong> — both contribute to 401(k) with employer match</li>
+        <li><strong>Home mortgage + auto loan</strong> — both pay down over time</li>
+        <li><strong>Recurring events</strong> — biennial travel, annual home maintenance, vehicle replacements</li>
+        <li><strong>Later-life planning</strong> — part-time consulting income, care support costs</li>
+      </ul>
+      <p class="sample-guide-tip"><strong>💡 Tip:</strong> Click year columns in tables to highlight that year across all data. Try switching between projection modes (deterministic, historical, Monte Carlo) using the Simulation tab.</p>
+      <div class="sample-guide-actions">
+        <a href="/finances/config/?scenario=sample" class="sample-guide-btn">View Sample Config</a>
+        <a href="/finances/config/setup" class="sample-guide-btn sample-guide-btn-primary">Create Your Own</a>
+      </div>
+    </div>
+"""
 
     # Assemble full page
     html = f"""<!DOCTYPE html>
@@ -2043,6 +2088,7 @@ def build_chart(
   </div>
   <div class="chart-wrap">
     {setup_warning_html}
+    {sample_guide_html}
     {kpi_html}
     {chart_div}
     <div class="event-label-controls" id="event-label-controls">

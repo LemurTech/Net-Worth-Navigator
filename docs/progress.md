@@ -3,9 +3,21 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
-## 2026-07-02 (Phase 3 — Task 2: Optional Help Mode COMPLETE)
+## 2026-07-02 (Phase 3 — COMPLETE: Validation, Help Mode, Sample Guidance)
 
 ### Added
+
+#### **Task 1: Preflight Validation (Complete)**
+
+- **Scenario validation function** (`src/model.py:validate_scenario`): Comprehensive pre-flight check for scenario configuration before projection runs. Validates required fields (scenario name/slug, simulation years, assumptions, spending, person data, income specs), data formats (DOB as YYYY-MM-DD, birth year 1900-2100), reasonable ranges (life expectancy <120, retirement age warnings), simulation logic (start <= end year, projection doesn't exceed life expectancy by >10 years), and synthetic-mode liability consistency (all liabilities must have matching balance entries).
+
+- **CLI integration** (`run.py`): Validation runs automatically before every projection. On failure: clean numbered error list with actionable fixes, exits with code 1 (no Python traceback). On success: continues silently to projection.
+
+- **API endpoint** (`admin_app.py:/api/validate-scenario`): POST endpoint for Setup Panel validation. Returns JSON with `is_valid` boolean, `errors` array, and `config_path`.
+
+- **Setup Panel UI enhancement** (`templates/setup_panel.html`): Existing "Validate" button upgraded from TOML-syntax-only check to full semantic validation. Shows loading state during validation. On success: green toast. On failure: modal with numbered error list, config path, and "Edit Raw TOML" button.
+
+#### **Task 2: Optional Help Mode (Complete)**
 
 - **Help Mode toggle button** (`src/charts.py`): New `?` button in projection page toolbar (bottom-right, next to "Edit Config" and "Definitions"). Toggles help mode on/off. State persists in localStorage (`nwn-help-mode`). Button shows active state (blue background) when help mode is on.
 
@@ -17,6 +29,12 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 - **First-time welcome overlay** (`src/charts.py:_TABS_JS`): One-time modal that appears when user first opens a projection. Highlights key features: chart hover, year-column highlighting, tab navigation, and help mode button. Two action buttons: "Remind me later" (dismisses without marking seen) and "Got it, don't show again" (sets localStorage flag `nwn-welcome-seen`). Styled with gradient background, border glow, and fade-in animation.
 
+#### **Task 3: Guided Sample Exploration (Complete)** ✨
+
+- **"About This Sample" information card** (`src/charts.py:build_chart`): Appears only when `scenario.slug == "sample"`. Displays above KPI boxes in projection output. Explains what the sample scenario demonstrates: dual-income household (Alex & Sam), retirement planning, mortgage/auto loan paydown, recurring events (travel, maintenance, vehicle replacements), and later-life planning. Includes tip about year-column highlighting and projection mode switching. Two action buttons: "View Sample Config" (opens editor) and "Create Your Own" (opens Setup Panel).
+
+- **Sample guide CSS** (`src/charts.py:_TABS_CSS`): Teal gradient background, teal border accent, arrow bullets (▸), blue tip callout box with left border accent, two-button action bar with hover states.
+
 ### Design Decisions
 
 - **Opt-in by default:** Help mode starts OFF (clean interface), user must click `?` to enable it.
@@ -25,33 +43,27 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - **Contextual tooltips:** Tooltips are positioned above their target, with arrow pointer.
 - **Non-intrusive welcome:** One-time orientation overlay, easily dismissed, never blocks workflow.
 - **Remind-later option:** Users can defer the welcome without permanently dismissing it.
+- **Sample-specific guidance:** "About This Sample" card only shows for the sample scenario, not for real user scenarios (preserves clean UX for production use).
+- **Action-oriented CTA:** Sample guide includes direct links to view config or create new scenario, reducing friction for new users.
 
-### Next
+### Outcome
 
-- Task 3: Guided sample exploration (sample-specific annotations and "About This Sample" card)
+Phase 3 delivers a **complete onboarding and exploration experience** for new users:
+
+1. **Preflight validation** catches configuration errors before they become confusing projection failures
+2. **Optional help mode** provides contextual guidance without cluttering the default interface
+3. **First-time welcome** orients new users to key interactions
+4. **Sample guidance** explains the demo scenario and provides clear next steps
+
+All three tasks integrated, tested, and working in production. New users can now:
+- Load the sample scenario and understand what they're seeing
+- Enable help mode to learn about KPI metrics
+- Create their own scenario with validation feedback
+- Understand configuration errors with actionable fixes
 
 ---
 
-## 2026-07-02 (Phase 3 — Preflight Validation, Task 1.1-1.3 COMPLETE)
-
-### Added
-
-- **Scenario validation function** (`src/model.py:validate_scenario`): Comprehensive pre-flight check for scenario configuration. Validates required fields ([scenario], [simulation], [assumptions], [spending], [person1/2]), date formats, life expectancy reasonableness (<120 years, 10-year buffer allowed), retirement age (warns <50 or >80), simulation year ranges, income specification methods, and synthetic-mode liability consistency. Returns `(is_valid, errors)` tuple.
-
-- **CLI validation integration** (`run.py`): Automatic validation before every projection run. On failure, prints numbered error list with file paths and actionable fixes, exits with code 1. On success, continues silently.
-
-- **Validation API endpoint** (`admin_app.py:/api/validate-scenario`): POST endpoint for Setup Panel integration. Returns JSON with `is_valid` boolean and `errors` array. Query param `?scenario=<slug>`.
-
-- **Setup Panel validation UI** (`templates/setup_panel.html`): Enhanced existing "Validate" button to call new semantic validation endpoint. On failure, shows modal with numbered error list, config path, "Close" and "Edit Raw TOML" actions. On success, shows green success message.
-
-### Next
-
-- Task 2.1: Add "Help Mode" toggle to projection output (opt-in tooltips)
-- Task 2.2: Add help tooltips to key UI elements (KPIs, charts, tables)
-- Task 2.3: Add "First Projection" welcome overlay (one-time orientation)
-
-## 2026-07-02 (Phase 2 — Onboarding Quick Wins)
-
+## 2026-07-02 (Phase 2 — Onboarding Improvements)
 ### Added
 
 - **Installation verification script** (`scripts/verify_install.py`): Health check that verifies Python version (3.11+), dependencies, TOML parsing, model imports, and output directory. On success, shows clear next steps (try sample, create scenario, use web UI). Exit code 0 on pass, 1 on fail for CI/CD integration.
