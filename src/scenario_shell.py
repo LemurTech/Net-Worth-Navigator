@@ -1353,45 +1353,6 @@ def build_compare_page(
 
   // ── Boot ─────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', function() {{
-    // Help mode toggle with iframe communication
-    const helpBtn = document.getElementById('help-mode-toggle');
-    const frame = document.getElementById('scenario-frame');
-    
-    // Restore help mode state from localStorage
-    const helpModeActive = localStorage.getItem('nwn-help-mode') === 'true';
-    if (helpModeActive) {{
-      helpBtn.classList.add('active');
-    }}
-    
-    // Toggle help mode
-    helpBtn.addEventListener('click', function() {{
-      const isActive = helpBtn.classList.toggle('active');
-      localStorage.setItem('nwn-help-mode', isActive);
-      
-      // Communicate with iframe
-      if (frame && frame.contentWindow) {{
-        frame.contentWindow.postMessage({{
-          type: 'toggle-help-mode',
-          active: isActive
-        }}, '*');
-      }}
-    }});
-    
-    // Apply help mode to newly loaded iframe
-    frame.addEventListener('load', function() {{
-      const helpActive = localStorage.getItem('nwn-help-mode') === 'true';
-      if (helpActive && frame.contentWindow) {{
-        // Small delay to ensure iframe's DOM is ready
-        setTimeout(function() {{
-          frame.contentWindow.postMessage({{
-            type: 'toggle-help-mode',
-            active: true
-          }}, '*');
-        }}, 100);
-      }}
-    }});
-    
-    // Rest of initialization
     resolveAvailableModes();
     document.getElementById('mode-select').addEventListener('change', function() {{
       activeMode = this.value;

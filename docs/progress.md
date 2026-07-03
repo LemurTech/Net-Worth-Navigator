@@ -3,6 +3,16 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-04 (compare page crash fix — pre-existing bug, not from responsive pass)
+
+### Fixed
+
+- **`compare.html` failed to load its scenario selector chips or any chart data**, silently (no visible error to the user, just an empty/loading page). Root cause: `build_compare_page()`'s `DOMContentLoaded` boot handler unconditionally called `document.getElementById('help-mode-toggle').classList.add(...)` and `.addEventListener(...)` — but the compare page has **no** `#help-mode-toggle` button and no help-mode/tooltip UI at all (it was copy-pasted wholesale from `build_scenario_shell()`'s boot script in commit `9232437`, 2026-07-02, and never actually used on this page). The `null.classList`/`null.addEventListener` TypeError aborted the rest of the `DOMContentLoaded` handler, so `resolveAvailableModes()`, `renderChips()`, and `refresh()` — all listed *after* the dead help-mode block in the same handler — never ran. This bug predates the 2026-07-03/07-04 shell header work; it was only discovered now because nothing had reloaded/tested the compare page directly since it was introduced. **Fix**: removed the entire dead help-mode block from `build_compare_page()`'s boot script (14 lines); the page has never had help-mode/tooltip functionality and doesn't need it.
+
+### Verified
+
+Confirmed via headless-Chromium Playwright with console/pageerror capture: zero JS errors on load, 11 scenario chips render (previously 0), chart populated (previously empty `#compare-chart`), KPI table has rows. Full test suite re-run — same 6 pre-existing unrelated failures, no new regressions.
+
 ## 2026-07-04 (iframe shell header — mobile/foldable responsive pass)
 
 ### Fixed
