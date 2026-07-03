@@ -1592,7 +1592,7 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
     })
 
 
-@app.post("/api/validate-scenario")
+@app.get("/api/validate-scenario")
 async def api_validate_scenario(request: Request) -> JSONResponse:
     """
     Validate the current scenario configuration for common errors.
