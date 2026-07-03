@@ -171,6 +171,17 @@ def build_scenario_shell(
       color: #06111d;
       box-shadow: 0 10px 24px rgba(14,165,233,.24);
     }}
+    #help-mode-toggle {{
+      width: 42px;
+      padding: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }}
+    #help-mode-toggle.active {{
+      background: #0369a1;
+      border-color: #0369a1;
+      color: #fff;
+    }}
     .frame-card {{
       padding: 0;
       background: transparent;
@@ -299,6 +310,7 @@ def build_scenario_shell(
             <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
           </div>
           <div class="control-actions">
+            <button class="linkbtn" id="help-mode-toggle" type="button" title="Toggle help tooltips">?</button>
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
             <a class="linkbtn" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
             <a class="linkbtn" id="compare-link" href="/finances/compare.html" target="_blank" rel="noreferrer">Compare Scenarios</a>
@@ -1222,6 +1234,45 @@ def build_compare_page(
 
   // ── Boot ─────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', function() {{
+    // Help mode toggle with iframe communication
+    const helpBtn = document.getElementById('help-mode-toggle');
+    const frame = document.getElementById('scenario-frame');
+    
+    // Restore help mode state from localStorage
+    const helpModeActive = localStorage.getItem('nwn-help-mode') === 'true';
+    if (helpModeActive) {{
+      helpBtn.classList.add('active');
+    }}
+    
+    // Toggle help mode
+    helpBtn.addEventListener('click', function() {{
+      const isActive = helpBtn.classList.toggle('active');
+      localStorage.setItem('nwn-help-mode', isActive);
+      
+      // Communicate with iframe
+      if (frame && frame.contentWindow) {{
+        frame.contentWindow.postMessage({{
+          type: 'toggle-help-mode',
+          active: isActive
+        }}, '*');
+      }}
+    }});
+    
+    // Apply help mode to newly loaded iframe
+    frame.addEventListener('load', function() {{
+      const helpActive = localStorage.getItem('nwn-help-mode') === 'true';
+      if (helpActive && frame.contentWindow) {{
+        // Small delay to ensure iframe's DOM is ready
+        setTimeout(function() {{
+          frame.contentWindow.postMessage({{
+            type: 'toggle-help-mode',
+            active: true
+          }}, '*');
+        }}, 100);
+      }}
+    }});
+    
+    // Rest of initialization
     resolveAvailableModes();
     document.getElementById('mode-select').addEventListener('change', function() {{
       activeMode = this.value;

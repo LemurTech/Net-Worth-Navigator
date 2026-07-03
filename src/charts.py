@@ -729,6 +729,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
+  // Listen for help mode messages from parent (shell page iframe communication)
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'toggle-help-mode') {
+      var isActive = event.data.active;
+      document.body.classList.toggle('help-mode-active', isActive);
+      if (helpModeBtn) {
+        helpModeBtn.classList.toggle('active', isActive);
+      }
+    }
+  });
+  
   // First-time welcome overlay
   var hasSeenWelcome = localStorage.getItem('nwn-welcome-seen') === 'true';
   if (!hasSeenWelcome) {
@@ -1049,27 +1060,19 @@ def _build_kpi_summary(
     boxes = "".join(
         f"<div class='kpi-box help-tooltip'>"
         f"<div class='kpi-label'>{label}"
-        f"<span class='help-info-icon' title='Help'>ℹ️</span>"
-        f"<span class='tooltip-content'>{_kpi_tooltip(label, config)}</span>"
+        f"<span class='help-info-icon'>ℹ️</span>"
+        f"<span class='tooltip-content'>{tooltip}</span>"
         f"</div>"
         f"<div class='kpi-value'>{value}</div>"
         f"</div>"
-        for label, value in cards
+        for label, value, tooltip in [
+            ("Starting Net Worth", kpi_start, "Your household's total assets minus liabilities at the start of the projection."),
+            ("Net Worth at Retirement", kpi_retire, "Your projected net worth in the year you retire (when wages stop)."),
+            ("Retirement Age", kpi_retire_age, "The age of the first person to retire in your household."),
+            ("Net Worth at End", kpi_end, f"Your projected net worth at the end of the plan (year {end_year}).")
+        ]
     )
     return f"<div class='kpi-strip'>{boxes}</div>"
-
-
-def _kpi_tooltip(label: str, config: dict) -> str:
-    """Return help tooltip text for a given KPI label."""
-    end_year = config.get("simulation", {}).get("end_year", "end of plan")
-    
-    tooltips = {
-        "Starting Net Worth": "Your household's total assets minus liabilities at the start of the projection.",
-        "Net Worth at Retirement": "Your projected net worth in the year you retire (when wages stop).",
-        "Retirement Age": "The age of the first person to retire in your household.",
-        "Net Worth at End": f"Your projected net worth at the end of the plan (year {end_year}).",
-    }
-    return tooltips.get(label, "Key financial metric for your projection.")
 
 
 def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
