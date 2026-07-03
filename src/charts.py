@@ -1058,19 +1058,11 @@ def _build_kpi_summary(
         ]
 
     boxes = "".join(
-        f"<div class='kpi-box help-tooltip'>"
-        f"<div class='kpi-label'>{label}"
-        f"<span class='help-info-icon'>ℹ️</span>"
-        f"<span class='tooltip-content'>{tooltip}</span>"
-        f"</div>"
+        f"<div class='kpi-box'>"
+        f"<div class='kpi-label'>{label}</div>"
         f"<div class='kpi-value'>{value}</div>"
         f"</div>"
-        for label, value, tooltip in [
-            ("Starting Net Worth", kpi_start, "Your household's total assets minus liabilities at the start of the projection."),
-            ("Net Worth at Retirement", kpi_retire, "Your projected net worth in the year you retire (when wages stop)."),
-            ("Retirement Age", kpi_retire_age, "The age of the first person to retire in your household."),
-            ("Net Worth at End", kpi_end, f"Your projected net worth at the end of the plan (year {end_year}).")
-        ]
+        for label, value in cards
     )
     return f"<div class='kpi-strip'>{boxes}</div>"
 
