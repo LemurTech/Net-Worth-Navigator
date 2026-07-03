@@ -2130,7 +2130,6 @@ def build_chart(
 
     scenario_slug = getattr(scenario, "slug", None)
     edit_config_href = f"/finances/config/?scenario={scenario_slug}" if scenario_slug else "/finances/config/"
-    definitions_href = "/finances/definitions.html"
     
     # Conditional simulation tab button (avoid backslash in f-string)
     simulation_tab_html = (
@@ -2197,7 +2196,6 @@ def build_chart(
 </head>
 <body>
   <div class="page-toolbar">
-    <a class="toolbar-link" href="{definitions_href}" target="_blank" rel="noreferrer">Definitions</a>
     <a class="toolbar-link" href="{edit_config_href}">Edit Config</a>
     <button class="help-mode-toggle" id="help-mode-toggle" title="Toggle help mode">
       <span class="help-icon">?</span>

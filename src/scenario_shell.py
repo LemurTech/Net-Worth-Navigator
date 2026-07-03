@@ -86,11 +86,17 @@ def build_scenario_shell(
       display: flex;
       gap: 10px;
       align-items: center;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
+    }}
+    .selector-group {{
+      display: flex;
+      gap: 10px;
+      flex: 1 1 420px;
+      min-width: 0;
     }}
     .selector-main {{
       min-width: 0;
-      flex: 0 1 320px;
+      flex: 1 1 0;
     }}
     select {{
       appearance: none;
@@ -108,6 +114,9 @@ def build_scenario_shell(
       -webkit-text-fill-color: #f8fafc;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
       text-shadow: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       background-image:
         linear-gradient(180deg, #101a2a, #0f1725),
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M3 5.25 7 9l4-3.75' fill='none' stroke='%23f8fafc' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -143,6 +152,7 @@ def build_scenario_shell(
       align-items: center;
       flex: 0 0 auto;
     }}
+    .linkbtn-short {{ display: none; }}
     .linkbtn {{
       display: inline-flex;
       align-items: center;
@@ -225,18 +235,11 @@ def build_scenario_shell(
     }}
     @media (max-width: 980px) {{
       .topbar-title {{ font-size: 24px; }}
-      .control-row {{
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 8px;
-        align-items: stretch;
-      }}
-      .selector-main {{ flex-basis: auto; }}
       .scenario-summary {{
         align-items: flex-start;
         order: 3;
+        flex-basis: 100%;
       }}
-      #refresh-frame-btn {{ display: none; }}
       .control-actions {{
         flex-wrap: wrap;
         gap: 8px;
@@ -250,6 +253,16 @@ def build_scenario_shell(
         height: 175vh;
       }}
     }}
+    /* Plan Name / Plan Type stay on one line at virtually all widths — select
+       text ellipsizes instead of forcing a stack. Only the narrowest phones
+       (< 360px, smaller than any current production device) fall back to a
+       vertical stack, since below that width even ellipsized selects become
+       too cramped to tap accurately. */
+    @media (max-width: 359px) {{
+      .selector-group {{
+        flex-direction: column;
+      }}
+    }}
     @media (max-width: 720px) {{
       .page {{
         padding: 8px 8px 12px;
@@ -260,18 +273,29 @@ def build_scenario_shell(
       .scenario-desc {{
         font-size: 12px;
       }}
+      select {{
+        font-size: 13px;
+        padding: 8px 32px 8px 10px;
+        background-position: 0 0, right 10px center;
+      }}
       .control-actions {{
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-      }}
-      .linkbtn {{
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
         width: 100%;
+        flex-basis: 100%;
       }}
+      .linkbtn, #help-mode-toggle {{
+        width: auto;
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0 6px;
+        font-size: 12.5px;
+      }}
+      .linkbtn-full {{ display: none; }}
+      .linkbtn-short {{ display: inline; }}
     }}
     @media (max-width: 520px) {{
-      .control-actions {{
-        grid-template-columns: 1fr;
-      }}
       .frame-wrap, iframe {{
         min-height: 150vh;
         height: 150vh;
@@ -333,22 +357,28 @@ def build_scenario_shell(
       </div>
       <div class="selector-card">
         <div class="control-row">
-          <div class="selector-main">
-            <select id="scenario-select" aria-label="Select scenario"></select>
-          </div>
-          <div class="selector-main">
-            <select id="mode-select" aria-label="Select mode"></select>
+          <div class="selector-group">
+            <div class="selector-main">
+              <select id="scenario-select" aria-label="Select scenario"></select>
+            </div>
+            <div class="selector-main">
+              <select id="mode-select" aria-label="Select mode"></select>
+            </div>
           </div>
           <div class="scenario-summary">
             <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
           </div>
           <div class="control-actions">
+            <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">
+              <span class="linkbtn-full">Open Scenario Page</span><span class="linkbtn-short">Open</span>
+            </a>
+            <a class="linkbtn" id="compare-link" href="/finances/compare.html" target="_blank" rel="noreferrer">
+              <span class="linkbtn-full">Compare Scenarios</span><span class="linkbtn-short">Compare</span>
+            </a>
             <button class="linkbtn" id="help-mode-toggle" type="button" title="Toggle help tooltips">?</button>
-            <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">Open Scenario Page</a>
-            <a class="linkbtn" href="{definitions_url}" target="_blank" rel="noreferrer">Definitions</a>
-            <a class="linkbtn" id="compare-link" href="/finances/compare.html" target="_blank" rel="noreferrer">Compare Scenarios</a>
-            <button class="linkbtn" id="refresh-frame-btn" type="button">Refresh Frame</button>
-            <a class="linkbtn primary" id="setup-scenarios-link" href="{setup_url}">Scenario Setup</a>
+            <a class="linkbtn primary" id="setup-scenarios-link" href="{setup_url}">
+              <span class="linkbtn-full">Scenario Setup</span><span class="linkbtn-short">Setup</span>
+            </a>
           </div>
         </div>
       </div>
@@ -471,7 +501,6 @@ def build_scenario_shell(
       const description = document.getElementById("scenario-description");
       const frame = document.getElementById("scenario-frame");
       const openLink = document.getElementById("open-scenario-link");
-      const refreshButton = document.getElementById("refresh-frame-btn");
       const frameWrap = document.getElementById("frame-wrap");
       const emptyState = document.getElementById("empty-state");
 
@@ -542,17 +571,6 @@ def build_scenario_shell(
         return url.toString();
       }}
 
-      function currentSelectedScenario() {{
-        const slug = select.value || getScenarioFromQuery();
-        return scenarios.find((scenario) => scenario.slug === slug) || null;
-      }}
-
-      function currentSelectedMode() {{
-        const selectedScenario = currentSelectedScenario();
-        if (!selectedScenario) return null;
-        return modeEntryFor(selectedScenario, modeSelect.value || getModeFromQuery())?.mode || null;
-      }}
-
       function populateModeOptions(selectedScenario, requestedMode) {{
         const modes = Array.isArray(selectedScenario?.modes) ? selectedScenario.modes : [];
         modeSelect.innerHTML = "";
@@ -568,13 +586,6 @@ def build_scenario_shell(
         }}
         modeSelect.disabled = modes.length <= 1;
         return resolvedMode;
-      }}
-
-      function hardRefreshFrame() {{
-        const selectedScenario = currentSelectedScenario();
-        const selectedMode = currentSelectedMode();
-        if (!selectedScenario || !selectedMode) return;
-        frame.src = projectionUrlFor(selectedScenario, selectedMode, {{ embed: true, force: true }});
       }}
 
       function activateScenario(slug, requestedMode = null) {{
@@ -626,7 +637,6 @@ def build_scenario_shell(
 
       select.addEventListener("change", () => activateScenario(select.value));
       modeSelect.addEventListener("change", () => activateScenario(select.value, modeSelect.value));
-      refreshButton?.addEventListener("click", hardRefreshFrame);
       activateScenario(getScenarioFromQuery() || manifest.default_slug || initialDefaultSlug, getModeFromQuery());
     }}
 

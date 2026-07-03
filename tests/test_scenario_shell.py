@@ -43,8 +43,6 @@ class ScenarioShellTests(unittest.TestCase):
                 manifest=manifest,
                 output_path=output_path,
                 manifest_relpath="scenarios/index.json",
-                editor_url="/finances/config/",
-                definitions_url="/finances/definitions.html",
             )
             html = output_path.read_text(encoding="utf-8")
 
@@ -56,8 +54,13 @@ class ScenarioShellTests(unittest.TestCase):
         self.assertIn("modeEntryFor", html)
         self.assertIn(json.dumps(manifest), html)
         self.assertIn("scenario-select", html)
-        self.assertIn("edit-scenarios-link", html)
-        self.assertIn("/finances/definitions.html", html)
-        self.assertIn("Definitions</a>", html)
         self.assertIn('url.searchParams.set("scenario", slug);', html)
-        self.assertIn('editScenariosLink.href = editorUrlFor(selected);', html)
+        self.assertIn("open-scenario-link", html)
+        self.assertIn("compare-link", html)
+        self.assertIn("help-mode-toggle", html)
+        self.assertIn("setup-scenarios-link", html)
+        # Definitions and Refresh Frame buttons were removed from the shell header
+        # (2026-07-04): Definitions now lives only on the Setup Panel, and Refresh
+        # Frame was redundant with other ways to refresh the embedded page.
+        self.assertNotIn("Definitions</a>", html)
+        self.assertNotIn("refresh-frame-btn", html)

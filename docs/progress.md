@@ -3,6 +3,20 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-04 (iframe shell header — mobile/foldable responsive pass)
+
+### Fixed
+
+- **Plan Name / Plan Type selects wrapped onto separate lines far too early** — on tablets and foldable phones (e.g. Samsung Z-Fold 3 unfolded), not just true narrow phones. Root cause was a single coarse `@media (max-width: 980px)` breakpoint that forced the *entire* control row (selects + buttons) into one vertical stack, and a follow-up `600px` breakpoint attempt was still too conservative for the real device width. Final fix: gave the two `<select>`s `text-overflow: ellipsis` so they never need to wrap or grow — long scenario/plan names truncate with "…" instead. The vertical-stack fallback for the pair now only triggers below `359px` (narrower than any current production phone), so selects stay side-by-side at effectively all realistic screen widths, foldables included.
+- **Mobile button row was disorganized (7 buttons crammed at various widths).** Removed "Definitions" (from both the shell header and the standalone projection page's own toolbar — link still lives on the Setup Panel where it's actually used) and "Refresh Frame" (redundant; other ways to refresh exist in both standalone and embedded contexts) entirely, along with their now-dead JS (`hardRefreshFrame`, `currentSelectedScenario`, `currentSelectedMode`, `refreshButton` — all only referenced by the removed button). Left 4 buttons: Open Scenario Page, Compare Scenarios, Help (?), Scenario Setup.
+- **Help toggle button ("?") was a small fixed 42×42px square while its siblings were full-width buttons** — visually inconsistent and cramped on mobile. Switched all 4 buttons (including `#help-mode-toggle`) to `flex: 1 1 0` so they share the row equally at the mobile breakpoint; the button row fits on one line down to ~320px.
+- **`.control-actions` had a stale fixed pixel width (`362px`) left over from an earlier layout** — this silently capped how much room the mobile button row had to shrink into, no matter how much padding/font-size tuning was applied. Fixed by giving it `width: 100%; flex-basis: 100%` at the mobile breakpoint so it uses the full available row width.
+- **Button labels needed to shorten on mobile without losing the desktop wording.** Used a dual-span pattern (`<span class="linkbtn-full">`/`<span class="linkbtn-short">`) toggled via CSS visibility at the `720px` breakpoint — no JS or duplicated DOM elements needed. Desktop keeps "Open Scenario Page" / "Compare Scenarios" / "Scenario Setup"; mobile shows "Open" / "Compare" / "Setup".
+
+### Verified
+
+All changes confirmed via headless-Chromium Playwright sessions across a wide width sweep (320px through 1400px, with explicit checks at 360px, 390px, 500px, 600px, 673–717px for Z-Fold-unfolded range, and desktop) — selector one-line behavior, button one-line behavior with equal widths, label switching, and ellipsis truncation with a synthetic long scenario name all checked with no regressions to prior tooltip/modal fixes. Full test suite run after each change; the same 6 pre-existing unrelated failures persisted throughout (confirmed via `git stash` comparison against the base commit) with no new failures introduced. Two tests updated to match the new reality: `tests/test_scenario_shell.py` (removed stale `editor_url`/`definitions_url` kwargs and assertions for the deleted Definitions/Refresh Frame buttons) and `tests/test_tax_model.py` (updated Definitions-link assertion to `assertNotIn`).
+
 ## 2026-07-03 (iframe/help-mode bug fix pass)
 
 ### Fixed

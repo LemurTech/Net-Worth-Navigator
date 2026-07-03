@@ -245,3 +245,14 @@ A `@media (max-width: 480px) { white-space: normal }` breakpoint failed to trigg
 ### Touch devices never trigger CSS `:hover`
 Any interaction gated purely on `:hover` (tooltips, dropdowns) is unreachable on touch-only devices. **Pattern**: keep `:hover` for pointer devices, and add a JS tap/click handler that toggles an explicit state class (e.g. `.tooltip-open`) which the CSS treats identically to `:hover` in the same selector. Tapping outside the component closes it (delegated `document` click listener, checking `e.target.closest(...)`).
 
+## UI Engineering Lessons — shell header mobile/foldable responsive pass (2026-07-04)
+
+### Prefer layout strategies that don't need a specific breakpoint over guessing device viewport widths
+Two consecutive fix attempts targeted an assumed Samsung Z-Fold 3 unfolded CSS viewport width (first ~980px, then narrowed to ~600px) and both were still wrong — the user's actual device reported the selects wrapping to two lines at widths our headless-browser testing (up to 717px) never reproduced as broken. **The actual robust fix required no device-specific number at all**: giving the `<select>` elements `text-overflow: ellipsis; white-space: nowrap; overflow: hidden` means they never need to wrap or grow regardless of content length or container width, so the vertical-stack fallback could be pushed down to `359px` (below any current production phone) with total confidence, no per-device testing required. When a fix keeps failing at "the next narrower guess," check whether the underlying problem can be eliminated by making the layout width-independent instead of chasing the exact breakpoint.
+
+### A stale fixed-pixel width on a flex container silently caps how far its children can shrink
+`.control-actions` still had a leftover `width` value (`362px`, computed from an earlier layout iteration) even after being switched to `display: flex`. No amount of `flex: 1 1 0`, padding reduction, or font-size shrinking on the child buttons could make them fit fewer rows, because the *container itself* never grew past its stale fixed width to use the available row space. **When a flex/grid child's sizing tweaks aren't visibly changing anything, check the container's own computed `width`/`flex-basis` for a leftover fixed value from a prior layout — it silently overrides all downstream sizing logic on its children.**
+
+### Toggle full/short button labels with paired spans + CSS visibility, not JS text-swapping
+To show "Open Scenario Page" on desktop and "Open" on mobile without JS: render both `<span class="linkbtn-full">Open Scenario Page</span><span class="linkbtn-short">Open</span>` inside the button, then flip `display: none` on each span at the relevant breakpoint. No JS listener, no duplicated DOM elements to keep in sync, and it degrades gracefully (both are always present in the DOM so screen readers/tests can still find the full text if needed).
+

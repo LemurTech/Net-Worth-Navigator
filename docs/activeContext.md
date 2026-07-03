@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-03
-**Status:** Phase 3 (validation, help mode, sample guidance) shipped 2026-07-02. Follow-up bug fix pass on help-mode/iframe/tooltip UX complete 2026-07-03 — see `progress.md` for full list. Ready to commit/push per user instruction.
+**Last updated:** 2026-07-04
+**Status:** Phase 3 (validation, help mode, sample guidance) shipped 2026-07-02. Follow-up bug fix pass on help-mode/iframe/tooltip UX complete 2026-07-03. Shell header mobile/foldable responsive pass (selector one-line behavior, mobile button reorg, Definitions/Refresh Frame removal) complete 2026-07-04 — see `progress.md` for full list. Ready to commit/push per user instruction.
 
 ---
 
@@ -149,3 +149,4 @@ Grouped by implementation area.
 - **Plotly chart height directly affects mobile legend spacing.** If two charts share identical responsive legend/margin logic, they must also share height and initial margins. A 340px chart with the same legend config as a 420px chart will overlap.
 - **Tabulator.js frozen/sticky features require Tabulator's own internal scroll container** — they won't engage in full-height tables with page-level scrolling.
 - **Help-mode/tooltip wiring exists in TWO places (`build_scenario_shell()` and `build_compare_page()` in `scenario_shell.py`).** They render separate documents and do not share JS — verify a fix lands in the function whose output is actually deployed, not just "a" matching function in the file. See `systemPatterns.md` UI Engineering Lessons (2026-07-03) for the full iframe/tooltip lesson set (position:fixed centering, iframe content clipping, box-sizing mismatches, touch `:hover` limitations).
+- **Guessed device-specific viewport widths (e.g. "Z-Fold 3 unfolded ≈ 717px") are unreliable — prefer layout strategies that don't depend on a specific width at all.** Two consecutive fix attempts targeting an assumed Z-Fold unfolded width were still wrong; the actual fix (text-overflow: ellipsis instead of any wrap/stack breakpoint) works at every width and needed no device-specific number. See `systemPatterns.md` UI Engineering Lessons (2026-07-04).
