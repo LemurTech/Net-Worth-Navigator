@@ -85,7 +85,7 @@ _TABS_CSS = """
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .welcome-content { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
                      border: 2px solid #0284c7; border-radius: 12px; padding: 32px 40px;
-                     max-width: 560px; color: #e2e8f0; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+                     max-width: 620px; width: 90vw; color: #e2e8f0; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
   .welcome-content h2 { margin: 0 0 16px 0; color: #7dd3fc; font-size: 24px;
                         display: flex; align-items: center; gap: 12px; }
   .welcome-content h2::before { content: '👋'; font-size: 28px; }
@@ -754,13 +754,13 @@ document.addEventListener('DOMContentLoaded', function() {
     content.className = 'welcome-content';
     
     content.innerHTML = `
-      <h2>Welcome to Your Projection!</h2>
+      <h2>Welcome to Your Retirement Projection!</h2>
       <p>Here's a quick tour of the key features:</p>
       <ul class="welcome-highlights">
         <li><strong>Your chart shows net worth over time</strong> — Hover over any point to see details</li>
         <li><strong>Click year columns in tables</strong> to highlight that year across all data</li>
         <li><strong>Switch tabs below</strong> to explore detailed breakdowns (Accounts, Cash Flow, Tax, etc.)</li>
-        <li><strong>Need help?</strong> Click the <strong>?</strong> button (bottom-right) to enable contextual tooltips</li>
+        <li><strong>Need help?</strong> Click the <strong>?</strong> button to enable contextual tooltips</li>
       </ul>
       <div class="welcome-actions">
         <button class="welcome-btn welcome-btn-secondary" id="welcome-later">Remind me later</button>
@@ -1057,9 +1057,24 @@ def _build_kpi_summary(
             ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"])),
         ]
 
+    # Build tooltip tuples: (label, value, tooltip_text)
+    tooltip_map = {
+        "Net Worth (EOY)": "Your household's total assets minus liabilities at the start of the projection.",
+        "Net Worth at Retirement": "Your projected net worth in the year you retire (when wages stop).",
+        "Retirement Age": "The age of the first person to retire in your household.",
+        "Net Worth at End": f"Your projected net worth at the end of the plan (year {config.get('simulation', {}).get('end_year', 'end of plan')}).",
+        "Probability of Success": "The percentage of Monte Carlo simulations where your net worth stayed above zero throughout the plan.",
+        "Probability of Spending Shortfall": "The percentage of simulations where spending had to be reduced to avoid running out of money.",
+        "Median Terminal Net Worth": "The middle (50th percentile) ending net worth across all Monte Carlo simulations.",
+        "Worst-Decile Terminal Net Worth": "The 10th percentile ending net worth — 90% of simulations ended with more than this amount."
+    }
+    
     boxes = "".join(
-        f"<div class='kpi-box'>"
-        f"<div class='kpi-label'>{label}</div>"
+        f"<div class='kpi-box help-tooltip'>"
+        f"<div class='kpi-label'>{label}"
+        f"<span class='help-info-icon'>ℹ️</span>"
+        f"<span class='tooltip-content'>{tooltip_map.get(label, '')}</span>"
+        f"</div>"
         f"<div class='kpi-value'>{value}</div>"
         f"</div>"
         for label, value in cards
