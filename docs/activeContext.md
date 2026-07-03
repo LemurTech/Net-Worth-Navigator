@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-01
-**Status:** Phases 1–4 of the Monarch-optional plan complete. All acceptance criteria met except push to GitHub.
+**Last updated:** 2026-07-03
+**Status:** Phase 3 (validation, help mode, sample guidance) shipped 2026-07-02. Follow-up bug fix pass on help-mode/iframe/tooltip UX complete 2026-07-03 — see `progress.md` for full list. Ready to commit/push per user instruction.
 
 ---
 
@@ -148,3 +148,4 @@ Grouped by implementation area.
 - **`data-col` attributes must be on both header `<th>` and body `<td>` cells** for year-highlight to work. If `git checkout` restores an old version of `src/tables.py`, these are lost. Verify with `search_files('data-col')` in the output.
 - **Plotly chart height directly affects mobile legend spacing.** If two charts share identical responsive legend/margin logic, they must also share height and initial margins. A 340px chart with the same legend config as a 420px chart will overlap.
 - **Tabulator.js frozen/sticky features require Tabulator's own internal scroll container** — they won't engage in full-height tables with page-level scrolling.
+- **Help-mode/tooltip wiring exists in TWO places (`build_scenario_shell()` and `build_compare_page()` in `scenario_shell.py`).** They render separate documents and do not share JS — verify a fix lands in the function whose output is actually deployed, not just "a" matching function in the file. See `systemPatterns.md` UI Engineering Lessons (2026-07-03) for the full iframe/tooltip lesson set (position:fixed centering, iframe content clipping, box-sizing mismatches, touch `:hover` limitations).

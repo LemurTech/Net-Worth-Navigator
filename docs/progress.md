@@ -3,6 +3,24 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-03 (iframe/help-mode bug fix pass)
+
+### Fixed
+
+- **Help-mode toggle was completely unwired in the deployed shell page.** `build_scenario_shell()` in `src/scenario_shell.py` rendered a `#help-mode-toggle` button with no click listener at all — the working implementation only existed in the separate `build_compare_page()` function. Ported the click handler + `localStorage` persistence + bidirectional `postMessage` sync (shell → iframe on click, shell → iframe on iframe `load`) into `build_scenario_shell()`.
+- **Welcome modal rendered off-screen when embedded in the shell's iframe.** `position: fixed` inside the iframe centers against the iframe's own (`195vh`) box, not the visible browser viewport. The embedded page now detects iframe context and `postMessage`s the parent shell to render its own copy of the overlay (duplicated markup/CSS/JS in `scenario_shell.py`, since shell and iframe are separate documents).
+- **Welcome modal too narrow when rendered in the shell.** The shell has a global `box-sizing: border-box` reset that the standalone page lacks; an identical `max-width: 620px` rule produced a visually narrower content area in the shell. Bumped the shell's copy to `max-width: 704px` to match rendered content width exactly (620 + padding/border accounted for).
+- **Info icon (`ℹ️` emoji) rendered as a fallback glyph indistinguishable from "?"** on the user's Windows Brave/Edge setup (missing emoji font). Replaced with an inline SVG icon (stroke circle + dot + bar, `currentColor`) with no font dependency.
+- **Tooltip `overflow: hidden` on `.kpi-strip` clipped the popup** since it renders above the icon (`bottom: 100%`) but outside the parent's own box. Removed the clip; moved corner-rounding to `:first-child`/`:last-child`.
+- **Tooltips unreachable on touch devices** — CSS `:hover` never fires on touch. Added a tap-to-toggle `.tooltip-open` class via delegated click handler; tapping elsewhere closes it.
+- **Tooltip text overflowed off-screen on mobile instead of wrapping.** A fixed `@media (max-width: 480px)` breakpoint failed at other real mobile viewport widths (confirmed failing at 600px in testing). Replaced with unconditional `white-space: normal`, `box-sizing: border-box`, and `max-width: min(260px, calc(100vw - 32px))` so wrapping is guaranteed regardless of viewport width.
+- **A single unbounded `.tabs` flex row (9 buttons, `flex-wrap: nowrap`, no `overflow-x`) forced the whole page to overflow horizontally on mobile**, which in turn pushed the `position: fixed` help toggle off-screen relative to the visible viewport — the true root cause of "tooltip icons not clickable on mobile" (the button was unreachable, not un-clickable). Gave `.tabs` its own `overflow-x: auto` and added `max-width: 100vw; overflow-x: hidden` on `body` as a backstop.
+- **Tooltip appeared "off-stage" above KPI boxes near the top of the viewport, and was occluded near the top of the shell's iframe.** Root cause was two-fold: (1) the tooltip was unconditionally positioned above its icon with no fallback; (2) an iframe clips its own painted content to its own local coordinate space regardless of how much room the *parent* page has — measuring "is there room above" against the parent viewport (frame-compensated) gave wrong answers. Added JS `positionTooltip()` that measures plain, uncompensated `getBoundingClientRect()` in whichever document is running (iframe-local when embedded) and toggles `.tooltip-below` / `.tooltip-clamp-left` / `.tooltip-clamp-right` classes to flip/clamp the popup so it always stays on-screen. A mid-implementation bug (measuring the icon's rect instead of the `.help-tooltip` wrapper's rect, which is the actual CSS positioning anchor) was caught and fixed before shipping.
+
+### Verified
+
+All fixes confirmed via headless-Chromium Playwright sessions (not just code review) across: standalone page, shell/iframe-embedded page, and mobile (iPhone 13 viewport, touch emulation) — hover, tap-toggle, vertical flip, and horizontal clamp all checked in each context with no regressions to existing tab-switching or data-table horizontal scroll behavior.
+
 ## 2026-07-02 (Phase 3 — COMPLETE: Validation, Help Mode, Sample Guidance)
 
 ### Added

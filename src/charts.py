@@ -34,7 +34,8 @@ from src.model import (
 _TABS_CSS = """
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         margin: 0; padding: 0 16px 92px; background: #0b1220; color: #e5edf7; }
+         margin: 0; padding: 0 16px 92px; background: #0b1220; color: #e5edf7;
+         max-width: 100vw; overflow-x: hidden; }
   body.embedded { padding: 0 0 40px; background: transparent; }
   body.embedded .page-toolbar { display: none; }
   body.embedded .chart-wrap { background: #111827; box-shadow: none; padding: 0; margin: 0 0 8px; border-radius: 10px; overflow: hidden; }
@@ -66,18 +67,41 @@ _TABS_CSS = """
   .help-mode-toggle.active { background: #0369a1; border-color: #0284c7; color: #fff; }
   .help-icon { font-size: 18px; font-weight: 600; }
   .help-info-icon { display: none; cursor: help; margin-left: 6px; color: #7dd3fc;
-                    font-size: 14px; font-weight: 600; vertical-align: middle; }
-  body.help-mode-active .help-info-icon { display: inline; }
+                    vertical-align: middle; }
+  body.help-mode-active .help-info-icon { display: inline-block; }
   .help-tooltip { position: relative; }
   .help-tooltip .tooltip-content { display: none; position: absolute; bottom: 100%; left: 50%;
                                    transform: translateX(-50%); margin-bottom: 8px; padding: 8px 12px;
                                    background: #1e293b; border: 1px solid #475569; border-radius: 6px;
-                                   color: #e2e8f0; font-size: 12px; white-space: nowrap; z-index: 1000;
+                                   color: #e2e8f0; font-size: 12px; z-index: 1000;
+                                   /* Always wrap with a width capped relative to the viewport, and use
+                                      border-box so the cap includes padding/border — otherwise the
+                                      rendered box overshoots max-width and can still clip off-screen.
+                                      Fixed pixel breakpoints proved unreliable across real mobile widths. */
+                                   white-space: normal; width: max-content; box-sizing: border-box;
+                                   max-width: min(260px, calc(100vw - 32px));
                                    box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
   .help-tooltip .tooltip-content::after { content: ''; position: absolute; top: 100%; left: 50%;
                                           transform: translateX(-50%); border: 6px solid transparent;
                                           border-top-color: #475569; }
-  body.help-mode-active .help-tooltip:hover .tooltip-content { display: block; }
+  /* Flip below the icon (JS-toggled) when there isn't room above — e.g. KPI boxes
+     pinned near the top of the viewport. */
+  .help-tooltip .tooltip-content.tooltip-below { bottom: auto; top: 100%;
+                                                 margin-bottom: 0; margin-top: 8px; }
+  .help-tooltip .tooltip-content.tooltip-below::after { top: auto; bottom: 100%;
+                                                        border-top-color: transparent;
+                                                        border-bottom-color: #475569; }
+  /* Horizontal clamp (JS-toggled) when centering would push the popup past the
+     left/right viewport edge — common for icons near the left/right screen edge
+     on narrow mobile layouts. Overrides the centered left/transform above. */
+  .help-tooltip .tooltip-content.tooltip-clamp-left { left: 0; transform: none; }
+  .help-tooltip .tooltip-content.tooltip-clamp-left::after { left: 16px; transform: none; }
+  .help-tooltip .tooltip-content.tooltip-clamp-right { left: auto; right: 0; transform: none; }
+  .help-tooltip .tooltip-content.tooltip-clamp-right::after { left: auto; right: 16px; transform: none; }
+  /* Hover reveals the tooltip on pointer devices; .tooltip-open (toggled by JS on
+     tap) covers touch devices where :hover never fires. */
+  body.help-mode-active .help-tooltip:hover .tooltip-content,
+  body.help-mode-active .help-tooltip.tooltip-open .tooltip-content { display: block; }
   .welcome-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0;
                      background: rgba(0, 0, 0, 0.85); z-index: 20000;
                      display: flex; align-items: center; justify-content: center;
@@ -112,18 +136,21 @@ _TABS_CSS = """
                    font-size: 12px; line-height: 1.45; }
   .modeling-note strong { color: #f8fafc; }
   .kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-               border: 1px solid #243142; border-radius: 10px; overflow: hidden;
-               background: #0f1725; margin: 4px 4px 12px; }
+               border: 1px solid #243142; border-radius: 10px;
+               background: #0f1725; margin: 4px 4px 12px; position: relative; }
   .kpi-box { padding: 14px 16px 16px; min-width: 0; }
   .kpi-box + .kpi-box { border-left: 1px solid #243142; }
+  .kpi-box:first-child { border-radius: 10px 0 0 10px; }
+  .kpi-box:last-child { border-radius: 0 10px 10px 0; }
   .kpi-label { font-size: 12px; line-height: 1.3; color: #9fb2c8; margin-bottom: 8px;
                letter-spacing: 0.01em; }
   .kpi-value { font-size: 29px; line-height: 1.05; font-weight: 700; color: #f8fafc;
                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid #243142; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid #243142;
+          overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tab-btn { padding: 8px 18px; border: none; background: none; cursor: pointer;
              font-size: 14px; color: #93a4ba; border-bottom: 3px solid transparent;
-             margin-bottom: -2px; transition: color .15s; }
+             margin-bottom: -2px; transition: color .15s; flex: 0 0 auto; }
   .tab-btn:hover { color: #e5edf7; }
   .tab-btn.active { color: #f8fafc; border-bottom-color: #7dd3fc; font-weight: 600; }
   .tab-panel { display: none; max-width: 100%; }
@@ -201,6 +228,10 @@ _TABS_CSS = """
   table.assumptions-people tbody td:first-child { font-weight: 600; }
   @media (max-width: 900px) {
     .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi-box:first-child { border-radius: 10px 0 0 0; }
+    .kpi-box:nth-child(2) { border-radius: 0 10px 0 0; border-left: 1px solid #243142; }
+    .kpi-box:last-child { border-radius: 0 0 10px 0; }
+    .kpi-box:nth-last-child(2):nth-child(odd) { border-radius: 0 0 0 10px; }
     .kpi-value { font-size: 24px; }
     .assumptions-grid { grid-template-columns: 1fr; }
   }
@@ -739,11 +770,75 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
+
+  // Tap-to-toggle tooltips — CSS :hover never fires on touch devices, so tapping
+  // an info icon toggles a .tooltip-open class instead. Tapping elsewhere closes it.
+  document.addEventListener('click', function(e) {
+    var icon = e.target.closest('.help-info-icon');
+    if (icon) {
+      var tooltip = icon.closest('.help-tooltip');
+      if (!tooltip) return;
+      var wasOpen = tooltip.classList.contains('tooltip-open');
+      document.querySelectorAll('.help-tooltip.tooltip-open').forEach(function(t) {
+        t.classList.remove('tooltip-open');
+      });
+      if (!wasOpen) {
+        tooltip.classList.add('tooltip-open');
+        positionTooltip(tooltip);
+      }
+      e.stopPropagation();
+      return;
+    }
+    if (!e.target.closest('.help-tooltip')) {
+      document.querySelectorAll('.help-tooltip.tooltip-open').forEach(function(t) {
+        t.classList.remove('tooltip-open');
+      });
+    }
+  });
+
+  // Flip the tooltip below its icon when there isn't room above, and clamp it
+  // horizontally when centering would push it past the left/right edge. This
+  // must use LOCAL coordinates (plain getBoundingClientRect(), no parent/frame
+  // compensation): when this page is embedded in the shell's iframe, the iframe
+  // clips its own painted content to its own box regardless of how much visual
+  // room the parent page has above/beside it — so "is there room" is answered
+  // relative to this document's own viewport, not the outer browser window.
+  function positionTooltip(tooltip) {
+    var content = tooltip.querySelector('.tooltip-content');
+    if (!content) return;
+    // Anchor is `tooltip` itself (.help-tooltip, position:relative is the CSS
+    // anchor for the absolutely-positioned .tooltip-content) — not the icon,
+    // which sits at an offset within it.
+    var rect = tooltip.getBoundingClientRect();
+    var estimatedTooltipHeight = content.offsetHeight || 90;
+    content.classList.toggle('tooltip-below', rect.top < estimatedTooltipHeight + 16);
+
+    var estimatedTooltipWidth = content.offsetWidth || 260;
+    var anchorCenter = rect.left + rect.width / 2;
+    var halfWidth = estimatedTooltipWidth / 2;
+    content.classList.remove('tooltip-clamp-left', 'tooltip-clamp-right');
+    if (anchorCenter - halfWidth < 8) {
+      content.classList.add('tooltip-clamp-left');
+    } else if (anchorCenter + halfWidth > window.innerWidth - 8) {
+      content.classList.add('tooltip-clamp-right');
+    }
+  }
+
+  document.querySelectorAll('.help-tooltip').forEach(function(tooltip) {
+    tooltip.addEventListener('mouseenter', function() { positionTooltip(tooltip); });
+  });
   
-  // First-time welcome overlay
+  // First-time welcome overlay — only shown directly here on standalone loads.
+  // When embedded in the shell page's iframe, position:fixed centers within the
+  // iframe's own (often much taller than viewport) box rather than what's visible
+  // on screen, so delegate display to the parent shell instead (see postMessage below).
   var hasSeenWelcome = localStorage.getItem('nwn-welcome-seen') === 'true';
   if (!hasSeenWelcome) {
-    showWelcomeOverlay();
+    if (document.body.classList.contains('embedded') && window.parent !== window) {
+      window.parent.postMessage({ type: 'show-welcome-overlay' }, '*');
+    } else {
+      showWelcomeOverlay();
+    }
   }
   
   function showWelcomeOverlay() {
@@ -1069,10 +1164,22 @@ def _build_kpi_summary(
         "Worst-Decile Terminal Net Worth": "The 10th percentile ending net worth — 90% of simulations ended with more than this amount."
     }
     
+    # Inline SVG info icon — avoids relying on an emoji font (ℹ️ / U+2139) being
+    # installed, which was rendering as a fallback glyph ("?") on some Windows
+    # browser/font configurations (reported in Brave and Edge).
+    info_icon_svg = (
+        "<svg class='help-info-icon' viewBox='0 0 16 16' width='14' height='14' "
+        "aria-hidden='true' focusable='false'>"
+        "<circle cx='8' cy='8' r='7' fill='none' stroke='currentColor' stroke-width='1.4'/>"
+        "<circle cx='8' cy='4.6' r='1.1' fill='currentColor'/>"
+        "<rect x='7.1' y='6.8' width='1.8' height='5.2' rx='0.6' fill='currentColor'/>"
+        "</svg>"
+    )
+
     boxes = "".join(
         f"<div class='kpi-box help-tooltip'>"
         f"<div class='kpi-label'>{label}"
-        f"<span class='help-info-icon'>ℹ️</span>"
+        f"{info_icon_svg}"
         f"<span class='tooltip-content'>{tooltip_map.get(label, '')}</span>"
         f"</div>"
         f"<div class='kpi-value'>{value}</div>"

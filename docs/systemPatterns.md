@@ -213,3 +213,35 @@ When two Plotly charts share identical responsive legend/margin logic, they must
 - Callers: Both the raw TOML editor endpoints and the new API endpoints (save-quick-controls, save-classification, save-synthetic-start, save-render) go through these functions.
 - Retention parameters: `keep_days=14, keep_min=5` — tunable via the function signature, not a constant.
 - Rollback instructions: Backups live in `output/config-backups/<slug>/config-YYYYMMDD-HHMMSS.toml`. Restore by copying the desired backup over `scenarios/<slug>.toml` (or using the raw TOML editor).
+
+---
+
+## UI Engineering Lessons — iframe/tooltip help mode (2026-07-03)
+
+### iframe help-mode wiring must live in the same function that renders the deployed shell
+`scenario_shell.py` has two independent HTML-builder functions, `build_scenario_shell()` (the deployed shell/iframe host) and `build_compare_page()`. Help-mode click/postMessage wiring existed only in `build_compare_page()` — the shell page shipped a `#help-mode-toggle` button with **zero event listeners**. Always verify wiring exists in the actual function whose output gets deployed, not just "a" function in the file with similar-looking markup.
+
+### `position: fixed` inside a tall iframe centers against the iframe's own box, not the visible viewport
+Iframes embedding a full self-contained page (chart + tabs) are deliberately taller than the browser viewport (e.g. `195vh`) so the whole thing renders without an inner scrollbar. A `position: fixed` modal inside that iframe centers against the iframe's rendered height, which can bury it far outside the visible scroll position. **Fix pattern**: the embedded page detects it's in an iframe (`document.body.classList.contains('embedded') && window.parent !== window`) and uses `postMessage` to ask the **parent shell** to render the overlay in its own document instead, where `position: fixed` is relative to the real browser viewport. The shell needs its own copy of the overlay markup/CSS/JS — duplicated, not shared, since they're different documents.
+
+### Iframes clip their own painted content regardless of visual room in the parent page
+This is the single biggest gotcha in this pass: even when the outer browser viewport has plenty of space above an iframe (e.g. the shell's topbar), an absolutely-positioned tooltip that pops "above" its anchor **inside the iframe's own document** gets clipped by the iframe's own rendering boundary if the anchor sits near the top of the iframe's *local* coordinate space. This has nothing to do with the parent page's layout or z-index — it's a same-origin iframe rendering-surface constraint. **The fix must measure and decide using plain, uncompensated `getBoundingClientRect()` within whichever document the script is running in** (iframe-local when embedded, real-viewport when standalone) — never compensate against `window.frameElement`'s rect or the parent's `innerHeight/innerWidth`. An earlier attempt that added frame-compensation math to answer "is there room above" was solving the wrong question and needed reverting.
+
+### CSS tooltip anchor is the wrapping element, not the icon inside it
+When a tooltip is centered via `left: 50%; transform: translateX(-50%)` on an ancestor with `position: relative`, all positioning math (flip-below decisions, horizontal edge-clamping) must measure that ancestor's `getBoundingClientRect()` — not the icon's, which sits at an offset inside it. Using the icon's rect for a centering calc keyed to the wrapper produces silently wrong results (tested and caught mid-implementation).
+
+### Emoji glyphs are not a portable icon solution
+An info icon rendered as the Unicode emoji `ℹ️` (U+2139) depends on the OS/browser having a compatible emoji font installed. It rendered correctly in Linux/headless-Chromium testing but fell back to a generic "unsupported glyph" box (visually indistinguishable from a plain `?`) on the user's actual Windows Brave/Edge setup. **Use inline SVG for icons that must render identically everywhere** — no font dependency, works via `currentColor` to inherit the surrounding theme color.
+
+### CSS `box-sizing` must match between documents sharing a "same" style rule
+The shell page has a global `* { box-sizing: border-box; }` reset; the standalone embedded page does not. A `max-width: Npx` rule copied between the two documents renders as a different actual content width in each (border-box subtracts padding from the box; content-box adds it). When duplicating CSS across the shell and the embedded page (as with the welcome modal and tooltip), always check computed width/box-sizing in both contexts — don't assume identical CSS produces identical rendering.
+
+### Fixed pixel media-query breakpoints for "does this need to wrap" are unreliable
+A `@media (max-width: 480px) { white-space: normal }` breakpoint failed to trigger wrapping at a 600px CSS viewport width in real testing — mobile viewport widths vary too much to hardcode a safe threshold. **Use viewport-relative sizing instead**: `white-space: normal` unconditionally, with `max-width: min(Npx, calc(100vw - Mpx))` and `box-sizing: border-box` so the popup is guaranteed to fit any width, no breakpoint guessing required.
+
+### A single unbounded flex row can force the whole page to overflow horizontally
+`.tabs { display: flex; flex-wrap: nowrap }` with 9 tab buttons had no `overflow-x`, so on a narrow mobile viewport it forced the entire `<body>` to widen to fit all buttons — which then pushed a `position: fixed; right: Npx` toolbar element off-screen relative to the *visible* viewport (a element can be technically "in the DOM" and un-clickable simply because it's scrolled out of view horizontally). **Any flex/inline-block row of many items needs its own `overflow-x: auto`** so it scrolls independently instead of blowing out the page's `scrollWidth`. Pair with `max-width: 100vw; overflow-x: hidden` on `body` as a defensive backstop against future instances of the same class of bug.
+
+### Touch devices never trigger CSS `:hover`
+Any interaction gated purely on `:hover` (tooltips, dropdowns) is unreachable on touch-only devices. **Pattern**: keep `:hover` for pointer devices, and add a JS tap/click handler that toggles an explicit state class (e.g. `.tooltip-open`) which the CSS treats identically to `:hover` in the same selector. Tapping outside the component closes it (delegated `document` click listener, checking `e.target.closest(...)`).
+
