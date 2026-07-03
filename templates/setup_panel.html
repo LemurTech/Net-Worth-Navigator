@@ -2140,7 +2140,7 @@
           btn.disabled = true;
           btn.textContent = 'Validating...';
           
-          fetch('/api/validate-scenario?scenario=' + encodeURIComponent(currentScenarioSlug))
+          fetch('/finances/config/api/validate-scenario?scenario=' + encodeURIComponent(currentScenarioSlug))
             .then(function (r) { return r.json(); })
             .then(function (data) {
               btn.disabled = false;
