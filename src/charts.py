@@ -976,15 +976,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Zoom preset buttons ─────────────────────────────────────────
   var _fullYearRange = null;
+  function _captureFullRange() {
+    if (_fullYearRange !== null) return;
+    var chart = document.getElementById('nwn-chart');
+    if (!chart || !chart.layout || !chart.layout.xaxis || typeof Plotly === 'undefined') return;
+    var tv = chart.layout.xaxis.tickvals;
+    if (tv && tv.length >= 2) {
+      _fullYearRange = [Math.min.apply(null, tv), Math.max.apply(null, tv)];
+    }
+  }
+  _captureFullRange();
   window.zoomToYears = function zoomToYears(chartId, btn, rangeYears) {
     var chart = document.getElementById(chartId);
     if (!chart || !chart.layout || !chart.layout.xaxis || typeof Plotly === 'undefined') return;
 
-    // Store full range from initial axis tick values (each chart type renders its own)
-    if (_fullYearRange === null && chart.layout.xaxis.tickvals && chart.layout.xaxis.tickvals.length >= 2) {
-      var tv = chart.layout.xaxis.tickvals;
-      _fullYearRange = [Math.min.apply(null, tv), Math.max.apply(null, tv)];
-    }
+    // Ensure full range is captured
+    _captureFullRange();
     if (_fullYearRange === null) return;
 
     // Deactivate all preset buttons in this container, activate the clicked one
@@ -1003,6 +1010,27 @@ document.addEventListener('DOMContentLoaded', function() {
       Plotly.relayout(chart, {'xaxis.range': [startYear - 0.5, endYear + 0.5]});
     }
   };
+
+  // ── Clamp zoom-out to full data range ────────────────────────────
+  var _nwnChart = document.getElementById('nwn-chart');
+  if (_nwnChart && typeof Plotly !== 'undefined') {
+    _nwnChart.on('plotly_relayout', function(eventData) {
+      // Skip events that don't have a manual range (autorange, full reset)
+      if (_fullYearRange === null) return;
+      if (!_nwnChart.layout || !_nwnChart.layout.xaxis) return;
+      if (_nwnChart.layout.xaxis.autorange) return;
+      var r = _nwnChart.layout.xaxis.range;
+      if (!r || r.length < 2) return;
+      var clamped = false;
+      var lo = r[0], hi = r[1];
+      if (lo < _fullYearRange[0]) { lo = _fullYearRange[0]; clamped = true; }
+      if (hi > _fullYearRange[1]) { hi = _fullYearRange[1]; clamped = true; }
+      if (clamped) {
+        _nwnChart._halClamping = true;
+        Plotly.relayout(_nwnChart, {'xaxis.range': [lo, hi]});
+      }
+    });
+  }
 });
 </script>
 """
