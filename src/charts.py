@@ -68,6 +68,14 @@ _TABS_CSS = """
                          font-size: 12px; color: #cbd5e1; margin: 0 6px 8px; }
   .event-label-controls label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
   .event-label-controls input[type='checkbox'] { accent-color: #38bdf8; }
+  .zoom-presets { display: flex; align-items: center; gap: 6px;
+                  margin: 6px 6px 0; padding: 4px 0; }
+  .zoom-preset-label { font-size: 11px; color: #64748b; margin-right: 2px; }
+  .zoom-preset-btn { padding: 2px 10px; border-radius: 5px; border: 1px solid #475569;
+                     background: #1e293b; color: #94a3b8; cursor: pointer; font-size: 11px;
+                     transition: all .15s; line-height: 1.5; }
+  .zoom-preset-btn:hover { border-color: #7dd3fc; color: #e2e8f0; }
+  .zoom-preset-btn.active { background: #0369a1; border-color: #0284c7; color: #fff; }
   .toolbar-link { display: inline-block; padding: 10px 14px; border-radius: 999px;
                   background: #111827; color: #f8fafc; border: 1px solid #475569;
                   text-decoration: none; font-size: 13px; transition: all .2s; }
@@ -958,6 +966,36 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  // ── Zoom preset buttons ─────────────────────────────────────────
+  var _fullYearRange = null;
+  window.zoomToYears = function zoomToYears(chartId, btn, rangeYears) {
+    var chart = document.getElementById(chartId);
+    if (!chart || !chart.layout || !chart.layout.xaxis || typeof Plotly === 'undefined') return;
+
+    // Store full range from initial axis tick values (each chart type renders its own)
+    if (_fullYearRange === null && chart.layout.xaxis.tickvals && chart.layout.xaxis.tickvals.length >= 2) {
+      var tv = chart.layout.xaxis.tickvals;
+      _fullYearRange = [Math.min.apply(null, tv), Math.max.apply(null, tv)];
+    }
+    if (_fullYearRange === null) return;
+
+    // Deactivate all preset buttons in this container, activate the clicked one
+    var container = btn.closest('.zoom-presets');
+    if (container) {
+      container.querySelectorAll('.zoom-preset-btn').forEach(function(b) { b.classList.remove('active'); });
+    }
+    btn.classList.add('active');
+
+    if (rangeYears === null) {
+      // Full range — reset
+      Plotly.relayout(chart, {'xaxis.range': _fullYearRange});
+    } else {
+      var startYear = _fullYearRange[0];
+      var endYear = Math.min(startYear + rangeYears - 1, _fullYearRange[1]);
+      Plotly.relayout(chart, {'xaxis.range': [startYear - 0.5, endYear + 0.5]});
+    }
+  };
 });
 </script>
 """
@@ -1300,6 +1338,7 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
         yaxis=dict(
             title="Amount (USD)", tickformat="$,.0f",
             ticklabelstandoff=6, automargin=True,
+            fixedrange=True,
             gridcolor=grid, color=font_color,
             zeroline=True, zerolinecolor="rgba(148,163,184,0.35)", zerolinewidth=1,
         ),
@@ -1311,7 +1350,8 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
         margin=dict(l=76, r=24, t=78, b=48),
     )
 
-    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cashflow")
+    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cashflow",
+                       config=dict(scrollZoom=True))
 
 
 def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> str:
@@ -1401,6 +1441,7 @@ def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> st
             tickformat="$,.0f",
             ticklabelstandoff=6,
             automargin=True,
+            fixedrange=True,
             gridcolor=grid,
             color=font_color,
             zeroline=True,
@@ -1423,7 +1464,8 @@ def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> st
         margin=dict(l=76, r=24, t=78, b=48),
     )
 
-    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-liabilities")
+    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-liabilities",
+                       config=dict(scrollZoom=True))
 
 
 def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> str:
@@ -1531,6 +1573,7 @@ def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> s
             tickformat="$,.0f",
             ticklabelstandoff=6,
             automargin=True,
+            fixedrange=True,
             gridcolor=grid,
             color=font_color,
             zeroline=True,
@@ -1553,7 +1596,8 @@ def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> s
         margin=dict(l=76, r=24, t=78, b=48),
     )
 
-    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cash-reserve")
+    return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cash-reserve",
+                       config=dict(scrollZoom=True))
 
 
 def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) -> str:
@@ -1693,6 +1737,7 @@ def _build_portfolio_chart(
                 tickformat="$,.0f",
                 ticklabelstandoff=6,
                 automargin=True,
+                fixedrange=True,
                 gridcolor=grid,
                 zerolinecolor=grid,
                 color=font_color,
@@ -1710,6 +1755,7 @@ def _build_portfolio_chart(
             full_html=False,
             include_plotlyjs=False,
             div_id="nwn-portfolio",
+            config=dict(scrollZoom=True),
         )
         portfolio_note = (
             "<div class='modeling-note'><strong>Portfolio range note:</strong> "
@@ -1778,6 +1824,7 @@ def _build_portfolio_chart(
             tickformat="$,.0f",
             ticklabelstandoff=6,
             automargin=True,
+            fixedrange=True,
             gridcolor=grid,
             zerolinecolor=grid,
             color=font_color,
@@ -1795,6 +1842,7 @@ def _build_portfolio_chart(
         full_html=False,
         include_plotlyjs=False,
         div_id="nwn-portfolio",
+        config=dict(scrollZoom=True),
     )
 
     portfolio_note = (
@@ -2016,6 +2064,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         yaxis=dict(
             title="",
             autorange="reversed",
+            fixedrange=True,
             categoryorder="array",
             categoryarray=row_order,
             automargin=True,
@@ -2035,6 +2084,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         full_html=False,
         include_plotlyjs=False,
         div_id="nwn-gantt",
+        config=dict(scrollZoom=True),
     )
     return f"<div class='gantt-wrap'>{gantt_div}</div>"
 
@@ -2099,7 +2149,7 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
         font=dict(color="#e5edf7"),
         title=dict(text=f"{mode_label} Outcome Timing", font=dict(size=16)),
         xaxis=dict(title="Year", tickmode="linear", dtick=2, gridcolor="rgba(148,163,184,0.14)", zerolinecolor="rgba(148,163,184,0.14)", color="#e5edf7"),
-        yaxis=dict(title="Probability", tickformat=".0%", gridcolor="rgba(148,163,184,0.14)", zerolinecolor="rgba(148,163,184,0.14)", color="#e5edf7", range=[0, 1]),
+        yaxis=dict(title="Probability", tickformat=".0%", gridcolor="rgba(148,163,184,0.14)", zerolinecolor="rgba(148,163,184,0.14)", color="#e5edf7", range=[0, 1], fixedrange=True),
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
         hoverlabel=dict(bgcolor="#0f1725", bordercolor="#334155", font_color="#f8fafc"),
         plot_bgcolor="#0f1725",
@@ -2107,7 +2157,8 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
         height=420,
         margin=dict(l=64, r=24, t=70, b=56),
     )
-    chart_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-simulation")
+    chart_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-simulation",
+                             config=dict(scrollZoom=True))
     table_html = _wrap_table_with_sticky_header(build_simulation_outcomes_table(outcomes_df, summary=summary))
     summary_html = (
         "<div class='assumptions-note'>"
@@ -2150,6 +2201,7 @@ def build_chart(
         full_html=False,
         include_plotlyjs="cdn",
         div_id="nwn-chart",
+        config=dict(scrollZoom=True, displaylogo=False),
     )
     kpi_html = _build_kpi_summary(config, projection_result)
     tax_note_html = _build_tax_semantics_note()
@@ -2308,6 +2360,13 @@ def build_chart(
     <div class="event-label-controls" id="event-label-controls">
       <label><input type="checkbox" id="event-labels-show-all" checked> Show all event labels</label>
       <label><input type="checkbox" id="event-labels-keep-key" checked> Keep key labels when hidden</label>
+    </div>
+    <div class="zoom-presets" id="zoom-presets">
+      <span class="zoom-preset-label">Zoom:</span>
+      <button class="zoom-preset-btn active" data-range="full" onclick="zoomToYears('nwn-chart', this, null)">Full</button>
+      <button class="zoom-preset-btn" data-range="10" onclick="zoomToYears('nwn-chart', this, 10)">10yr</button>
+      <button class="zoom-preset-btn" data-range="25" onclick="zoomToYears('nwn-chart', this, 25)">25yr</button>
+      <button class="zoom-preset-btn" data-range="50" onclick="zoomToYears('nwn-chart', this, 50)">50yr</button>
     </div>
     {tax_note_html}
   </div>
@@ -2532,6 +2591,7 @@ def _build_figure(
         yaxis=dict(title="Net Worth (USD)", tickformat="$,.0f",
                    ticklabelstandoff=6,
                    automargin=True,
+                   fixedrange=True,
                    gridcolor=grid,
                    zerolinecolor=grid,
                    color=font_color),

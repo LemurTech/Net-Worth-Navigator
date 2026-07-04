@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-04
-**Status:** Phase 3 (validation, help mode, sample guidance) shipped 2026-07-02. Follow-up bug fix pass on help-mode/iframe/tooltip UX complete 2026-07-03. Shell header mobile/foldable responsive pass complete 2026-07-04. Compare page crash fix (pre-existing, unrelated to responsive pass) complete 2026-07-04. Tab-label help tooltips added 2026-07-04, with a same-day follow-up fixing stuck-open and scroll-detach interaction bugs — see `progress.md` for full list. Ready to commit/push per user instruction.
+**Status:** Graph interaction controls implemented (y-axis lock, scroll-zoom, preset zoom buttons) across all charts, both standalone and compare page. Ready to commit and push. Next: mobile-responsive improvements to the Scenario Setup Panel.
 
 ---
 

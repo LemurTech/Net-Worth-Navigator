@@ -1043,7 +1043,7 @@ def build_compare_page(
       paper_bgcolor: '#111827',
       plot_bgcolor: '#0f1725',
       xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
-      yaxis: {{ title: {{ text: 'Total Net Worth ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
+      yaxis: {{ title: {{ text: 'Total Net Worth ($M)', standoff: 8 }}, automargin: true, fixedrange: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
       legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 11 }} }},
       hoverlabel: {{ bgcolor: '#1e293b', bordercolor: '#7dd3fc', font_color: '#f8fafc' }},
       margin: {{ l: 80, r: 16, t: 48, b: 48 }},
@@ -1053,7 +1053,7 @@ def build_compare_page(
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
       el._hasPlot = true;
     }}
   }}
@@ -1086,7 +1086,7 @@ def build_compare_page(
       paper_bgcolor: '#111827',
       plot_bgcolor: '#0f1725',
       xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
-      yaxis: {{ title: {{ text: 'Account Balance ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
+      yaxis: {{ title: {{ text: 'Account Balance ($M)', standoff: 8 }}, automargin: true, fixedrange: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }} }},
       legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 11 }} }},
       hoverlabel: {{ bgcolor: '#1e293b', bordercolor: '#7dd3fc', font_color: '#f8fafc' }},
       margin: {{ l: 80, r: 16, t: 48, b: 48 }},
@@ -1096,7 +1096,7 @@ def build_compare_page(
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
       el._hasPlot = true;
     }}
   }}
@@ -1155,7 +1155,7 @@ def build_compare_page(
       paper_bgcolor: '#111827',
       plot_bgcolor: '#0f1725',
       xaxis: {{ title: 'Year', dtick: 2, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickfont: {{ size: 11 }} }},
-      yaxis: {{ title: {{ text: 'Annual ($M)', standoff: 8 }}, automargin: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }}, zeroline: true, zerolinecolor: 'rgba(148,163,184,0.35)', zerolinewidth: 1 }},
+      yaxis: {{ title: {{ text: 'Annual ($M)', standoff: 8 }}, automargin: true, fixedrange: true, gridcolor: 'rgba(148,163,184,.12)', color: '#e5edf7', tickformat: '$.2f', ticksuffix: 'M', tickfont: {{ size: 11 }}, zeroline: true, zerolinecolor: 'rgba(148,163,184,0.35)', zerolinewidth: 1 }},
       legend: {{ orientation: 'h', x: 0.5, xanchor: 'center', y: 1.02, yanchor: 'bottom', font: {{ size: 10 }} }},
       hoverlabel: {{ bgcolor: '#1e293b', bordercolor: '#7dd3fc', font_color: '#f8fafc' }},
       margin: {{ l: 80, r: 16, t: 48, b: 48 }},
@@ -1165,7 +1165,7 @@ def build_compare_page(
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
       el._hasPlot = true;
     }}
   }}

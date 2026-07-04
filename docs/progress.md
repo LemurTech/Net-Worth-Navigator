@@ -3,6 +3,27 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-04 (Plotly graph interaction controls)
+
+### Added
+
+- **Y-axis locked (`fixedrange=True`)** on all Plotly charts — main net worth, cash flow, portfolio (Monte Carlo + deterministic), liabilities, cash reserve, gantt, simulation outcomes, and compare page (net worth, portfolio, cash flow). Users can no longer drag the y-axis up/down into irrelevant ranges.
+- **Scroll-wheel zoom enabled** (`config=dict(scrollZoom=True)`) on every Plotly chart. With y-axis locked, scroll-zoom operates only on the x-axis (years). Double-click resets to full range.
+- **Preset zoom buttons** (Full / 10yr / 25yr / 50yr) on the main chart. Each button calls `Plotly.relayout()` to set specific x-axis ranges. Active button highlights in blue. Located below the event-label controls in the chart wrap.
+
+### Changed
+
+- **`src/charts.py`**: All 8 chart builder functions updated — every `yaxis` dict gained `fixedrange=True`; every `fig.to_html()` call gained `config=dict(scrollZoom=True)`. CSS, HTML template, and JS handler added for preset zoom buttons.
+- **`src/scenario_shell.py`**: Compare page's three charts (net worth, portfolio, cash flow) gained `fixedrange: true` on y-axis and `scrollZoom: true` in their `Plotly.newPlot()` config.
+- **`docs/activeContext.md`**: Updated status to reflect completed graph interaction work and next steps.
+
+### Verified
+
+- Syntax check: both `charts.py` and `scenario_shell.py` compile cleanly.
+- Offline render (`run.py --offline` on default scenario) completes successfully across all three render modes (deterministic, historical, monte_carlo).
+- Rendered HTML verified: 7 `fixedrange` occurrences in each projection page, `scrollZoom` in all chart configs, `zoom-preset-btn` and `zoomToYears()` function present in projection page output.
+- Compare page rendered with 3 `fixedrange: true` occurrences and `scrollZoom` in each chart config.
+
 ## 2026-07-04 (tab tooltip polish — stuck-open + scroll-detach)
 
 ### Fixed
