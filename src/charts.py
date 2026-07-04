@@ -523,6 +523,13 @@ function switchTab(id, evt) {
   if (evt && evt.target && evt.target.closest && evt.target.closest('.help-info-icon')) {
     return;
   }
+  // Switching tabs must also close any pinned (tap-toggled) tooltip. Tab
+  // tooltips are `position: fixed` (viewport-anchored, not scoped to the
+  // panel), so without this a tooltip left open via tap-toggle on one tab
+  // stays floating on screen after switching to a different tab.
+  document.querySelectorAll('.help-tooltip.tooltip-open').forEach(function(t) {
+    t.classList.remove('tooltip-open');
+  });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('btn-' + id).classList.add('active');
