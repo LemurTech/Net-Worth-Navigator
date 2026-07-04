@@ -355,7 +355,10 @@ class TaxModelTests(unittest.TestCase):
 
         self.assertIn("btn-tax", html)
         self.assertIn("panel-tax", html)
-        self.assertIn(">Tax</button>", html)
+        # Tab button now includes a help-info-icon + tooltip span after the
+        # label (2026-07-04 tab tooltip feature), so the label is no longer
+        # immediately followed by </button>.
+        self.assertIn(">Tax<", html)
         # Definitions link was removed from the projection page toolbar
         # (2026-07-04) — Definitions now lives only on the Setup Panel.
         self.assertNotIn(">Definitions</a>", html)

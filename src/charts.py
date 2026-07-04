@@ -30,6 +30,19 @@ from src.model import (
     resolve_runtime_config,
 )
 
+# Inline SVG info icon — avoids relying on an emoji font (ℹ️ / U+2139) being
+# installed, which was rendering as a fallback glyph ("?") on some Windows
+# browser/font configurations (reported in Brave and Edge). Shared by the
+# KPI-strip tooltips and the tab-label tooltips.
+_INFO_ICON_SVG = (
+    "<svg class='help-info-icon' viewBox='0 0 16 16' width='14' height='14' "
+    "aria-hidden='true' focusable='false'>"
+    "<circle cx='8' cy='8' r='7' fill='none' stroke='currentColor' stroke-width='1.4'/>"
+    "<circle cx='8' cy='4.6' r='1.1' fill='currentColor'/>"
+    "<rect x='7.1' y='6.8' width='1.8' height='5.2' rx='0.6' fill='currentColor'/>"
+    "</svg>"
+)
+
 # ── CSS + JS for the tabbed layout ────────────────────────────────────────────
 _TABS_CSS = """
 <style>
@@ -150,11 +163,21 @@ _TABS_CSS = """
           overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tab-btn { padding: 8px 18px; border: none; background: none; cursor: pointer;
              font-size: 14px; color: #93a4ba; border-bottom: 3px solid transparent;
-             margin-bottom: -2px; transition: color .15s; flex: 0 0 auto; }
+             margin-bottom: -2px; transition: color .15s; flex: 0 0 auto;
+             display: flex; align-items: center; }
   .tab-btn:hover { color: #e5edf7; }
   .tab-btn.active { color: #f8fafc; border-bottom-color: #7dd3fc; font-weight: 600; }
   .tab-panel { display: none; max-width: 100%; }
   .tab-panel.active { display: block; }
+  /* Tab-label tooltips: .tabs needs overflow-x: auto for mobile horizontal
+     scrolling, but setting overflow-x on any axis forces the browser to also
+     compute overflow-y as auto (never "visible") on the same box — so a
+     normal `position: absolute` tooltip (anchored via the KPI-strip pattern)
+     would get silently clipped by .tabs' own scroll box. Tab tooltips use
+     `position: fixed` instead, with JS computing exact viewport coordinates,
+     so they escape the clipping entirely regardless of .tabs' overflow. */
+  .tab-btn .tooltip-content { position: fixed; bottom: auto; left: auto; transform: none; }
+  .tab-btn .tooltip-content::after { display: none; }
   .table-panel { position: relative; }
   .sticky-header-wrap { position: sticky; top: 0; z-index: 10;
                         background: #111827; border-bottom: 2px solid #2b3a4e; }
@@ -478,7 +501,15 @@ function applyResponsiveChartLayout() {
   }
 }
 
-function switchTab(id) {
+function switchTab(id, evt) {
+  // Guard: the info icon lives inside the clickable tab button (so tab labels
+  // can show tooltips); a click on the icon bubbles up and would otherwise
+  // also fire this tab switch before the document-level tap-toggle handler
+  // ever sees it. Bail out here (without stopping propagation) so the tap
+  // toggle for the tooltip still works normally.
+  if (evt && evt.target && evt.target.closest && evt.target.closest('.help-info-icon')) {
+    return;
+  }
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('btn-' + id).classList.add('active');
@@ -810,6 +841,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // anchor for the absolutely-positioned .tooltip-content) — not the icon,
     // which sits at an offset within it.
     var rect = tooltip.getBoundingClientRect();
+
+    // Tab-label tooltips are `position: fixed` (see CSS comment on
+    // `.tab-btn .tooltip-content`) because `.tabs` needs `overflow-x: auto`
+    // for mobile scrolling, and that forces `overflow-y` to also clip
+    // (never `visible`) on the same box — a normal absolutely-positioned
+    // tooltip anchored inside `.tabs` would be cut off. Fixed tooltips are
+    // NOT positioned by the CSS bottom/left/transform rules (those are
+    // relative-to-anchor, meaningless for `position: fixed`, which is
+    // relative to the viewport) — compute and set explicit pixel
+    // coordinates here instead.
+    var isFixed = getComputedStyle(content).position === 'fixed';
+    if (isFixed) {
+      var tooltipHeight = content.offsetHeight || 40;
+      var tooltipWidth = content.offsetWidth || 260;
+      var showBelow = rect.top < tooltipHeight + 16;
+      var top = showBelow ? rect.bottom + 8 : rect.top - tooltipHeight - 8;
+      var left = rect.left + rect.width / 2 - tooltipWidth / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - tooltipWidth - 8));
+      content.style.top = top + 'px';
+      content.style.left = left + 'px';
+      return;
+    }
+
     var estimatedTooltipHeight = content.offsetHeight || 90;
     content.classList.toggle('tooltip-below', rect.top < estimatedTooltipHeight + 16);
 
@@ -1164,17 +1218,8 @@ def _build_kpi_summary(
         "Worst-Decile Terminal Net Worth": "The 10th percentile ending net worth — 90% of simulations ended with more than this amount."
     }
     
-    # Inline SVG info icon — avoids relying on an emoji font (ℹ️ / U+2139) being
-    # installed, which was rendering as a fallback glyph ("?") on some Windows
-    # browser/font configurations (reported in Brave and Edge).
-    info_icon_svg = (
-        "<svg class='help-info-icon' viewBox='0 0 16 16' width='14' height='14' "
-        "aria-hidden='true' focusable='false'>"
-        "<circle cx='8' cy='8' r='7' fill='none' stroke='currentColor' stroke-width='1.4'/>"
-        "<circle cx='8' cy='4.6' r='1.1' fill='currentColor'/>"
-        "<rect x='7.1' y='6.8' width='1.8' height='5.2' rx='0.6' fill='currentColor'/>"
-        "</svg>"
-    )
+    # Inline SVG info icon — see module-level _INFO_ICON_SVG for rationale.
+    info_icon_svg = _INFO_ICON_SVG
 
     boxes = "".join(
         f"<div class='kpi-box help-tooltip'>"
@@ -2130,10 +2175,42 @@ def build_chart(
 
     scenario_slug = getattr(scenario, "slug", None)
     edit_config_href = f"/finances/config/?scenario={scenario_slug}" if scenario_slug else "/finances/config/"
-    
+
+    # Tab-label tooltips — explain what each tab shows. Rendered via the same
+    # help-mode SVG icon as the KPI strip, but the tooltip itself is CSS
+    # `position: fixed` (see `.tab-btn .tooltip-content` in _TABS_CSS) because
+    # `.tabs` needs `overflow-x: auto` for mobile scrolling, which forces
+    # `overflow-y` on the same box to clip too — an absolutely-positioned
+    # tooltip anchored inside `.tabs` would otherwise get cut off.
+    _TAB_TOOLTIPS = {
+        "accounts": "Year-by-year account balances broken out by type (cash, brokerage, retirement accounts, home equity).",
+        "cashflow": "Annual income (take-home + freed mortgage payments + events) vs spending, and the resulting net surplus or deficit.",
+        "tax": "Modeled federal and state tax by year, based on filing status, deductions, and taxable income sources.",
+        "simulation": "Monte Carlo or historical simulation outcomes — probability of success, and the range of terminal net worth across simulated paths.",
+        "portfolio": "Investment balances over time (taxable, traditional, Roth) excluding cash and home equity.",
+        "gantt": "Timeline of enabled life events and when they occur across the plan.",
+        "liabilities": "Debt balances, payoff schedules, and amortization detail for mortgages and other liabilities.",
+        "cash-reserve": "Cash balance vs your target cash reserve by year, and how many years fall below target.",
+        "assumptions": "Full list of modeling assumptions in effect for this scenario (income, contributions, tax, withdrawal policy, etc.).",
+        "scenario-parameters": "Key scenario parameters at a glance, with support for highlighting differences vs another scenario.",
+    }
+
+    def _tab_button_html(tab_id: str, label: str, *, active: bool = False) -> str:
+        tooltip_text = _TAB_TOOLTIPS.get(tab_id, "")
+        active_cls = " active" if active else ""
+        tooltip_span = (
+            f"{_INFO_ICON_SVG}<span class='tooltip-content'>{tooltip_text}</span>"
+            if tooltip_text
+            else ""
+        )
+        return (
+            f"<button class='tab-btn help-tooltip{active_cls}' id='btn-{tab_id}' "
+            f"onclick=\"switchTab('{tab_id}', event)\">{label}{tooltip_span}</button>"
+        )
+
     # Conditional simulation tab button (avoid backslash in f-string)
     simulation_tab_html = (
-        '<button class="tab-btn" id="btn-simulation" onclick="switchTab(\'simulation\')">Simulation</button>'
+        _tab_button_html("simulation", "Simulation")
         if simulation_html
         else ""
     )
@@ -2214,25 +2291,16 @@ def build_chart(
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" id="btn-accounts"
-            onclick="switchTab('accounts')">Accounts</button>
-    <button class="tab-btn" id="btn-cashflow"
-            onclick="switchTab('cashflow')">Cash Flow</button>
-    <button class="tab-btn" id="btn-tax"
-            onclick="switchTab('tax')">Tax</button>
+    {_tab_button_html("accounts", "Accounts", active=True)}
+    {_tab_button_html("cashflow", "Cash Flow")}
+    {_tab_button_html("tax", "Tax")}
     {simulation_tab_html}
-    <button class="tab-btn" id="btn-portfolio"
-            onclick="switchTab('portfolio')">Portfolio</button>
-    <button class="tab-btn" id="btn-gantt"
-            onclick="switchTab('gantt')">Gantt</button>
-    <button class="tab-btn" id="btn-liabilities"
-            onclick="switchTab('liabilities')">Liabilities</button>
-    <button class="tab-btn" id="btn-cash-reserve"
-            onclick="switchTab('cash-reserve')">Cash Reserve</button>
-    <button class="tab-btn" id="btn-assumptions"
-            onclick="switchTab('assumptions')">Assumptions</button>
-    <button class="tab-btn" id="btn-scenario-parameters"
-            onclick="switchTab('scenario-parameters')">Scenario Parameters</button>
+    {_tab_button_html("portfolio", "Portfolio")}
+    {_tab_button_html("gantt", "Gantt")}
+    {_tab_button_html("liabilities", "Liabilities")}
+    {_tab_button_html("cash-reserve", "Cash Reserve")}
+    {_tab_button_html("assumptions", "Assumptions")}
+    {_tab_button_html("scenario-parameters", "Scenario Parameters")}
   </div>
 
   <div class="tab-panel table-panel active" id="panel-accounts">

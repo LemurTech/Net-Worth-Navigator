@@ -3,6 +3,21 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-04 (tab-label help tooltips)
+
+### Added
+
+- **Help tooltips extended to every tab label** on the projection page (Accounts, Cash Flow, Tax, Simulation, Portfolio, Gantt, Liabilities, Cash Reserve, Assumptions, Scenario Parameters) — same info-icon + hover/tap pattern as the KPI strip, so enabling help mode now explains what each tab shows, not just the summary numbers. Shared the existing inline-SVG icon by promoting it from a `_build_kpi_summary()`-local variable to a module-level `_INFO_ICON_SVG` constant so both call sites use one definition.
+
+### Fixed
+
+- **Tab tooltips needed `position: fixed` instead of the KPI-strip's `position: absolute` pattern.** `.tabs` has `overflow-x: auto` (added earlier for mobile horizontal scrolling) — CSS forces `overflow-y` to also compute as `auto`/clipping on the same box once *any* overflow axis is non-`visible`, even if `overflow-y` is never explicitly set. A normal absolutely-positioned tooltip anchored inside `.tabs` would therefore always get clipped, the same class of bug the KPI-strip tooltip had before its `overflow: hidden` was removed — except `.tabs`' `overflow-x: auto` can't simply be removed (it's needed for mobile scroll). Fixed by giving `.tab-btn .tooltip-content` `position: fixed` and computing exact viewport pixel coordinates in JS (`positionTooltip()` branches on `getComputedStyle(content).position === 'fixed'`), escaping the container's clipping entirely.
+- **Clicking the info icon on a tab would also switch tabs**, since the icon lives inside the same clickable `<button onclick="switchTab(...)">`. Fixed by passing the click `event` into `switchTab(id, evt)` and returning early when `evt.target.closest('.help-info-icon')` — the tap-to-toggle tooltip handler still fires normally, but the tab no longer switches underneath it.
+
+### Verified
+
+Confirmed via headless-Chromium Playwright: info icons render on all tab labels; hover (desktop) and tap-toggle (mobile, 390px) both show the tooltip fully visible with correct explanatory text; last-tab (Scenario Parameters) tooltip clamps within the right viewport edge; first-tab (Accounts) tooltip renders correctly when embedded in the shell's iframe — the exact scenario that broke KPI tooltips before this fix pattern existed; clicking the info icon does not trigger a tab switch. Full test suite re-run (one stale assertion in `test_tax_model.py` updated to match the new tab-button markup) — same 6 pre-existing unrelated failures, no new regressions.
+
 ## 2026-07-04 (compare page crash fix — pre-existing bug, not from responsive pass)
 
 ### Fixed
