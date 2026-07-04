@@ -175,8 +175,13 @@ _TABS_CSS = """
      normal `position: absolute` tooltip (anchored via the KPI-strip pattern)
      would get silently clipped by .tabs' own scroll box. Tab tooltips use
      `position: fixed` instead, with JS computing exact viewport coordinates,
-     so they escape the clipping entirely regardless of .tabs' overflow. */
-  .tab-btn .tooltip-content { position: fixed; bottom: auto; left: auto; transform: none; }
+     so they escape the clipping entirely regardless of .tabs' overflow.
+     `pointer-events: none` keeps the tooltip box itself out of the hover/hit
+     path — tabs sit close together and a 260px-wide tooltip can visually
+     overlap the NEXT tab's button, which would otherwise "steal" hover from
+     it and make the previous tooltip appear stuck open. */
+  .tab-btn .tooltip-content { position: fixed; bottom: auto; left: auto; transform: none;
+                               pointer-events: none; }
   .tab-btn .tooltip-content::after { display: none; }
   .table-panel { position: relative; }
   .sticky-header-wrap { position: sticky; top: 0; z-index: 10;
@@ -881,6 +886,23 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.help-tooltip').forEach(function(tooltip) {
     tooltip.addEventListener('mouseenter', function() { positionTooltip(tooltip); });
   });
+
+  // Fixed-position tooltips (tab labels) are pinned to viewport coordinates
+  // computed once when they open, so without this they visibly detach from
+  // their anchor as soon as the page scrolls underneath them. Reposition
+  // whichever fixed tab tooltip is currently visible (hover on desktop, or
+  // `.tooltip-open` tap-toggle on touch) on every scroll — capture phase so
+  // it also fires for scrollable ancestors, not just the window (e.g. a
+  // table's own horizontal/vertical scroll container).
+  function repositionVisibleFixedTooltips() {
+    document.querySelectorAll('.tab-btn.help-tooltip').forEach(function(tooltip) {
+      if (tooltip.matches(':hover') || tooltip.classList.contains('tooltip-open')) {
+        positionTooltip(tooltip);
+      }
+    });
+  }
+  window.addEventListener('scroll', repositionVisibleFixedTooltips, true);
+  window.addEventListener('resize', repositionVisibleFixedTooltips);
   
   // First-time welcome overlay — only shown directly here on standalone loads.
   // When embedded in the shell page's iframe, position:fixed centers within the

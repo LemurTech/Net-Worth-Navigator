@@ -3,6 +3,17 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-04 (tab tooltip polish — stuck-open + scroll-detach)
+
+### Fixed
+
+- **A tab tooltip would stay open while the next one opened, then close only once you moved past it.** Root cause: the fixed-position tooltip box (260px wide) can visually overlap the *next* tab's button, since tabs sit close together. Moving the mouse into that overlap still counted as hovering the *previous* tab's `.help-tooltip` wrapper (CSS `:hover` follows the DOM ancestor under the cursor, not what's visually on top), so its tooltip stayed lit even after the neighboring tab's own tooltip had already opened. Fixed with `pointer-events: none` on `.tab-btn .tooltip-content` — the tooltip box itself no longer participates in hover/hit-testing, so hovering the visual space it occupies always reaches the *actual* tab underneath.
+- **Tab tooltips floated in place while the page scrolled underneath them.** `position: fixed` tooltips are pinned to viewport coordinates computed once when they open (see the 2026-07-04 tab-tooltip feature note above) — nothing recalculated that position as the page moved. Added scroll/resize listeners (capture phase, so scrollable ancestors are caught too) that reposition whichever fixed tab tooltip is currently visible (`:hover` on desktop, `.tooltip-open` tap-toggle on mobile) so it tracks its anchor tab during scroll instead of visually detaching.
+
+### Verified
+
+Confirmed via headless-Chromium Playwright: hovering tab A then tab B closes A's tooltip and opens B's cleanly (previously A stayed open); tab tooltips move in exact lockstep with their anchor tab during scroll (measured pixel-for-pixel, desktop hover and mobile tap-toggle both confirmed); reproduced identically in the shell/iframe embedded context. Full test suite: same 6 pre-existing unrelated failures, no new regressions.
+
 ## 2026-07-04 (tab-label help tooltips)
 
 ### Added
