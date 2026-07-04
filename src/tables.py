@@ -1655,7 +1655,7 @@ def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
 def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str:
     """
     Amortization table showing each liability's remaining balance year-by-year
-    with payoff-year callout.  The UI idea is documented in docs/ui-ideas.md.
+    with payoff-year callout.  The UI idea is documented in docs/plans/ui-ideas.md.
 
     Requires per-liability balance columns named liability_<slug>_balance
     added to the DataFrame by model.py's yearly loop.

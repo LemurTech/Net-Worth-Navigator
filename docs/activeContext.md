@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-04
-**Status:** Setup Panel mobile responsive pass complete — header button layout, equal-width controls, compact People rows, radio group behavior, default scenario checkbox, and multi-layer breakpoint tuning. Ready to commit and push.
+**Status:** Setup Panel Manual/Monarch tab visibility + People row layout shipped; tab-tooltip stuck-open bug fixed. Two feature gaps identified and scoped as design plans (not yet started): single-person households, and state-by-state tax schedules.
 
 ---
 
@@ -14,6 +14,14 @@ cd /home/lemurtech/Net-Worth-Navigator
 .venv/bin/python run.py --scenario <slug>  # single scenario
 .venv/bin/python -m pytest tests/ -q       # run tests
 ```
+
+**Docs layout (reorganized 2026-07-04):** `docs/` root now holds only the six core Memory
+Bank files (`projectbrief.md`, `productContext.md`, `activeContext.md`, `systemPatterns.md`,
+`techContext.md`, `progress.md`). All plan/analysis/reference docs — dated implementation
+plans, the ignidash comparison + port plan, the scenario-transition plan, the UI ideas
+backlog, the Windows compatibility guide, the admin config editor deployment note, the
+historical-return-sequences note — live under `docs/plans/`. New plan/analysis docs should
+be created directly in `docs/plans/`, not in `docs/` root.
 
 | URL | Purpose |
 |---|---|
@@ -50,6 +58,25 @@ All household TOMLs use 24% 401k contribution ($31K IRS cap), 70/30 trad/Roth sp
 ---
 
 ## Open Items
+
+### Feature gaps blocking wider-audience readiness
+
+Identified 2026-07-04 during a Setup Panel troubleshooting session. Both are scoped as
+design plans, not started:
+
+- **Single-person households are not supported** — the simulation engine hard-crashes
+  (`KeyError: 'person2'`) if `[person2]` is omitted, despite `scenarios/starter.toml`'s
+  own (now-corrected) comment previously claiming it was optional. `person2` is referenced
+  ~80+ times throughout `src/model.py`, and the "survivor phase" tax/spending machinery is
+  architecturally built around exactly two people. Plan:
+  `docs/plans/2026-07-04-single-person-household-support.md`.
+- **State tax is hardcoded to Oregon only** — `resolve_state_tax_system()` in
+  `src/tax_model.py` silently returns $0 state tax for every state name other than
+  `"oregon"`, with no error or warning. Plan: generalize to reuse the existing
+  `calculate_progressive_tax()` bracket engine (already used for federal) for the common
+  case, keep Oregon's OR-40-table special case behind a named-engine registry, and add
+  validation so an unsupported state name fails loudly instead of silently zeroing state
+  tax. Plan: `docs/plans/2026-07-04-state-tax-schedule-support.md`.
 
 ### Confirmations needed
 

@@ -197,7 +197,7 @@ notepad scenarios\myhousehold.toml
 .venv\Scripts\python.exe run.py --scenario myhousehold --offline
 ```
 
-See `docs/windows-compatibility.md` for detailed Windows setup instructions.
+See `docs/plans/windows-compatibility.md` for detailed Windows setup instructions.
 
 ---
 

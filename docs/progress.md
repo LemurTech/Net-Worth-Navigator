@@ -3,6 +3,59 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-04 (Setup Panel follow-ups, tooltip fix, docs reorg, feature-gap plans)
+
+### Fixed
+
+- **Help tooltip stuck open across tab switches**: `switchTab()` in `src/charts.py` never
+  cleared a pinned (tap-toggled) `.tooltip-open` tooltip when switching to a different tab.
+  Since tab-label tooltips are `position: fixed` (viewport-anchored, not scoped to the
+  panel), the stale tooltip stayed floating on screen after switching tabs. Fixed by
+  sweeping `.tooltip-open` at the top of `switchTab()`. Verified via Playwright against the
+  live deployment (DOM state + screenshots); regression-checked hover, tap-toggle, and
+  KPI-box tooltip behavior unaffected.
+
+### Changed
+
+- **Setup Panel — Manual Setup / Data Sources & Accounts tab mutual visibility**: added
+  `setManualSetupTabVisibility()` alongside the existing `setAccountsTabVisibility()`.
+  Monarch mode now hides "Manual Setup" (renamed from "Synthetic Setup" — see below);
+  Manual entry mode hides "Data Sources & Accounts". Wired at both the radio-change handler
+  and the initial page-load fill.
+- **"Synthetic Setup" renamed to "Manual Setup"** (tab label + "Save Manual Settings"
+  button) — "synthetic" was found confusing to non-technical users. Internal identifiers
+  (`data-tab="synthetic"`, API routes, TOML section, JS variable names) intentionally left
+  unchanged to keep the diff minimal.
+- **People section — single-row layout**: each person's Name / Birth Year / Retires (year)
+  / or-age-slider now render in one flex row instead of two stacked rows, for better desktop
+  space usage. Relies on existing `.inline-row` flex-wrap to degrade gracefully on mobile —
+  verified via Playwright screenshots at 1440px/768px/375px.
+- **`scenarios/starter.toml`**: corrected a misleading comment claiming `[person2]` could
+  be deleted for single-person households — deleting it crashes the engine
+  (`KeyError: 'person2'`). See the new single-person-household plan below.
+
+### Docs
+
+- **Reorganized `docs/` — moved 7 non-Memory-Bank docs into `docs/plans/`**:
+  `admin-config-editor-deployment.md`, `historical-return-sequences.md`,
+  `ignidash-comparative-analysis.md`, `ignidash-feature-port-plan.md`,
+  `scenario-transition-plan.md`, `ui-ideas.md`, `windows-compatibility.md`. `docs/` root now
+  holds only the six core Memory Bank files. Updated the one live cross-reference
+  (`README.md`'s Windows setup pointer) and one code comment (`src/tables.py`) to the new
+  paths.
+- **Added two design plans** (both Proposed, not started) for feature gaps blocking
+  wider-audience readiness, identified during this session's troubleshooting:
+  - `docs/plans/2026-07-04-single-person-household-support.md` — the engine hard-requires
+    `[person2]` (~80+ references in `src/model.py`, plus the entire survivor-phase tax/
+    spending machinery); proposes an explicit `[scenario].household_type` config field
+    with real single-person code paths (not a zeroed-stub person2).
+  - `docs/plans/2026-07-04-state-tax-schedule-support.md` — state tax is hardcoded to
+    Oregon only; any other state name silently produces $0 state tax with no warning.
+    Proposes reusing the existing generic `calculate_progressive_tax()` bracket engine
+    (already used for federal) for most states, keeping Oregon's OR-40-table special case
+    behind a named-engine registry, and adding validation so an unsupported state name
+    fails loudly.
+
 ## 2026-07-04 (Setup Panel — mobile responsive pass)
 
 ### Added
