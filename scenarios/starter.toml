@@ -159,7 +159,13 @@ roth     = 0.30   # ← YOUR VALUE: fraction routed to Roth
 67 = 0   # ← YOUR VALUE: estimated monthly benefit at your claim age
 
 
-# ─── Person 2 (optional — delete or comment out this section if single) ──
+# ─── Person 2 ──────────────────────────────────────────────────────────
+# NOTE: [person2] is currently REQUIRED — the simulation engine does not
+# yet support single-person households (deleting this section will crash
+# the projection with a missing-config error). If you're modeling a
+# single person today, keep this section but zero out its income/balance
+# fields as a workaround. True single-person support is tracked as a
+# feature gap, not yet implemented.
 
 [person2]
 name              = "Person 2"          # ← YOUR VALUE
