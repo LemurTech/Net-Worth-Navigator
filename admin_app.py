@@ -1631,6 +1631,51 @@ async def api_validate_scenario(request: Request) -> JSONResponse:
         }, status_code=500)
 
 
+@app.post("/api/set-default-scenario")
+async def api_set_default_scenario(request: Request) -> JSONResponse:
+    """Set or unset a scenario as the default. Only one scenario can be default at a time."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+
+    slug = (body.get("slug") or "").strip()
+    is_default = body.get("is_default", True)
+    if not slug:
+        return JSONResponse({"ok": False, "error": "slug is required."}, status_code=400)
+
+    try:
+        from src.scenarios import discover_scenarios
+
+        if is_default:
+            # Unset is_default on the current default scenario
+            all_scenarios = discover_scenarios()
+            for s in all_scenarios:
+                if s.is_default and s.slug != slug:
+                    try:
+                        other_doc, _ = _toml_open(s.slug)
+                        if "scenario" in other_doc and "is_default" in other_doc.get("scenario", {}):
+                            del other_doc["scenario"]["is_default"]
+                            _backup_and_write_toml(other_doc, s.slug)
+                    except Exception:
+                        pass  # best-effort
+
+        # Set/unset is_default on the target scenario
+        doc, _ = _toml_open(slug)
+        if "scenario" not in doc:
+            doc["scenario"] = tomlkit.table()
+        if is_default:
+            doc["scenario"]["is_default"] = True
+        else:
+            if "is_default" in doc.get("scenario", {}):
+                del doc["scenario"]["is_default"]
+
+        _backup_and_write_toml(doc, slug)
+        return JSONResponse({"ok": True, "is_default": is_default, "slug": slug})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
 if __name__ == "__main__":
     import uvicorn
 

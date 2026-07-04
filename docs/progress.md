@@ -3,6 +3,36 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-04 (Setup Panel — mobile responsive pass)
+
+### Added
+
+- **Default scenario checkbox**: Replaced the static DEFAULT badge next to the slug with a toggleable `[✔] Default` checkbox. Checking/unchecking calls `POST /api/set-default-scenario` which sets `is_default = true` in the target scenario's TOML and clears it from the previously-default scenario. New API endpoint in `admin_app.py`.
+- **`POST /api/set-default-scenario` endpoint**: Reads the target scenario slug from the request body, sets `is_default` in the TOML, removes it from the current default, and writes backups for both.
+
+### Changed
+
+- **Header button layout**: Clone Scenario and Delete Scenario moved from the action bar to the top header `.links` bar, matching the visual style of Definitions and Open Projection. Added `.linkbtn-danger` CSS class. Top buttons use `flex: 1 1 45%` at ≤900px to break into two rows of two.
+- **Top buttons font size**: `.linkbtn` set to `font-size: 13px` (was inheriting 16px on `<a>` tags and 14px on `<button>` tags). "Open projection" capitalized to "Open Projection".
+- **Action bar equal widths**: At ≤600px, all action bar buttons (`Save Quick Controls`, `Validate`, `Save + Re-render`, `Save + Render All`, `New from Template`) share equal width via `flex: 1 1 0`. At ≤480px, they stack one per row via `flex: 1 1 100%`.
+- **Raw TOML tab buttons equal width**: At ≤600px, all four buttons (`Validate`, `Save`, `Save + Re-render`, `Save + Render All`) share equal width.
+- **Data source radio groups**: Both the quick-edit panel radios and the Synthetic Setup tab radios now use `flex: 1 1 0` on `.radio-group .radio-card` to stretch equally across the row. At ≤360px, they stack vertically via `flex-direction: column`.
+- **Radio card text**: Added `white-space: nowrap` to `.radio-card` to prevent text wrapping inside cards at tight widths.
+- **People section restructured**: Each person now uses two horizontal rows — Name + Birth Year on the first row, Retires (year) + Age slider on the second row. The name input and slider use `flex: 1; width: 100%` to fill available space; birth year and retires year use `width: 100px` for consistency. "or age" label moved inline with the slider in a single flex row.
+- **Year field widths unified**: All six year inputs (person1/2 birth year, person1/2 retires year, simulation start year, simulation end year) use `width: 100px`. Stock Return, Bond Return, Inflation, and Equity Alloc inputs also set to `100px` for consistent sizing.
+- **`@media (max-width: 600px)` breakpoint**: Removed `inline-row { flex-direction: column }` so People rows stay horizontal on mobile. Removed `radio-group { flex-direction: column }` (moved to 360px breakpoint).
+- **`templates/setup_panel.html` and `admin_app.py`**: Multiple CSS rules, HTML structure changes, and JS handler for default checkbox. Container restarted after every change set.
+
+### Fixed
+
+- **Duplicate `@media (max-width: 900px)` block**: A prior patch created a duplicate block; merged correctly into one block.
+
+### Verified
+
+- All template changes confirmed via `curl` against the live `/finances/config/setup` endpoint: correct CSS rules, HTML elements, and JS function references present.
+- API endpoint tested with `curl -X POST` — returns `{"ok": true}`.
+- Config editor container restarted and serving 200 OK.
+
 ## 2026-07-04 (Plotly graph interaction controls)
 
 ### Added

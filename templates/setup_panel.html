@@ -81,8 +81,11 @@
       height: 40px;
       line-height: 20px;
       white-space: nowrap;
+      font-size: 13px;
     }
     .linkbtn:hover { border-color: var(--accent); }
+    .linkbtn-danger { border-color: rgba(248,113,113,0.4); color: #fca5a5; background: rgba(239,68,68,0.08); }
+    .linkbtn-danger:hover { border-color: #fca5a5; }
     .meta, .card, .status {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -177,10 +180,12 @@
       display: flex; align-items: center; gap: 8px; padding: 8px 14px;
       border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
       background: var(--panel-2); font-size: 13px; transition: border-color 0.15s;
+      white-space: nowrap;
     }
     .radio-card:hover { border-color: var(--accent); }
     .radio-card.active { border-color: var(--accent-2); background: rgba(56,189,248,0.08); }
     .radio-card input[type="radio"] { accent-color: var(--accent-2); margin: 0; }
+    .radio-group .radio-card { flex: 1 1 0; }
 
     /* ── Withdrawal order chips ─────────────────────────────────────── */
     .chip-row {
@@ -368,12 +373,20 @@
       .synth-row label { width: 100%; }
       .synth-row input { max-width: 100%; }
       .tab-btn { padding: 10px 14px; font-size: 13px; }
+      .links .linkbtn { flex: 1 1 45%; text-align: center; min-width: 0; }
     }
     @media (max-width: 600px) {
       .quick-grid { grid-template-columns: 1fr; }
-      .inline-row { flex-direction: column; align-items: stretch; }
       .inline-field input { width: 100%; }
+      .actions button { flex: 1 1 0; min-width: 0; }
+      .actions button#new-scenario-btn { margin-left: 0; }
+      .tab-actions button { flex: 1 1 0; min-width: 0; }
+    }
+    @media (max-width: 360px) {
       .radio-group { flex-direction: column; }
+    }
+    @media (max-width: 480px) {
+      .actions button { flex: 1 1 100%; }
     }
   </style>
 </head>
@@ -393,7 +406,9 @@
           </select>
         </form>
         <a class="linkbtn" href="{{ definitions_url }}" target="_blank" rel="noreferrer">Definitions</a>
-        <a class="linkbtn" id="open-projection-btn" href="{{ projection_url }}">Open projection</a>
+        <a class="linkbtn" id="open-projection-btn" href="{{ projection_url }}">Open Projection</a>
+        <button type="button" class="linkbtn" id="clone-scenario-btn" style="cursor:pointer">Clone Scenario</button>
+        <button type="button" class="linkbtn linkbtn-danger" id="delete-scenario-btn" style="cursor:pointer">Delete Scenario</button>
       </div>
     </div>
 
@@ -430,32 +445,36 @@
             {%- for opt in scenario_options %}
             {%- if opt.slug == scenario_slug and opt.is_default %}{% set ns.is_def = true %}{% endif %}
             {%- endfor %}
-            {%- if ns.is_def %} <span style="font-size:11px;font-weight:600;color:var(--muted);background:var(--panel-2);border:1px solid var(--border);padding:4px 10px;border-radius:5px;white-space:nowrap">DEFAULT</span>{% endif %}
+            {%- if ns.is_def %} <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer"><input type="checkbox" id="default-scenario-cb" checked style="accent-color:var(--accent-2);cursor:pointer"> Default</label>{% endif %}
           </div>
         </div>
       </div>
       <div class="quick-section-title">People</div>
       <div class="inline-row" style="margin-bottom:6px">
-        <div class="inline-field"><label id="label-person1-name">Person 1 Name</label><input type="text" id="person1_name" style="width:160px"></div>
-        <div class="inline-field"><label>Birth Year</label><input type="number" id="person1_birth_year" step="1" min="1900" max="2100" style="width:90px"></div>
+        <div class="inline-field" style="flex:1;min-width:0"><label id="label-person1-name">Person 1 Name</label><input type="text" id="person1_name" style="width:100%"></div>
+        <div class="inline-field"><label>Birth Year</label><input type="number" id="person1_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
+      </div>
+      <div class="inline-row" style="margin-bottom:14px">
         <div class="inline-field"><label id="label-person1-retires">Retires (year)</label><input type="number" id="person1_retirement_year" step="1" style="width:100px"></div>
-        <div class="inline-field">
-          <label>or age</label>
-          <div style="display:flex;align-items:center;gap:6px">
+        <div class="inline-field" style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
+            <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;letter-spacing:0.04em">or age</span>
             <span id="person1-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
-            <input type="range" id="person1-retire-slider" min="40" max="80" step="1" style="width:160px">
+            <input type="range" id="person1-retire-slider" min="40" max="80" step="1" style="flex:1;min-width:60px">
           </div>
         </div>
       </div>
+      <div class="inline-row" style="margin-bottom:6px">
+        <div class="inline-field" style="flex:1;min-width:0"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:100%"></div>
+        <div class="inline-field"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
+      </div>
       <div class="inline-row" style="margin-bottom:14px">
-        <div class="inline-field"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:160px"></div>
-        <div class="inline-field"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:90px"></div>
         <div class="inline-field"><label id="label-person2-retires">Retires (year)</label><input type="number" id="person2_retirement_year" step="1" style="width:100px"></div>
-        <div class="inline-field">
-          <label>or age</label>
-          <div style="display:flex;align-items:center;gap:6px">
+        <div class="inline-field" style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
+            <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;letter-spacing:0.04em">or age</span>
             <span id="person2-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
-            <input type="range" id="person2-retire-slider" min="40" max="80" step="1" style="width:160px">
+            <input type="range" id="person2-retire-slider" min="40" max="80" step="1" style="flex:1;min-width:60px">
           </div>
         </div>
       </div>
@@ -480,10 +499,10 @@
 
       <div class="quick-section-title">Assumptions &amp; Years</div>
       <div class="inline-row">
-        <div class="inline-field"><label>Stock Return</label><input type="number" id="stock_return" step="0.01" min="0" max="1"></div>
-        <div class="inline-field"><label>Bond Return</label><input type="number" id="bond_return" step="0.01" min="0" max="1"></div>
-        <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="0.001" min="0" max="1"></div>
-        <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="0.05" min="0" max="1"></div>
+        <div class="inline-field"><label>Stock Return</label><input type="number" id="stock_return" step="0.01" min="0" max="1" style="width:100px"></div>
+        <div class="inline-field"><label>Bond Return</label><input type="number" id="bond_return" step="0.01" min="0" max="1" style="width:100px"></div>
+        <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="0.001" min="0" max="1" style="width:100px"></div>
+        <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="0.05" min="0" max="1" style="width:100px"></div>
         <div class="inline-field"><label>Start Year</label><input type="number" id="simulation_start_year" step="1" style="width:100px"></div>
         <div class="inline-field"><label>End Year</label><input type="number" id="simulation_end_year" step="1" style="width:100px"></div>
       </div>
@@ -532,8 +551,6 @@
         <button type="button" id="save-render-quick-btn">Save + Re-render</button>
         <button type="button" id="save-render-all-btn">Save + Render All</button>
         <button type="button" id="new-scenario-btn" style="margin-left:auto">New from Template</button>
-        <button type="button" id="clone-scenario-btn">Clone Scenario</button>
-        <button type="button" id="delete-scenario-btn" class="danger">Delete Scenario</button>
       </div>
     </div>
 
@@ -2412,6 +2429,14 @@
         });
       }
 
+      function initDefaultCheckbox() {
+        var cb = document.getElementById('default-scenario-cb');
+        if (!cb) return;
+        cb.addEventListener('change', function () {
+          apiPost('api/set-default-scenario', { slug: '{{ scenario_slug }}', is_default: cb.checked });
+        });
+      }
+
       /* ── Init ──────────────────────────────────────────────────── */
       function init() {
         installRadioStyles();
@@ -2438,6 +2463,7 @@
         initNewScenario();
         initCloneScenario();
         initDeleteScenario();
+        initDefaultCheckbox();
         initRawTomlActions();
       }
 

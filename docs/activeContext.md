@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-04
-**Status:** Graph interaction controls implemented (y-axis lock, scroll-zoom, preset zoom buttons) across all charts, both standalone and compare page. Ready to commit and push. Next: mobile-responsive improvements to the Scenario Setup Panel.
+**Status:** Setup Panel mobile responsive pass complete — header button layout, equal-width controls, compact People rows, radio group behavior, default scenario checkbox, and multi-layer breakpoint tuning. Ready to commit and push.
 
 ---
 
