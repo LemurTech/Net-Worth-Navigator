@@ -450,13 +450,12 @@
         </div>
       </div>
       <div class="quick-section-title">People</div>
-      <div class="inline-row" style="margin-bottom:6px">
-        <div class="inline-field" style="flex:1;min-width:0"><label id="label-person1-name">Person 1 Name</label><input type="text" id="person1_name" style="width:100%"></div>
-        <div class="inline-field"><label>Birth Year</label><input type="number" id="person1_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
-      </div>
-      <div class="inline-row" style="margin-bottom:14px">
-        <div class="inline-field"><label id="label-person1-retires">Retires (year)</label><input type="number" id="person1_retirement_year" step="1" style="width:100px"></div>
-        <div class="inline-field" style="flex:1;min-width:0">
+      <div class="inline-row person-row" style="margin-bottom:14px">
+        <div class="inline-field" style="flex:1 1 160px;min-width:120px"><label id="label-person1-name">Person 1 Name</label><input type="text" id="person1_name" style="width:100%"></div>
+        <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person1_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
+        <div class="inline-field" style="flex:0 0 auto"><label id="label-person1-retires">Retires (year)</label><input type="number" id="person1_retirement_year" step="1" style="width:100px"></div>
+        <div class="inline-field" style="flex:1 1 200px;min-width:180px">
+          <label style="visibility:hidden">or age</label>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
             <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;letter-spacing:0.04em">or age</span>
             <span id="person1-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
@@ -464,13 +463,12 @@
           </div>
         </div>
       </div>
-      <div class="inline-row" style="margin-bottom:6px">
-        <div class="inline-field" style="flex:1;min-width:0"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:100%"></div>
-        <div class="inline-field"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
-      </div>
-      <div class="inline-row" style="margin-bottom:14px">
-        <div class="inline-field"><label id="label-person2-retires">Retires (year)</label><input type="number" id="person2_retirement_year" step="1" style="width:100px"></div>
-        <div class="inline-field" style="flex:1;min-width:0">
+      <div class="inline-row person-row" style="margin-bottom:14px">
+        <div class="inline-field" style="flex:1 1 160px;min-width:120px"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:100%"></div>
+        <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
+        <div class="inline-field" style="flex:0 0 auto"><label id="label-person2-retires">Retires (year)</label><input type="number" id="person2_retirement_year" step="1" style="width:100px"></div>
+        <div class="inline-field" style="flex:1 1 200px;min-width:180px">
+          <label style="visibility:hidden">or age</label>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
             <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;letter-spacing:0.04em">or age</span>
             <span id="person2-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
@@ -559,7 +557,7 @@
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="toml">Raw TOML</button>
         <button class="tab-btn" data-tab="accounts">Data Sources &amp; Accounts</button>
-        <button class="tab-btn" data-tab="synthetic">Synthetic Setup</button>
+        <button class="tab-btn" data-tab="synthetic">Manual Setup</button>
       </div>
 
       <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
@@ -617,7 +615,7 @@
         </div>
       </div>
 
-      <!-- ── Tab: Synthetic Setup ─────────────────────────────────── -->
+      <!-- ── Tab: Manual Setup (synthetic data source) ─────────────── -->
       <div class="tab-content tab-card" id="tab-synthetic">
         <div class="synth-form">
           <div class="synth-section">
@@ -657,7 +655,7 @@
             <div id="liability-empty" style="font-size:13px;color:var(--muted)">No liabilities configured in this scenario.</div>
           </div>
           <div class="actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
-            <button type="button" class="primary" id="save-synth-btn">Save Synthetic Settings</button>
+            <button type="button" class="primary" id="save-synth-btn">Save Manual Settings</button>
           </div>
         </div>
       </div>
@@ -1025,6 +1023,7 @@
           updateRadioCard(r);
         });
         setAccountsTabVisibility(dsMode);
+        setManualSetupTabVisibility(dsMode);
 
         // Chip groups
         makeChips('retirement-order-chips', orders.retirement);
@@ -1582,6 +1581,22 @@
         }
       }
 
+      /* ── Manual Setup tab: mode-aware visibility (mirrors Accounts tab) ── */
+      function setManualSetupTabVisibility(mode) {
+        var btn = document.querySelector('.tab-btn[data-tab="synthetic"]');
+        if (!btn) return;
+        if (mode === 'monarch') {
+          btn.style.display = 'none';
+          // If the Manual Setup tab is currently active, fall back to the TOML tab
+          if (btn.classList.contains('active')) {
+            var tomlBtn = document.querySelector('.tab-btn[data-tab="toml"]');
+            if (tomlBtn) tomlBtn.click();
+          }
+        } else {
+          btn.style.display = '';
+        }
+      }
+
       function applyAccountsTabModeState(sourceMode) {
         var btn = document.getElementById('refresh-monarch-btn');
         var toolbar = document.getElementById('accounts-toolbar');
@@ -1727,8 +1742,9 @@
         });
         // Update synthetic-tab input state
         toggleSynthInputs(newValue !== 'synthetic');
-        // Show/hide the Accounts tab
+        // Show/hide the Accounts tab and Manual Setup tab
         setAccountsTabVisibility(newValue);
+        setManualSetupTabVisibility(newValue);
         // Update accounts tab banner if it's already loaded
         if (_accountsData) {
           applyAccountsTabModeState(newValue);
