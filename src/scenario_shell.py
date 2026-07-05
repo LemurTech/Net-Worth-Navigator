@@ -143,9 +143,7 @@ def build_scenario_shell(
       color: var(--muted);
       font-size: 13px;
       line-height: 1.35;
-      max-width: 340px;
-      overflow-wrap: break-word;
-      word-break: break-word;
+      max-width: none;
     }}
     .control-actions {{
       display: flex;
