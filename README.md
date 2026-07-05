@@ -1,6 +1,6 @@
 # Net Worth Navigator
 
-A local net worth projection and financial event modeling system originally built for the Household household, but general enough to adapt to other households with similar planning needs. **Monarch Money is optional** — the app runs fully from manually entered balances.
+A local net worth projection and financial event modeling system originally built for a two-person household, but general enough to adapt to other households with similar planning needs. **Monarch Money is optional** — the app runs fully from manually entered balances.
 
 ## Quick Start
 
@@ -240,7 +240,7 @@ Household members are modeled with generic keys:
 Event person references should use `person = "person1"` or `person = "person2"`.
 
 > Note: this is now the canonical schema for this codebase; the runtime no longer
-> carries `matthew`/`weny` compatibility paths.
+> carries `person1`/`person2` compatibility paths.
 
 ## Web Output
 

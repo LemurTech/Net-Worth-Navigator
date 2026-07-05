@@ -1,17 +1,17 @@
 # Project Brief — Net Worth Navigator
 
-**Owner:** Matt
+**Maintainer:** Net Worth Navigator Project
 **Last Review:** 2026-06-17
 
 ## Summary
 
-Net Worth Navigator is a local Python-based net worth projection and financial event modeling tool for the Household household. It anchors to live Monarch Money account balances and projects household net worth forward across a configurable time horizon, modeling discrete life events, income changes, and retirement transitions.
+Net Worth Navigator is a local Python-based net worth projection and financial event modeling tool for a two-person household. It anchors to live Monarch Money account balances and projects household net worth forward across a configurable time horizon, modeling discrete life events, income changes, and retirement transitions.
 
 It is the strategic financial visibility layer. OWL (optimal retirement withdrawal optimizer) is a potential downstream tool, not a competitor.
 
 ## Objectives
 
-- Project household net worth from today to life expectancy for both Person 1 and Person 2
+- Project household net worth from today to life expectancy for both persons
 - Model discrete and recurring financial events (retirement, SS income, expenses, home purchase, career changes, etc.)
 - Allow easy scenario comparison by toggling events on/off and adjusting assumptions in config.toml
 - Serve results as interactive Plotly HTML on the household LAN
@@ -21,7 +21,7 @@ It is the strategic financial visibility layer. OWL (optimal retirement withdraw
 
 In scope:
 - Year-by-year net worth projection (accumulation and post-retirement drawdown)
-- Per-person modeling (Person 1 and Person 2 with independent retirement dates)
+- Per-person modeling (both persons with independent retirement dates)
 - Event system with typed events and enable/disable flags
 - TOML-based configuration (human-readable, easily edited)
 - Monarch MCP integration for live balance anchor
@@ -58,8 +58,8 @@ Out of scope (V1):
 
 ## Stakeholders
 
-- Matt — owner, primary user
-- Person 2  — modeled household member
+- Person 1 — primary user
+- Person 2 — modeled household member
 
 ## Constraints & Assumptions
 

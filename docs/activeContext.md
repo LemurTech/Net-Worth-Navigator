@@ -39,8 +39,8 @@ be created directly in `docs/plans/`, not in `docs/` root.
 | `comfortable` | Earlier retirement, more travel |
 | `optimistic` | Higher returns, earlier aligned retirements |
 | `restrictive` | Bearish markets, later retirement |
-| `early-death-person1` | Person 1 passes in his 60s |
-| `early-death-person2` | Person 2 passes in her 60s |
+| `early-death-person1` | Person 1 passes in their 60s |
+| `early-death-person2` | Person 2 passes in their 60s |
 | `sample` / `sample-a` / `sample-b` | Synthetic share-safe demo scenarios (Alex & Sam) |
 | `starter` | Blank-slate template for new non-Monarch users |
 
