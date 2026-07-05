@@ -1,6 +1,6 @@
 # System Patterns — Net Worth Navigator
 
-**Last Review:** 2026-06-24
+**Last Review:** 2026-07-05
 
 ## Architectural Overview
 
@@ -140,6 +140,9 @@ amount = -6000             # negative = cash outflow
 - **Simplified tax in V1:** Flat effective-rate tax was the original approximation. As of 2026-06-17, the project has started the deeper-tax-realism path with configurable federal ordinary-income brackets and standard deductions; Social Security taxability and state tax still need more work. Adopted/updated 2026-06-17.
 - **Phase-specific withdrawal policy in V1.5:** Reserve targets and withdrawal order live in `[withdrawal_policy]` instead of remaining hardcoded in `model.py`. Adopted 2026-06-17.
 - **No OWL in V1:** OWL is a downstream decumulation tool. NWN must establish the strategic picture first. Adopted 2026-06-16.
+- **GPL v3.0 license:** Protects against closed-source SaaS forks while preserving copyright holder's ability to dual-license or run private instances. Chosen over MIT to avoid relicensing trap with future contributors. Adopted 2026-07-05.
+- **Trunk-based branching (no `dev` branch):** Feature branches target `main` directly. PR review + local testing before merge provides the same safety as a `dev` branch without the infrastructure cost of a second running instance. Squash-merge to keep history clean. Tags mark releases. Adopted 2026-07-05. See `docs/references/project-governance-and-licensing.md`.
+- **SemVer versioning (MAJOR.MINOR.PATCH):** Single source of truth in `src/version.py` → `__version__`. MAJOR = breaking TOML schema or output, MINOR = backward-compatible new features, PATCH = bug fixes/docs. Started at `v1.0.0`. Tagged releases only, no `-dev` suffix. Adopted 2026-07-05.
 
 ## Promoted Learnings
 

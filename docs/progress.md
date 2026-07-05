@@ -3,6 +3,27 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-05 (Open-source readiness: license, versioning, branching, contributing)
+
+### Added
+
+- **`LICENSE`** — GPL v3.0 full text. Protects against closed-source SaaS forks while preserving copyright holder's ability to dual-license or run private instances. Chosen over MIT to avoid the relicensing trap with future contributors.
+- **`CONTRIBUTING.md`** — Fork/PR workflow targeting `main`, code of conduct, testing guidelines, code style, data privacy rules (use "Alex" and "Sam", don't commit real financial data), and contributor agreement to GPL v3.0.
+- **`src/version.py`** — Single source of truth (`__version__ = "1.0.0"`). SemVer MAJOR.MINOR.PATCH.
+- **`docs/references/project-governance-and-licensing.md`** — Full rationale document covering license decision, branching strategy analysis, versioning scheme, and the repo-visibility lesson.
+- **`run.py --version` / `run.py -V`** — Prints `Net Worth Navigator v1.0.0`.
+- **Version tag in shell page and compare page** — Small muted version string (e.g. `v1.0.0`) next to the page title in both `projection.html` and `compare.html`.
+
+### Changed
+
+- **`src/scenario_shell.py`** — Both `build_scenario_shell()` and `build_compare_page()` import and display the version from `src.version.__version__`. Each has independent CSS for `.version-tag`.
+- **`docs/systemPatterns.md`** — Added Key Technical Decisions entries for GPL v3.0, trunk-based branching (no `dev` branch), and SemVer versioning. Updated Last Review date.
+
+### Decisions
+
+- **Branching strategy: trunk-based, no `dev` branch.** Feature branches target `main` directly. PR review + local testing before merge provides the same safety as a `dev` branch without the infrastructure cost of a second running instance (separate nginx route, Docker container, cron job). Squash-merge to keep history clean. Tags mark releases. See `docs/references/project-governance-and-licensing.md` for the full analysis.
+- **SemVer versioning.** MAJOR = breaking TOML schema or output, MINOR = backward-compatible new features, PATCH = bug fixes/docs. Started at `v1.0.0`. No `-dev` suffix. No release branches.
+
 ## 2026-07-04 (Setup Panel follow-ups, tooltip fix, docs reorg, feature-gap plans)
 
 ### Fixed

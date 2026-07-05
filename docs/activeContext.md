@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-04
-**Status:** Setup Panel Manual/Monarch tab visibility + People row layout shipped; tab-tooltip stuck-open bug fixed. Two feature gaps identified and scoped as design plans (not yet started): single-person households, and state-by-state tax schedules.
+**Last updated:** 2026-07-05
+**Status:** v1.0.0 tagged and pushed. GPL v3.0 license and CONTRIBUTING.md published. Versioning system live. Branching strategy settled (trunk-based, no `dev` branch).
 
 ---
 
