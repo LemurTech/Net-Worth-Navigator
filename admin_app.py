@@ -634,11 +634,61 @@ def _start_render_job_response(
     return JSONResponse({"ok": False, "error": f"Unsupported render action: {action}"}, status_code=400)
 
 
+_SCENARIOS_MISSING_HELP = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Net Worth Navigator — Getting Started</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; justify-content: center; padding: 2rem; min-height: 100vh; }}
+  .card {{ max-width: 640px; width: 100%; background: #1e293b; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }}
+  h1 {{ font-size: 1.5rem; margin-bottom: 0.5rem; color: #f8fafc; }}
+  p {{ margin-bottom: 1rem; line-height: 1.6; color: #94a3b8; }}
+  code {{ background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #e2e8f0; }}
+  .steps {{ list-style: none; padding: 0; margin: 1.5rem 0; }}
+  .steps li {{ padding: 0.75rem 0; border-bottom: 1px solid #334155; line-height: 1.5; }}
+  .steps li:last-child {{ border-bottom: none; }}
+  .steps li strong {{ color: #f8fafc; }}
+  .badge {{ display: inline-block; background: #3b82f6; color: #fff; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; font-size: 0.8rem; font-weight: 700; margin-right: 8px; flex-shrink: 0; }}
+  .tip {{ background: #1e3a5f; border-left: 3px solid #3b82f6; padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 1rem 0; font-size: 0.9rem; }}
+  hr {{ border: none; border-top: 1px solid #334155; margin: 1.5rem 0; }}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📋 Net Worth Navigator</h1>
+  <p>Welcome! The <code>scenarios/</code> directory is empty — no scenario configs were found.</p>
+  <p>To get started, choose one of these options:</p>
+  <ul class="steps">
+    <li><span class="badge">1</span> <strong>Start from the blank template</strong><br>Copy <code>scenarios/starter.toml</code> to <code>scenarios/default.toml</code> and fill in your details.</li>
+    <li><span class="badge">2</span> <strong>Explore the sample scenario</strong><br>Run <code>python run.py --scenario sample</code> to see the app working with example data (Alex &amp; Sam).</li>
+    <li><span class="badge">3</span> <strong>No Monarch?</strong><br>Set <code>[data_source].mode = "synthetic"</code> in your scenario and enter balances manually via the Setup Panel.</li>
+  </ul>
+  <div class="tip">
+    💡 <strong>Quick start:</strong><br>
+    <code>cp scenarios/starter.toml scenarios/default.toml</code><br>
+    Then reload this page and use the Setup Panel to configure your household.
+  </div>
+  <hr>
+  <p style="font-size:0.85rem;color:#64748b;">
+    Sample scenarios are pre-configured and available at
+    <a href="/finances/projection.html" style="color:#60a5fa;">the projection page</a>.
+  </p>
+</div>
+</body>
+</html>"""
+
+
 @app.get("/", response_class=HTMLResponse)
 async def editor_home(request: Request) -> HTMLResponse:
     scenario_slug = request.query_params.get("scenario")
     job_id = request.query_params.get("job")
-    content = _read_config_text(scenario_slug)
+    try:
+        content = _read_config_text(scenario_slug)
+    except (FileNotFoundError, KeyError):
+        return HTMLResponse(_SCENARIOS_MISSING_HELP, status_code=200)
     completed_job_context = _job_context_from_completed_job(job_id) if job_id else None
     context = _build_context(
         request,
@@ -661,7 +711,10 @@ async def editor_home(request: Request) -> HTMLResponse:
 @app.get("/finances/config/setup", response_class=HTMLResponse)
 async def setup_panel(request: Request) -> HTMLResponse:
     scenario_slug = request.query_params.get("scenario")
-    content = _read_config_text(scenario_slug)
+    try:
+        content = _read_config_text(scenario_slug)
+    except (FileNotFoundError, KeyError):
+        return HTMLResponse(_SCENARIOS_MISSING_HELP, status_code=200)
     context = _build_context(
         request,
         content=content,
