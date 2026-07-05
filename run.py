@@ -17,6 +17,7 @@ from typing import Any
 from src.charts import build_chart
 from src.definitions_page import write_definitions_page
 from src.model import load_config, run_projection_result
+from src.version import __version__
 from src.monarch_bridge import (
     classify_accounts,
     extract_basis_seeds,
@@ -192,6 +193,10 @@ def check_first_run():
 
 
 def main():
+    if "--version" in sys.argv or "-V" in sys.argv:
+        print(f"Net Worth Navigator v{__version__}")
+        return
+    
     # Check for first run and show welcome message
     is_first_run = check_first_run()
     scenario = get_scenario(selected_scenario_slug(sys.argv))

@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from src.version import __version__
+
 # ---------------------------------------------------------------------------
 # Colour palette assigned to each scenario slot (up to 10 scenarios).
 # These are Plotly-safe CSS colour strings used in both the chart and chip UI.
@@ -77,6 +79,13 @@ def build_scenario_shell(
       line-height: 1.02;
       letter-spacing: -0.03em;
     }}
+    .version-tag {{
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-left: 8px;
+      vertical-align: middle;
+    }}
     .selector-card {{
       display: grid;
       gap: 6px;
@@ -135,7 +144,7 @@ def build_scenario_shell(
     }}
     .scenario-summary {{
       min-width: 0;
-      flex: 1 1 auto;
+      flex: 1 1 0;
       display: flex;
       align-items: center;
     }}
@@ -143,7 +152,7 @@ def build_scenario_shell(
       color: var(--muted);
       font-size: 13px;
       line-height: 1.35;
-      max-width: none;
+      overflow-wrap: break-word;
     }}
     .control-actions {{
       display: flex;
@@ -350,7 +359,7 @@ def build_scenario_shell(
 <body>
   <div class="page">
     <section class="topbar">
-      <div class="topbar-title">Net Worth Navigator</div>
+      <div class="topbar-title">Net Worth Navigator<span class="version-tag">v{__version__}</span></div>
       <div class="freshness-bar" id="freshness-bar">
         <span class="dot missing" id="freshness-dot"></span>
         <span class="label" id="freshness-label">Syncing data…</span>
@@ -704,6 +713,7 @@ def build_compare_page(
     .page {{ max-width: 1280px; margin: 0 auto; padding: 18px 16px 40px; }}
     .topbar {{ display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }}
     .topbar-title {{ font-size: 22px; font-weight: 700; letter-spacing: -.03em; }}
+    .version-tag {{ font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; vertical-align: middle; }}
     .topbar-sub {{ color: var(--muted); font-size: 13px; }}
     .back-link {{ color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; margin-left: auto; white-space: nowrap; }}
     .back-link:hover {{ color: #fff; }}
@@ -787,7 +797,7 @@ def build_compare_page(
 <body>
 <div class="page">
   <div class="topbar">
-    <div class="topbar-title">Compare Scenarios</div>
+    <div class="topbar-title">Compare Scenarios<span class="version-tag">v{__version__}</span></div>
     <div class="topbar-sub">Net Worth Navigator</div>
     <a class="back-link" href="{shell_url}">← Back to projection</a>
   </div>
