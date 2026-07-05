@@ -473,6 +473,12 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
     if not person_keys:
         errors.append(f"At least one [person1] configuration is required{path_hint}")
     
+    # Track life-expectancy errors separately — they're only blocking if
+    # no person's life expectancy covers the projection range (early-death
+    # scenarios intentionally have one person pass before simulation end).
+    life_exp_errors: list[str] = []
+    someone_survives_to_end = False
+    
     for person_key in person_keys:
         person = config.get(person_key, {})
         person_display = f"[{person_key}]"
@@ -531,10 +537,14 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
                 # Allow a 10-year buffer beyond life expectancy for safety margin
                 if end_year and death_year + 10 < int(end_year):
                     age_at_end = int(end_year) - birth_year
-                    errors.append(
+                    life_exp_errors.append(
                         f"{person_display}: projection extends significantly beyond life expectancy "
                         f"(would be {age_at_end} years old in {end_year}, but life_expectancy is {life_exp}){path_hint}"
                     )
+                elif end_year and death_year >= int(end_year):
+                    someone_survives_to_end = True
+                elif end_year and death_year + 10 >= int(end_year):
+                    someone_survives_to_end = True
             except (TypeError, ValueError, KeyError):
                 pass  # Already flagged as format error above
         
@@ -564,6 +574,11 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
                     )
             except (TypeError, ValueError):
                 pass
+    
+    # Only report life-expectancy errors if no person survives to the end
+    # (scenarios with one early death and one surviving partner are valid).
+    if not someone_survives_to_end:
+        errors.extend(life_exp_errors)
     
     # Check liability consistency (synthetic mode only)
     data_source = config.get("data_source", {})

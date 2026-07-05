@@ -2107,7 +2107,18 @@
               updateOverlayFromJob(job);
               if (job.state === 'completed' || job.state === 'failed') {
                 clearInterval(pollTimer);
-                window.location.href = window.location.href.split('?')[0] + '?scenario=' + encodeURIComponent(currentScenarioSlug);
+                if (job.state === 'failed') {
+                  // Show the error in the overlay instead of redirecting
+                  var errMsg = job.detail || job.status_message || 'Render failed. Check the editor for details.';
+                  document.getElementById('render-title').textContent = '⚠️ Render Failed';
+                  document.getElementById('render-detail').textContent = errMsg;
+                  document.getElementById('render-progress').textContent = '';
+                  document.getElementById('render-hint').innerHTML =
+                    '<button type="button" class="linkbtn" onclick="hideRenderOverlay()" style="margin-top:8px">Dismiss</button> ' +
+                    '<a href="' + window.location.href.split('?')[0] + '?scenario=' + encodeURIComponent(currentScenarioSlug) + '" class="linkbtn" style="margin-top:8px">View Editor</a>';
+                } else {
+                  window.location.href = window.location.href.split('?')[0] + '?scenario=' + encodeURIComponent(currentScenarioSlug);
+                }
               }
             }).catch(function () {});
           }, 1000);
