@@ -2364,8 +2364,8 @@ def build_chart(
       </ul>
       <p class="sample-guide-tip"><strong>💡 Tip:</strong> Click year columns in tables to highlight that year across all data. Try switching between projection modes (deterministic, historical, Monte Carlo) using the Simulation tab.</p>
       <div class="sample-guide-actions">
-        <a href="/finances/config/?scenario=sample" class="sample-guide-btn">View Sample Config</a>
-        <a href="/finances/config/setup" class="sample-guide-btn sample-guide-btn-primary">Create Your Own</a>
+        <a href="/finances/config/?scenario=sample" target="_top" class="sample-guide-btn">View Sample Config</a>
+        <a href="/finances/config/setup" target="_top" class="sample-guide-btn sample-guide-btn-primary">Create Your Own</a>
       </div>
     </div>
 """
