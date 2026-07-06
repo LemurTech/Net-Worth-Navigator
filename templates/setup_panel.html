@@ -403,6 +403,12 @@
             {% for scenario in scenario_options %}
             <option value="{{ scenario.slug }}" {% if scenario.slug == scenario_slug %}selected{% endif %}>{{ scenario.name }}</option>
             {% endfor %}
+            {% if sample_options %}
+            <option disabled>─────</option>
+            {% for scenario in sample_options %}
+            <option value="{{ scenario.slug }}" {% if scenario.slug == scenario_slug %}selected{% endif %}>{{ scenario.name }}</option>
+            {% endfor %}
+            {% endif %}
           </select>
         </form>
         <a class="linkbtn" href="{{ definitions_url }}" target="_blank" rel="noreferrer">Definitions</a>
@@ -2301,8 +2307,25 @@
       /* ── New scenario from starter template ──────────────────────── */
       function initNewScenario() {
         var btn = document.getElementById('new-scenario-btn');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
+        var overlay = document.getElementById('template-dialog-overlay');
+        var confirmBtn = document.getElementById('confirm-template-btn');
+        var cancelBtn = document.getElementById('cancel-template-btn');
+        if (!btn || !overlay) return;
+
+        function showOverlay() { overlay.classList.add('active'); }
+        function hideOverlay() { overlay.classList.remove('active'); }
+
+        cancelBtn.addEventListener('click', hideOverlay);
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) hideOverlay();
+        });
+
+        btn.addEventListener('click', showOverlay);
+
+        confirmBtn.addEventListener('click', function () {
+          var hhtEl = document.querySelector('input[name="template-hht"]:checked');
+          var hht = hhtEl ? hhtEl.value : 'single';
+          hideOverlay();
           var name = prompt('New scenario name:', '');
           if (!name || !name.trim()) return;
           var slug = prompt('Scenario slug (e.g. "smith-household"):', '');
@@ -2316,6 +2339,7 @@
             name: name.trim(),
             slug: slug.trim(),
             description: (desc || '').trim(),
+            household_type: hht,
           }).then(function (data) {
             btn.disabled = false;
             btn.textContent = 'New from Template';
@@ -2509,10 +2533,34 @@
       <h3 id="delete-dialog-title">⚠ Delete Scenario</h3>
       <p>This will permanently delete <strong id="delete-dialog-name"></strong> and its rendered output. This cannot be undone.<br><br>Type the scenario slug to confirm:</p>
       <label class="confirm-label" for="delete-confirm-input">Scenario slug: <code id="delete-dialog-slug-hint"></code></label>
-      <input type="text" id="delete-confirm-input" autocomplete="off" spellcheck="false" placeholder="">
+      <input type="text" id="delete-confirm-input" placeholder="Type the slug to confirm…" autocomplete="off">
       <div class="dialog-actions">
         <button type="button" id="cancel-delete-btn">Cancel</button>
-        <button type="button" id="confirm-delete-btn" class="danger" disabled>Delete Permanently</button>
+        <button type="button" id="confirm-delete-btn" class="danger" disabled>Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── New-from-template dialog ─────────────────────────────────────── -->
+  <div class="template-dialog-overlay" id="template-dialog-overlay" aria-modal="true" role="dialog" aria-labelledby="template-dialog-title">
+    <div class="template-dialog">
+      <h3 id="template-dialog-title">New from Template</h3>
+      <p>Choose the household type for your new scenario:</p>
+      <div class="template-type-options">
+        <label class="template-type-option">
+          <input type="radio" name="template-hht" value="single" checked>
+          <span class="template-type-label">Single-Person</span>
+          <span class="template-type-desc">One person, no second-person data</span>
+        </label>
+        <label class="template-type-option">
+          <input type="radio" name="template-hht" value="couple">
+          <span class="template-type-label">Couple / Two-Person</span>
+          <span class="template-type-desc">Two-person household with partner data</span>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="cancel-template-btn">Cancel</button>
+        <button type="button" id="confirm-template-btn" class="primary">Create Scenario</button>
       </div>
     </div>
   </div>
@@ -2536,6 +2584,53 @@
     .delete-dialog input:focus { outline: none; border-color: #f87171; }
     .delete-dialog .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
     #confirm-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .template-dialog-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(8,13,24,0.76); align-items: center; justify-content: center;
+      z-index: 10000; backdrop-filter: blur(2px);
+    }
+    .template-dialog-overlay.active { display: flex; }
+    .template-dialog {
+      background: #111827; border: 1px solid var(--border);
+      border-radius: 14px; padding: 28px 28px 22px; max-width: 420px; width: 100%;
+      box-shadow: 0 24px 60px rgba(0,0,0,.48);
+    }
+    .template-dialog h3 { margin: 0 0 6px; font-size: 17px; font-weight: 700; color: var(--text); }
+    .template-dialog p { margin: 0 0 18px; font-size: 13px; color: var(--muted); }
+    .template-type-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .template-type-option {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 12px 14px; border-radius: 10px;
+      border: 1px solid var(--border); cursor: pointer;
+      transition: border-color .14s, background .14s;
+    }
+    .template-type-option:hover { border-color: var(--accent); background: rgba(125,211,252,0.04); }
+    .template-type-option:has(input:checked) {
+      border-color: var(--accent-strong);
+      background: rgba(14,165,233,0.10);
+    }
+    .template-type-option input[type="radio"] {
+      position: absolute; opacity: 0; pointer-events: none;
+    }
+    .template-type-label {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      padding-left: 24px; position: relative;
+    }
+    .template-type-label::before {
+      content: ''; position: absolute; left: 0; top: 2px;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--border); background: transparent;
+      transition: border-color .14s, background .14s;
+    }
+    .template-type-option:has(input:checked) .template-type-label::before {
+      border-color: var(--accent-strong);
+      background: var(--accent-strong);
+      box-shadow: inset 0 0 0 3px #111827;
+    }
+    .template-type-desc {
+      font-size: 12px; color: var(--muted); padding-left: 24px;
+    }
+    .template-dialog .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
   </style>
 </body>
 </html>

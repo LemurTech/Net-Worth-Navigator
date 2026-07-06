@@ -50,6 +50,9 @@ def discover_scenarios() -> list[ScenarioRef]:
     scenarios: list[ScenarioRef] = []
     for path in scenario_files:
         metadata = _load_metadata(path)
+        # Skip template files — they should not appear in the projection shell
+        if metadata.get("is_template", False):
+            continue
         stem = path.stem
         slug = _slugify(str(metadata.get("slug", stem)), stem)
         name = str(metadata.get("name", stem.replace("-", " ").title()))
@@ -223,6 +226,8 @@ def write_scenarios_index(*, output_root: Path | None = None, cache_timestamp: s
         "default_slug": default_slug,
         "scenarios": [],
     }
+    user_entries: list[dict] = []
+    sample_entries: list[dict] = []
     for scenario in scenarios:
         scenario_dir = output_root / scenario.slug
         mode_entries = []
@@ -252,20 +257,25 @@ def write_scenarios_index(*, output_root: Path | None = None, cache_timestamp: s
         default_mode = "deterministic" if any(entry["mode"] == "deterministic" for entry in mode_entries) else (
             mode_entries[0]["mode"] if mode_entries else None
         )
-        payload["scenarios"].append(
-            {
-                "slug": scenario.slug,
-                "name": scenario.name,
-                "description": scenario.description,
-                "config_path": _display_config_path(scenario.config_path),
-                "projection_path": scenario_projection_relpath(scenario.slug, default_mode) if default_mode else None,
-                "rendered_at": next((entry["rendered_at"] for entry in mode_entries if entry["mode"] == default_mode), None),
-                "default_mode": default_mode,
-                "modes": mode_entries,
-                "data_source_mode": data_source_mode,
-                "is_default": scenario.is_default,
-            }
-        )
+        entry = {
+            "slug": scenario.slug,
+            "name": scenario.name,
+            "description": scenario.description,
+            "config_path": _display_config_path(scenario.config_path),
+            "projection_path": scenario_projection_relpath(scenario.slug, default_mode) if default_mode else None,
+            "rendered_at": next((entry["rendered_at"] for entry in mode_entries if entry["mode"] == default_mode), None),
+            "default_mode": default_mode,
+            "modes": mode_entries,
+            "data_source_mode": data_source_mode,
+            "is_default": scenario.is_default,
+        }
+        name_lower = (scenario.name or "").strip().lower()
+        if name_lower.startswith("sample"):
+            sample_entries.append(entry)
+        else:
+            user_entries.append(entry)
+
+    payload["scenarios"] = user_entries + sample_entries
 
     index_path = output_root / SCENARIO_INDEX_JSON
     index_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")

@@ -189,6 +189,16 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
     resolved_slug = scenario.slug
     config_path = _config_path(resolved_slug)
     discovered_scenarios = discover_scenarios()
+    # Split into user scenarios and sample/demo scenarios
+    user_scenarios = []
+    sample_scenarios = []
+    for opt in discovered_scenarios:
+        name_lower = (opt.name or "").strip().lower()
+        if name_lower.startswith("sample"):
+            sample_scenarios.append(opt)
+        else:
+            user_scenarios.append(opt)
+
     scenario_options = [
         {
             "slug": option.slug,
@@ -196,7 +206,16 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
             "description": option.description,
             "is_default": option.is_default,
         }
-        for option in discovered_scenarios
+        for option in user_scenarios
+    ]
+    sample_options = [
+        {
+            "slug": option.slug,
+            "name": option.name,
+            "description": option.description,
+            "is_default": option.is_default,
+        }
+        for option in sample_scenarios
     ]
     last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
     render_plan = _render_plan_snapshot(
@@ -220,6 +239,7 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "scenario_slug": resolved_slug,
         "scenario_description": scenario.description,
         "scenario_options": scenario_options,
+        "sample_options": sample_options,
         "render_plan_json": json.dumps(render_plan),
         "clone_name": clone_name,
         "clone_slug": clone_slug,
@@ -1206,7 +1226,7 @@ def _classify_raw_accounts(
 
 @app.post("/api/new-scenario")
 async def api_new_scenario(request: Request) -> JSONResponse:
-    """Create a new scenario by copying starter.toml and rewriting its metadata."""
+    """Create a new scenario by copying a starter template and rewriting its metadata."""
     try:
         body = await request.json()
     except Exception:
@@ -1215,15 +1235,18 @@ async def api_new_scenario(request: Request) -> JSONResponse:
     name = str(body.get("name", "")).strip()
     slug = str(body.get("slug", "")).strip()
     description = str(body.get("description", "")).strip()
+    household_type = str(body.get("household_type", "single")).strip().lower()
 
     if not name:
         return JSONResponse({"ok": False, "error": "Scenario name is required."}, status_code=400)
     if not slug:
         return JSONResponse({"ok": False, "error": "Scenario slug is required."}, status_code=400)
 
-    starter_path = SCENARIOS_DIR / "starter.toml"
+    # Choose the starter template based on household type
+    template_name = "starter-couple" if household_type == "couple" else "starter"
+    starter_path = SCENARIOS_DIR / f"{template_name}.toml"
     if not starter_path.exists():
-        # Fallback: use the minimal required TOML inline if starter.toml isn't present
+        # Fallback: use the minimal required TOML inline if no template is found
         source_content = (
             '[scenario]\nname = ""\nslug = ""\ndescription = ""\nis_default = false\n\n'
             '[data_source]\nmode = "synthetic"\n\n[synthetic_start]\ntaxable = 0\n'
