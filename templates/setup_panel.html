@@ -2065,13 +2065,8 @@
           _syntheticData = data;
           var syn = data.synthetic_start || {};
 
-          // Data source radio
+          // Disable or enable synth inputs based on saved mode
           var mode = data.data_source_mode || 'monarch';
-          var dsRadios = document.querySelectorAll('input[name="ds_mode"]');
-          dsRadios.forEach(function (r) {
-            r.checked = r.value === mode;
-            updateRadioCard(r);
-          });
           toggleSynthInputs(mode !== 'synthetic');
 
           // Fill fields
