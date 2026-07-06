@@ -629,7 +629,7 @@
         </div>
 
         <!-- ── Monarch / cached accounts toolbar ─────────────────── -->
-        <div class="account-toolbar" id="accounts-toolbar">
+        <div class="account-toolbar" id="accounts-toolbar" style="display:none">
           <span class="cache-info" id="cache-info">Accounts loaded from cache as of <span id="cache-ts-display">—</span></span>
           <button type="button" id="refresh-monarch-btn">Refresh from Monarch</button>
         </div>
@@ -1753,7 +1753,7 @@
           }
         } else {
           // Monarch mode
-          if (accountsToolbar) accountsToolbar.style.display = '';
+          if (accountsToolbar) accountsToolbar.style.display = 'block';
           if (editorHead) editorHead.style.display = '';
           if (accountsSection) accountsSection.style.display = '';
         }
