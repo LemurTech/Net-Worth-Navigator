@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-05
-**Status:** v1.1.0 — Single-person household support shipped. Household type auto-infers from presence/absence of `[person2]` with optional explicit override via `[scenario].household_type`. Starter templates (`starter.toml` / `starter-couple.toml`) are `is_template=true` and hidden from shell dropdowns; sample scenarios sorted to bottom with visual separator. "New from Template" flow includes a household-type selector modal.
+**Last updated:** 2026-07-06
+**Status:** v1.2.0 — CSV account import feature shipped. New `csv_import` data source mode allows users to upload Monarch-format CSV exports, assign account types via the Setup Panel, and re-import incrementally with automatic classification preservation. Setup Panel refactored into a single-tab layout (Metadata | Accounts | Raw TOML) with unified Save/Render/Render All actions.
 
 ---
 
@@ -30,6 +30,7 @@ be created directly in `docs/plans/`, not in `docs/` root.
 | http://casalemuria.lan/finances/config/ | Raw TOML config editor (legacy) |
 | http://casalemuria.lan/finances/config/setup | Scenario Setup Panel (new) |
 | http://casalemuria.lan/finances/definitions.html | Parameter glossary |
+| http://casalemuria.lan/finances/projection.html | Projection shell page |
 
 ## Active Scenarios
 
@@ -114,7 +115,7 @@ Plan: `docs/plans/2026-07-01-monarch-optional.md`
 | 2 — Setup Panel UI | ✅ Done | Synthetic-mode banner in Accounts tab; disable Refresh button; clean 503 from API; radio sync |
 | 3 — Starter template | ✅ Done | `scenarios/starter.toml` blank-slate TOML; README "Getting Started Without Monarch" section |
 | 4 — New-scenario flow | ✅ Done | "New from Template" button in Setup Panel; clone-source warning |
-| 5 — Structural / CSV | 🔲 Future | CSV import, DataSourceProvider abstraction, Docker portability |
+| 5 — Structural / CSV | ✅ Done | CSV account import (csv_importer, api/csv-upload, Setup Panel UI) |
 
 
 

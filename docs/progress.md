@@ -3,6 +3,61 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-06 (v1.2.0 — CSV account import)
+
+### Added
+
+- **`src/csv_importer.py`** — New module with `parse_csv()` (Monarch-format CSV parsing),
+  `merge_accounts()` (incremental update with new/updated/removed detection), and
+  `build_csv_starting_inputs()` (builds the same 6-tuple as `_synthetic_inputs_from_config()`
+  by reusing `monarch_bridge` classification functions via a virtual raw-account list).
+- **3 API endpoints** in `admin_app.py`: `GET /api/csv-source` (current CSV source +
+  per-account status), `POST /api/csv-upload` (multipart CSV upload with merge preview),
+  `POST /api/save-csv-source` (writes `[csv_source]` + `[accounts]` + sets
+  `data_source.mode="csv_import"`).
+- **Setup Panel UI for CSV import** — Source selector (Monarch Money), file upload,
+  preview table with inline category/owner dropdowns, merge diff summary, Import & Save.
+- **24 tests** in `tests/test_csv_importer.py` covering parsing, merging, and
+  build-inputs integration.
+
+### Changed
+
+- **Setup Panel refactored** from two-row layout (Quick Controls above + tabs below)
+  into a single tabbed interface: **Metadata** | **Accounts** | **Raw TOML**.
+  - Metadata tab: name, description, people, cash targets, assumptions, withdrawal/surplus
+    priorities (formerly the Quick Controls panel).
+  - Accounts tab: Data Source selector (Monarch / Manual entry / CSV import) with
+    contextual content — Monarch accounts table, CSV upload+preview, or synthetic inputs.
+  - Raw TOML tab: textarea (unchanged).
+  - Global action bar below tabs: Save | Render | Render All | New Template.
+  - Save auto-saves metadata + accounts data based on active mode.
+  - Render/Render All auto-save before rendering.
+- **`data_source.mode = "csv_import"`** — new data source mode alongside `monarch` and `synthetic`.
+  Reads account balances from `[csv_source.accounts]` + classification from `[accounts]`.
+- **`[csv_source]` TOML section** — stores last import date and per-account balances
+  (`[csv_source.accounts]`), separate from classification in `[accounts]`.
+- **Source column** in accounts table now shows "CSV" (blue dot) for CSV-imported accounts.
+- **Cache-control headers** added to Setup Panel (HTTP + meta tags) to prevent stale JS.
+- **Nginx** `client_max_body_size` set to 20m for CSV upload support.
+- **`python-multipart`** added to `requirements.txt` for FastAPI form parsing.
+- **`data_source` mode** accepted in `save-quick-controls` (`monarch`, `synthetic`, `csv_import`).
+- All per-tab save/validate/render buttons removed in favor of the unified action bar.
+
+### Fixed
+
+- `initQuickEdit` regex for reading `data_source.mode` from TOML now matches `csv_import`
+  (was only matching `monarch|synthetic`, causing radio to revert on page reload).
+- Stale `initSaveQuick()` / `initSaveRenderQuick()` / `initSaveClassification()` calls
+  removed from `init()` — were throwing ReferenceError and preventing all subsequent init.
+- `loadSyntheticTab()` no longer overrides the data source radio (was resetting to the
+  saved TOML mode, undoing user selection when switching modes without saving).
+- Accounts toolbar (cache info + Refresh from Monarch) hidden by default; only shown
+  in Monarch mode.
+- "Loading accounts…" hidden immediately in csv_import mode (no flash).
+- `showToast` wrapped in try/catch with alert() fallback for browser diagnostic.
+- Inline SVG favicon added to stop 404 requests to `/favicon.ico`.
+- Favicon 404 resolved.
+
 ## 2026-07-05 (v1.1.0 — Single-person household support)
 
 ### Added
