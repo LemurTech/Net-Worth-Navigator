@@ -776,7 +776,7 @@
         return fetch(apiUrl(path), {
           method: 'POST',
           body: formData,
-          Accept: 'application/json',
+          headers: { Accept: 'application/json' },
         }).then(function (r) { return r.json(); });
       }
 
@@ -1936,7 +1936,7 @@
           var formData = new FormData();
           formData.append('file', file);
 
-          apiPostForm('api/csv-upload?scenario=' + encodeURIComponent(currentScenarioSlug), formData).then(function (data) {
+          apiPostForm('api/csv-upload', formData).then(function (data) {
             uploadBtn.disabled = false;
             uploadBtn.textContent = 'Upload & Preview';
             if (data.ok) {
