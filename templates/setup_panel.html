@@ -489,7 +489,10 @@
           <input type="radio" name="ds_mode" value="monarch"> Monarch (live/cached)
         </label>
         <label class="radio-card" id="ds-radio-synthetic">
-          <input type="radio" name="ds_mode" value="synthetic"> Manual entry (synthetic)
+          <input type="radio" name="ds_mode" value="synthetic"> Manual entry
+        </label>
+        <label class="radio-card" id="ds-radio-csv">
+          <input type="radio" name="ds_mode" value="csv_import"> CSV import
         </label>
       </div>
 
@@ -581,6 +584,50 @@
 
       <!-- ── Tab: Data Sources & Accounts ───────────────────────────── -->
       <div class="tab-content tab-card" id="tab-accounts">
+
+        <!-- ── CSV Import section ───────────────────────────────── -->
+        <div id="csv-import-section" style="display:none;border-bottom:1px solid var(--border);padding:14px 16px 16px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px">📁 CSV Import</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4">
+            Upload your Monarch Money export CSV. Accounts already classified will keep their type.
+            New accounts will need a type assigned below.
+          </div>
+          <div id="csv-upload-area" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="file" id="csv-file-input" accept=".csv" style="flex:1;min-width:200px;padding:8px;background:var(--panel-2);border:1px dashed var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            <button type="button" id="csv-upload-btn" class="primary" style="white-space:nowrap">Upload &amp; Preview</button>
+          </div>
+          <div id="csv-preview" style="display:none;margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:4px">
+              <div style="font-size:13px;font-weight:600" id="csv-preview-title">Preview</div>
+              <div style="font-size:11px;color:var(--muted)" id="csv-preview-meta"></div>
+            </div>
+            <div id="csv-merge-note" style="font-size:12px;color:var(--accent);margin-bottom:8px;display:none"></div>
+            <div style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+              <table class="csv-preview-table" style="width:100%;border-collapse:collapse;font-size:13px">
+                <thead>
+                  <tr style="background:var(--panel-2)">
+                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Account</th>
+                    <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap">Balance</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap">Category</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap">Owner</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap">Disabled</th>
+                  </tr>
+                </thead>
+                <tbody id="csv-preview-tbody"></tbody>
+              </table>
+            </div>
+            <div id="csv-removed-section" style="display:none;margin-top:8px;font-size:12px;color:var(--muted)">
+              <strong>⚠ Accounts in config but missing from CSV:</strong>
+              <div id="csv-removed-list" style="margin-top:4px"></div>
+            </div>
+            <div class="tab-actions" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+              <button type="button" id="csv-cancel-btn">Cancel</button>
+              <button type="button" class="primary" id="csv-save-btn">✅ Import &amp; Save</button>
+            </div>
+          </div>
+          <div id="csv-upload-error" style="display:none;margin-top:8px;font-size:13px;color:var(--error-border)"></div>
+        </div>
+
         <div class="account-toolbar" id="accounts-toolbar">
           <span class="cache-info" id="cache-info">Accounts loaded from cache as of <span id="cache-ts-display">—</span></span>
           <button type="button" id="refresh-monarch-btn">Refresh from Monarch</button>
@@ -633,6 +680,9 @@
               </label>
               <label class="radio-card" id="synth-ds-synthetic">
                 <input type="radio" name="synth_ds_mode" value="synthetic"> Manual entry
+              </label>
+              <label class="radio-card" id="synth-ds-csv">
+                <input type="radio" name="synth_ds_mode" value="csv_import"> CSV import
               </label>
             </div>
           </div>
@@ -719,6 +769,14 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify(body),
+        }).then(function (r) { return r.json(); });
+      }
+
+      function apiPostForm(path, formData) {
+        return fetch(apiUrl(path), {
+          method: 'POST',
+          body: formData,
+          Accept: 'application/json',
         }).then(function (r) { return r.json(); });
       }
 
@@ -1593,11 +1651,11 @@
         }
       }
 
-      /* ── Manual Setup tab: mode-aware visibility (mirrors Accounts tab) ── */
+      /* ── Manual Setup tab: mode-aware visibility ── */
       function setManualSetupTabVisibility(mode) {
         var btn = document.querySelector('.tab-btn[data-tab="synthetic"]');
         if (!btn) return;
-        if (mode === 'monarch') {
+        if (mode === 'monarch' || mode === 'csv_import') {
           btn.style.display = 'none';
           // If the Manual Setup tab is currently active, fall back to the TOML tab
           if (btn.classList.contains('active')) {
@@ -1609,6 +1667,11 @@
         }
       }
 
+      function showCsvImportSection(visible) {
+        var el = document.getElementById('csv-import-section');
+        if (el) el.style.display = visible ? 'block' : 'none';
+      }
+
       function applyAccountsTabModeState(sourceMode) {
         var btn = document.getElementById('refresh-monarch-btn');
         var toolbar = document.getElementById('accounts-toolbar');
@@ -1616,6 +1679,7 @@
         if (existingBanner) existingBanner.remove();
 
         if (sourceMode === 'synthetic') {
+          showCsvImportSection(false);
           // Insert info banner above toolbar
           var banner = document.createElement('div');
           banner.id = 'accounts-mode-banner';
@@ -1624,14 +1688,22 @@
             '<span class="banner-icon">ℹ</span> ' +
             'This scenario uses <strong>Manual Entry (synthetic)</strong> balances. ' +
             'The accounts table is for Monarch classification only and does not affect your projection. ' +
-            'Switch to <em>Monarch (live/cached)</em> in the Data Source control to enable it.';
+            'Switch to <em>Monarch (live/cached)</em> or <em>CSV import</em> in the Data Source control to enable it.';
           toolbar.parentNode.insertBefore(banner, toolbar);
           // Disable Refresh button
           if (btn) {
             btn.disabled = true;
             btn.title = 'Not available in synthetic mode';
           }
+        } else if (sourceMode === 'csv_import') {
+          showCsvImportSection(true);
+          // Disable Refresh button
+          if (btn) {
+            btn.disabled = true;
+            btn.title = 'Use CSV import for account data';
+          }
         } else {
+          showCsvImportSection(false);
           // Monarch mode — ensure button is enabled
           if (btn) {
             btn.disabled = false;
@@ -1662,6 +1734,274 @@
             showError('Refresh failed: ' + err.message);
           });
         });
+      }
+
+      /* ── CSV import ────────────────────────────────────────────── */
+
+      var _csvPreviewData = null;  // cached preview from last upload
+
+      function getCsvStatusFromPreview() {
+        if (!_csvPreviewData) return null;
+        var accounts = [];
+        var tbody = document.getElementById('csv-preview-tbody');
+        if (!tbody) return null;
+        var rows = tbody.querySelectorAll('tr');
+        rows.forEach(function (row) {
+          var name = row.getAttribute('data-name');
+          if (!name) return;
+          var balInput = row.querySelector('.csv-balance');
+          var catSelect = row.querySelector('.csv-category');
+          var ownerSelect = row.querySelector('.csv-owner');
+          var disabledCheck = row.querySelector('.csv-disabled');
+          accounts.push({
+            name: name,
+            balance: balInput ? parseFloat(balInput.value) || 0 : 0,
+            category: catSelect ? catSelect.value : 'ignore',
+            owner: ownerSelect ? ownerSelect.value : 'n/a',
+            disabled: disabledCheck ? disabledCheck.checked : false
+          });
+        });
+        return accounts;
+      }
+
+      function renderCsvPreview(data) {
+        var tbody = document.getElementById('csv-preview-tbody');
+        var preview = document.getElementById('csv-preview');
+        var meta = document.getElementById('csv-preview-meta');
+        var mergeNote = document.getElementById('csv-merge-note');
+        var removedSection = document.getElementById('csv-removed-section');
+        var removedList = document.getElementById('csv-removed-list');
+        var uploadArea = document.getElementById('csv-upload-area');
+        if (!tbody || !preview || !meta) return;
+
+        _csvPreviewData = data;
+
+        // Show/hide sections
+        preview.style.display = 'block';
+        if (uploadArea) uploadArea.style.opacity = '0.5';
+
+        // Meta info
+        var dateInfo = data.date_range || {};
+        meta.textContent = data.total_accounts + ' accounts · ' +
+          dateInfo.earliest + ' – ' + dateInfo.latest +
+          ' · imported ' + data.import_date;
+
+        // Merge note
+        var merge = data.merge || {};
+        var updatedCount = (merge.updated || []).length;
+        var newCount = (merge.new || []).length;
+        if (updatedCount > 0 || newCount > 0) {
+          var noteParts = [];
+          if (updatedCount > 0) noteParts.push(updatedCount + ' existing (balance updated)');
+          if (newCount > 0) noteParts.push(newCount + ' new (needs classification)');
+          mergeNote.innerHTML = '✓ ' + noteParts.join(', ') + '.';
+          mergeNote.style.display = 'block';
+        } else {
+          mergeNote.style.display = 'none';
+        }
+
+        // Build preview rows from all accounts (merge.updated + merge.new)
+        var allAccounts = (merge.updated || []).concat(merge.new || []);
+        tbody.innerHTML = '';
+
+        var categoryOptions = ['cash', 'taxable', 'trad_ira', 'roth', 'real_estate', 'vehicle', 'liability', 'ignore'];
+        var ownerOptions = ['n/a', 'person1', 'person2'];
+
+        allAccounts.forEach(function (acct) {
+          var tr = document.createElement('tr');
+          tr.setAttribute('data-name', acct.name);
+          if (!acct.category) tr.style.background = 'rgba(255, 200, 50, 0.06)';
+
+          // Account name
+          var nameTd = document.createElement('td');
+          nameTd.style.cssText = 'padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap';
+          var nameSpan = document.createElement('span');
+          nameSpan.textContent = acct.name;
+          nameTd.appendChild(nameSpan);
+          if (!acct.category) {
+            var newBadge = document.createElement('span');
+            newBadge.textContent = ' 🆕';
+            newBadge.style.cssText = 'font-size:11px;color:var(--accent)';
+            nameTd.appendChild(newBadge);
+          }
+          tr.appendChild(nameTd);
+
+          // Balance
+          var balTd = document.createElement('td');
+          balTd.style.cssText = 'padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap';
+          var balInput = document.createElement('input');
+          balInput.type = 'hidden';
+          balInput.className = 'csv-balance';
+          balInput.value = acct.balance;
+          balTd.textContent = formatDollar(acct.balance);
+          balTd.appendChild(balInput);
+          tr.appendChild(balTd);
+
+          // Category dropdown
+          var catTd = document.createElement('td');
+          catTd.style.cssText = 'padding:6px 10px;border-bottom:1px solid var(--border)';
+          var catSelect = document.createElement('select');
+          catSelect.className = 'csv-category';
+          catSelect.style.cssText = 'padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:12px;max-width:120px';
+          categoryOptions.forEach(function (opt) {
+            var option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            if (opt === (acct.category || 'cash')) option.selected = true;
+            catSelect.appendChild(option);
+          });
+          catTd.appendChild(catSelect);
+          tr.appendChild(catTd);
+
+          // Owner dropdown
+          var ownerTd = document.createElement('td');
+          ownerTd.style.cssText = 'padding:6px 10px;border-bottom:1px solid var(--border)';
+          var ownerSelect = document.createElement('select');
+          ownerSelect.className = 'csv-owner';
+          ownerSelect.style.cssText = 'padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:12px;max-width:90px';
+          ownerOptions.forEach(function (opt) {
+            var option = document.createElement('option');
+            option.value = opt;
+            var label = opt === 'n/a' ? 'n/a' : (opt === 'person1' ? 'Person 1' : 'Person 2');
+            option.textContent = label;
+            if (opt === (acct.owner || 'n/a')) option.selected = true;
+            ownerSelect.appendChild(option);
+          });
+          // Owner visibility toggler on category change
+          catSelect.addEventListener('change', function () {
+            var isRetirement = catSelect.value === 'trad_ira' || catSelect.value === 'roth';
+            ownerSelect.style.display = isRetirement ? '' : 'none';
+            if (!isRetirement) ownerSelect.value = 'n/a';
+          });
+          // Initial owner visibility
+          var initialCat = acct.category || 'cash';
+          var isRetirement = initialCat === 'trad_ira' || initialCat === 'roth';
+          ownerSelect.style.display = isRetirement ? '' : 'none';
+          ownerTd.appendChild(ownerSelect);
+          tr.appendChild(ownerTd);
+
+          // Disabled checkbox
+          var disTd = document.createElement('td');
+          disTd.style.cssText = 'padding:6px 10px;border-bottom:1px solid var(--border);text-align:center';
+          var disCheck = document.createElement('input');
+          disCheck.type = 'checkbox';
+          disCheck.className = 'csv-disabled';
+          if (acct.disabled) disCheck.checked = true;
+          disTd.appendChild(disCheck);
+          tr.appendChild(disTd);
+
+          tbody.appendChild(tr);
+        });
+
+        // Removed accounts section
+        var removed = merge.maybe_removed || [];
+        if (removed.length > 0) {
+          removedSection.style.display = 'block';
+          removedList.innerHTML = '';
+          removed.forEach(function (acct) {
+            var item = document.createElement('div');
+            item.style.cssText = 'margin:2px 0;padding:3px 6px;background:rgba(239,68,68,0.06);border-radius:4px';
+            item.textContent = acct.name + ' ($' + formatDollar(acct.balance) + ') — ' + (acct.category || 'unclassified');
+            removedList.appendChild(item);
+          });
+        } else {
+          removedSection.style.display = 'none';
+        }
+      }
+
+      function initCsvUpload() {
+        var uploadBtn = document.getElementById('csv-upload-btn');
+        var fileInput = document.getElementById('csv-file-input');
+        var errorEl = document.getElementById('csv-upload-error');
+        if (!uploadBtn || !fileInput) return;
+
+        uploadBtn.addEventListener('click', function () {
+          var file = fileInput.files && fileInput.files[0];
+          if (!file) {
+            if (errorEl) {
+              errorEl.textContent = 'Please select a CSV file first.';
+              errorEl.style.display = 'block';
+            }
+            return;
+          }
+          if (errorEl) errorEl.style.display = 'none';
+
+          uploadBtn.disabled = true;
+          uploadBtn.textContent = 'Uploading…';
+
+          var formData = new FormData();
+          formData.append('file', file);
+
+          apiPostForm('api/csv-upload?scenario=' + encodeURIComponent(currentScenarioSlug), formData).then(function (data) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload & Preview';
+            if (data.ok) {
+              renderCsvPreview(data);
+            } else {
+              if (errorEl) {
+                errorEl.textContent = data.error || 'Upload failed.';
+                errorEl.style.display = 'block';
+              }
+            }
+          }).catch(function (err) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload & Preview';
+            if (errorEl) {
+              errorEl.textContent = 'Upload error: ' + err.message;
+              errorEl.style.display = 'block';
+            }
+          });
+        });
+      }
+
+      function initCsvSave() {
+        var saveBtn = document.getElementById('csv-save-btn');
+        var cancelBtn = document.getElementById('csv-cancel-btn');
+        if (!saveBtn || !cancelBtn) return;
+
+        saveBtn.addEventListener('click', function () {
+          var accounts = getCsvStatusFromPreview();
+          if (!accounts || accounts.length === 0) {
+            showError('No accounts to save. Upload a CSV first.');
+            return;
+          }
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving…';
+
+          apiPost('api/save-csv-source', { accounts: accounts }).then(function (data) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✅ Import & Save';
+            if (data.ok) {
+              showSuccess('CSV data saved for ' + accounts.length + ' account(s).');
+              // Reset the preview to allow another upload
+              resetCsvPreview();
+              // Reload the accounts tab to show updated classifications
+              initAccountsTab();
+            } else {
+              showError(data.error || 'Save failed.');
+            }
+          }).catch(function (err) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✅ Import & Save';
+            showError('Save failed: ' + err.message);
+          });
+        });
+
+        cancelBtn.addEventListener('click', function () {
+          resetCsvPreview();
+        });
+      }
+
+      function resetCsvPreview() {
+        var preview = document.getElementById('csv-preview');
+        var errorEl = document.getElementById('csv-upload-error');
+        var uploadArea = document.getElementById('csv-upload-area');
+        var fileInput = document.getElementById('csv-file-input');
+        if (preview) preview.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        if (uploadArea) uploadArea.style.opacity = '1';
+        if (fileInput) fileInput.value = '';
+        _csvPreviewData = null;
       }
 
       /* ── Synthetic tab ─────────────────────────────────────────── */
@@ -2510,6 +2850,8 @@
         initSaveRenderQuick();
         initSaveClassification();
         initRefreshMonarch();
+        initCsvUpload();
+        initCsvSave();
         initAddProperty();
         initSaveSynthetic();
         installSynthRadioHandlers();
