@@ -15,7 +15,7 @@ from urllib.parse import parse_qs
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
@@ -730,7 +730,10 @@ async def editor_home(request: Request) -> HTMLResponse:
 
 @app.get("/setup", response_class=HTMLResponse)
 @app.get("/finances/config/setup", response_class=HTMLResponse)
-async def setup_panel(request: Request) -> HTMLResponse:
+async def setup_panel(request: Request, response: Response) -> HTMLResponse:
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     scenario_slug = request.query_params.get("scenario")
     try:
         content = _read_config_text(scenario_slug)
