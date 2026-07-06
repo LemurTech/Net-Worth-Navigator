@@ -5,6 +5,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b1220'/%3E%3Cpath d='M8 24V16l4 2 4-6 4 8 4-4v8z' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Net Worth Navigator — Scenario Setup</title>
   <style>
@@ -1041,7 +1042,7 @@
         wireSlider('person2-retire-slider', 'person2_retirement_year', 'person2-age-label', 'person2_birth_year', c.person2_retirement);
 
         var dsMode = 'monarch';
-        m = configContent.match(/^\s*mode\s*=\s*\"(monarch|synthetic)\"/m);
+        m = configContent.match(/^\s*mode\s*=\s*\"(monarch|synthetic|csv_import)\"/m);
         if (m) dsMode = m[1];
 
         // Withdrawal orders
