@@ -29,7 +29,7 @@ VENV_PYTHON = APP_ROOT / ".venv" / "bin" / "python"
 PYTHON_BIN = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
 RUN_SCRIPT = APP_ROOT / "run.py"
 PUBLIC_PROJECTION_URL = "http://casalemuria.lan/finances/projection.html"
-PUBLIC_EDITOR_URL = "http://casalemuria.lan/finances/config/"
+PUBLIC_EDITOR_URL = "http://casalemuria.lan/finances/config/setup"
 PUBLIC_DEFINITIONS_URL = "http://casalemuria.lan/finances/definitions.html"
 
 app = FastAPI(title="Net Worth Navigator Config Editor")
@@ -724,28 +724,14 @@ _SCENARIOS_MISSING_HELP = """<!DOCTYPE html>
 
 @app.get("/", response_class=HTMLResponse)
 async def editor_home(request: Request) -> HTMLResponse:
-    scenario_slug = request.query_params.get("scenario")
-    job_id = request.query_params.get("job")
-    try:
-        content = _read_config_text(scenario_slug)
-    except (FileNotFoundError, KeyError):
-        return HTMLResponse(_SCENARIOS_MISSING_HELP, status_code=200)
-    completed_job_context = _job_context_from_completed_job(job_id) if job_id else None
-    context = _build_context(
-        request,
-        content=content,
-        status_kind=(completed_job_context or {}).get("status_kind", "info"),
-        status_title=(completed_job_context or {}).get("status_title", "Ready"),
-        status_message=(completed_job_context or {}).get("status_message", "Load, edit, validate, save, or save and re-render the offline projection."),
-        details=(completed_job_context or {}).get("details"),
-        backup_path=(completed_job_context or {}).get("backup_path"),
-        scenario_slug=scenario_slug,
-        last_action=(completed_job_context or {}).get("last_action", ""),
-        clone_name="",
-        clone_slug="",
-        clone_description="",
+    """Legacy root route — redirect to the Setup Panel."""
+    return HTMLResponse(
+        "<!DOCTYPE html><html><head>"
+        "<meta http-equiv=\"refresh\" content=\"0;url=/setup\">"
+        "</head><body></body></html>",
+        status_code=302,
+        headers={"Location": "/setup"},
     )
-    return templates.TemplateResponse(request, "config_editor.html", context)
 
 
 @app.get("/setup", response_class=HTMLResponse)
