@@ -777,7 +777,15 @@
           method: 'POST',
           body: formData,
           headers: { Accept: 'application/json' },
-        }).then(function (r) { return r.json(); });
+        }).then(function (r) {
+          var ct = (r.headers.get('content-type') || '').toLowerCase();
+          if (ct.indexOf('application/json') < 0) {
+            return r.text().then(function (text) {
+              throw new Error('Server returned ' + r.status + ' ' + r.statusText + ' (' + ct + '): ' + text.substring(0, 120));
+            });
+          }
+          return r.json();
+        });
       }
 
       /* ── Toast ─────────────────────────────────────────────────── */
