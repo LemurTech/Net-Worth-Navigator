@@ -243,7 +243,7 @@
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab-content { display: none; padding: 0; }
     .tab-content.active { display: block; }
-    .tab-card { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; background: var(--panel); }
+    .tab-card { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; background: var(--panel); padding: 14px 16px; }
 
     /* ── Raw TOML tab ───────────────────────────────────────────────── */
     .tab-card textarea {
@@ -664,9 +664,6 @@
               <tbody id="unmatched-tbody"></tbody>
             </table>
           </div>
-          <div class="tab-actions">
-            <button type="button" class="primary" id="save-classification-btn">Save Classification</button>
-          </div>
         </div>
 
         <!-- ── Synthetic (Manual) input section ──────────────────── -->
@@ -697,9 +694,6 @@
               <div id="liability-rows"></div>
               <div id="liability-empty" style="font-size:13px;color:var(--muted)">No liabilities configured in this scenario.</div>
             </div>
-            <div class="actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
-              <button type="button" class="primary" id="save-synth-btn">Save Manual Settings</button>
-            </div>
           </div>
         </div>
       </div>
@@ -708,21 +702,14 @@
       <div class="tab-content tab-card" id="tab-toml">
         <div class="editor-head">Edit the raw scenario TOML below.</div>
         <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
-        <div class="tab-actions" style="margin-bottom:8px">
-          <button type="button" id="raw-validate-btn">Validate</button>
-          <button type="button" id="raw-save-btn">Save</button>
-          <button type="button" class="primary" id="raw-save-render-btn">Save + Re-render</button>
-          <button type="button" id="raw-save-all-btn">Save + Render All</button>
-        </div>
       </div>
     </div><!-- /#tab-card -->
 
     <!-- ── Global action bar ────────────────────────────────────────── -->
     <div class="actions" style="margin-top:14px">
-      <button type="button" class="primary" id="save-quick-btn">Save</button>
-      <button type="button" id="validate-btn">Validate</button>
-      <button type="button" id="save-render-quick-btn">Save + Render</button>
-      <button type="button" id="save-render-all-btn">Save + Render All</button>
+      <button type="button" class="primary" id="save-btn">Save</button>
+      <button type="button" id="render-btn">Render</button>
+      <button type="button" id="render-all-btn">Render All</button>
       <span style="flex:1;min-width:0"></span>
       <button type="button" id="new-scenario-btn">New from Template</button>
     </div>
@@ -1217,58 +1204,105 @@
         return body;
       }
 
-      function initSaveQuick() {
-        var btn = document.getElementById('save-quick-btn');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-          btn.disabled = true;
-          var body = collectQuickControls();
-          apiPost('api/save-quick-controls', body).then(function (data) {
-            btn.disabled = false;
-            if (data.ok) {
-              showSuccess(data.message || 'Quick controls saved.');
-              // Refresh the raw TOML textarea so it reflects the saved changes
-              if (data.toml_content) {
-                var contentEl = document.getElementById('raw-toml-content');
-                if (contentEl) contentEl.value = data.toml_content;
-              }
+      /* ── Save (metadata + accounts) ──────────────────────────────── */
+      function saveEverything(onSuccess, onError) {
+        // 1. Save metadata (quick controls)
+        var body = collectQuickControls();
+        apiPost('api/save-quick-controls', body).then(function (data) {
+          if (!data.ok) {
+            if (onError) onError(data.error || 'Save failed.');
+            return;
+          }
+          // Refresh the raw TOML textarea
+          if (data.toml_content) {
+            var contentEl = document.getElementById('raw-toml-content');
+            if (contentEl) contentEl.value = data.toml_content;
+          }
+          // 2. Save accounts data based on active mode
+          var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
+          var mode = dsRadio ? dsRadio.value : 'monarch';
+          if (mode === 'monarch') {
+            var entries = typeof collectClassification === 'function' ? collectClassification() : [];
+            if (entries.length > 0) {
+              apiPost('api/save-classification', { accounts: entries }).then(function (clsData) {
+                if (clsData.ok && clsData.toml_content) {
+                  var ce = document.getElementById('raw-toml-content');
+                  if (ce) ce.value = clsData.toml_content;
+                }
+                if (onSuccess) onSuccess();
+              }).catch(function () { if (onSuccess) onSuccess(); });
             } else {
-              showError(data.error || 'Save failed.');
+              if (onSuccess) onSuccess();
             }
-          }).catch(function (err) {
-            btn.disabled = false;
-            showError('Save failed: ' + err.message);
-          });
+          } else if (mode === 'synthetic') {
+            var synthData = collectSyntheticData();
+            apiPost('api/save-synthetic-start', synthData).then(function (synthRes) {
+              if (synthRes.ok && synthRes.toml_content) {
+                var ce = document.getElementById('raw-toml-content');
+                if (ce) ce.value = synthRes.toml_content;
+              }
+              if (onSuccess) onSuccess();
+            }).catch(function () { if (onSuccess) onSuccess(); });
+          } else {
+            // csv_import mode — nothing extra to save
+            if (onSuccess) onSuccess();
+          }
+        }).catch(function (err) {
+          if (onError) onError(err.message);
         });
       }
 
-      /* ── Save + Re-render from quick panel ────────────────────── */
-      function initSaveRenderQuick() {
-        var btn = document.getElementById('save-render-quick-btn');
+      function initSaveAll() {
+        var btn = document.getElementById('save-btn');
         if (!btn) return;
         btn.addEventListener('click', function () {
           btn.disabled = true;
-          var body = collectQuickControls();
-          apiPost('api/save-quick-controls', body).then(function (data) {
-            if (!data.ok) {
-              btn.disabled = false;
-              showError(data.error || 'Save failed.');
-              return;
-            }
-            // Now trigger re-render via the raw TOML flow
-            var contentEl = document.getElementById('raw-toml-content');
-            if (contentEl) {
+          saveEverything(
+            function () { btn.disabled = false; showSuccess('Saved.'); },
+            function (err) { btn.disabled = false; showError(err); }
+          );
+        });
+      }
+
+      /* ── Render (save + render current scenario) ─────────────────── */
+      function initRender() {
+        var btn = document.getElementById('render-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          saveEverything(
+            function () {
               var formData = new FormData();
-              formData.set('content', contentEl.value);
+              formData.set('content', (document.getElementById('raw-toml-content') || {}).value || '');
               formData.set('scenario_slug', currentScenarioSlug);
               formData.set('action', 'save_render');
               formData.set('_response_format', 'json');
               startAsyncRenderAction(formData);
-            }
-          }).catch(function (err) {
-            btn.disabled = false;
-            showError('Save + Render failed: ' + err.message);
-          });
+              btn.disabled = false;
+            },
+            function (err) { btn.disabled = false; showError(err); }
+          );
+        });
+      }
+
+      /* ── Render All (save + render all scenarios) ────────────────── */
+      function initRenderAll() {
+        var btn = document.getElementById('render-all-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          saveEverything(
+            function () {
+              var formData = new FormData();
+              formData.set('content', (document.getElementById('raw-toml-content') || {}).value || '');
+              formData.set('scenario_slug', currentScenarioSlug);
+              formData.set('action', 'save_render_all');
+              formData.set('_response_format', 'json');
+              startAsyncRenderAction(formData);
+              btn.disabled = false;
+            },
+            function (err) { btn.disabled = false; showError(err); }
+          );
         });
       }
 
@@ -2857,17 +2891,16 @@
         initCsvUpload();
         initCsvSave();
         initAddProperty();
-        initSaveSynthetic();
         installDsRadioHandler();
         initRenameScenario();
         installCategoryMoveHandler();
-        initValidate();
-        initSaveRenderAll();
+        initSaveAll();
+        initRender();
+        initRenderAll();
         initNewScenario();
         initCloneScenario();
         initDeleteScenario();
         initDefaultCheckbox();
-        initRawTomlActions();
       }
 
       // Run on DOM ready

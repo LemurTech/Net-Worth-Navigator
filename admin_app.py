@@ -1600,6 +1600,7 @@ async def api_save_synthetic_start(request: Request) -> JSONResponse:
         "ok": True,
         "message": f"Data source set to '{data_source}' and synthetic balances saved.",
         "backup_path": str(backup_path),
+        "toml_content": doc.as_string(),
     })
 
 
