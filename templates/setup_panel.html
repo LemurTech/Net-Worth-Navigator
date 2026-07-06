@@ -425,8 +425,17 @@
       <p id="status-message">{{ status_message }}</p>
     </div>
 
-    <!-- ── Quick-edit panel ─────────────────────────────────────────── -->
-    <div class="quick-panel" id="quick-panel">
+    <!-- ── Tab card ──────────────────────────────────────────────────── -->
+    <div class="card" id="tab-card">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="metadata">Metadata</button>
+        <button class="tab-btn" data-tab="accounts">Accounts</button>
+        <button class="tab-btn" data-tab="toml">Raw TOML</button>
+      </div>
+
+      <!-- ── Tab: Metadata ────────────────────────────────────────── -->
+      <div class="tab-content tab-card active" id="tab-metadata">
+
       <div class="quick-section-title">Metadata</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
         <div class="inline-row">
@@ -484,19 +493,6 @@
         </div>
       </div>
 
-      <div class="quick-section-title">Data Source</div>
-      <div class="radio-group" id="ds-radio-group" style="margin-bottom:12px">
-        <label class="radio-card" id="ds-radio-monarch">
-          <input type="radio" name="ds_mode" value="monarch"> Monarch (live/cached)
-        </label>
-        <label class="radio-card" id="ds-radio-synthetic">
-          <input type="radio" name="ds_mode" value="synthetic"> Manual entry
-        </label>
-        <label class="radio-card" id="ds-radio-csv">
-          <input type="radio" name="ds_mode" value="csv_import"> CSV import
-        </label>
-      </div>
-
       <div class="quick-section-title">Cash Targets</div>
       <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Cash reserves set aside for expenses outside normal spending — emergencies, vacations, large purchases, home repairs, and other lumpy costs not modeled as individual events.</div>
       <div class="inline-row">
@@ -552,42 +548,26 @@
           </div>
         </div>
       </div>
+    </div><!-- /#tab-metadata -->
 
-      <div class="actions">
-        <button type="button" class="primary" id="save-quick-btn">Save Quick Controls</button>
-        <button type="button" id="validate-btn">Validate</button>
-        <button type="button" id="save-render-quick-btn">Save + Re-render</button>
-        <button type="button" id="save-render-all-btn">Save + Render All</button>
-        <span style="flex:1;min-width:0"></span>
-        <button type="button" id="new-scenario-btn">New from Template</button>
-      </div>
-    </div>
-
-    <!-- ── Tab bar ──────────────────────────────────────────────────── -->
-    <div class="card" id="tab-card">
-      <div class="tab-bar">
-        <button class="tab-btn active" data-tab="toml">Raw TOML</button>
-        <button class="tab-btn" data-tab="accounts">Data Sources &amp; Accounts</button>
-        <button class="tab-btn" data-tab="synthetic">Manual Setup</button>
-      </div>
-
-      <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
-      <div class="tab-content tab-card active" id="tab-toml">
-        <div class="editor-head">Edit the raw scenario TOML below.</div>
-        <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
-        <div class="tab-actions">
-          <button type="button" id="raw-validate-btn">Validate</button>
-          <button type="button" id="raw-save-btn">Save</button>
-          <button type="button" class="primary" id="raw-save-render-btn">Save + Re-render</button>
-          <button type="button" id="raw-save-all-btn">Save + Render All</button>
-        </div>
-      </div>
-
-      <!-- ── Tab: Data Sources & Accounts ───────────────────────────── -->
+      <!-- ── Tab: Accounts ────────────────────────────────────────── -->
       <div class="tab-content tab-card" id="tab-accounts">
 
+        <div class="quick-section-title">Data Source</div>
+        <div class="radio-group" id="ds-radio-group" style="margin-bottom:10px">
+          <label class="radio-card" id="ds-radio-monarch">
+            <input type="radio" name="ds_mode" value="monarch"> Monarch (live/cached)
+          </label>
+          <label class="radio-card" id="ds-radio-synthetic">
+            <input type="radio" name="ds_mode" value="synthetic"> Manual entry
+          </label>
+          <label class="radio-card" id="ds-radio-csv">
+            <input type="radio" name="ds_mode" value="csv_import"> CSV import
+          </label>
+        </div>
+
         <!-- ── CSV Import section ───────────────────────────────── -->
-        <div id="csv-import-section" style="display:none;border-bottom:1px solid var(--border);padding:14px 16px 16px">
+        <div id="csv-import-section" style="display:none;border:1px solid var(--border);border-radius:10px;padding:14px 16px 16px;margin-bottom:12px">
           <div style="font-size:14px;font-weight:600;margin-bottom:8px">📁 CSV Import</div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.4">
             Import account balances from another financial service.
@@ -648,6 +628,7 @@
           <div id="csv-upload-error" style="display:none;margin-top:8px;font-size:13px;color:var(--error-border)"></div>
         </div>
 
+        <!-- ── Monarch / cached accounts toolbar ─────────────────── -->
         <div class="account-toolbar" id="accounts-toolbar">
           <span class="cache-info" id="cache-info">Accounts loaded from cache as of <span id="cache-ts-display">—</span></span>
           <button type="button" id="refresh-monarch-btn">Refresh from Monarch</button>
@@ -687,55 +668,63 @@
             <button type="button" class="primary" id="save-classification-btn">Save Classification</button>
           </div>
         </div>
-      </div>
 
-      <!-- ── Tab: Manual Setup (synthetic data source) ─────────────── -->
-      <div class="tab-content tab-card" id="tab-synthetic">
-        <div class="synth-form">
-          <div class="synth-section">
-            <h3>Data Source Mode</h3>
-            <div class="radio-group" id="synth-ds-radio-group">
-              <label class="radio-card" id="synth-ds-monarch">
-                <input type="radio" name="synth_ds_mode" value="monarch"> Monarch (live/cached)
-              </label>
-              <label class="radio-card" id="synth-ds-synthetic">
-                <input type="radio" name="synth_ds_mode" value="synthetic"> Manual entry
-              </label>
-              <label class="radio-card" id="synth-ds-csv">
-                <input type="radio" name="synth_ds_mode" value="csv_import"> CSV import
-              </label>
+        <!-- ── Synthetic (Manual) input section ──────────────────── -->
+        <div id="synth-input-section" style="display:none">
+          <div class="synth-form">
+            <div class="synth-section">
+              <h3>Investable Balances</h3>
+              <div class="synth-row"><label>Taxable</label><input type="text" id="synth-taxable" class="synth-dollar" placeholder="$ 0"></div>
+              <div class="synth-row"><label>Traditional IRA / 401k</label><input type="text" id="synth-trad_ira" class="synth-dollar" placeholder="$ 0"></div>
+              <div class="synth-row"><label>Roth</label><input type="text" id="synth-roth" class="synth-dollar" placeholder="$ 0"></div>
+              <div class="synth-row"><label>Cash</label><input type="text" id="synth-cash" class="synth-dollar" placeholder="$ 0"></div>
+              <div class="synth-row"><label>Taxable cost basis <span class="optional">(optional)</span></label><input type="text" id="synth-taxable_cost_basis" class="synth-dollar" placeholder="$ 0"></div>
+              <div class="synth-row"><label>Roth contribution basis <span class="optional">(optional)</span></label><input type="text" id="synth-roth_contribution_basis" class="synth-dollar" placeholder="$ 0"></div>
             </div>
-          </div>
-          <div class="synth-section">
-            <h3>Investable Balances</h3>
-            <div class="synth-row"><label>Taxable</label><input type="text" id="synth-taxable" class="synth-dollar" placeholder="$ 0"></div>
-            <div class="synth-row"><label>Traditional IRA / 401k</label><input type="text" id="synth-trad_ira" class="synth-dollar" placeholder="$ 0"></div>
-            <div class="synth-row"><label>Roth</label><input type="text" id="synth-roth" class="synth-dollar" placeholder="$ 0"></div>
-            <div class="synth-row"><label>Cash</label><input type="text" id="synth-cash" class="synth-dollar" placeholder="$ 0"></div>
-            <div class="synth-row"><label>Taxable cost basis <span class="optional">(optional)</span></label><input type="text" id="synth-taxable_cost_basis" class="synth-dollar" placeholder="$ 0"></div>
-            <div class="synth-row"><label>Roth contribution basis <span class="optional">(optional)</span></label><input type="text" id="synth-roth_contribution_basis" class="synth-dollar" placeholder="$ 0"></div>
-          </div>
-          <div class="synth-section">
-            <h3>Non-Investable</h3>
-            <div class="synth-row"><label>Home Value</label><input type="text" id="synth-home_value" class="synth-dollar" placeholder="$ 0"></div>
-            <div class="synth-row"><label>Vehicles</label><input type="text" id="synth-vehicles" class="synth-dollar" placeholder="$ 0"></div>
-          </div>
-          <div class="synth-section" id="synth-property-section">
-            <h3>Property Values <span class="optional">(for SellHome events)</span></h3>
-            <div id="property-rows"></div>
-            <button type="button" class="add-property-btn" id="add-property-btn">+ Add another property</button>
-          </div>
-          <div class="synth-section" id="synth-liability-section">
-            <h3>Liability Balances <span class="optional">(initial balances for each amortized loan)</span></h3>
-            <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Liability names are auto-detected from your <code>[[liabilities]]</code> config entries. By convention these match your Monarch account names so the model can pull live opening balances — in synthetic mode, enter starting balances here directly.</div>
-            <div id="liability-rows"></div>
-            <div id="liability-empty" style="font-size:13px;color:var(--muted)">No liabilities configured in this scenario.</div>
-          </div>
-          <div class="actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
-            <button type="button" class="primary" id="save-synth-btn">Save Manual Settings</button>
+            <div class="synth-section">
+              <h3>Non-Investable</h3>
+              <div class="synth-row"><label>Home Value</label><input type="text" id="synth-home_value" class="synth-dollar" placeholder="$ 0"></div>
+              <div class="synth-row"><label>Vehicles</label><input type="text" id="synth-vehicles" class="synth-dollar" placeholder="$ 0"></div>
+            </div>
+            <div class="synth-section" id="synth-property-section">
+              <h3>Property Values <span class="optional">(for SellHome events)</span></h3>
+              <div id="property-rows"></div>
+              <button type="button" class="add-property-btn" id="add-property-btn">+ Add another property</button>
+            </div>
+            <div class="synth-section" id="synth-liability-section">
+              <h3>Liability Balances <span class="optional">(initial balances for each amortized loan)</span></h3>
+              <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Liability names are auto-detected from your <code>[[liabilities]]</code> config entries. By convention these match your Monarch account names so the model can pull live opening balances — in synthetic mode, enter starting balances here directly.</div>
+              <div id="liability-rows"></div>
+              <div id="liability-empty" style="font-size:13px;color:var(--muted)">No liabilities configured in this scenario.</div>
+            </div>
+            <div class="actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
+              <button type="button" class="primary" id="save-synth-btn">Save Manual Settings</button>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
+      <div class="tab-content tab-card" id="tab-toml">
+        <div class="editor-head">Edit the raw scenario TOML below.</div>
+        <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
+        <div class="tab-actions" style="margin-bottom:8px">
+          <button type="button" id="raw-validate-btn">Validate</button>
+          <button type="button" id="raw-save-btn">Save</button>
+          <button type="button" class="primary" id="raw-save-render-btn">Save + Re-render</button>
+          <button type="button" id="raw-save-all-btn">Save + Render All</button>
+        </div>
+      </div>
+    </div><!-- /#tab-card -->
+
+    <!-- ── Global action bar ────────────────────────────────────────── -->
+    <div class="actions" style="margin-top:14px">
+      <button type="button" class="primary" id="save-quick-btn">Save</button>
+      <button type="button" id="validate-btn">Validate</button>
+      <button type="button" id="save-render-quick-btn">Save + Render</button>
+      <button type="button" id="save-render-all-btn">Save + Render All</button>
+      <span style="flex:1;min-width:0"></span>
+      <button type="button" id="new-scenario-btn">New from Template</button>
     </div>
   </div><!-- /.page -->
 
@@ -1115,8 +1104,6 @@
           r.checked = r.value === dsMode;
           updateRadioCard(r);
         });
-        setAccountsTabVisibility(dsMode);
-        setManualSetupTabVisibility(dsMode);
 
         // Chip groups
         makeChips('retirement-order-chips', orders.retirement);
@@ -1700,94 +1687,41 @@
         });
       }
 
-      /* ── Accounts tab: mode-aware banner ──────────────────────────── */
-      function setAccountsTabVisibility(mode) {
-        var btn = document.querySelector('.tab-btn[data-tab="accounts"]');
-        if (!btn) return;
-        if (mode === 'synthetic') {
-          btn.style.display = 'none';
-          // If the accounts tab is currently active, fall back to the TOML tab
-          if (btn.classList.contains('active')) {
-            var tomlBtn = document.querySelector('.tab-btn[data-tab="toml"]');
-            if (tomlBtn) tomlBtn.click();
-          }
-        } else {
-          btn.style.display = '';
-        }
-      }
-
-      /* ── Manual Setup tab: mode-aware visibility ── */
-      function setManualSetupTabVisibility(mode) {
-        var btn = document.querySelector('.tab-btn[data-tab="synthetic"]');
-        if (!btn) return;
-        if (mode === 'monarch' || mode === 'csv_import') {
-          btn.style.display = 'none';
-          // If the Manual Setup tab is currently active, fall back to the TOML tab
-          if (btn.classList.contains('active')) {
-            var tomlBtn = document.querySelector('.tab-btn[data-tab="toml"]');
-            if (tomlBtn) tomlBtn.click();
-          }
-        } else {
-          btn.style.display = '';
-        }
-      }
-
       function showCsvImportSection(visible) {
         var el = document.getElementById('csv-import-section');
         if (el) el.style.display = visible ? 'block' : 'none';
       }
 
       function applyAccountsTabModeState(sourceMode) {
-        var btn = document.getElementById('refresh-monarch-btn');
-        var toolbar = document.getElementById('accounts-toolbar');
+        var synthSection = document.getElementById('synth-input-section');
+        var accountsSection = document.getElementById('accounts-content');
         var accountsLoading = document.getElementById('accounts-loading');
-        var accountsContent = document.getElementById('accounts-content');
+        var accountsToolbar = document.getElementById('accounts-toolbar');
         var editorHead = document.querySelector('#tab-accounts .editor-head');
-        var existingBanner = document.getElementById('accounts-mode-banner');
-        if (existingBanner) existingBanner.remove();
+        var csvSection = document.getElementById('csv-import-section');
+
+        // Hide everything first
+        if (synthSection) synthSection.style.display = 'none';
+        if (csvSection) csvSection.style.display = 'none';
+        if (accountsSection) accountsSection.style.display = 'none';
+        if (accountsLoading) accountsLoading.style.display = 'none';
+        if (accountsToolbar) accountsToolbar.style.display = 'none';
+        if (editorHead) editorHead.style.display = 'none';
 
         if (sourceMode === 'synthetic') {
-          showCsvImportSection(false);
-          if (toolbar) toolbar.style.display = '';
-          if (accountsLoading) accountsLoading.style.display = '';
-          if (accountsContent) accountsContent.style.display = '';
-          if (editorHead) editorHead.style.display = '';
-          // Insert info banner above toolbar
-          var banner = document.createElement('div');
-          banner.id = 'accounts-mode-banner';
-          banner.className = 'accounts-mode-banner';
-          banner.innerHTML =
-            '<span class="banner-icon">ℹ</span> ' +
-            'This scenario uses <strong>Manual Entry (synthetic)</strong> balances. ' +
-            'The accounts table is for Monarch classification only and does not affect your projection. ' +
-            'Switch to <em>Monarch (live/cached)</em> or <em>CSV import</em> in the Data Source control to enable it.';
-          toolbar.parentNode.insertBefore(banner, toolbar);
-          // Disable Refresh button
-          if (btn) {
-            btn.disabled = true;
-            btn.title = 'Not available in synthetic mode';
-          }
+          if (synthSection) synthSection.style.display = 'block';
         } else if (sourceMode === 'csv_import') {
-          showCsvImportSection(true);
-          if (toolbar) toolbar.style.display = 'none';
-          if (accountsLoading) accountsLoading.style.display = 'none';
-          if (accountsContent) accountsContent.style.display = 'none';
-          if (editorHead) editorHead.style.display = 'none';
-          if (btn) {
-            btn.disabled = true;
-            btn.title = 'Use CSV import for account data';
+          if (csvSection) csvSection.style.display = 'block';
+          // If accounts were already loaded, show the table
+          if (_accountsData && _accountsData.accounts && _accountsData.accounts.length > 0) {
+            if (accountsSection) accountsSection.style.display = 'block';
+            if (editorHead) editorHead.style.display = '';
           }
         } else {
-          showCsvImportSection(false);
-          if (toolbar) toolbar.style.display = '';
-          if (accountsLoading) accountsLoading.style.display = '';
-          if (accountsContent) accountsContent.style.display = '';
+          // Monarch mode
+          if (accountsToolbar) accountsToolbar.style.display = '';
           if (editorHead) editorHead.style.display = '';
-          // Monarch mode — ensure button is enabled
-          if (btn) {
-            btn.disabled = false;
-            btn.title = '';
-          }
+          if (accountsSection) accountsSection.style.display = '';
         }
       }
 
@@ -2099,7 +2033,7 @@
 
           // Data source radio
           var mode = data.data_source_mode || 'monarch';
-          var dsRadios = document.querySelectorAll('input[name="synth_ds_mode"]');
+          var dsRadios = document.querySelectorAll('input[name="ds_mode"]');
           dsRadios.forEach(function (r) {
             r.checked = r.value === mode;
             updateRadioCard(r);
@@ -2156,9 +2090,9 @@
       }
 
       function toggleSynthInputs(disabled) {
-        var form = document.getElementById('tab-synthetic');
-        if (!form) return;
-        var inputs = form.querySelectorAll('.synth-dollar, .prop-name, .prop-value, .liability-value');
+        var section = document.getElementById('synth-input-section');
+        if (!section) return;
+        var inputs = section.querySelectorAll('.synth-dollar, .prop-name, .prop-value, .liability-value');
         inputs.forEach(function (el) {
           el.disabled = disabled;
           el.style.opacity = disabled ? '0.5' : '1';
@@ -2171,38 +2105,24 @@
         }
       }
 
-      /* ── Two-way sync between quick-edit and Synthetic Setup radios ── */
-      function syncDataSourceRadios(changedName, newValue) {
-        // Sync the other radio group to match
-        var otherName = changedName === 'ds_mode' ? 'synth_ds_mode' : 'ds_mode';
-        document.querySelectorAll('input[name="' + otherName + '"]').forEach(function (r) {
-          r.checked = r.value === newValue;
-          updateRadioCard(r);
-        });
-        // Update synthetic-tab input state
-        toggleSynthInputs(newValue !== 'synthetic');
-        // Show/hide the Accounts tab and Manual Setup tab
-        setAccountsTabVisibility(newValue);
-        setManualSetupTabVisibility(newValue);
-        // Update accounts tab banner if it's already loaded
-        if (_accountsData) {
-          applyAccountsTabModeState(newValue);
-        }
-      }
-
-      function installSynthRadioHandlers() {
-        // Synthetic Setup tab radios
-        document.querySelectorAll('input[name="synth_ds_mode"]').forEach(function (r) {
-          r.addEventListener('change', function () {
-            updateRadioCard(r);
-            syncDataSourceRadios('synth_ds_mode', r.value);
-          });
-        });
-        // Quick-edit strip radios
+      /* ── Data Source radio change handler ─────────────────────────── */
+      function installDsRadioHandler() {
         document.querySelectorAll('input[name="ds_mode"]').forEach(function (r) {
           r.addEventListener('change', function () {
             updateRadioCard(r);
-            syncDataSourceRadios('ds_mode', r.value);
+            var newMode = r.value;
+            toggleSynthInputs(newMode !== 'synthetic');
+            // If accounts are loaded, update the tab content
+            if (_accountsData) {
+              applyAccountsTabModeState(newMode);
+              if (newMode === 'synthetic') {
+                loadSyntheticTab();
+              }
+            }
+            // If switching to synthetic mode and accounts tab is visible, load synth inputs
+            if (newMode === 'synthetic') {
+              loadSyntheticTab();
+            }
           });
         });
       }
@@ -2299,7 +2219,7 @@
       }
 
       function collectSyntheticData() {
-        var dsRadio = document.querySelector('input[name="synth_ds_mode"]:checked');
+        var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
         var dataSource = dsRadio ? dsRadio.value : 'monarch';
 
         var balances = {};
@@ -2378,13 +2298,10 @@
             var target = document.getElementById('tab-' + btn.getAttribute('data-tab'));
             if (target) target.classList.add('active');
 
-            // Lazy load accounts/synthetic tabs
+            // Lazy load accounts tab
             var tab = btn.getAttribute('data-tab');
             if (tab === 'accounts' && !_accountsData) {
               initAccountsTab();
-            }
-            if (tab === 'synthetic' && !_syntheticData) {
-              loadSyntheticTab();
             }
           });
         });
@@ -2941,7 +2858,7 @@
         initCsvSave();
         initAddProperty();
         initSaveSynthetic();
-        installSynthRadioHandlers();
+        installDsRadioHandler();
         initRenameScenario();
         installCategoryMoveHandler();
         initValidate();
