@@ -3,6 +3,27 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-06 (v1.2.1 — Render error overlay improvements + Household Type selector)
+
+### Added
+
+- **Household Type radio** in Metadata tab — Single/Couple selector. Person 2 name/birth/retirement fields are hidden when Single is selected. `[scenario].household_type` written to TOML via save-quick-controls.
+- **Failed-scenario metadata** in render-all jobs — `failed_scenarios` array (`{slug, name, error}`) exposed via job payload, listing which scenarios failed and why.
+
+### Changed
+
+- **Render error overlay** — Now shows actual stderr/stdout output in a scrollable `<pre>` block when a render fails. Spinner is hidden on failure. Card width increased from 560px to 620px to prevent `====` separator line wrapping.
+- **Dismiss button** — Replaced inline `onclick` attribute with a pre-existing DOM button wired via `addEventListener` for reliable dismissal.
+- **Render-all error reporting** — `details` field now only includes failed scenarios' stderr (not all scenarios), clearly labeled per scenario. `status_message` names the failed scenarios, e.g. "Rendered 8 scenarios, 2 failed: Comfortable Plan, Restrictive Plan".
+- **`validate_scenario()` in `model.py`** — Skips person2 validation when `household_type = "single"`, preventing false required-field errors for single-person scenarios that still have a `[person2]` section.
+- **`_QUICK_CONTROL_MAP`** — Added `household_type` → `scenario.household_type`.
+
+### Fixed
+
+- Spinner remained spinning on render failure — now hidden via `.render-card.failed .spinner` CSS class.
+- Dismiss button in render overlay was non-functional — replaced `innerHTML` inline onclick with pre-rendered button + `addEventListener`.
+- Long `====` lines in validation error output wrapped awkwardly in 560px card — widened to 620px.
+
 ## 2026-07-06 (v1.2.0 — CSV account import)
 
 ### Added

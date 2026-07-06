@@ -353,8 +353,9 @@
       display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px;
       padding: 16px 18px; border-radius: 10px; border: 1px solid var(--border);
       background: #0f1725; box-shadow: 0 10px 28px rgba(0,0,0,.24);
-      color: #e5edf7; width: min(560px, calc(100vw - 32px)); max-width: 100%; margin: auto;
+      color: #e5edf7; width: min(620px, calc(100vw - 32px)); max-width: 100%; margin: auto;
     }
+    .render-card.failed .spinner { display: none; }
     .render-copy { min-width: 0; }
     .render-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
     .render-detail, .render-progress, .render-hint { font-size: 13px; color: var(--muted); }
@@ -366,6 +367,18 @@
       border-top-color: var(--accent-2); animation: spin 0.9s linear infinite;
     }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .render-errors {
+      display: none; max-height: 280px; overflow-y: auto; overflow-x: auto;
+      background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px; margin-top: 10px;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+      color: #e0d8cc;
+    }
+    .render-errors.visible { display: block; }
+    .render-errors::-webkit-scrollbar { width: 6px; height: 6px; }
+    .render-errors::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
 
     @media (max-width: 900px) {
       .header { grid-template-columns: 1fr; }
@@ -469,6 +482,17 @@
           </div>
         </div>
       </div>
+      <div style="margin-bottom:10px">
+        <div class="quick-section-title" style="border-top:none;padding-top:0">Household Type</div>
+        <div class="radio-group" id="household-type-group" style="margin-top:4px">
+          <label class="radio-card" id="ht-radio-single">
+            <input type="radio" name="household_type" value="single" checked> Single
+          </label>
+          <label class="radio-card" id="ht-radio-couple">
+            <input type="radio" name="household_type" value="couple"> Couple
+          </label>
+        </div>
+      </div>
       <div class="quick-section-title">People</div>
       <div class="inline-row person-row" style="margin-bottom:14px">
         <div class="inline-field" style="flex:1 1 160px;min-width:120px"><label id="label-person1-name">Person 1 Name</label><input type="text" id="person1_name" style="width:100%"></div>
@@ -483,6 +507,7 @@
           </div>
         </div>
       </div>
+      <div id="person2-section">
       <div class="inline-row person-row" style="margin-bottom:14px">
         <div class="inline-field" style="flex:1 1 160px;min-width:120px"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:100%"></div>
         <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
@@ -495,6 +520,7 @@
             <input type="range" id="person2-retire-slider" min="40" max="80" step="1" style="flex:1;min-width:60px">
           </div>
         </div>
+      </div>
       </div>
 
       <div class="quick-section-title">Cash Targets</div>
@@ -731,6 +757,11 @@
         <div class="render-detail" id="render-detail">Preparing render plan…</div>
         <div class="render-progress" id="render-progress">Starting…</div>
         <div class="render-hint" id="render-hint">This page will refresh when the render completes.<span id="render-elapsed" style="opacity:0.55;margin-left:0.5em"></span></div>
+        <pre class="render-errors" id="render-errors"></pre>
+        <div class="render-actions" id="render-actions" style="display:none;margin-top:10px">
+          <button type="button" class="linkbtn" id="dismiss-render-btn">Dismiss</button>
+          <a href="#" class="linkbtn" id="view-editor-link" style="margin-left:10px">View Editor</a>
+        </div>
       </div>
     </div>
   </div>
@@ -1045,6 +1076,11 @@
         m = configContent.match(/^\s*mode\s*=\s*\"(monarch|synthetic|csv_import)\"/m);
         if (m) dsMode = m[1];
 
+        // Household type
+        var hhType = 'couple';
+        m = configContent.match(/^\s*household_type\s*=\s*"([^"]+)"/m);
+        if (m && m[1]) hhType = m[1].toLowerCase();
+
         // Withdrawal orders
         var orders = {
           retirement: [], accumulation: [], survivor: [],
@@ -1101,6 +1137,20 @@
           updateRadioCard(r);
         });
 
+        // Household type radio
+        var htRadios = document.querySelectorAll('input[name="household_type"]');
+        htRadios.forEach(function (r) {
+          r.checked = r.value === hhType;
+          updateRadioCard(r);
+        });
+        togglePerson2(hhType !== 'single');
+        // Wire change handler for household type visibility
+        htRadios.forEach(function (r) {
+          r.addEventListener('change', function () {
+            if (r.checked) togglePerson2(r.value === 'couple');
+          });
+        });
+
         // Chip groups
         makeChips('retirement-order-chips', orders.retirement);
         makeChips('accumulation-order-chips', orders.accumulation);
@@ -1120,6 +1170,12 @@
             advSurplusContent.classList.toggle('open', open);
           });
         }
+      }
+
+      function togglePerson2(show) {
+        var section = document.getElementById('person2-section');
+        if (!section) return;
+        section.style.display = show ? '' : 'none';
       }
 
       function setField(id, val) {
@@ -1201,6 +1257,10 @@
         // Data source
         var dsChecked = document.querySelector('input[name="ds_mode"]:checked');
         if (dsChecked) body.data_source = dsChecked.value;
+
+        // Household type
+        var htChecked = document.querySelector('input[name="household_type"]:checked');
+        if (htChecked) body.household_type = htChecked.value;
 
         // Withdrawal orders
         body.retirement_withdrawal_order = getChipValues('retirement-order-chips');
@@ -2435,9 +2495,14 @@
       function showRenderOverlay(title, detail, progress) {
         var overlay = document.getElementById('render-overlay');
         if (!overlay) return;
+        var card = overlay.querySelector('.render-card');
+        if (card) card.classList.remove('failed');
         document.getElementById('render-title').textContent = title || 'Rendering projection…';
         document.getElementById('render-detail').textContent = detail || '';
         document.getElementById('render-progress').textContent = progress || 'Starting…';
+        var errorsEl = document.getElementById('render-errors');
+        if (errorsEl) { errorsEl.textContent = ''; errorsEl.classList.remove('visible'); }
+        document.getElementById('render-actions').style.display = 'none';
         overlay.classList.add('active');
         overlay.setAttribute('aria-hidden', 'false');
       }
@@ -2445,6 +2510,8 @@
       function hideRenderOverlay() {
         var overlay = document.getElementById('render-overlay');
         if (!overlay) return;
+        var card = overlay.querySelector('.render-card');
+        if (card) card.classList.remove('failed');
         overlay.classList.remove('active');
         overlay.setAttribute('aria-hidden', 'true');
       }
@@ -2508,14 +2575,24 @@
               if (job.state === 'completed' || job.state === 'failed') {
                 clearInterval(pollTimer);
                 if (job.state === 'failed') {
-                  // Show the error in the overlay instead of redirecting
-                  var errMsg = job.detail || job.status_message || 'Render failed. Check the editor for details.';
-                  document.getElementById('render-title').textContent = '⚠️ Render Failed';
+                  // Show error details in the overlay
+                  var card = document.querySelector('.render-card');
+                  if (card) card.classList.add('failed');
+                  var errMsg = job.detail || job.status_message || 'Render failed.';
+                  document.getElementById('render-title').textContent = '⚠️ ' + (job.status_title || 'Render Failed');
                   document.getElementById('render-detail').textContent = errMsg;
                   document.getElementById('render-progress').textContent = '';
-                  document.getElementById('render-hint').innerHTML =
-                    '<button type="button" class="linkbtn" onclick="hideRenderOverlay()" style="margin-top:8px">Dismiss</button> ' +
-                    '<a href="' + window.location.href.split('?')[0] + '?scenario=' + encodeURIComponent(currentScenarioSlug) + '" class="linkbtn" style="margin-top:8px">View Editor</a>';
+                  var errorsEl = document.getElementById('render-errors');
+                  if (errorsEl && job.details) {
+                    errorsEl.textContent = job.details;
+                    errorsEl.classList.add('visible');
+                  }
+                  document.getElementById('render-hint').style.display = 'none';
+                  var viewEditor = document.getElementById('view-editor-link');
+                  if (viewEditor) {
+                    viewEditor.href = window.location.href.split('?')[0] + '?scenario=' + encodeURIComponent(currentScenarioSlug);
+                  }
+                  document.getElementById('render-actions').style.display = 'flex';
                 } else {
                   window.location.href = window.location.href.split('?')[0] + '?scenario=' + encodeURIComponent(currentScenarioSlug);
                 }
@@ -2908,6 +2985,8 @@
         initCloneScenario();
         initDeleteScenario();
         initDefaultCheckbox();
+        var dismissBtn = document.getElementById('dismiss-render-btn');
+        if (dismissBtn) dismissBtn.addEventListener('click', hideRenderOverlay);
       }
 
       // Run on DOM ready

@@ -355,6 +355,7 @@ def _job_status_payload(job: dict) -> dict:
         "status_title": job.get("status_title"),
         "status_message": job.get("status_message"),
         "details": job.get("details"),
+        "failed_scenarios": job.get("failed_scenarios"),
         "backup_path": job.get("backup_path"),
         "last_action": job.get("last_action", ""),
         "redirect_url": _job_redirect_url(job["scenario_slug"], job["id"]),
@@ -590,25 +591,44 @@ def _run_save_render_all_job(job_id: str, current_scenario_slug: str) -> None:
         page_offset += len(planned_modes)
 
     failures = [(slug, result) for slug, result in results if result.returncode != 0]
+    # Build failed_scenarios metadata (slug, name, error excerpt)
+    scenario_lookup = {s.slug: s.name for s in scenarios}
+    failed_scenarios = []
+    for slug, result in failures:
+        error_text = (result.stderr or "").strip()
+        if not error_text:
+            error_text = (result.stdout or "").strip()
+        failed_scenarios.append({
+            "slug": slug,
+            "name": scenario_lookup.get(slug, slug),
+            "error": error_text or "(no output captured)",
+        })
+    _update_render_job(job_id, scenario_slug=current_scenario_slug, failed_scenarios=failed_scenarios)
+
+    # Build details string — only failed scenarios, labeled by slug
     details_lines: list[str] = []
-    for slug, result in results:
-        details_lines.append(f"[{slug}] exit={result.returncode}")
-        stdout = (result.stdout or "").strip()
+    for slug, result in failures:
+        label = scenario_lookup.get(slug, slug)
+        details_lines.append(f"── {label} [{slug}] ──")
         stderr = (result.stderr or "").strip()
-        if stdout:
-            details_lines.append(stdout)
+        stdout = (result.stdout or "").strip()
         if stderr:
             details_lines.append(stderr)
-    _update_render_job(job_id, scenario_slug=current_scenario_slug)
+        elif stdout:
+            details_lines.append(stdout)
+        else:
+            details_lines.append("(no output captured)")
+
+    failed_names = ", ".join(f["name"] for f in failed_scenarios)
     _complete_render_job(
         job_id,
         state="failed" if failures else "completed",
         status_kind="error" if failures else "success",
         status_title="Render all completed with errors" if failures else "Render all complete",
         status_message=(
-            f"Saved current scenario and rendered {len(results)} scenario(s), with {len(failures)} failure(s)."
+            f"Rendered {len(results)} scenario(s), {len(failures)} failed: {failed_names}"
             if failures
-            else f"Saved current scenario and rendered {len(results)} scenario(s) successfully."
+            else f"Rendered {len(results)} scenario(s) successfully."
         ),
         details="\n\n".join(details_lines),
     )
@@ -1625,6 +1645,7 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "simulation_end_year": ("simulation.end_year", int),
     "scenario_name": ("scenario.name", str),
     "scenario_description": ("scenario.description", str),
+    "household_type": ("scenario.household_type", str),
 }
 
 _QUICK_ARRAY_MAP: dict[str, str] = {
@@ -1734,7 +1755,7 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
             field in body
             for field in list(_QUICK_CONTROL_MAP.keys())
             + list(_QUICK_ARRAY_MAP.keys())
-            + ["data_source", "person1_birth_year", "person2_birth_year"]
+            + ["data_source", "person1_birth_year", "person2_birth_year", "household_type"]
         )
         if not any_recognized:
             return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)

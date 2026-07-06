@@ -535,7 +535,11 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
     
     # Check person configurations
     person_keys = [k for k in config.keys() if k.startswith("person") and isinstance(config.get(k), dict)]
-    
+
+    # Skip person2 validation for single-person households
+    if person_keys and _resolve_household_type(config) == "single":
+        person_keys = [k for k in person_keys if k == "person1"]
+
     if not person_keys:
         errors.append(f"At least one [person1] configuration is required{path_hint}")
     

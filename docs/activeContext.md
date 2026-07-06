@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-06
-**Status:** v1.2.0 — CSV account import feature shipped. New `csv_import` data source mode allows users to upload Monarch-format CSV exports, assign account types via the Setup Panel, and re-import incrementally with automatic classification preservation. Setup Panel refactored into a single-tab layout (Metadata | Accounts | Raw TOML) with unified Save/Render/Render All actions.
+**Status:** v1.2.1 — Render error overlay improvements: card now shows actual stderr on failure, hid spinner in failed state, widened card to 620px so `====` lines don't wrap, and replaced inline onclick with proper event listener for Dismiss button. Household Type selector (Single/Couple) added to Metadata tab — Person 2 fields hidden when Single selected, `[scenario].household_type` saved to TOML. Validation in `model.py` now skips person2 checks for single-person households.
 
 ---
 
