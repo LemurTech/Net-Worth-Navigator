@@ -79,7 +79,11 @@ class YearlyTaxOutputs:
     state_social_security_taxed: bool
 
 
-def _tax_phase(*, both_retired: bool, one_deceased: bool) -> str:
+def _tax_phase(*, both_retired: bool, one_deceased: bool, household_type: str = "couple") -> str:
+    if household_type == "single":
+        if both_retired:
+            return "retirement"
+        return "pre_retirement"
     if one_deceased:
         return "survivor"
     if both_retired:
@@ -93,16 +97,24 @@ def resolve_tax_system(
     assumptions: dict,
     both_retired: bool,
     one_deceased: bool,
+    household_type: str = "couple",
 ) -> FederalTaxSystem:
     """Return the active tax system for the current simulation phase."""
     taxes = config.get("taxes", {})
-    phase = _tax_phase(both_retired=both_retired, one_deceased=one_deceased)
+    phase = _tax_phase(both_retired=both_retired, one_deceased=one_deceased, household_type=household_type)
 
+    if household_type == "single":
+        filing_status_defaults = {
+            "pre_retirement": "single",
+            "retirement": "single",
+        }
+    else:
+        filing_status_defaults = DEFAULT_TAX_FILING_STATUS
     filing_status = str(
-        taxes.get(f"{phase}_filing_status", DEFAULT_TAX_FILING_STATUS[phase])
+        taxes.get(f"{phase}_filing_status", filing_status_defaults.get(phase, "single"))
     ).strip().lower()
     if filing_status not in VALID_FILING_STATUSES:
-        filing_status = DEFAULT_TAX_FILING_STATUS[phase]
+        filing_status = filing_status_defaults.get(phase, "single")
 
     standard_deduction = float(
         taxes.get("standard_deduction", {}).get(filing_status, 0.0)

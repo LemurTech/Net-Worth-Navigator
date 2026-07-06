@@ -76,6 +76,8 @@ DEFAULT_SURPLUS_ORDER = ["roth", "taxable"]
 
 WITHDRAWAL_BUCKETS = ("cash", "taxable", "trad_ira", "roth")
 RETIREMENT_OWNER_KEYS = ("person1", "person2")
+COUPLE_OWNER_KEYS = ("person1", "person2")
+SINGLE_OWNER_KEYS = ("person1",)
 PROJECTION_RESULT_SCHEMA_VERSION = 1
 
 # IRS Uniform Lifetime Table factors (2022+), used for RMD calculation.
@@ -154,6 +156,53 @@ def _clamp_amount(value: object, *, default: float = 0.0) -> float:
         return default
 
 
+# ── Household type resolution ─────────────────────────────────────────────────
+
+
+def _resolve_household_type(config: dict) -> str:
+    """Resolve household_type: 'single' or 'couple'.
+
+    Inference rules:
+    - If [scenario].household_type is explicitly set, honour it.
+    - Otherwise, infer from person2 presence in config.
+    """
+    scenario = config.get("scenario", {}) or {}
+    raw = scenario.get("household_type")
+    if raw is not None:
+        explicit = str(raw).strip().lower()
+        if explicit in ("single", "couple"):
+            return explicit
+    # Infer from person2
+    person2 = config.get("person2")
+    if person2 is None or (isinstance(person2, dict) and not person2):
+        return "single"
+    return "couple"
+
+
+def _resolve_person2(config: dict) -> dict | None:
+    """Return person2 dict or None when the household is single-person."""
+    if _resolve_household_type(config) == "single":
+        return None
+    return config.get("person2")
+
+
+def _resolve_owner_keys(config: dict) -> tuple[str, ...]:
+    """Return the active retirement-owner-key tuple based on household type."""
+    if _resolve_household_type(config) == "single":
+        return SINGLE_OWNER_KEYS
+    return COUPLE_OWNER_KEYS
+
+
+def _resolve_owner_keys_from_type(household_type: str) -> tuple[str, ...]:
+    """Return owner keys from a pre-resolved household_type string."""
+    if household_type == "single":
+        return SINGLE_OWNER_KEYS
+    return COUPLE_OWNER_KEYS
+
+
+# ── Misc utilities ────────────────────────────────────────────────────────────
+
+
 def _clamp_fraction(value: object, *, default: float) -> float:
     try:
         fraction = float(value)
@@ -180,17 +229,28 @@ def _empty_retirement_owner_breakdown() -> dict[str, dict[str, float]]:
     }
 
 
+
+def _single_retirement_owner_breakdown() -> dict[str, dict[str, float]]:
+    """Return owner breakdown with only person1 key (single-person household)."""
+    return {
+        key: {"trad_ira": 0.0, "roth": 0.0}
+        for key in SINGLE_OWNER_KEYS
+    }
+
+
 def _clone_retirement_owner_balances(
     owner_balances: dict[str, dict[str, float]],
+    *,
+    owner_keys: tuple[str, ...] = COUPLE_OWNER_KEYS,
 ) -> dict[str, dict[str, float]]:
     return {
         "trad_ira": {
-            "person1": float(owner_balances.get("trad_ira", {}).get("person1", 0.0)),
-            "person2": float(owner_balances.get("trad_ira", {}).get("person2", 0.0)),
+            person_key: float(owner_balances.get("trad_ira", {}).get(person_key, 0.0))
+            for person_key in owner_keys
         },
         "roth": {
-            "person1": float(owner_balances.get("roth", {}).get("person1", 0.0)),
-            "person2": float(owner_balances.get("roth", {}).get("person2", 0.0)),
+            person_key: float(owner_balances.get("roth", {}).get(person_key, 0.0))
+            for person_key in owner_keys
         },
     }
 
@@ -200,6 +260,9 @@ def _normalize_two_person_shares(raw_1, raw_2) -> dict[str, float]:
         share_1 = max(0.0, float(raw_1)) if raw_1 is not None else 0.0
     except (TypeError, ValueError):
         share_1 = 0.0
+    if raw_2 is None:
+        # Single-person household — all to person1
+        return {"person1": 1.0}
     try:
         share_2 = max(0.0, float(raw_2)) if raw_2 is not None else 0.0
     except (TypeError, ValueError):
@@ -218,18 +281,21 @@ def _initial_retirement_owner_state(
     *,
     portfolio: dict[str, float],
     person1: dict,
-    person2: dict,
+    person2: dict | None,
     seeded_owner_balances: dict[str, dict[str, float]] | None = None,
+    household_type: str = "couple",
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
+    is_single = household_type == "single" or person2 is None
     trad_shares = _normalized_household_rmd_shares(
         person1=person1,
         person2=person2,
         person1_deceased=False,
         person2_deceased=False,
+        household_type=household_type,
     )
     roth_shares = _normalize_two_person_shares(
         person1.get("roth_share"),
-        person2.get("roth_share"),
+        person2.get("roth_share") if person2 else None,
     )
 
     owner_balances = {
@@ -281,7 +347,7 @@ def _resolve_initial_owner_bucket(
     remainder = max(0.0, total_balance - assigned)
     return {
         "person1": seeded_person1 + (remainder * fallback_shares["person1"]),
-        "person2": seeded_person2 + (remainder * fallback_shares["person2"]),
+        "person2": seeded_person2 + (remainder * fallback_shares.get("person2", 0.0)),
     }
 
 
@@ -1869,9 +1935,10 @@ def get_phase_withdrawal_settings(
     *,
     both_retired: bool,
     one_deceased: bool,
+    household_type: str = "couple",
 ) -> tuple[float, list[str], list[str]]:
     """Return active cash target, withdrawal order, and surplus order for phase."""
-    if one_deceased:
+    if one_deceased and household_type != "single":
         phase = "survivor"
     elif both_retired:
         phase = "retirement"
@@ -2024,11 +2091,14 @@ def _uniform_lifetime_factor(age: int, factors: dict[int, float]) -> float | Non
 def _normalized_household_rmd_shares(
     *,
     person1: dict,
-    person2: dict,
+    person2: dict | None,
     person1_deceased: bool,
     person2_deceased: bool,
+    household_type: str = "couple",
 ) -> dict[str, float]:
     """Return normalized trad-IRA ownership shares for household RMD allocation."""
+    if household_type == "single" or person2 is None:
+        return {"person1": 1.0}
     if person1_deceased and person2_deceased:
         return {"person1": 0.0, "person2": 0.0}
     if person1_deceased:
@@ -2062,10 +2132,11 @@ def calculate_household_rmd_required(
     year: int,
     trad_ira_balance: float,
     person1: dict,
-    person2: dict,
+    person2: dict | None,
     person1_deceased: bool,
     person2_deceased: bool,
     rmd_settings: dict[str, object],
+    household_type: str = "couple",
 ) -> float:
     """Return required household RMD amount for the year.
 
@@ -2085,13 +2156,16 @@ def calculate_household_rmd_required(
         person2=person2,
         person1_deceased=person1_deceased,
         person2_deceased=person2_deceased,
+        household_type=household_type,
     )
 
     total_required = 0.0
-    for person_key, person, deceased in (
-        ("person1", person1, person1_deceased),
-        ("person2", person2, person2_deceased),
-    ):
+    persons = [("person1", person1)] if household_type == "single" or person2 is None else [
+        ("person1", person1),
+        ("person2", person2),
+    ]
+    for person_key, person in persons:
+        deceased = person1_deceased if person_key == "person1" else person2_deceased
         if deceased:
             continue
         birth_year = _birth_year(person)
@@ -2114,13 +2188,15 @@ def _apply_survivor_social_security(
     year: int,
     events: list[dict],
     person1: dict,
-    person2: dict,
+    person2: dict | None,
     person1_deceased: bool,
     person2_deceased: bool,
     person1_parts: dict[str, float],
     person2_parts: dict[str, float],
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Adjust income parts for widow/er survivor Social Security rules."""
+    if person2 is None:
+        return person1_parts, person2_parts
     if person1_deceased == person2_deceased:
         return person1_parts, person2_parts
 
@@ -3016,6 +3092,8 @@ def _run_projection_yearly(
     Returns: DataFrame with projection data
     """
     config = resolve_runtime_config(config or load_config())
+    household_type = _resolve_household_type(config)
+    owner_keys = _resolve_owner_keys_from_type(household_type)
     sim = config["simulation"]
     assumptions = config["assumptions"]
     events = [e for e in config.get("events", []) if e.get("enabled", False)]
@@ -3034,7 +3112,7 @@ def _run_projection_yearly(
     withdrawal_policy = resolve_withdrawal_policy(config, balances)
 
     person1 = config["person1"]
-    person2 = config["person2"]
+    person2 = _resolve_person2(config)
     spending = config["spending"]
     liability_configs = config.get("liabilities", [])
     rmd_settings = resolve_rmd_settings(config)
@@ -3043,6 +3121,7 @@ def _run_projection_yearly(
         person1=person1,
         person2=person2,
         seeded_owner_balances=retirement_owner_balances,
+        household_type=household_type,
     )
     basis_state = _initial_basis_state(
         portfolio=portfolio,
@@ -3118,7 +3197,7 @@ def _run_projection_yearly(
 
         # ── Determine survivor state ───────────────────────────────────────────
         person1_deceased = _is_deceased_in_year(events=events, person_key="person1", year=year)
-        person2_deceased = _is_deceased_in_year(events=events, person_key="person2", year=year)
+        person2_deceased = False if person2 is None else _is_deceased_in_year(events=events, person_key="person2", year=year)
 
         # ── Apply events for this year ─────────────────────────────────────────
         active_labels = []
@@ -3322,16 +3401,24 @@ def _run_projection_yearly(
             deceased=person1_deceased,
             include_taxable_wages=include_taxable_wages,
         )
-        person2_parts = _person_income_components(
-            person2,
-            year,
-            events,
-            person_key="person2",
-            assumptions=assumptions,
-            simulation_start_year=start_year,
-            deceased=person2_deceased,
-            include_taxable_wages=include_taxable_wages,
-        )
+        if person2 is not None:
+            person2_parts = _person_income_components(
+                person2,
+                year,
+                events,
+                person_key="person2",
+                assumptions=assumptions,
+                simulation_start_year=start_year,
+                deceased=person2_deceased,
+                include_taxable_wages=include_taxable_wages,
+            )
+        else:
+            person2_parts = {
+                "cash_income": 0.0,
+                "ss_income": 0.0,
+                "ss_taxable_income": 0.0,
+                "taxable_wage_income": 0.0,
+            }
 
         person1_parts, person2_parts = _apply_survivor_social_security(
             year=year,
@@ -3350,7 +3437,7 @@ def _run_projection_yearly(
 
         # ── Contributions (pre-retirement only) ────────────────────────────────
         person1_retired = year >= person1["retirement_year"]
-        person2_retired = year >= person2["retirement_year"]
+        person2_retired = True if person2 is None else year >= person2["retirement_year"]
 
         person1_contrib_buckets = (
             {"trad_ira": 0.0, "roth": 0.0,
@@ -3365,19 +3452,27 @@ def _run_projection_yearly(
                 events=events,
             )
         )
-        person2_contrib_buckets = (
-            {"trad_ira": 0.0, "roth": 0.0,
-             "employer_match_trad_ira": 0.0, "employer_match_roth": 0.0,
-             "employee_401k_uncapped": 0.0, "employee_401k_capped": 0.0, "irs_401k_limit": 0.0}
-            if person2_retired
-            else _person_retirement_contribution_breakdown(
-                {**person2, "_person_key": "person2"},
-                year=year,
-                simulation_start_year=start_year,
-                assumptions=assumptions,
-                events=events,
+        if person2 is not None:
+            person2_contrib_buckets = (
+                {"trad_ira": 0.0, "roth": 0.0,
+                 "employer_match_trad_ira": 0.0, "employer_match_roth": 0.0,
+                 "employee_401k_uncapped": 0.0, "employee_401k_capped": 0.0, "irs_401k_limit": 0.0}
+                if person2_retired
+                else _person_retirement_contribution_breakdown(
+                    {**person2, "_person_key": "person2"},
+                    year=year,
+                    simulation_start_year=start_year,
+                    assumptions=assumptions,
+                    events=events,
+                )
             )
-        )
+        else:
+            person2_contrib_buckets = {
+                "trad_ira": 0.0, "roth": 0.0,
+                "employer_match_trad_ira": 0.0, "employer_match_roth": 0.0,
+                "employee_401k_uncapped": 0.0, "employee_401k_capped": 0.0, "irs_401k_limit": 0.0,
+                "employee_over_total_limit": 0.0,
+            }
 
         # IRS cap warning flags (non-blocking — model continues with capped amount)
         person1_over_cap = (
@@ -3385,7 +3480,7 @@ def _run_projection_yearly(
             and person1_contrib_buckets["employee_401k_uncapped"] > person1_contrib_buckets["irs_401k_limit"] + 0.01
         )
         person2_over_cap = (
-            not person2_retired
+            person2 is not None and not person2_retired
             and person2_contrib_buckets["employee_401k_uncapped"] > person2_contrib_buckets["irs_401k_limit"] + 0.01
         )
 
@@ -3400,11 +3495,17 @@ def _run_projection_yearly(
         )
         total_employer_match = employer_match_person1 + employer_match_person2
 
-        prefunded_contrib_by_person = _empty_retirement_owner_breakdown()
-        cash_required_contrib_by_person = _empty_retirement_owner_breakdown()
+        prefunded_contrib_by_person = (
+            _single_retirement_owner_breakdown() if household_type == "single"
+            else _empty_retirement_owner_breakdown()
+        )
+        cash_required_contrib_by_person = (
+            _single_retirement_owner_breakdown() if household_type == "single"
+            else _empty_retirement_owner_breakdown()
+        )
 
         person1_prefunded = _take_home_is_net_of_retirement_contributions(person1)
-        person2_prefunded = _take_home_is_net_of_retirement_contributions(person2)
+        person2_prefunded = _take_home_is_net_of_retirement_contributions(person2) if person2 is not None else False
 
         for bucket in ("trad_ira", "roth"):
             if person1_prefunded:
@@ -3412,21 +3513,23 @@ def _run_projection_yearly(
             else:
                 cash_required_contrib_by_person["person1"][bucket] += person1_contrib_buckets[bucket]
 
-            if person2_prefunded:
-                prefunded_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
-            else:
-                cash_required_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
+            if person2 is not None:
+                if person2_prefunded:
+                    prefunded_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
+                else:
+                    cash_required_contrib_by_person["person2"][bucket] += person2_contrib_buckets[bucket]
 
             # Employer match is always prefunded (never reduces take-home cash)
             prefunded_contrib_by_person["person1"][bucket] += person1_contrib_buckets[f"employer_match_{bucket}"]
-            prefunded_contrib_by_person["person2"][bucket] += person2_contrib_buckets[f"employer_match_{bucket}"]
+            if person2 is not None:
+                prefunded_contrib_by_person["person2"][bucket] += person2_contrib_buckets[f"employer_match_{bucket}"]
 
         prefunded_contrib_buckets = {
-            bucket: prefunded_contrib_by_person["person1"][bucket] + prefunded_contrib_by_person["person2"][bucket]
+            bucket: prefunded_contrib_by_person["person1"][bucket] + prefunded_contrib_by_person.get("person2", {}).get(bucket, 0.0)
             for bucket in ("trad_ira", "roth")
         }
         cash_required_contrib_buckets = {
-            bucket: cash_required_contrib_by_person["person1"][bucket] + cash_required_contrib_by_person["person2"][bucket]
+            bucket: cash_required_contrib_by_person["person1"][bucket] + cash_required_contrib_by_person.get("person2", {}).get(bucket, 0.0)
             for bucket in ("trad_ira", "roth")
         }
 
@@ -3434,7 +3537,7 @@ def _run_projection_yearly(
 
         # ── Net cash flow for the year ─────────────────────────────────────────
         target_spend = float(spending.get("retirement_annual", 0.0))
-        survivor_spend = resolve_survivor_spending(spending)
+        survivor_spend = resolve_survivor_spending(spending) if household_type != "single" else target_spend
         both_retired = person1_retired and person2_retired
         one_deceased = person1_deceased or person2_deceased
 
@@ -3492,12 +3595,14 @@ def _run_projection_yearly(
             person1_deceased=person1_deceased,
             person2_deceased=person2_deceased,
             rmd_settings=rmd_settings,
+            household_type=household_type,
         )
 
         cash_target, withdrawal_order, surplus_order = get_phase_withdrawal_settings(
             withdrawal_policy,
             both_retired=both_retired,
             one_deceased=one_deceased,
+            household_type=household_type,
         )
 
         active_tax_system = resolve_tax_system(
@@ -3505,6 +3610,7 @@ def _run_projection_yearly(
             assumptions=assumptions,
             both_retired=both_retired,
             one_deceased=one_deceased,
+            household_type=household_type,
         )
         active_state_tax_system = resolve_state_tax_system(
             config,
@@ -3543,13 +3649,13 @@ def _run_projection_yearly(
             grown_retirement_owner_balances = {
                 bucket: {
                     person_key: float(retirement_owner_balances[bucket][person_key]) * (1 + invested_growth_rate)
-                    for person_key in RETIREMENT_OWNER_KEYS
+                    for person_key in owner_keys
                 }
                 for bucket in ("trad_ira", "roth")
             }
         else:
             grown_portfolio = portfolio.copy()
-            grown_retirement_owner_balances = _clone_retirement_owner_balances(retirement_owner_balances)
+            grown_retirement_owner_balances = _clone_retirement_owner_balances(retirement_owner_balances, owner_keys=owner_keys)
         grown_basis_state = _clone_basis_state(basis_state)
 
         tax_outputs = estimate_annual_taxes(
@@ -3568,11 +3674,14 @@ def _run_projection_yearly(
         state_taxes = tax_outputs.state_taxes
         withdrawal_taxable_income = 0.0
         withdrawal_breakdown = _empty_withdrawal_breakdown()
-        withdrawal_breakdown_by_person = _empty_retirement_owner_breakdown()
+        withdrawal_breakdown_by_person = (
+            _single_retirement_owner_breakdown() if household_type == "single"
+            else _empty_retirement_owner_breakdown()
+        )
         contribution_breakdown = prefunded_contrib_buckets.copy()
         contribution_breakdown_by_person = deepcopy(prefunded_contrib_by_person)
         working_portfolio = grown_portfolio.copy()
-        working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances)
+        working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances, owner_keys=owner_keys)
         working_basis_state = _clone_basis_state(grown_basis_state)
         rmd_withdrawn = 0.0
         rmd_shortfall = 0.0
@@ -3596,11 +3705,15 @@ def _run_projection_yearly(
             p1_ira_roth = _person_ira_contribution_to_roth(
                 {**person1, "_person_key": "person1"},
             ) if not person1_retired else 0.0
-            p2_ira_roth = _person_ira_contribution_to_roth(
-                {**person2, "_person_key": "person2"},
-            ) if not person2_retired else 0.0
+            p2_ira_roth = (
+                _person_ira_contribution_to_roth(
+                    {**person2, "_person_key": "person2"},
+                ) if person2 is not None and not person2_retired else 0.0
+            )
             p1_limit = _roth_ira_limit(person1, year) if not person1_retired else 0.0
-            p2_limit = _roth_ira_limit(person2, year) if not person2_retired else 0.0
+            p2_limit = (
+                _roth_ira_limit(person2, year) if person2 is not None and not person2_retired else 0.0
+            )
             roth_surplus_cap = max(0.0, p1_limit - p1_ira_roth) + max(0.0, p2_limit - p2_ira_roth)
             step_caps = {"roth": roth_surplus_cap} if roth_surplus_cap > 0 else None
         else:
@@ -3609,11 +3722,11 @@ def _run_projection_yearly(
         # Iterate because taxable withdrawals themselves increase taxes.
         for _ in range(12):
             working_portfolio = grown_portfolio.copy()
-            working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances)
+            working_retirement_owner_balances = _clone_retirement_owner_balances(grown_retirement_owner_balances, owner_keys=owner_keys)
             working_basis_state = _clone_basis_state(grown_basis_state)
             contribution_breakdown = prefunded_contrib_buckets.copy()
             contribution_breakdown_by_person = deepcopy(prefunded_contrib_by_person)
-            for person_key in RETIREMENT_OWNER_KEYS:
+            for person_key in owner_keys:
                 for bucket in ("trad_ira", "roth"):
                     amount = prefunded_contrib_by_person[person_key][bucket]
                     if amount <= 0:
@@ -3639,7 +3752,10 @@ def _run_projection_yearly(
             post_tax_flow = base_net_flow + forced_rmd_withdrawn - annual_taxes
 
             withdrawal_breakdown = _empty_withdrawal_breakdown()
-            withdrawal_breakdown_by_person = _empty_retirement_owner_breakdown()
+            withdrawal_breakdown_by_person = (
+                _single_retirement_owner_breakdown() if household_type == "single"
+                else _empty_retirement_owner_breakdown()
+            )
             withdrawal_breakdown["trad_ira"] += forced_rmd_withdrawn
             forced_rmd_owner_withdrawals = _apply_owner_bucket_withdrawal(
                 working_retirement_owner_balances,
@@ -3647,7 +3763,7 @@ def _run_projection_yearly(
                 amount=forced_rmd_withdrawn,
                 fallback_shares=retirement_owner_defaults["trad_ira"],
             )
-            for person_key in RETIREMENT_OWNER_KEYS:
+            for person_key in owner_keys:
                 withdrawal_breakdown_by_person[person_key]["trad_ira"] += forced_rmd_owner_withdrawals[person_key]
             withdrawal_taxable_income = forced_rmd_taxable_income
             taxable_withdrawal_basis_portion = 0.0
@@ -3673,12 +3789,12 @@ def _run_projection_yearly(
                         continue
                     requested_by_person = {
                         person_key: cash_required_contrib_by_person[person_key][bucket]
-                        for person_key in RETIREMENT_OWNER_KEYS
+                        for person_key in owner_keys
                     }
                     requested_total = sum(requested_by_person.values())
                     if requested_total <= 0:
                         continue
-                    for person_key in RETIREMENT_OWNER_KEYS:
+                    for person_key in owner_keys:
                         person_amount = bucket_total * (requested_by_person[person_key] / requested_total)
                         if person_amount <= 0:
                             continue
@@ -3791,7 +3907,7 @@ def _run_projection_yearly(
                         amount=extra_withdrawal_breakdown["trad_ira"],
                         fallback_shares=retirement_owner_defaults["trad_ira"],
                     )
-                    for person_key in RETIREMENT_OWNER_KEYS:
+                    for person_key in owner_keys:
                         withdrawal_breakdown_by_person[person_key]["trad_ira"] += owner_trad_withdrawals[person_key]
                 if extra_withdrawal_breakdown.get("roth", 0.0) > 0:
                     owner_roth_withdrawals = _apply_owner_bucket_withdrawal(
@@ -3800,7 +3916,7 @@ def _run_projection_yearly(
                         amount=extra_withdrawal_breakdown["roth"],
                         fallback_shares=retirement_owner_defaults["roth"],
                     )
-                    for person_key in RETIREMENT_OWNER_KEYS:
+                    for person_key in owner_keys:
                         withdrawal_breakdown_by_person[person_key]["roth"] += owner_roth_withdrawals[person_key]
                 if unmet_deficit > 0:
                     funding_shortfall = max(0.0, float(unmet_deficit))
@@ -3948,15 +4064,15 @@ def _run_projection_yearly(
             "withdrawal_trad_ira": withdrawal_breakdown["trad_ira"],
             "withdrawal_roth": withdrawal_breakdown["roth"],
             "withdrawal_trad_ira_person1": withdrawal_breakdown_by_person["person1"]["trad_ira"],
-            "withdrawal_trad_ira_person2": withdrawal_breakdown_by_person["person2"]["trad_ira"],
+            "withdrawal_trad_ira_person2": withdrawal_breakdown_by_person.get("person2", {}).get("trad_ira", 0.0),
             "withdrawal_roth_person1": withdrawal_breakdown_by_person["person1"]["roth"],
-            "withdrawal_roth_person2": withdrawal_breakdown_by_person["person2"]["roth"],
+            "withdrawal_roth_person2": withdrawal_breakdown_by_person.get("person2", {}).get("roth", 0.0),
             "contribution_trad_ira": contribution_breakdown["trad_ira"],
             "contribution_roth": contribution_breakdown["roth"],
             "contribution_trad_ira_person1": contribution_breakdown_by_person["person1"]["trad_ira"],
-            "contribution_trad_ira_person2": contribution_breakdown_by_person["person2"]["trad_ira"],
+            "contribution_trad_ira_person2": contribution_breakdown_by_person.get("person2", {}).get("trad_ira", 0.0),
             "contribution_roth_person1": contribution_breakdown_by_person["person1"]["roth"],
-            "contribution_roth_person2": contribution_breakdown_by_person["person2"]["roth"],
+            "contribution_roth_person2": contribution_breakdown_by_person.get("person2", {}).get("roth", 0.0),
             "contribution_employee_trad_ira_person1": person1_contrib_buckets["trad_ira"],
             "contribution_employee_roth_person1": person1_contrib_buckets["roth"],
             "contribution_employee_trad_ira_person2": person2_contrib_buckets["trad_ira"],
@@ -3982,12 +4098,12 @@ def _run_projection_yearly(
             "taxable_unrealized_gain": max(0.0, portfolio["taxable"] - basis_state["taxable_cost_basis"]),
             "trad_ira":       portfolio["trad_ira"],
             "trad_ira_person1": retirement_owner_balances["trad_ira"]["person1"],
-            "trad_ira_person2": retirement_owner_balances["trad_ira"]["person2"],
+            "trad_ira_person2": retirement_owner_balances["trad_ira"].get("person2", 0.0),
             "roth":           portfolio["roth"],
             "roth_contribution_basis": min(portfolio["roth"], basis_state["roth_contribution_basis"]),
             "roth_earnings": max(0.0, portfolio["roth"] - basis_state["roth_contribution_basis"]),
             "roth_person1": retirement_owner_balances["roth"]["person1"],
-            "roth_person2": retirement_owner_balances["roth"]["person2"],
+            "roth_person2": retirement_owner_balances["roth"].get("person2", 0.0),
             "cash":           portfolio["cash"],
         })
 

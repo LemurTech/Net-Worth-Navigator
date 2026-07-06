@@ -548,7 +548,17 @@ def build_scenario_shell(
       const scenarios = Array.isArray(manifest.scenarios) ? manifest.scenarios : [];
 
       select.innerHTML = "";
+      let insertedDivider = false;
       scenarios.forEach((scenario) => {{
+        // Insert a visual separator before the first sample scenario
+        const isSample = scenario.name && scenario.name.toLowerCase().startsWith('sample');
+        if (isSample && !insertedDivider && select.options.length > 0) {{
+          const divider = document.createElement("option");
+          divider.disabled = true;
+          divider.textContent = "\u2500\u2500\u2500\u2500\u2500";
+          select.appendChild(divider);
+          insertedDivider = true;
+        }}
         const option = document.createElement("option");
         option.value = scenario.slug;
         option.textContent = scenario.name;

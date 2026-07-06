@@ -1,17 +1,14 @@
-# Net Worth Navigator — Single-Person Sample Plan (Reference Documentation)
+# Net Worth Navigator — Couples Sample Plan (Reference Documentation)
 #
-# This file demonstrates how to configure a single-person household.  It uses
-# synthetic starting balances (no Monarch account needed) and is safe to share.
+# This file is the canonical versioned reference scenario for couples
+# households. It illustrates every available config section, field, and
+# event type with inline documentation and realistic synthetic demo values.
+# Safe for sharing — uses synthetic starting balances, not live Monarch data.
 #
-# Household: Alex (person1, b. 1972). Single, working into their 60s,
-# contributing to 401(k)/IRA, owns a home with a mortgage and a car loan.
-#
-# Key differences from the couples version (sample-couples.toml):
-# - No [person2] section — household_type auto-infers as "single"
-# - No survivor spending phase — it is not applicable
-# - Tax filing status defaults to "single" instead of "married_joint"
-# - Social Security survivor benefit logic is not applied
-# - All person2-referencing fields are omitted
+# Household: Alex (person1, b. 1969) and Sam (person2, b. 1974).
+# Both work into their 60s, both contribute to 401(k)/IRA via percentage-of-gross
+# with employer matches, travel every other year, and carry a mortgage and an
+# auto loan.
 #
 # Scenario files are TOML. Fields can be commented out with #.
 # Events can be toggled on/off with enabled = true/false without deleting them.
@@ -20,12 +17,10 @@
 # ─── Scenario Metadata ─────────────────────────────────────────────────────────
 
 [scenario]
-name        = "Sample Plan (Single-Person)"
-slug        = "sample"
-description = "Single-person share-safe reference scenario with full inline documentation."
+name        = "Sample Couples Plan"
+slug        = "sample-couples"
+description = "Share-safe couples reference scenario with full inline documentation."
 is_default  = false
-# household_type is omitted — inferred as "single" from absence of [person2]
-# To explicitly set:  household_type = "single"
 
 # ─── Data Source (synthetic → no Monarch call, no cache) ───────────────────────
 
@@ -36,34 +31,34 @@ mode = "synthetic"   # synthetic | monarch
 
 [synthetic_start]
 # Investable buckets
-taxable  = 80000
-trad_ira = 250000
-roth     = 55000
-cash     = 30000
+taxable  = 120000
+trad_ira = 380000
+roth     = 95000
+cash     = 45000
 # Optional explicit basis seeds (if omitted, defaults to 50% taxable cost basis,
 # 100% Roth contribution basis):
 # taxable_cost_basis = 84000
 # roth_contribution_basis = 70000
 
 # Non-investable balances
-home_value = 380000
+home_value = 620000
 vehicles   = 0
 other      = 0
 
 # Named property balances for SellHome / property-tracking events
 [synthetic_start.property_values]
-"Single Residence" = 380000
+"Sample Residence" = 620000
 
 # Named liability balances (must match [[liabilities]].name entries)
 [synthetic_start.liability_balances]
-"Home Mortgage" = 280000
-"RAV4 Hybrid Auto Loan" = 25000
+"Home Mortgage" = 365000
+"RAV4 Hybrid Auto Loan" = 28000
 
 # ─── Simulation Controls ───────────────────────────────────────────────────────
 
 [simulation]
 start_year  = 2026
-end_year    = 2062
+end_year    = 2066
 render_modes = ["deterministic", "historical", "monte_carlo"]
 mode = "deterministic"   # compatibility/default single-run mode
 # num_runs = 250                          # Monte Carlo run count (default 250)
@@ -74,7 +69,7 @@ mode = "deterministic"   # compatibility/default single-run mode
 # ─── Display Settings ──────────────────────────────────────────────────────────
 
 [display]
-projection_title = "Single-Person Sample (Synthetic Demo)"
+projection_title = "Sample Household Plan (Synthetic Demo)"
 
 # ─── Stochastic Success / Failure Rules ────────────────────────────────────────
 
@@ -96,77 +91,129 @@ failure_grace_period_months = 0
 
 [person1]
 name              = "Alex"
-dob               = "1972-03-15"   # YYYY-MM-DD
+dob               = "1969-04-12"   # YYYY-MM-DD
 life_expectancy   = 90             # modeled terminal age (not a prediction)
-retirement_year   = 2040           # first year wages stop in the model
+retirement_year   = 2038           # first year wages stop in the model
 
 # Employment income inputs (annual, nominal dollars)
-annual_take_home  = 62000          # net-cash wage input (see [taxes].wage_tax_treatment)
+annual_take_home  = 78000          # net-cash wage input (see [taxes].wage_tax_treatment)
 annual_take_home_is_net_of_retirement_contributions = true  # true = do NOT subtract payroll contributions again
-annual_take_home_real_raise = 0.01  # real raise above inflation
+annual_take_home_real_raise = 0.01  # real raise above inflation; total growth ~= (1+inflation)*(1+real_raise)-1
 
 # Retirement contributions — percentage of gross income
+# When contribution_method = "percent_of_gross", the model computes the
+# contribution as gross_income × retirement_contribution_percent, then applies
+# annual gross growth and auto-escalation if configured.
 contribution_method = "percent_of_gross"
-gross_income = 90000                   # gross annual income (used for contribution math only)
+gross_income = 110000                   # gross annual income (used for contribution math only)
 gross_income_annual_increase_percent = 0.04   # combined COLA + performance
-retirement_contribution_percent = 0.20       # 20% of gross income
+retirement_contribution_percent = 0.21       # 21% of gross income
 retirement_contribution_annual_increase_percent = 0.00  # no auto-escalation
 retirement_contribution_max_percent = 0.30     # never exceed 30% of gross
 
 # Employer match
-annual_401k_employer_match_mode = "percent_of_gross"
-annual_401k_employer_match_rate = 1.0
-annual_401k_employer_match_max_percent = 0.06
+# annual_401k_employer_match = 6513                   # flat annual employer 401(k) match
+annual_401k_employer_match_mode = "percent_of_gross"  # "flat" (default) | "percent_of_gross"
+annual_401k_employer_match_rate = 1.0                 # e.g. 0.50 = 50% match on each dollar contributed
+annual_401k_employer_match_max_percent = 0.06         # e.g. 0.06 = match applies to first 6% of salary
 
-annual_ira_contribution  = 0
+annual_ira_contribution  = 0        # direct IRA contribution (cash outflow + bucket deposit)
+
+# Optional routing override for explicit contribution deposits
+# annual_401k_contribution_bucket = "trad_ira"  # valid: trad_ira | roth
+# annual_ira_contribution_bucket  = "roth"      # valid: trad_ira | roth
 
 # Share of household traditional retirement balance for RMD math
-rmd_trad_ira_share = 1.0
+rmd_trad_ira_share = 0.6
 
-ss_start_age = 67
+# Social Security timing and benefit options
+ss_start_age = 67   # source of truth for SS start timing
 
 [person1.social_security_benefits]
-"62" = 1400
-"63" = 1500
-"64" = 1620
-"65" = 1740
-"66" = 1880
-"67" = 2020
-"68" = 2170
-"69" = 2330
-"70" = 2500
+"62" = 1700
+"63" = 1840
+"64" = 1990
+"65" = 2160
+"66" = 2340
+"67" = 2520
+"68" = 2710
+"69" = 2910
+"70" = 3120
 
+# Optional proportional split for bundled workplace plan (trad + Roth buckets).
+# When configured, contributions are divided between trad_ira and roth by ratio.
 [person1.annual_401k_contribution_split]
-trad_ira = 0.70
-roth     = 0.30
+trad_ira = 0.31
+roth     = 0.69
 
 # ────────────────────────────────────────────────────────────────────────────────
-# NOTE: No [person2] section is present.  The engine auto-infers
-# household_type = "single" and skips all person2 logic.
 
+[person2]
+name              = "Sam"
+dob               = "1974-10-03"
+life_expectancy   = 92
+retirement_year   = 2043
+
+annual_take_home  = 52000
+annual_take_home_is_net_of_retirement_contributions = true
+annual_take_home_real_raise = 0.005
+
+# Retirement contributions — percentage of gross income
+contribution_method = "percent_of_gross"
+gross_income = 65000
+gross_income_annual_increase_percent = 0.035
+retirement_contribution_percent = 0.12
+retirement_contribution_annual_increase_percent = 0.00
+retirement_contribution_max_percent = 0.20
+
+# Employer match
+# annual_401k_employer_match = 6513                   # flat annual employer 401(k) match
+annual_401k_employer_match_mode = "percent_of_gross"  # "flat" (default) | "percent_of_gross"
+annual_401k_employer_match_rate = 1.0                 # e.g. 0.50 = 50% match on each dollar contributed
+annual_401k_employer_match_max_percent = 0.06         # e.g. 0.06 = match applies to first 6% of salary
+
+annual_ira_contribution  = 3000  # direct IRA contribution
+annual_ira_contribution_bucket = "roth"
+
+rmd_trad_ira_share = 0.4
+ss_start_age = 67
+
+[person2.social_security_benefits]
+"62" = 1100
+"63" = 1180
+"64" = 1270
+"65" = 1370
+"66" = 1480
+"67" = 1600
+"68" = 1730
+"69" = 1860
+"70" = 2010
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ─── Spending & Withdrawal Policy ──────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [spending]
-retirement_annual = 60000            # annual spending target (single person)
+retirement_annual = 82000            # annual household spending target (both alive, in today's dollars)
+survivor_percent_of_retirement = 0.72  # survivor spending = 72% of retirement_annual
 spending_basis = "real"              # "real" inflates spending annually | "nominal" keeps it flat
-# Note: survivor_* fields are not applicable for single-person households
 
 [withdrawal_policy]
-# Cash reserve targets by phase
-accumulation_cash_target = 30000
-retirement_cash_target   = 55000
-# survivor_* fields are not applicable for single-person households
+# Cash reserve targets by phase — the model tries to keep this much cash on hand
+# before investing surplus or drawing down retirement accounts.
+accumulation_cash_target = 45000
+retirement_cash_target   = 85000
+survivor_cash_target     = 65000
 
 # Withdrawal order when cash is below target (which buckets to sell first)
 accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
 retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+survivor_withdrawal_order     = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
 
 # Surplus reinvestment order when cash is above target (which buckets get the extra)
 accumulation_surplus_order = ["taxable", "roth", "trad_ira"]
 retirement_surplus_order   = ["taxable", "roth", "trad_ira"]
+survivor_surplus_order     = ["taxable", "roth", "trad_ira"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ─── Market Assumptions ────────────────────────────────────────────────────────
@@ -197,10 +244,9 @@ trad_ira_withdrawal_taxable_fraction = 1.00  # 100% of traditional withdrawals a
 [taxes]
 enabled = true
 table_set = "2025_us_federal_oregon"   # shared tax table reference in config/tax_tables/
-# For single-person households, filing status defaults to "single"
-# for both pre_retirement and retirement phases (survivor is not applicable)
-pre_retirement_filing_status = "single"
-retirement_filing_status     = "single"
+pre_retirement_filing_status = "married_joint"
+retirement_filing_status     = "married_joint"
+survivor_filing_status       = "single"
 wage_tax_treatment = "net_cash"        # "net_cash" (current) | "taxable_wages" (future)
 
 [taxes.rmd]
@@ -258,7 +304,14 @@ enabled = true
 type    = "EndOfPlan"
 label   = "End of Plan (Alex)"
 person  = "person1"
-year    = 2062                      # 1972 + 90
+year    = 2059                      # 1969 + 90
+
+[[events]]
+enabled = true
+type    = "EndOfPlan"
+label   = "End of Plan (Sam)"
+person  = "person2"
+year    = 2066                      # 1974 + 92
 
 # ─── 2. Pre-Retirement / Near-Term Known Events ────────────────────────────────
 

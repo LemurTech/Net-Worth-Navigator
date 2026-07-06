@@ -1,10 +1,10 @@
-# Net Worth Navigator — Single-Person Starter Template
+# Net Worth Navigator — Couples Starter Template
 #
-# Use this file as your starting point for a single-person household
+# Use this file as your starting point for a two-person household
 # if you do not use Monarch Money, or if you want to enter your
 # balances manually.
 #
-# For couples / two-person households, use starter-couple.toml instead.
+# For single-person households, use starter.toml instead.
 #
 # HOW TO USE THIS FILE
 # ──────────────────────────────────────────────────────────────────────
@@ -46,9 +46,9 @@
 # ─── Scenario Metadata ─────────────────────────────────────────────────
 
 [scenario]
-name        = "My Single Household"   # ← YOUR VALUE: display name shown in the UI
-slug        = "starter"                # ← YOUR VALUE: short lowercase identifier (no spaces)
-description = "Single-person starter template — replace with a brief description."
+name        = "My Couple Household"
+slug        = "starter-couple"
+description = "Couples starter template — replace with a brief description."
 is_default  = false                    # set true once this is your primary scenario
 is_template = true                     # hides from projection shell dropdown
 
@@ -164,11 +164,43 @@ roth     = 0.30   # ← YOUR VALUE: fraction routed to Roth
 
 
 # ─── Person 2 ──────────────────────────────────────────────────────────
-# NOTE: This file is for single-person households.  No [person2] section
-# is needed — the engine auto-infers household_type = "single" from its
-# absence.  If you need to model a second person, use starter-couple.toml
-# instead.
+# NOTE: [person2] is currently REQUIRED — the simulation engine does not
+# yet support single-person households (deleting this section will crash
+# the projection with a missing-config error). If you're modeling a
+# single person today, keep this section but zero out its income/balance
+# fields as a workaround. True single-person support is tracked as a
+# feature gap, not yet implemented.
 
+[person2]
+name              = "Person 2"          # ← YOUR VALUE
+dob               = "1978-01-01"        # ← YOUR VALUE: YYYY-MM-DD
+life_expectancy   = 90
+retirement_year   = 2043                # ← YOUR VALUE
+
+annual_take_home  = 0                   # ← YOUR VALUE
+annual_take_home_is_net_of_retirement_contributions = true
+annual_take_home_real_raise = 0.01
+
+contribution_method                      = "percent_of_gross"
+gross_income                             = 0      # ← YOUR VALUE
+gross_income_annual_increase_percent     = 0.03
+retirement_contribution_percent          = 0.10   # ← YOUR VALUE
+retirement_contribution_annual_increase_percent = 0.00
+retirement_contribution_max_percent      = 0.25
+
+# annual_401k_employer_match_mode        = "percent_of_gross"
+# annual_401k_employer_match_rate        = 0.50
+# annual_401k_employer_match_max_percent = 0.06
+
+ss_start_age       = 67   # ← YOUR VALUE
+rmd_trad_ira_share = 0.5
+
+[person2.annual_401k_contribution_split]
+trad_ira = 0.70
+roth     = 0.30
+
+[person2.social_security_benefits]
+67 = 0   # ← YOUR VALUE: estimated monthly benefit
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -176,25 +208,31 @@ roth     = 0.30   # ← YOUR VALUE: fraction routed to Roth
 # ═══════════════════════════════════════════════════════════════════════
 
 [spending]
-retirement_annual              = 0       # ← YOUR VALUE: annual retirement spending target
+retirement_annual              = 0       # ← YOUR VALUE: combined annual spending in retirement
+survivor_percent_of_retirement = 0.70    # surviving spouse spends ~70% of joint spending
 debt_service_handling          = "auto_reduce"  # frees loan P&I from spending target at payoff
-# Note: survivor_* fields are for couples only — not applicable here
 
+
+# ═══════════════════════════════════════════════════════════════════════
+# ─── Withdrawal Policy ─────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════
 
 [withdrawal_policy]
-# Cash reserve targets — how much cash to keep on hand
-accumulation_cash_target = 20000   # ← YOUR VALUE
-retirement_cash_target   = 30000   # ← YOUR VALUE
-# survivor_* fields are for couples only — not applicable here
+# Cash reserve targets — how much cash to keep on hand in each life phase
+accumulation_cash_target = 20000   # ← YOUR VALUE: ~3-6 months essential expenses
+retirement_cash_target   = 30000   # ← YOUR VALUE: ~6-12 months
+survivor_cash_target     = 20000   # ← YOUR VALUE: ~6 months for one person
 
 # Withdrawal order — which buckets to draw from first when spending exceeds income
 # Options: cash_above_target, taxable, trad_ira, roth, cash_below_target
 accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
 retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+survivor_withdrawal_order     = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
 
 # Surplus routing — where to put extra money after expenses are covered
 accumulation_surplus_order = ["roth", "taxable"]
 retirement_surplus_order   = ["roth", "taxable"]
+survivor_surplus_order     = ["roth", "taxable"]
 
 
 # ═══════════════════════════════════════════════════════════════════════

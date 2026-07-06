@@ -6,7 +6,9 @@ config.toml
 scenarios/*.toml
 !scenarios/.gitkeep
 !scenarios/starter.toml
+!scenarios/starter-couple.toml
 !scenarios/sample.toml
+!scenarios/sample-couples.toml
 !scenarios/sample-a.toml
 !scenarios/sample-b.toml
 

@@ -2354,10 +2354,10 @@ def build_chart(
         sample_guide_html = """
     <div class="sample-guide-card">
       <h3>📘 About This Sample</h3>
-      <p>This is a <strong>reference demo scenario</strong> showing Net Worth Navigator's features with realistic synthetic data:</p>
+      <p>This is a <strong>single-person reference demo</strong> showing Net Worth Navigator's features with realistic synthetic data:</p>
       <ul class="sample-highlights">
-        <li><strong>Alex (b. 1969) and Sam (b. 1974)</strong> — dual-income household</li>
-        <li><strong>Retirement in early 60s</strong> — both contribute to 401(k) with employer match</li>
+        <li><strong>Alex (b. 1972)</strong> — employed single professional</li>
+        <li><strong>Retirement in late 60s</strong> — contributes to 401(k) with employer match</li>
         <li><strong>Home mortgage + auto loan</strong> — both pay down over time</li>
         <li><strong>Recurring events</strong> — biennial travel, annual home maintenance, vehicle replacements</li>
         <li><strong>Later-life planning</strong> — part-time consulting income, care support costs</li>
