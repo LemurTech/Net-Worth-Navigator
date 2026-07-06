@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config_loader import merge_tax_tables
+from src.csv_importer import accounts_from_csv, merge_accounts, parse_csv
 from src.definitions_page import build_definitions_page_html
 from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes, SCENARIOS_DIR
 
@@ -1787,6 +1788,245 @@ async def api_set_default_scenario(request: Request) -> JSONResponse:
         return JSONResponse({"ok": True, "is_default": is_default, "slug": slug})
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+# ── API: CSV source GET ─────────────────────────────────────────────────────
+
+
+@app.get("/api/csv-source")
+async def api_csv_source(request: Request) -> JSONResponse:
+    """Return current [csv_source] data + per-account classification status."""
+    scenario_slug = request.query_params.get("scenario") or None
+    config_text = _read_config_text(scenario_slug)
+    parsed = tomllib.loads(config_text)
+
+    csv_source = parsed.get("csv_source", {})
+    if not isinstance(csv_source, dict):
+        csv_source = {}
+
+    accounts_section = parsed.get("accounts", {})
+    if not isinstance(accounts_section, dict):
+        accounts_section = {}
+    disabled = list(accounts_section.get("disabled", []))
+
+    data_source = parsed.get("data_source", {})
+    mode = "monarch"
+    if isinstance(data_source, dict):
+        mode = data_source.get("mode", "monarch")
+
+    csv_accounts = csv_source.get("accounts", {})
+    if not isinstance(csv_accounts, dict):
+        csv_accounts = {}
+
+    # Build per-account status list
+    accounts_status: list[dict] = []
+    for name in sorted(csv_accounts.keys()):
+        balance = csv_accounts[name]
+        cls = accounts_section.get(name)
+        if isinstance(cls, dict):
+            accounts_status.append({
+                "name": name,
+                "balance": balance,
+                "classified": True,
+                "category": cls.get("category"),
+                "owner": cls.get("owner", "n/a"),
+                "disabled": name in disabled,
+            })
+        elif isinstance(cls, str):
+            accounts_status.append({
+                "name": name,
+                "balance": balance,
+                "classified": cls != "unclassified",
+                "category": cls,
+                "owner": "n/a",
+                "disabled": name in disabled,
+            })
+        else:
+            accounts_status.append({
+                "name": name,
+                "balance": balance,
+                "classified": False,
+                "category": None,
+                "owner": "n/a",
+                "disabled": name in disabled,
+            })
+
+    return JSONResponse({
+        "ok": True,
+        "data_source_mode": mode,
+        "csv_source": {
+            "last_import": csv_source.get("last_import"),
+            "account_count": len(csv_accounts),
+        },
+        "accounts": accounts_status,
+    })
+
+
+# ── API: CSV upload (parse, preview, merge) ────────────────────────────────
+
+
+@app.post("/api/csv-upload")
+async def api_csv_upload(request: Request) -> JSONResponse:
+    """Accept a CSV file upload, parse it, and return a preview with per-account
+    classification status.  If the scenario already has a [csv_source] section,
+    merge is performed so new/updated/removed accounts are reported."""
+    scenario_slug = request.query_params.get("scenario") or None
+
+    try:
+        form = await request.form()
+        file = form.get("file")
+        if file is None:
+            return JSONResponse({"ok": False, "error": "No file uploaded."}, status_code=400)
+        content = await file.read()
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"Failed to read upload: {exc}"}, status_code=400)
+
+    # Write to a temporary file for parsing
+    tmp = Path(f"/tmp/csv_upload_{scenario_slug or 'default'}_{os.urandom(4).hex()}.csv")
+    try:
+        tmp.write_bytes(content)
+
+        parsed_accounts = parse_csv(str(tmp))
+
+        # Load existing state for merge
+        try:
+            config_text = _read_config_text(scenario_slug)
+            config = tomllib.loads(config_text)
+            csv_source_config = config.get("csv_source", {})
+            if not isinstance(csv_source_config, dict):
+                csv_source_config = {}
+            old_accounts = csv_source_config.get("accounts", {})
+            if not isinstance(old_accounts, dict):
+                old_accounts = {}
+            accounts_section = config.get("accounts", {})
+            if not isinstance(accounts_section, dict):
+                accounts_section = {}
+        except Exception:
+            old_accounts = {}
+            accounts_section = {}
+
+        merge_result = merge_accounts(old_accounts, parsed_accounts, accounts_section)
+
+        classification_map = {
+            acct["name"]: accounts_section.get(acct["name"], "unclassified")
+            for acct in parsed_accounts
+        }
+        earliest_date = min(a["date"] for a in parsed_accounts)
+        latest_date = max(a["date"] for a in parsed_accounts)
+
+        return JSONResponse({
+            "ok": True,
+            "total_accounts": len(parsed_accounts),
+            "accounts": [
+                {
+                    "name": a["name"],
+                    "balance": a["balance"],
+                    "date": a["date"],
+                    "classified": classification_map.get(a["name"], "unclassified") != "unclassified",
+                }
+                for a in parsed_accounts
+            ],
+            "merge": merge_result,
+            "import_date": datetime.now().strftime("%Y-%m-%d"),
+            "date_range": {"earliest": earliest_date, "latest": latest_date},
+        })
+
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"Parse failed: {exc}"}, status_code=500)
+    finally:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+
+
+# ── API: save CSV source (write [csv_source] + [accounts] to TOML) ──────────
+
+
+@app.post("/api/save-csv-source")
+async def api_save_csv_source(request: Request) -> JSONResponse:
+    """Save the [csv_source] section and account classifications to TOML.
+
+    Expects JSON body:
+    {
+        "accounts": [
+            {
+                "name": "Checking - Joint",
+                "balance": 5432.10,
+                "category": "cash",
+                "owner": "n/a",
+                "disabled": false
+            },
+            ...
+        ]
+    }
+
+    Writes [csv_source] (last_import, accounts), [accounts] (classification),
+    and sets data_source.mode = "csv_import".
+    """
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+
+    entries: list[dict] | None = body.get("accounts")
+    if entries is None:
+        return JSONResponse({"ok": False, "error": "Missing 'accounts' list."}, status_code=400)
+
+    if not entries:
+        return JSONResponse({"ok": False, "error": "At least one account is required."}, status_code=400)
+
+    doc, _ = _toml_open(scenario_slug)
+
+    # ── 1. Build and write [csv_source] ────────────────────────────────────
+    csv_src = tomlkit.table()
+    csv_src["last_import"] = datetime.now().strftime("%Y-%m-%d")
+
+    csv_accounts_tbl = tomlkit.table()
+    for entry in entries:
+        name: str = entry["name"]
+        balance: float = entry.get("balance", 0.0)
+        csv_accounts_tbl[name] = balance
+    csv_src["accounts"] = csv_accounts_tbl
+    doc["csv_source"] = csv_src
+
+    # ── 2. Build and write [accounts] classification ───────────────────────
+    disabled_names: list[str] = [e["name"] for e in entries if e.get("disabled")]
+    active = [e for e in entries if not e.get("disabled")]
+
+    if "accounts" not in doc or doc["accounts"] is None:
+        doc["accounts"] = tomlkit.table()
+    accounts = doc["accounts"]
+    # Remove old account-name keys (keep disabled key if present)
+    keys_to_remove = [k for k in accounts if k != "disabled"]
+    for k in keys_to_remove:
+        try:
+            accounts.remove(k)
+        except Exception:
+            pass
+
+    accounts["disabled"] = disabled_names
+    for entry in active:
+        name = entry["name"]
+        category: str = entry.get("category", "ignore")
+        owner: str = entry.get("owner", "n/a")
+        if owner and owner != "n/a":
+            accounts[name] = {"category": category, "owner": owner}
+        else:
+            accounts[name] = category
+
+    # ── 3. Set data_source.mode ────────────────────────────────────────────
+    if "data_source" not in doc or doc["data_source"] is None:
+        doc["data_source"] = tomlkit.table()
+    doc["data_source"]["mode"] = "csv_import"
+
+    backup_path = _backup_and_write_toml(doc, scenario_slug)
+    return JSONResponse({
+        "ok": True,
+        "message": f"CSV source saved for {len(entries)} account(s).",
+        "backup_path": str(backup_path),
+    })
 
 
 if __name__ == "__main__":
