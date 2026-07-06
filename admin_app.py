@@ -1485,6 +1485,7 @@ async def api_save_classification(request: Request) -> JSONResponse:
         "ok": True,
         "message": f"Classification saved for {len(entries)} account(s).",
         "backup_path": str(backup_path),
+        "toml_content": doc.as_string(),
     })
 
 
@@ -1694,7 +1695,7 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
 
     # data_source mode (special case — radio button)
     ds_mode = body.get("data_source")
-    if ds_mode in ("monarch", "synthetic"):
+    if ds_mode in ("monarch", "synthetic", "csv_import"):
         if "data_source" not in doc or doc["data_source"] is None:
             doc["data_source"] = tomlkit.table()
         existing_mode = doc["data_source"].get("mode")
@@ -2072,6 +2073,7 @@ async def api_save_csv_source(request: Request) -> JSONResponse:
         "ok": True,
         "message": f"CSV source saved for {len(entries)} account(s).",
         "backup_path": str(backup_path),
+        "toml_content": doc.as_string(),
     })
 
 

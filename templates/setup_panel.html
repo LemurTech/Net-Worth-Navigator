@@ -1295,6 +1295,14 @@
         var cacheTsDisplay = document.getElementById('cache-ts-display');
         var editorHead = document.querySelector('#tab-accounts .editor-head');
 
+        // If csv_import mode is active, hide the loading indicator immediately
+        // — the accounts content is managed by the CSV import section anyway.
+        var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
+        var effectiveMode = dsRadio ? dsRadio.value : 'monarch';
+        if (effectiveMode === 'csv_import') {
+          if (loadingEl) loadingEl.style.display = 'none';
+        }
+
         apiGet('api/accounts').then(function (data) {
           loadingEl.style.display = 'none';
           contentEl.style.display = 'block';
@@ -1674,6 +1682,14 @@
             btn.disabled = false;
             if (data.ok) {
               showSuccess(data.message || 'Classification saved.');
+              // Refresh raw TOML textarea and quick-edit controls
+              if (data.toml_content) {
+                var tomlEl = document.getElementById('raw-toml-content');
+                if (tomlEl) {
+                  tomlEl.value = data.toml_content;
+                  initQuickEdit(data.toml_content);
+                }
+              }
             } else {
               showError(data.error || 'Save failed.');
             }
@@ -2040,6 +2056,14 @@
               resetCsvPreview();
               // Reload the accounts tab to show updated classifications
               initAccountsTab();
+              // Sync Quick Controls with the updated TOML
+              if (data.toml_content) {
+                var tomlEl = document.getElementById('raw-toml-content');
+                if (tomlEl) {
+                  tomlEl.value = data.toml_content;
+                  initQuickEdit(data.toml_content);
+                }
+              }
             } else {
               showError(data.error || 'Save failed.');
             }
