@@ -4,3 +4,4 @@ fastapi>=0.137
 uvicorn>=0.49
 jinja2>=3.1
 tomlkit>=0.15
+python-multipart>=0.0.20
