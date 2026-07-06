@@ -790,14 +790,19 @@
       /* ── Toast ─────────────────────────────────────────────────── */
       function showToast(message, kind) {
         kind = kind || 'success';
-        var container = document.getElementById('toast-container');
-        var el = document.createElement('div');
-        el.className = 'toast ' + kind;
-        el.textContent = message;
-        container.appendChild(el);
-        setTimeout(function () {
-          if (el.parentNode) el.parentNode.removeChild(el);
-        }, 4000);
+        try {
+          var container = document.getElementById('toast-container');
+          if (!container) { alert((kind === 'error' ? 'Error: ' : '') + message); return; }
+          var el = document.createElement('div');
+          el.className = 'toast ' + kind;
+          el.textContent = message;
+          container.appendChild(el);
+          setTimeout(function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          }, 4000);
+        } catch(e) {
+          alert('Toast failed: ' + e.message + ' — ' + message);
+        }
       }
 
       function showError(message) { showToast(message, 'error'); }
@@ -1209,55 +1214,61 @@
 
       /* ── Save (metadata + accounts) ──────────────────────────────── */
       function saveEverything(onSuccess, onError) {
-        // 1. Save metadata (quick controls)
-        var body = collectQuickControls();
-        apiPost('api/save-quick-controls', body).then(function (data) {
-          if (!data.ok) {
-            if (onError) onError(data.error || 'Save failed.');
-            return;
-          }
-          // Refresh the raw TOML textarea
-          if (data.toml_content) {
-            var contentEl = document.getElementById('raw-toml-content');
-            if (contentEl) contentEl.value = data.toml_content;
-          }
-          // 2. Save accounts data based on active mode
-          var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
-          var mode = dsRadio ? dsRadio.value : 'monarch';
-          if (mode === 'monarch') {
-            var entries = typeof collectClassification === 'function' ? collectClassification() : [];
-            if (entries.length > 0) {
-              apiPost('api/save-classification', { accounts: entries }).then(function (clsData) {
-                if (clsData.ok && clsData.toml_content) {
+        try {
+          // 1. Save metadata (quick controls)
+          var body = collectQuickControls();
+          apiPost('api/save-quick-controls', body).then(function (data) {
+            if (!data.ok) {
+              if (onError) onError(data.error || 'Save failed.');
+              return;
+            }
+            // Refresh the raw TOML textarea
+            if (data.toml_content) {
+              var contentEl = document.getElementById('raw-toml-content');
+              if (contentEl) contentEl.value = data.toml_content;
+            }
+            // 2. Save accounts data based on active mode
+            var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
+            var mode = dsRadio ? dsRadio.value : 'monarch';
+            if (mode === 'monarch') {
+              var entries = typeof collectClassification === 'function' ? collectClassification() : [];
+              if (entries.length > 0) {
+                apiPost('api/save-classification', { accounts: entries }).then(function (clsData) {
+                  if (clsData.ok && clsData.toml_content) {
+                    var ce = document.getElementById('raw-toml-content');
+                    if (ce) ce.value = clsData.toml_content;
+                  }
+                  if (onSuccess) onSuccess();
+                }).catch(function (err) { console.error('Classification save error:', err); if (onSuccess) onSuccess(); });
+              } else {
+                if (onSuccess) onSuccess();
+              }
+            } else if (mode === 'synthetic') {
+              var synthData = collectSyntheticData();
+              apiPost('api/save-synthetic-start', synthData).then(function (synthRes) {
+                if (synthRes.ok && synthRes.toml_content) {
                   var ce = document.getElementById('raw-toml-content');
-                  if (ce) ce.value = clsData.toml_content;
+                  if (ce) ce.value = synthRes.toml_content;
                 }
                 if (onSuccess) onSuccess();
-              }).catch(function () { if (onSuccess) onSuccess(); });
+              }).catch(function (err) { console.error('Synthetic save error:', err); if (onSuccess) onSuccess(); });
             } else {
+              // csv_import mode — nothing extra to save
               if (onSuccess) onSuccess();
             }
-          } else if (mode === 'synthetic') {
-            var synthData = collectSyntheticData();
-            apiPost('api/save-synthetic-start', synthData).then(function (synthRes) {
-              if (synthRes.ok && synthRes.toml_content) {
-                var ce = document.getElementById('raw-toml-content');
-                if (ce) ce.value = synthRes.toml_content;
-              }
-              if (onSuccess) onSuccess();
-            }).catch(function () { if (onSuccess) onSuccess(); });
-          } else {
-            // csv_import mode — nothing extra to save
-            if (onSuccess) onSuccess();
-          }
-        }).catch(function (err) {
-          if (onError) onError(err.message);
-        });
+          }).catch(function (err) {
+            console.error('Quick-controls save error:', err);
+            if (onError) onError(err.message || 'Network error');
+          });
+        } catch(e) {
+          console.error('saveEverything error:', e);
+          if (onError) onError(e.message);
+        }
       }
 
       function initSaveAll() {
         var btn = document.getElementById('save-btn');
-        if (!btn) return;
+        if (!btn) { console.error('Save button (#save-btn) not found'); return; }
         btn.addEventListener('click', function () {
           btn.disabled = true;
           saveEverything(
