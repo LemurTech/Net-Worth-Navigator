@@ -278,6 +278,7 @@
     }
     .source-dot.green { background: #22c55e; }
     .source-dot.yellow { background: #eab308; }
+    .source-dot.blue { background: #3b82f6; }
     .source-dot.gray { background: #6b7280; }
     .acct-category select, .acct-owner select {
       padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
@@ -1397,12 +1398,22 @@
           var srcSpan = document.createElement('span');
           srcSpan.className = 'acct-source';
           var dot = document.createElement('span');
-          dot.className = 'source-dot gray';
-          if (_accountsData && _accountsData.source === 'cached') {
-            dot.className = 'source-dot green';
+          var srcLabel = '—';
+          if (_accountsData) {
+            if (_accountsData.source === 'cached') {
+              dot.className = 'source-dot green';
+              srcLabel = 'Cache';
+            } else if (_accountsData.source === 'csv') {
+              dot.className = 'source-dot blue';
+              srcLabel = 'CSV';
+            } else {
+              dot.className = 'source-dot gray';
+            }
+          } else {
+            dot.className = 'source-dot gray';
           }
           srcSpan.appendChild(dot);
-          srcSpan.appendChild(document.createTextNode(' ' + (_accountsData ? (_accountsData.source === 'cached' ? 'Cache' : '—') : '—')));
+          srcSpan.appendChild(document.createTextNode(' ' + srcLabel));
           tdSrc.appendChild(srcSpan);
         } else {
           tdSrc.textContent = '—';
