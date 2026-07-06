@@ -618,8 +618,8 @@
                   <tr style="background:var(--panel-2)">
                     <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;width:30%">Account</th>
                     <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;width:15%">Balance</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;width:25%">Category</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;width:20%">Owner</th>
+                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;width:25%">Category</th>
+                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;width:20%">Owner</th>
                     <th style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap;width:10%">Disabled</th>
                   </tr>
                 </thead>
@@ -1702,6 +1702,7 @@
 
         if (sourceMode === 'synthetic') {
           showCsvImportSection(false);
+          if (toolbar) toolbar.style.display = '';
           // Insert info banner above toolbar
           var banner = document.createElement('div');
           banner.id = 'accounts-mode-banner';
@@ -1719,13 +1720,14 @@
           }
         } else if (sourceMode === 'csv_import') {
           showCsvImportSection(true);
-          // Disable Refresh button
+          if (toolbar) toolbar.style.display = 'none';
           if (btn) {
             btn.disabled = true;
             btn.title = 'Use CSV import for account data';
           }
         } else {
           showCsvImportSection(false);
+          if (toolbar) toolbar.style.display = '';
           // Monarch mode — ensure button is enabled
           if (btn) {
             btn.disabled = false;
