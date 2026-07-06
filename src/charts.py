@@ -1464,6 +1464,7 @@ def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> st
         title=dict(text="Debt Payoff Trajectory", font=dict(size=16)),
         xaxis=dict(
             title="Year",
+            range=[min(years), max(years)],
             tickmode="linear",
             dtick=2,
             ticklabelstandoff=6,
@@ -2365,7 +2366,7 @@ def build_chart(
       <p class="sample-guide-tip"><strong>💡 Tip:</strong> Click year columns in tables to highlight that year across all data. Try switching between projection modes (deterministic, historical, Monte Carlo) using the Simulation tab.</p>
       <div class="sample-guide-actions">
         <a href="/finances/config/?scenario=sample" target="_top" class="sample-guide-btn">View Sample Config</a>
-        <a href="/finances/config/setup" target="_top" class="sample-guide-btn sample-guide-btn-primary">Create Your Own</a>
+        <a href="/finances/config/setup?action=new-template" target="_top" class="sample-guide-btn sample-guide-btn-primary">Create Your Own</a>
       </div>
     </div>
 """

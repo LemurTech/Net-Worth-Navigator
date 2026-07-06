@@ -1607,6 +1607,19 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
     doc, _ = _toml_open(scenario_slug)
     changed_keys: list[str] = []
 
+    def _value_differs(parent: dict, key: str, typed) -> bool:
+        """Compare new value against existing. Treat str ↔ int/float as equal if numeric."""
+        existing = parent.get(key)
+        if existing is None:
+            return True
+        if type(existing) == type(typed):
+            return existing != typed
+        # Allow cross-type comparison: "1980" == 1980
+        try:
+            return float(existing) != float(typed)
+        except (TypeError, ValueError):
+            return str(existing) != str(typed)
+
     # Scalar fields
     for field_name, (toml_path, value_type) in _QUICK_CONTROL_MAP.items():
         raw = body.get(field_name)
@@ -1617,8 +1630,9 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         except (TypeError, ValueError):
             continue
         parent, key = _resolve_toml_path(doc, toml_path)
-        parent[key] = typed
-        changed_keys.append(toml_path)
+        if _value_differs(parent, key, typed):
+            parent[key] = typed
+            changed_keys.append(toml_path)
 
     # Array fields
     for field_name, toml_path in _QUICK_ARRAY_MAP.items():
@@ -1626,16 +1640,20 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         if raw is None or not isinstance(raw, list):
             continue
         parent, key = _resolve_toml_path(doc, toml_path)
-        parent[key] = raw
-        changed_keys.append(toml_path)
+        existing = parent.get(key)
+        if existing is None or list(existing) != raw:
+            parent[key] = raw
+            changed_keys.append(toml_path)
 
     # data_source mode (special case — radio button)
     ds_mode = body.get("data_source")
     if ds_mode in ("monarch", "synthetic"):
         if "data_source" not in doc or doc["data_source"] is None:
             doc["data_source"] = tomlkit.table()
-        doc["data_source"]["mode"] = ds_mode
-        changed_keys.append("data_source.mode")
+        existing_mode = doc["data_source"].get("mode")
+        if existing_mode != ds_mode:
+            doc["data_source"]["mode"] = ds_mode
+            changed_keys.append("data_source.mode")
 
     # Birth years (reconstruct dob string from year)
     for person_key, field_name in [("person1", "person1_birth_year"), ("person2", "person2_birth_year")]:
@@ -1653,11 +1671,29 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
                 month_day = "-".join(current_dob.split("-")[1:])
             else:
                 month_day = "01-01"
-            doc[person_key]["dob"] = f"{birth_year}-{month_day}"
-            changed_keys.append(f"{person_key}.dob")
+            new_dob = f"{birth_year}-{month_day}"
+            if current_dob != new_dob:
+                doc[person_key]["dob"] = new_dob
+                changed_keys.append(f"{person_key}.dob")
 
     if not changed_keys:
-        return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)
+        # Check whether any recognized fields were present in the request body at all
+        any_recognized = any(
+            field in body
+            for field in list(_QUICK_CONTROL_MAP.keys())
+            + list(_QUICK_ARRAY_MAP.keys())
+            + ["data_source", "person1_birth_year", "person2_birth_year"]
+        )
+        if not any_recognized:
+            return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)
+        # Recognized fields were sent but none changed — still a success (e.g. Save + Re-render after identical save)
+        return JSONResponse({
+            "ok": True,
+            "message": "No changes detected.",
+            "changed_keys": [],
+            "backup_path": None,
+            "toml_content": doc.as_string(),
+        })
 
     backup_path = _backup_and_write_toml(doc, scenario_slug)
     return JSONResponse({
@@ -1665,6 +1701,7 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         "message": f"Updated {len(changed_keys)} field(s).",
         "changed_keys": changed_keys,
         "backup_path": str(backup_path),
+        "toml_content": doc.as_string(),
     })
 
 

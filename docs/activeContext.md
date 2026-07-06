@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-05
-**Status:** v1.0.0 tagged and pushed. GPL v3.0 license and CONTRIBUTING.md published. Versioning system live. Branching strategy settled (trunk-based, no `dev` branch).
+**Status:** v1.1.0 — Single-person household support shipped. Household type auto-infers from presence/absence of `[person2]` with optional explicit override via `[scenario].household_type`. Starter templates (`starter.toml` / `starter-couple.toml`) are `is_template=true` and hidden from shell dropdowns; sample scenarios sorted to bottom with visual separator. "New from Template" flow includes a household-type selector modal.
 
 ---
 
@@ -41,8 +41,11 @@ be created directly in `docs/plans/`, not in `docs/` root.
 | `restrictive` | Bearish markets, later retirement |
 | `early-death-person1` | Person 1 passes in their 60s |
 | `early-death-person2` | Person 2 passes in their 60s |
-| `sample` / `sample-a` / `sample-b` | Synthetic share-safe demo scenarios (Alex & Sam) |
-| `starter` | Blank-slate template for new non-Monarch users |
+| `sample` | Single-person share-safe demo (Alex, b. 1972) |
+| `sample-couples` | Couples share-safe demo (Alex & Sam) |
+| `sample-a` / `sample-b` | A/B comparison pair (Alex & Sam) |
+| `starter` (template) | Single-person blank-slate template (hidden from dropdown) |
+| `starter-couple` (template) | Couples blank-slate template (hidden from dropdown) |
 
 All household TOMLs use 24% 401k contribution ($31K IRS cap), 70/30 trad/Roth split, and $40K/$50K/$30K cash targets.
 
@@ -59,18 +62,7 @@ All household TOMLs use 24% 401k contribution ($31K IRS cap), 70/30 trad/Roth sp
 
 ## Open Items
 
-### Feature gaps blocking wider-audience readiness
-
-Identified 2026-07-04 during a Setup Panel troubleshooting session. Both are scoped as
-design plans, not started:
-
-- **Single-person households are not supported** — the simulation engine hard-crashes
-  (`KeyError: 'person2'`) if `[person2]` is omitted, despite `scenarios/starter.toml`'s
-  own (now-corrected) comment previously claiming it was optional. `person2` is referenced
-  ~80+ times throughout `src/model.py`, and the "survivor phase" tax/spending machinery is
-  architecturally built around exactly two people. Plan:
-  `docs/plans/2026-07-04-single-person-household-support.md`.
-- **State tax is hardcoded to Oregon only** — `resolve_state_tax_system()` in
+### Feature gaps blocking wider-audience readiness — `resolve_state_tax_system()` in
   `src/tax_model.py` silently returns $0 state tax for every state name other than
   `"oregon"`, with no error or warning. Plan: generalize to reuse the existing
   `calculate_progressive_tax()` bracket engine (already used for federal) for the common

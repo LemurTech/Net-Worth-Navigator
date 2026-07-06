@@ -1,7 +1,7 @@
 # Single-Person Household Support — Design Plan
 
-> **Status:** Proposed. Not started.
-> **See also:** `src/model.py`, `src/tax_model.py`, `templates/setup_panel.html`, `scenarios/starter.toml`, session finding 2026-07-04 (troubleshooting session that discovered this gap)
+> **Status:** Implemented. Shipped in v1.1.0 (2026-07-05).
+> **See also:** `src/model.py`, `src/tax_model.py`, `templates/setup_panel.html`, `scenarios/starter.toml`, `scenarios/starter-couple.toml`, `scenarios/sample.toml`, `scenarios/sample-couples.toml`, session finding 2026-07-04 (troubleshooting session that discovered this gap)
 
 **Goal:** Let a single person model their own household in Net Worth Navigator without a
 second `[person2]` entry, without crashing, and without nonsensical survivor-phase output.

@@ -3,6 +3,59 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-05 (v1.1.0 — Single-person household support)
+
+### Added
+
+- **Household type inference** — `_resolve_household_type()` infers `"single"`/`"couple"`
+  from `[person2]` presence or explicit `[scenario].household_type`. Optional override
+  `household_type = "single"` ignores person2 for projections while preserving data in
+  the file.
+- **`scenarios/starter-couple.toml`** — Blank couples starter template, cloned from the
+  original starter. Marked `is_template = true`, hidden from shell dropdown.
+- **`scenarios/sample-couples.toml`** — Couples reference scenario, cloned from the
+  original sample. Title: "Sample Couples Plan".
+- **Household-type radio modal** — "New from Template" button in the Setup Panel now
+  shows a modal to choose Single or Couple before creating a scenario.
+- **`is_template` filtering in `discover_scenarios()`** — Templates (starter, starter-couple)
+  excluded from projection shell dropdown and setup panel selector.
+- **Sample scenarios sorted to bottom** — Both the setup panel and shell dropdown group
+  user scenarios first, then sample scenarios with a `─────` visual separator.
+
+### Changed
+
+- **`src/model.py`** — ~30+ sites adapted for single-person: crash point fixed (`person2`
+  resolved via `_resolve_person2()`), all `RETIREMENT_OWNER_KEYS` loops use dynamic
+  `owner_keys`, RMD/share/survivor functions accept `person2=None` or `household_type`
+  param, DataFrame rows use `.get("person2", ...)`.
+- **`src/tax_model.py`** — `_tax_phase()` never returns `"survivor"` for singles.
+  `resolve_tax_system()` defaults filing status to `"single"` for singles.
+- **`scenarios/starter.toml`** — Converted to single-person template. No `[person2]`
+  section, no survivor-related fields, updated comments.
+- **`scenarios/sample.toml`** — Converted to single-person demo. Alex (b. 1972), single
+  professional, 70/30 401k split, reduced balances. No `[person2]`, no survivor fields,
+  single filing status.
+- **`admin_app.py`** — `api_new_scenario()` selects template by `household_type` param.
+  `_build_context()` splits scenarios into user + sample groups.
+- **`src/scenarios.py`** — `write_scenarios_index()` sorts samples to end of manifest.
+- **`src/scenario_shell.py`** — `populateShell()` inserts separator before first sample.
+- **`templates/setup_panel.html`** — Scenario picker renders user scenarios first, then
+  samples with separator. Template-type modal replaces text prompt.
+- **`src/charts.py`** — "About This Sample" card content updated for single-person demo.
+- **`.gitignore`** — Added exceptions for `starter-couple.toml` and `sample-couples.toml`.
+- **Version bumped to 1.1.0** (MINOR — backward-compatible new feature).
+
+### Decisions
+
+- **Household type is inferred, not purely explicit.** When `[scenario].household_type` is
+  absent, the engine infers from `[person2]` presence. Explicit `household_type = "single"`
+  acts as an override, ignoring person2 for projection purposes.
+- **No validation error when `household_type = "single"` but person2 exists** — the engine
+  tolerates it and silently skips person2. This lets users keep second-person data in the
+  file without losing it.
+- **Starter templates hidden from shell dropdown** via `is_template` metadata flag.
+  Sample/demo scenarios remain visible but sorted to the bottom with a visual separator.
+
 ## 2026-07-05 (Open-source readiness: license, versioning, branching, contributing)
 
 ### Added

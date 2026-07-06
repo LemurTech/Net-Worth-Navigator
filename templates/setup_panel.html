@@ -443,10 +443,10 @@
         <div class="inline-row">
           <div class="inline-field" style="flex:0 0 auto">
             <label>Slug</label>
-            <input type="text" id="scenario_slug" value="{{ scenario_slug }}" readonly style="width:180px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(15,23,37,0.5);color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px">
+            <input type="text" id="scenario_slug" value="{{ scenario_slug }}" readonly style="width:180px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(15,23,37,0.5);color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1">
           </div>
-          <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:1px">
-            <button type="button" id="rename-scenario-btn" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:#162234;color:var(--text);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap">Rename Slug</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" id="rename-scenario-btn" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:#162234;color:var(--text);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap;line-height:1">Rename Slug</button>
             {%- set ns = namespace(is_def=false) %}
             {%- for opt in scenario_options %}
             {%- if opt.slug == scenario_slug and opt.is_default %}{% set ns.is_def = true %}{% endif %}
@@ -554,7 +554,8 @@
         <button type="button" id="validate-btn">Validate</button>
         <button type="button" id="save-render-quick-btn">Save + Re-render</button>
         <button type="button" id="save-render-all-btn">Save + Render All</button>
-        <button type="button" id="new-scenario-btn" style="margin-left:auto">New from Template</button>
+        <span style="flex:1;min-width:0"></span>
+        <button type="button" id="new-scenario-btn">New from Template</button>
       </div>
     </div>
 
@@ -1153,6 +1154,11 @@
             btn.disabled = false;
             if (data.ok) {
               showSuccess(data.message || 'Quick controls saved.');
+              // Refresh the raw TOML textarea so it reflects the saved changes
+              if (data.toml_content) {
+                var contentEl = document.getElementById('raw-toml-content');
+                if (contentEl) contentEl.value = data.toml_content;
+              }
             } else {
               showError(data.error || 'Save failed.');
             }
@@ -2524,6 +2530,17 @@
       } else {
         init();
       }
+
+      // If ?action=new-template is present, open the template dialog after DOM is ready
+      (function checkActionParam() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('action') === 'new-template') {
+          document.addEventListener('DOMContentLoaded', function() {
+            var overlay = document.getElementById('template-dialog-overlay');
+            if (overlay) overlay.classList.add('active');
+          });
+        }
+      })();
     })();
   </script>
 
