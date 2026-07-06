@@ -1381,6 +1381,52 @@ async def api_accounts(request: Request) -> JSONResponse:
     if isinstance(parsed.get("data_source"), dict):
         source_mode = parsed["data_source"].get("mode") or "monarch"
 
+    if source_mode == "csv_import":
+        # Return CSV source accounts, not Monarch cache
+        csv_source = parsed.get("csv_source", {}) or {}
+        csv_accounts = csv_source.get("accounts", {}) or {}
+        if not isinstance(csv_accounts, dict):
+            csv_accounts = {}
+        csv_list = [{"name": name, "balance": bal} for name, bal in sorted(csv_accounts.items())]
+        return JSONResponse({
+            "ok": True,
+            "accounts": csv_list,
+            "cache_timestamp": None,
+            "source": "csv",
+            "source_mode": "csv_import",
+            "classification": classification,
+            "disabled": disabled,
+            "account_count": len(csv_list),
+        })
+
+    if source_mode == "synthetic":
+        # No account-level data — return empty.  If the user has CSV source
+        # accounts (switched radio but not yet saved), surface those.
+        csv_source = parsed.get("csv_source", {}) or {}
+        csv_accounts = csv_source.get("accounts", {}) or {}
+        if isinstance(csv_accounts, dict) and csv_accounts:
+            csv_list = [{"name": name, "balance": bal} for name, bal in sorted(csv_accounts.items())]
+            return JSONResponse({
+                "ok": True,
+                "accounts": csv_list,
+                "cache_timestamp": None,
+                "source": "csv",
+                "source_mode": "csv_import",
+                "classification": classification,
+                "disabled": disabled,
+                "account_count": len(csv_list),
+            })
+        return JSONResponse({
+            "ok": True,
+            "accounts": [],
+            "cache_timestamp": None,
+            "source": "synthetic",
+            "source_mode": "synthetic",
+            "classification": classification,
+            "disabled": disabled,
+            "account_count": 0,
+        })
+
     return JSONResponse({
         "ok": True,
         "accounts": raw_accounts,

@@ -1322,7 +1322,11 @@
           }
 
           // ── Mode-aware banner & Refresh button state ──────────────────
-          applyAccountsTabModeState(data.source_mode || 'monarch');
+          // Use the radio button mode (user's current selection) not the
+          // API's saved mode — the user may have switched without saving yet.
+          var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
+          var effectiveMode = dsRadio ? dsRadio.value : (data.source_mode || 'monarch');
+          applyAccountsTabModeState(effectiveMode);
 
         }).catch(function (err) {
           loadingEl.textContent = 'Failed to load accounts: ' + err.message;
