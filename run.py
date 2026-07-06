@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from src.charts import build_chart
+from src.csv_importer import build_csv_starting_inputs
 from src.definitions_page import write_definitions_page
 from src.model import load_config, run_projection_result
 from src.version import __version__
@@ -239,20 +240,37 @@ def main():
 
     data_source_cfg = config.get("data_source", {}) if isinstance(config.get("data_source"), dict) else {}
     data_source_mode = str(data_source_cfg.get("mode", "monarch")).strip().lower() or "monarch"
-    use_synthetic = data_source_mode == "synthetic"
+    use_synthetic  = data_source_mode == "synthetic"
+    use_csv_import = data_source_mode == "csv_import"
 
-    mode = "synthetic" if use_synthetic else ("offline" if OFFLINE else "full")
+    mode = (
+        "synthetic" if use_synthetic else (
+            "csv_import" if use_csv_import else (
+                "offline" if OFFLINE else "full"
+            )
+        )
+    )
 
     if use_synthetic:
         print("Mode: SYNTHETIC (scenario-provided starting balances; Monarch bypassed)")
+    elif use_csv_import:
+        print("Mode: CSV IMPORT (per-account balances from [csv_source]; Monarch bypassed)")
     else:
         print(f"Mode: {'OFFLINE (cached)' if OFFLINE else 'FULL (live Monarch)'}")
 
-    # 1. Balances — synthetic, live, or cached
+    # 1. Balances — synthetic, csv_import, live, or cached
     cache_timestamp = None
     if use_synthetic:
         portfolio, extras, liability_balances, property_values, retirement_owner_seed, basis_seed = _synthetic_inputs_from_config(config)
         raw_accounts = []
+    elif use_csv_import:
+        print("→ Reading account balances from [csv_source]...")
+        portfolio, extras, liability_balances, property_values, retirement_owner_seed, basis_seed = build_csv_starting_inputs(config)
+        raw_accounts = []
+        print(f"  Investable:     ${sum(portfolio.values()):>12,.2f}")
+        print(f"  Home value:     ${extras.get('home_value', 0.0):>12,.2f}")
+        print(f"  Liabilities:    ${sum(liability_balances.values()):>12,.2f}")
+        print(f"  Accounts:       {len(config.get('csv_source', {}).get('accounts', {}))} from CSV import")
     elif OFFLINE:
         cached = load_cache()
         cache_timestamp = cached.get("timestamp")
