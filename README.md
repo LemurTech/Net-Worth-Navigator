@@ -1,6 +1,6 @@
 # Net Worth Navigator
 
-**v1.2.0** — A local net worth projection and financial event modeling tool.
+**v1.3.0** — A local net worth projection and financial event modeling tool.
 
 > **Got 30 seconds?** Jump straight to [Quick Start: View a Sample](#try-the-sample-scenario-recommended)
 > and see a working projection without touching the command line.
