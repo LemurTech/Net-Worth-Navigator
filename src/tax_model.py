@@ -34,9 +34,28 @@ class StateTaxSystem:
 
     enabled: bool = False
     name: str = ""
+    mode: str = "none"  # "none", "oregon_engine", "brackets", "no_tax"
     filing_status: str = "married_joint"
     standard_deduction: float = 0.0
     tax_social_security: bool = False
+    brackets: list[dict] = field(default_factory=list)
+
+
+# Registry of named state tax engines for states whose bracket structure
+# doesn't fit the generic progressive-bracket pattern (e.g. Oregon's
+# low-income lookup table + chart formula). Most states with income tax
+# use plain progressive brackets and don't need an entry here — they use
+# calculate_progressive_tax() directly via the "brackets" mode.
+STATE_TAX_ENGINES: dict[str, str] = {
+    "oregon": "oregon_engine",
+}
+
+# States with no personal income tax. These produce $0 state tax but
+# pass validation, distinguishing them from an unknown/misspelled state.
+KNOWN_NO_INCOME_TAX_STATES: set[str] = {
+    "alaska", "florida", "nevada", "new hampshire",
+    "south dakota", "tennessee", "texas", "washington", "wyoming",
+}
 
 
 @dataclass
@@ -146,24 +165,61 @@ def resolve_state_tax_system(
     *,
     filing_status: str,
 ) -> StateTaxSystem:
-    """Return the active state tax system, if any."""
+    """Return the active state tax system, if any.
+
+    Resolution order:
+    1. Known no-income-tax state → enabled, mode="no_tax"
+    2. Named engine (Oregon's special table) → enabled, mode="oregon_engine"
+    3. Bracket data present → enabled, mode="brackets" with brackets loaded
+    4. Otherwise → disabled (unknown/misspelled state; validation should catch)
+    """
     state = config.get("taxes", {}).get("state", {})
     if not state.get("enabled"):
         return StateTaxSystem()
 
     state_name = str(state.get("name", "")).strip().lower()
-    filing_status = filing_status if filing_status in VALID_FILING_STATUSES else "married_joint"
+    if not state_name:
+        return StateTaxSystem()
 
-    if state_name == "oregon":
+    filing_status = filing_status if filing_status in VALID_FILING_STATUSES else "married_joint"
+    standard_deduction = float(state.get("standard_deduction", {}).get(filing_status, 0.0))
+    tax_ss = bool(state.get("tax_social_security", False))
+
+    # 1. Known no-income-tax state
+    if state_name in KNOWN_NO_INCOME_TAX_STATES:
         return StateTaxSystem(
             enabled=True,
-            name="oregon",
+            name=state_name,
+            mode="no_tax",
             filing_status=filing_status,
-            standard_deduction=float(state.get("standard_deduction", {}).get(filing_status, 0.0)),
-            tax_social_security=bool(state.get("tax_social_security", False)),
         )
 
-    return StateTaxSystem()
+    # 2. Named engine (Oregon's special table-based calculation)
+    if state_name in STATE_TAX_ENGINES:
+        return StateTaxSystem(
+            enabled=True,
+            name=state_name,
+            mode=STATE_TAX_ENGINES[state_name],
+            filing_status=filing_status,
+            standard_deduction=standard_deduction,
+            tax_social_security=tax_ss,
+        )
+
+    # 3. Generic progressive bracket table
+    brackets = list(state.get("brackets", {}).get(filing_status, []))
+    if brackets:
+        return StateTaxSystem(
+            enabled=True,
+            name=state_name,
+            mode="brackets",
+            filing_status=filing_status,
+            standard_deduction=standard_deduction,
+            tax_social_security=tax_ss,
+            brackets=brackets,
+        )
+
+    # 4. Unknown state — disabled but name preserved for validation
+    return StateTaxSystem(name=state_name)
 
 
 def calculate_progressive_tax(
@@ -288,22 +344,39 @@ def estimate_state_taxes(
     """Estimate state tax from modeled taxable inflows."""
     if not state_tax_system.enabled:
         return 0.0, 0.0, 0.0
-    if state_tax_system.name != "oregon":
-        return 0.0, 0.0, 0.0
 
     filing_status = str(state_tax_system.filing_status or "married_joint")
     state_taxable_before_deduction = max(0.0, non_ss_taxable_income)
     if state_tax_system.tax_social_security:
         state_taxable_before_deduction += max(0.0, social_security_taxable_income)
-    state_taxable_income = max(0.0, state_taxable_before_deduction - float(state_tax_system.standard_deduction))
-    return (
-        calculate_oregon_state_tax(
-            taxable_income=state_taxable_income,
-            filing_status=filing_status,
-        ),
-        state_taxable_income,
-        state_taxable_before_deduction,
-    )
+
+    # No-income-tax state
+    if state_tax_system.mode == "no_tax":
+        return 0.0, 0.0, state_taxable_before_deduction
+
+    # Oregon's special table/engine (byte-identical with old code path)
+    if state_tax_system.mode == "oregon_engine":
+        state_taxable_income = max(0.0, state_taxable_before_deduction - float(state_tax_system.standard_deduction))
+        return (
+            calculate_oregon_state_tax(
+                taxable_income=state_taxable_income,
+                filing_status=filing_status,
+            ),
+            state_taxable_income,
+            state_taxable_before_deduction,
+        )
+
+    # Generic progressive bracket table
+    if state_tax_system.mode == "brackets":
+        state_taxes = calculate_progressive_tax(
+            taxable_income=state_taxable_before_deduction,
+            standard_deduction=float(state_tax_system.standard_deduction),
+            brackets=list(state_tax_system.brackets),
+        )
+        state_taxable_income = max(0.0, state_taxable_before_deduction - float(state_tax_system.standard_deduction))
+        return state_taxes, state_taxable_income, state_taxable_before_deduction
+
+    return 0.0, 0.0, state_taxable_before_deduction
 
 
 def calculate_oregon_state_tax(*, taxable_income: float, filing_status: str) -> float:
