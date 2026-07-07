@@ -24,6 +24,12 @@ When updating for a new tax year:
 | California | `2025_us_federal_california.toml` | [FTB Tax Calculator, Tables, Rates](https://www.ftb.ca.gov/file/personal/tax-calculator-tables-rates.asp) (archived [2025-09-03 snapshot](https://web.archive.org/web/20250903221248/https://www.ftb.ca.gov/file/personal/tax-calculator-tables-rates.asp)). Also: [Wikipedia — Taxation in California](https://en.wikipedia.org/wiki/Taxation_in_California) (bracket table verified against FTB). | 2026-07-06 |
 | New York | `2025_us_federal_new_york.toml` | [NY DTF — Tax Rate Schedules](https://www.tax.ny.gov/pit/file/tax-rate-schedules.htm). Standard deduction: [NY DTF — Standard Deduction](https://www.tax.ny.gov/pit/file/standard-deduction.htm). Verified via [Wikipedia — Income tax in New York](https://en.wikipedia.org/wiki/Income_tax_in_New_York). | 2026-07-07 |
 | Arizona | `2025_us_federal_arizona.toml` | [AZ DOR — Tax Rates](https://azdor.gov/tax-rates). Flat 2.50% rate established by HB 2894 (2021), effective tax year 2023+. Standard deduction roughly tracks federal amounts. | 2026-07-07 |
+| Washington | `2025_us_federal_washington.toml` | No personal income tax — resolved through `KNOWN_NO_INCOME_TAX_STATES`. | 2026-07-07 |
+| Florida | `2025_us_federal_florida.toml` | No personal income tax — resolved through `KNOWN_NO_INCOME_TAX_STATES`. | 2026-07-07 |
+| Pennsylvania | `2025_us_federal_pennsylvania.toml` | [PA DOR](https://www.revenue.pa.gov/) — flat 3.07% rate. No state-level standard deduction (set to $0). | 2026-07-07 |
+| New Mexico | `2025_us_federal_new_mexico.toml` | [NM TRD](https://www.tax.newmexico.gov/) — progressive 1.7%–5.9%. Brackets indexed for 2025; verify against official NM rate schedule. | 2026-07-07 |
+| Minnesota | `2025_us_federal_minnesota.toml` | [MN DOR](https://www.revenue.state.mn.us/) — progressive 5.35%–9.85%. Standard deduction follows federal amounts. SS exempted as of 2024. | 2026-07-07 |
+| Wisconsin | `2025_us_federal_wisconsin.toml` | [WI DOR](https://www.revenue.wi.gov/) — progressive 3.50%–7.65%. Standard deduction follows federal amounts. | 2026-07-07 |
 
 ### Notes
 
