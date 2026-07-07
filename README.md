@@ -1,5 +1,11 @@
 # Net Worth Navigator
 
+![GitHub Release](https://img.shields.io/github/v/release/LemurTech/Net-Worth-Navigator)
+[![GitHub issues](https://img.shields.io/github/issues/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/issues)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/LemurTech/Net-Worth-Navigator/total)
+[![CI](https://github.com/LemurTech/Net-Worth-Navigator/actions/workflows/ci.yml/badge.svg)](https://github.com/LemurTech/Net-Worth-Navigator/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-astro%2Fstarlight-blue)](https://lemurtech.github.io/Net-Worth-Navigator/)
+
 **v1.3.0** — A local net worth projection and financial event modeling tool.
 
 > **Got 30 seconds?** Jump straight to [Quick Start: View a Sample](#try-the-sample-scenario-recommended)
@@ -7,11 +13,11 @@
 
 ---
 
-## Dear User (A Note from the Creator)
+## How It Started
 
 I wanted a retirement planner that I could actually *tune* — tweak an assumption, add a planned expense, shift a retirement date, and see the impact in seconds without jumping through hoops or paying another subscription fee. I wasn't willing to pay ongoing monthly charges for a service I'd only look at every few months.
 
-I do **not** have a background in accounting or financial planning. I'm way more comfortable in PowerShell than in Python — which is what this project is made of. This project is **vibe coded**. AI lets me focus on the creative work and the architecture side without getting bogged down in every implementation detail. If that bothers you, that's fine — this project may not be for you. Somewhere in here there's probably code that would make a senior developer wince.
+I do **not** have a background in accounting or financial planning. I'm way more comfortable in PowerShell than in Python and JavaScript — which is what this project is made of. This project is **vibe coded**. AI lets me focus on the creative work and the architecture side without getting bogged down in every implementation detail. If that bothers you, that's fine — this project may not be for you. Somewhere in here there's probably code that would make a senior developer wince.
 
 But despite being built this way, a ton of time, care, and **actual token cost** has gone into making something that actually works. If you find it useful, please consider [buying me a coffee](#support-the-project).
 
@@ -82,11 +88,12 @@ sudo pacman -S python-virtualenv
 ### Get the Code
 
 ```bash
+cd <directory where you want to install NWN>
 git clone https://github.com/LemurTech/Net-Worth-Navigator.git
 cd Net-Worth-Navigator
 ```
 
-**Windows:** If you don't have Git installed, download it from [git-scm.com](https://git-scm.com/) or download the repository as a ZIP from GitHub and extract it.
+**Windows:** If you don't have Git installed, download it from [git-scm.com](https://git-scm.com/). There are plenty of YouTube videos and blogs that will walk you through a proper installation. If that puts you off, you can also just download the repository as a ZIP from the project page and extract it to a folder of your choice. (But the magic of Git is that it makes the app super-easy to update later on!)
 
 ### Set Up the Environment
 
@@ -139,11 +146,17 @@ Once you've installed and set up the project, start the web editor:
 .venv\Scripts\python.exe admin_app.py
 ```
 
-Then open **http://localhost:8010/setup** in your browser. From the Setup Panel:
+> Windows users: Windows Security may post a warning at this point that *Windows Firewall has blocked some features of Python on all public and private networks*.
+>
+> 1. Click the `Show more` link
+> 2. Uncheck `Public Networks`
+> 3. Click `Allow`
+
+Now open **http://localhost:8010/setup** in your browser. From the Setup Panel:
 
 1. Look at the **scenario dropdown** at the top of the page.
 2. Scroll past the separator (`─────`) to find the **Sample Plans** section.
-3. Choose **"Sample Plan (Single-Person)"** or **"Sample Plan (Couples)"**.
+3. Choose **"Sample Plan (Single-Person)"** or **"Sample Couples Plan"**.
 4. Click **Save + Re-render** to generate the projection.
 5. Open **http://localhost:8010/projection.html** — your browser will show the interactive projection shell with charts, tables, and navigation tabs.
 

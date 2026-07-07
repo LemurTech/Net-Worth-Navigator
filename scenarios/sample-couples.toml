@@ -23,6 +23,7 @@ description = "Share-safe couples reference scenario with full inline documentat
 is_default  = false
 
 # ─── Data Source (synthetic → no Monarch call, no cache) ───────────────────────
+household_type = "couple"
 
 [data_source]
 mode = "synthetic"   # synthetic | monarch
