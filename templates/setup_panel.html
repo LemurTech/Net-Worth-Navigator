@@ -1506,6 +1506,10 @@
           var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
           var effectiveMode = dsRadio ? dsRadio.value : (data.source_mode || 'monarch');
           applyAccountsTabModeState(effectiveMode);
+          // For synthetic mode, also load the Manual Entry fields
+          if (effectiveMode === 'synthetic') {
+            loadSyntheticTab();
+          }
           // If csv_import mode has actual accounts, show the content below the
           // CSV import section so the user can review/edit classifications.
           if (effectiveMode === 'csv_import' && data.accounts && data.accounts.length > 0) {

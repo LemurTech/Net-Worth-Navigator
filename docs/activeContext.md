@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-07
-**Status:** v1.2.0 — All 50 US states now have tax table files. State selector added to Setup Panel Metadata tab. Tax engine generalized to support bracket-based, flat-rate, no-tax, and Oregon's special table engine. README rewritten with GUI-first onboarding, creator's note, and donation links.
+**Status:** v1.3.0 — Windows Unicode fix (non-ASCII chars in print() crash cp1252). Accounts tab loads Manual Entry fields on first click. Two commits pushed.
 
 ---
 
@@ -49,6 +49,18 @@ cd /home/lemurtech/Net-Worth-Navigator
 ---
 
 ## What's New
+
+### Windows Unicode Print Fix (2026-07-07)
+
+Replaced all non-ASCII characters (`→`, `–`, `❌`, `—`, `─`) in `print()` calls and validation error strings with ASCII-safe equivalents (`=>`, `-`, `ERROR`, `--`). These characters crashed Python on Windows (cp1252 code page) with `UnicodeEncodeError`, blocking scenario renders entirely.
+
+**Files patched:** `run.py` (8 sites), `src/monarch_bridge.py` (2 sites), `src/model.py` (1 site).
+
+### Accounts Tab — Manual Entry Fields Loading (2026-07-07)
+
+When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the synthetic input fields (investable balances, property values, liability balances) remained empty because `loadSyntheticTab()` was never called — only the radio change handler triggered it, which never fires on initial page load.
+
+**Fix:** Added `loadSyntheticTab()` call in `initAccountsTab()` after `applyAccountsTabModeState()` for synthetic mode.
 
 ### State Tax System — Full Coverage (2026-07-07)
 

@@ -3,6 +3,18 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-07 (v1.3.0 — Windows Unicode fix + Accounts tab loading)
+
+### Fixed
+
+- **Windows UnicodeEncodeError on scenario render** — Non-ASCII characters (`→`, `–`, `❌`, `—`, `─`) in `print()` calls and validation error strings replaced with ASCII-safe equivalents (`=>`, `-`, `ERROR`, `--`). Python on Windows (cp1252 code page) cannot encode these characters, crashing `run.py` before the render completes. Files: `run.py` (8 sites), `src/monarch_bridge.py` (2 sites), `src/model.py` (1 site).
+- **Accounts tab fields empty for Manual Entry scenarios** — `loadSyntheticTab()` was never called when the Accounts tab was first clicked for a synthetic-mode scenario. Only the radio-change handler triggered it, but no `change` event fires on initial page load. Added `loadSyntheticTab()` call in `initAccountsTab()` after `applyAccountsTabModeState()`.
+
+### Commits
+
+- `ed26b23` — fix: replace non-ASCII print characters with ASCII-safe equivalents
+- `232cc5b` — chore: README badges, sample-couples household_type, remove plan file from .hermes
+
 ## 2026-07-06 (v1.2.1 — Render error overlay improvements + Household Type selector)
 
 ### Added
