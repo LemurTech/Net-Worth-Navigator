@@ -663,7 +663,7 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
                 errors.append(
                     f"Liability '{liability_name}' defined in [[liabilities]] but missing from "
                     f"[synthetic_start.liability_balances]{path_hint}\n"
-                    f"  → Add: [synthetic_start.liability_balances.\"{liability_name}\"] = <current_balance>"
+                    f"  => Add: [synthetic_start.liability_balances.\"{liability_name}\"] = <current_balance>"
                 )
     
     return (len(errors) == 0, errors)

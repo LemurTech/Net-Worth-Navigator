@@ -209,7 +209,7 @@ def main():
     
     if not is_valid:
         print("=" * 70)
-        print("❌ Scenario Validation Failed")
+        print("ERROR: Scenario Validation Failed")
         print("=" * 70)
         print()
         print(f"Scenario: {scenario.name} ({scenario.slug})")
@@ -264,7 +264,7 @@ def main():
         portfolio, extras, liability_balances, property_values, retirement_owner_seed, basis_seed = _synthetic_inputs_from_config(config)
         raw_accounts = []
     elif use_csv_import:
-        print("→ Reading account balances from [csv_source]...")
+        print("=> Reading account balances from [csv_source]...")
         portfolio, extras, liability_balances, property_values, retirement_owner_seed, basis_seed = build_csv_starting_inputs(config)
         raw_accounts = []
         print(f"  Investable:     ${sum(portfolio.values()):>12,.2f}")
@@ -291,7 +291,7 @@ def main():
             basis_seed = {}
             print("  WARNING: legacy cache lacks raw account data; config-only account changes require one full run")
     else:
-        print("→ Fetching account balances from Monarch...")
+        print("=> Fetching account balances from Monarch...")
         try:
             raw_accounts = fetch_raw_accounts()
         except RuntimeError as exc:
@@ -328,7 +328,7 @@ def main():
         sidecar_dir = mode_dir / "sidecars"
         output_path = mode_dir / "projection.html"
 
-        print(f"→ Running projection [{render_mode}]...")
+        print(f"=> Running projection [{render_mode}]...")
         projection_result = run_projection_result(
             portfolio,
             home_value=home_value,
@@ -339,9 +339,9 @@ def main():
             config=mode_config,
         )
         df = projection_result.yearly_df
-        print(f"  Projection years: {df['year'].min()}–{df['year'].max()}")
+        print(f"  Projection years: {df['year'].min()}-{df['year'].max()}")
         print(f"  Simulation mode: {projection_result.mode} ({projection_result.run_count} run{'s' if projection_result.run_count != 1 else ''})")
-        print(f"→ Generating chart [{render_mode}] → {output_path}")
+        print(f"=> Generating chart [{render_mode}] => {output_path}")
         build_chart(
             projection_result,
             output_path,
@@ -349,7 +349,7 @@ def main():
             scenario=scenario,
             baseline_config=mode_baseline_config,
         )
-        print(f"→ Writing sidecar analysis files [{render_mode}] → {sidecar_dir}")
+        print(f"=> Writing sidecar analysis files [{render_mode}] => {sidecar_dir}")
         sidecars = write_sidecars(
             output_dir=sidecar_dir,
             df=df,
@@ -413,7 +413,7 @@ def main():
     deploy_path.chmod(0o644)
     deploy_definitions_path.chmod(0o644)
     deploy_compare_path.chmod(0o644)
-    print(f"→ Deployed → {deploy_path}")
+    print(f"=> Deployed => {deploy_path}")
     print(f"  View at: http://casalemuria.lan/finances/projection.html")
     print("Done.")
 

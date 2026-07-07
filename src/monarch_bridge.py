@@ -234,7 +234,7 @@ def classify_accounts(raw: list[dict], config: dict | None = None) -> tuple[dict
             extras["other"] += balance
 
     if unclassified:
-        print("  WARNING: unclassified accounts — add to [accounts] in config.toml:")
+        print("  WARNING: unclassified accounts -- add to [accounts] in config.toml:")
         for name, bal in unclassified:
             print(f"    \"{name}\"  (balance: ${bal:,.2f})")
 
@@ -402,7 +402,7 @@ def list_accounts():
     disabled   = set(classified.get("disabled", []))
 
     print(f"\n{'Account Name':<45} {'Type':<15} {'Balance':>14}   {'Status'}")
-    print("─" * 100)
+    print("-" * 100)
     for acct in raw:
         name  = acct["name"]
         bal   = acct["balance"]
