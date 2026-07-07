@@ -18,7 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from src.config_loader import merge_tax_tables
+from src.config_loader import merge_tax_tables, TAX_TABLES_DIR
 from src.csv_importer import accounts_from_csv, merge_accounts, parse_csv
 from src.definitions_page import build_definitions_page_html
 from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes, SCENARIOS_DIR
@@ -1632,6 +1632,7 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "scenario_name": ("scenario.name", str),
     "scenario_description": ("scenario.description", str),
     "household_type": ("scenario.household_type", str),
+    "table_set": ("taxes.table_set", str),
 }
 
 _QUICK_ARRAY_MAP: dict[str, str] = {
@@ -2086,6 +2087,40 @@ async def api_save_csv_source(request: Request) -> JSONResponse:
         "backup_path": str(backup_path),
         "toml_content": doc.as_string(),
     })
+
+
+# ── API: list available states (from tax table files) ────────────────────────────
+
+
+@app.get("/api/tax-states")
+async def api_tax_states() -> JSONResponse:
+    """Return a list of available states and their tax table file names."""
+    states: list[dict] = []
+    if TAX_TABLES_DIR.exists():
+        for fpath in sorted(TAX_TABLES_DIR.glob("2025_us_federal_*.toml")):
+            slug = fpath.stem.replace("2025_us_federal_", "")
+            try:
+                with open(fpath, "rb") as f:
+                    data = tomllib.load(f)
+                state_info = data.get("taxes", {}).get("state", {})
+                state_name = str(state_info.get("name", slug)).title()
+                tax_ss = bool(state_info.get("tax_social_security", False))
+                enabled = bool(state_info.get("enabled", False))
+                bracket_count = len(state_info.get("brackets", {}).get("single", []))
+            except Exception:
+                state_name = slug.replace("_", " ").title()
+                tax_ss = False
+                enabled = False
+                bracket_count = 0
+            states.append({
+                "slug": slug,
+                "name": state_name,
+                "file": fpath.name,
+                "enabled": enabled,
+                "tax_ss": tax_ss,
+                "bracket_count": bracket_count,
+            })
+    return JSONResponse({"ok": True, "states": states})
 
 
 if __name__ == "__main__":
