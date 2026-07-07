@@ -709,3 +709,34 @@ All three tasks integrated, tested, and working in production. New users can now
 - `cash_return` separate from blended investable return; `wages.wage_tax_treatment` config.
 - Cohesive dark theme across chrome, tables, and all Plotly charts.
 
+## 2026-07-07 (State tax system — full 50-state coverage + Setup Panel selector)
+
+### Added
+
+- **State tax engine generalization** (`src/tax_model.py`): Replaced hardcoded `if name == "oregon"` with four-path dispatch. Added `STATE_TAX_ENGINES` registry, `KNOWN_NO_INCOME_TAX_STATES` set (9 states), and bracket-based state support via `calculate_progressive_tax()`. Oregon output verified byte-identical.
+- **43 combined federal+state TOML files** under `config/tax_tables/` covering all 50 US states:
+  - 9 no-income-tax: AK, FL, NV, NH, SD, TN, TX, WA, WY
+  - 17 flat-rate: AR, AZ, CO, GA, IA, ID, IL, IN, KY, MA, MI, MS, NC, OH, PA, RI, UT
+  - 21 progressive: AL, CA, CT, DE, HI, KS, LA, ME, MD, MN, MO, MT, ND, NE, NJ, NM, NY, OK, SC, VA, VT, WI, WV
+  - 1 special engine: OR
+- **State tax source registry** (`docs/references/state-tax-data-sources.md`): Tracks source URLs, access dates, standard deduction amounts, and notes per state. Quick reference for annual bracket updates.
+- **`GET /api/tax-states` endpoint** (`admin_app.py`): Returns all 50 states with slug, name, file, enabled, tax_ss flag, bracket count.
+- **State Tax dropdown** in Setup Panel Metadata tab (`templates/setup_panel.html`): Selector in Assumptions & Years section. Populates from API on load. Saves `table_set` to `[taxes].table_set`. States taxing SS marked with ⚠.
+
+### Changed
+
+- **`src/tax_model.py`** — `StateTaxSystem` dataclass gained `mode` and `brackets` fields. `resolve_state_tax_system()` uses engine registry + bracket detection. `estimate_state_taxes()` dispatches by mode.
+- **`admin_app.py`** — `table_set` added to `_QUICK_CONTROL_MAP` and `TAX_TABLES_DIR` imported.
+- **`templates/setup_panel.html`** — State dropdown, `populateStateDropdown()`, `selectStateInDropdown()`, and save wiring added.
+
+### Docs
+
+- **`docs/references/state-tax-data-sources.md`** — Created with source URLs, access dates, update workflow, and 50-state quick-reference table. Updated after each batch of states added.
+- **`README.md`** — Rewritten with GUI-first onboarding, creator's note, novice Python install guide, feature tables, sample scenario descriptions, data source comparison, security notes, and donation links.
+
+### Notes
+
+- Maryland's county-level income tax (1.75%-3.2%) is not modeled — state-only brackets provided.
+- Montana and Alabama are the only states with `tax_social_security = true` (they tax Social Security benefits).
+- Several states' bracket thresholds were estimated from public sources and should be verified against the respective DOR publications before relying on exact figures.
+
