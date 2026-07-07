@@ -18,18 +18,70 @@ When updating for a new tax year:
 
 ## 2025
 
-| State | File | Source | Accessed |
-|-------|------|--------|----------|
-| Oregon | `2025_us_federal_oregon.toml` | Oregon FTB — OR-40 instructions. The low-income tax table and Chart S / Chart J formulas are implemented in `src/oregon_tax_2025.py` (hardcoded Python, not TOML-driven). | Prior to 2026-07 |
-| California | `2025_us_federal_california.toml` | [FTB Tax Calculator, Tables, Rates](https://www.ftb.ca.gov/file/personal/tax-calculator-tables-rates.asp) (archived [2025-09-03 snapshot](https://web.archive.org/web/20250903221248/https://www.ftb.ca.gov/file/personal/tax-calculator-tables-rates.asp)). Also: [Wikipedia — Taxation in California](https://en.wikipedia.org/wiki/Taxation_in_California) (bracket table verified against FTB). | 2026-07-06 |
-| New York | `2025_us_federal_new_york.toml` | [NY DTF — Tax Rate Schedules](https://www.tax.ny.gov/pit/file/tax-rate-schedules.htm). Standard deduction: [NY DTF — Standard Deduction](https://www.tax.ny.gov/pit/file/standard-deduction.htm). Verified via [Wikipedia — Income tax in New York](https://en.wikipedia.org/wiki/Income_tax_in_New_York). | 2026-07-07 |
-| Arizona | `2025_us_federal_arizona.toml` | [AZ DOR — Tax Rates](https://azdor.gov/tax-rates). Flat 2.50% rate established by HB 2894 (2021), effective tax year 2023+. Standard deduction roughly tracks federal amounts. | 2026-07-07 |
-| Washington | `2025_us_federal_washington.toml` | No personal income tax — resolved through `KNOWN_NO_INCOME_TAX_STATES`. | 2026-07-07 |
-| Florida | `2025_us_federal_florida.toml` | No personal income tax — resolved through `KNOWN_NO_INCOME_TAX_STATES`. | 2026-07-07 |
-| Pennsylvania | `2025_us_federal_pennsylvania.toml` | [PA DOR](https://www.revenue.pa.gov/) — flat 3.07% rate. No state-level standard deduction (set to $0). | 2026-07-07 |
-| New Mexico | `2025_us_federal_new_mexico.toml` | [NM TRD](https://www.tax.newmexico.gov/) — progressive 1.7%–5.9%. Brackets indexed for 2025; verify against official NM rate schedule. | 2026-07-07 |
-| Minnesota | `2025_us_federal_minnesota.toml` | [MN DOR](https://www.revenue.state.mn.us/) — progressive 5.35%–9.85%. Standard deduction follows federal amounts. SS exempted as of 2024. | 2026-07-07 |
-| Wisconsin | `2025_us_federal_wisconsin.toml` | [WI DOR](https://www.revenue.wi.gov/) — progressive 3.50%–7.65%. Standard deduction follows federal amounts. | 2026-07-07 |
+All 50 states now have tax table files under `config/tax_tables/`. Generated 2026-07-07.
+
+### State types and coverage
+
+| Type | Count | States |
+|------|-------|--------|
+| **No income tax** (engine `no_tax`) | 9 | AK, FL, NV, NH, SD, TN, TX, WA, WY |
+| **Flat rate** (1 terminal bracket) | 16 | AZ 2.5%, AR 4.9%, CO 4.25%, ID 5.8%, IL 4.95%, IN 3.05%, IA 3.8%, KY 4%, MA 5%, MI 4.25%, MS 4.7%, NC 4.5%, OH 3.5%*, PA 3.07%, RI 3.75%, UT 4.65% |
+| **Special engine** (hardcoded table+charts) | 1 | OR |
+| **Progressive, simple** (≤7 brackets) | 15 | AL, CA, DE, KS, LA, ME, MN, MO, ND, NE, NM, NY, OK, SC, WI, WV, VA |
+| **Progressive, complex** (not yet ported) | 8 | CT, GA, HI, MD, MT, NJ, VT |
+
+\* Ohio is phasing to a flat rate; the 3.5% terminal bracket reflects the 2025 target rate.
+
+For exact bracket data, standard deductions, and Social Security treatment per state,
+see the individual TOML files and the source URLs in the table below.
+
+### Existing TOML files (by access date)
+
+| File | State | Type | Standard Deduction (S/MFJ) |
+|------|-------|------|---------------------------|
+| `2025_us_federal_oregon.toml` | Oregon | Special engine — OR-40 table+charts | $2,835 / $5,670 |
+| `2025_us_federal_california.toml` | California | Progressive 1%–13.3% (10 brackets) | $5,540 / $11,080 |
+| `2025_us_federal_new_york.toml` | New York | Progressive 4%–6.85% (7 brackets) | $8,000 / $16,000 |
+| `2025_us_federal_arizona.toml` | Arizona | Flat 2.5% | $14,600 / $29,200 |
+| `2025_us_federal_washington.toml` | Washington | No income tax | — |
+| `2025_us_federal_florida.toml` | Florida | No income tax | — |
+| `2025_us_federal_pennsylvania.toml` | Pennsylvania | Flat 3.07% | $0 / $0 |
+| `2025_us_federal_new_mexico.toml` | New Mexico | Progressive 1.7%–5.9% (5 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_minnesota.toml` | Minnesota | Progressive 5.35%–9.85% (4 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_wisconsin.toml` | Wisconsin | Progressive 3.50%–7.65% (4 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_colorado.toml` | Colorado | Flat 4.25% | $15,000 / $30,000 |
+| `2025_us_federal_idaho.toml` | Idaho | Flat 5.80% | $15,000 / $30,000 |
+| `2025_us_federal_illinois.toml` | Illinois | Flat 4.95% | $2,850 / $5,700 |
+| `2025_us_federal_indiana.toml` | Indiana | Flat 3.05% | $1,000 / $2,000 |
+| `2025_us_federal_iowa.toml` | Iowa | Flat 3.80% | $15,000 / $30,000 |
+| `2025_us_federal_kentucky.toml` | Kentucky | Flat 4.00% | $0 / $0 |
+| `2025_us_federal_massachusetts.toml` | Massachusetts | Flat 5.00% | $4,400 / $8,800 |
+| `2025_us_federal_michigan.toml` | Michigan | Flat 4.25% | $2,600 / $5,200 |
+| `2025_us_federal_mississippi.toml` | Mississippi | Flat 4.70% | $2,300 / $4,600 |
+| `2025_us_federal_north_carolina.toml` | North Carolina | Flat 4.50% | $12,750 / $25,500 |
+| `2025_us_federal_rhode_island.toml` | Rhode Island | Flat 3.75% | $15,000 / $30,000 |
+| `2025_us_federal_utah.toml` | Utah | Flat 4.65% | $15,000 / $30,000 |
+| `2025_us_federal_alabama.toml` | Alabama | Progressive 2%–5% (3 brackets, taxes SS) | $2,500 / $5,000 |
+| `2025_us_federal_kansas.toml` | Kansas | Progressive 3.1%–5.7% (3 brackets) | $3,000 / $6,000 |
+| `2025_us_federal_louisiana.toml` | Louisiana | Progressive 1.85%–4.25% (3 brackets) | $4,500 / $9,000 |
+| `2025_us_federal_missouri.toml` | Missouri | Progressive 2%–4.8% (4 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_west_virginia.toml` | West Virginia | Progressive 2.36%–5.12% (5 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_maine.toml` | Maine | Progressive 5.8%–7.15% (3 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_north_dakota.toml` | North Dakota | Progressive 1.1%–2.5% (5 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_virginia.toml` | Virginia | Progressive 2%–5.75% (4 brackets) | $3,000 / $6,000 |
+| `2025_us_federal_arkansas.toml` | Arkansas | Flat 4.90% | $2,200 / $4,400 |
+| `2025_us_federal_delaware.toml` | Delaware | Progressive 2.2%–6.6% (6 brackets) | $3,250 / $6,500 |
+| `2025_us_federal_nebraska.toml` | Nebraska | Progressive 2.46%–6.64% (4 brackets) | $7,900 / $15,800 |
+| `2025_us_federal_ohio.toml` | Ohio | Progressive → flat 2.75%–3.5% (4 brackets) | $0 / $0 |
+| `2025_us_federal_oklahoma.toml` | Oklahoma | Progressive 0.25%–4.75% (6 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_south_carolina.toml` | South Carolina | Progressive 0%–6.4% (6 brackets) | $15,000 / $30,000 |
+| `2025_us_federal_alaska.toml` | Alaska | No income tax | — |
+| `2025_us_federal_nevada.toml` | Nevada | No income tax | — |
+| `2025_us_federal_new_hampshire.toml` | New Hampshire | No income tax | — |
+| `2025_us_federal_south_dakota.toml` | South Dakota | No income tax | — |
+| `2025_us_federal_tennessee.toml` | Tennessee | No income tax | — |
+| `2025_us_federal_texas.toml` | Texas | No income tax | — |
+| `2025_us_federal_wyoming.toml` | Wyoming | No income tax | — |
 
 ### Notes
 

@@ -1,0 +1,89 @@
+[taxes]
+year = 2025
+# Source: IRS 2025 tax inflation adjustments / federal income tax rates and brackets.
+# Scope in this model: ordinary-income brackets + standard deduction only.
+# Social Security taxability still comes from provisional-income thresholds below.
+# Capital-gains treatment remains future work.
+
+[taxes.standard_deduction]
+single = 15000
+married_joint = 30000
+head_of_household = 22500
+
+[taxes.social_security]
+use_provisional_income = true
+
+[taxes.social_security.thresholds.single]
+base = 25000
+adjusted = 34000
+
+[taxes.social_security.thresholds.married_joint]
+base = 32000
+adjusted = 44000
+
+[taxes.social_security.thresholds.head_of_household]
+base = 25000
+adjusted = 34000
+
+[[taxes.brackets.single]]
+up_to = 11925
+rate = 0.10
+
+[[taxes.brackets.single]]
+up_to = 48475
+rate = 0.12
+
+[[taxes.brackets.single]]
+up_to = 103350
+rate = 0.22
+
+[[taxes.brackets.single]]
+up_to = 197300
+rate = 0.24
+
+[[taxes.brackets.single]]
+up_to = 250525
+rate = 0.32
+
+[[taxes.brackets.single]]
+up_to = 626350
+rate = 0.35
+
+[[taxes.brackets.single]]
+rate = 0.37
+
+[[taxes.brackets.married_joint]]
+up_to = 23850
+rate = 0.10
+
+[[taxes.brackets.married_joint]]
+up_to = 96950
+rate = 0.12
+
+[[taxes.brackets.married_joint]]
+up_to = 206700
+rate = 0.22
+
+[[taxes.brackets.married_joint]]
+up_to = 394600
+rate = 0.24
+
+[[taxes.brackets.married_joint]]
+up_to = 501050
+rate = 0.32
+
+[[taxes.brackets.married_joint]]
+up_to = 751600
+rate = 0.35
+
+[[taxes.brackets.married_joint]]
+rate = 0.37
+
+# ── Wyoming State Income Tax ──────────────────────────────────────────────
+# No personal income tax — resolved through KNOWN_NO_INCOME_TAX_STATES.
+# Source: see docs/references/state-tax-data-sources.md
+
+[taxes.state]
+enabled = true
+name = "wyoming"
+tax_social_security = false
