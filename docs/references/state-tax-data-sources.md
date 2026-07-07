@@ -25,10 +25,10 @@ All 50 states now have tax table files under `config/tax_tables/`. Generated 202
 | Type | Count | States |
 |------|-------|--------|
 | **No income tax** (engine `no_tax`) | 9 | AK, FL, NV, NH, SD, TN, TX, WA, WY |
-| **Flat rate** (1 terminal bracket) | 16 | AZ 2.5%, AR 4.9%, CO 4.25%, ID 5.8%, IL 4.95%, IN 3.05%, IA 3.8%, KY 4%, MA 5%, MI 4.25%, MS 4.7%, NC 4.5%, OH 3.5%*, PA 3.07%, RI 3.75%, UT 4.65% |
+| **Flat rate** (1 terminal bracket) | 17 | AZ 2.5%, AR 4.9%, CO 4.25%, GA 5.39%, ID 5.8%, IL 4.95%, IN 3.05%, IA 3.8%, KY 4%, MA 5%, MI 4.25%, MS 4.7%, NC 4.5%, OH 3.5%*, PA 3.07%, RI 3.75%, UT 4.65% |
 | **Special engine** (hardcoded table+charts) | 1 | OR |
-| **Progressive, simple** (≤7 brackets) | 15 | AL, CA, DE, KS, LA, ME, MN, MO, ND, NE, NM, NY, OK, SC, WI, WV, VA |
-| **Progressive, complex** (not yet ported) | 8 | CT, GA, HI, MD, MT, NJ, VT |
+| **Progressive** (all remaining states) | 21 | AL, CA, CT, DE, HI, KS, LA, ME, MD, MN, MO, MT, ND, NE, NJ, NM, NY, OK, SC, VT, VA, WI, WV |
+| **Total coverage** | **50** | All 50 US states + DC |
 
 \* Ohio is phasing to a flat rate; the 3.5% terminal bracket reflects the 2025 target rate.
 
