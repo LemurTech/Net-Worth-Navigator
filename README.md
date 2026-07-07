@@ -3,8 +3,10 @@
 ![GitHub Release](https://img.shields.io/github/v/release/LemurTech/Net-Worth-Navigator)
 [![GitHub issues](https://img.shields.io/github/issues/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/issues)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/LemurTech/Net-Worth-Navigator/total)
-[![CI](https://github.com/LemurTech/Net-Worth-Navigator/actions/workflows/ci.yml/badge.svg)](https://github.com/LemurTech/Net-Worth-Navigator/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-astro%2Fstarlight-blue)](https://lemurtech.github.io/Net-Worth-Navigator/)
+![GitHub last commit](https://img.shields.io/github/last-commit/LemurTech/Net-Worth-Navigator)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+![Net Worth Navigator — projection chart showing net worth trajectory with Monte Carlo bands, event markers, and interactive tabs](docs/assets/projection-chart.png)
 
 **v1.3.0** — A local net worth projection and financial event modeling tool.
 
@@ -157,7 +159,7 @@ Now open **http://localhost:8010/setup** in your browser. From the Setup Panel:
 1. Look at the **scenario dropdown** at the top of the page.
 2. Scroll past the separator (`─────`) to find the **Sample Plans** section.
 3. Choose **"Sample Plan (Single-Person)"** or **"Sample Couples Plan"**.
-4. Click **Save + Re-render** to generate the projection.
+4. Click **Render** to generate the projection.
 5. Open **http://localhost:8010/projection.html** — your browser will show the interactive projection shell with charts, tables, and navigation tabs.
 
 > **Tip:** Press the **`?` button** in the toolbar to enable help mode — info icons appear on the KPI boxes and tab labels with plain-language explanations.
@@ -186,7 +188,7 @@ Once you've explored the samples, create a household plan of your own.
 
 #### Option A: Web UI (Recommended)
 
-1. Start the editor: `.venv/bin/python admin_app.py` (or `.venv\Scripts\python.exe admin_app.py` on Windows)
+1. Start the editor (if not already started from previous steps): `.venv/bin/python admin_app.py` (or `.venv\Scripts\python.exe admin_app.py` on Windows)
 2. Open **http://localhost:8010/setup**
 3. Click **New from Template** in the action bar at the bottom
 4. Choose **Single-Person** or **Couple / Two-Person**
@@ -195,8 +197,8 @@ Once you've explored the samples, create a household plan of your own.
    - **Metadata tab** — edit your plan name, description, and household members
    - **Accounts tab** — select your data source (Manual, Monarch, CSV) and enter starting balances
    - **Raw TOML tab** — directly edit the configuration file for advanced changes
-7. Fill in your details, then click **Save + Re-render**
-8. Refresh the projection page to see your results
+7. Fill in your details, then click **Save** and **Render** (or just **Render**, which will validate and save your data before rendering)
+8. Click **Open Projection** to see your results
 
 #### Option B: Command Line
 
@@ -206,7 +208,7 @@ Once you've explored the samples, create a household plan of your own.
 cp scenarios/starter.toml scenarios/myplan.toml
 
 # Windows:
-copy scenarios\starter.toml scenarios\myplan.toml
+copy scenarios\starter.toml to scenarios\myplan.toml
 
 # Edit your scenario file (any text editor works)
 # Update every field marked  ← YOUR VALUE
@@ -234,7 +236,7 @@ Net Worth Navigator projects your household net worth forward year by year. It m
 - **Taxes** — bracket-based federal income tax, Social Security provisional income taxation, state tax (Oregon supported; other states accept simplified brackets), RMD modeling, and configurable filing status
 - **Multiple scenarios** — compare different assumptions (retirement age, spending level, investment returns, home sale timing) side by side
 
-Output is an **interactive HTML page** with Plotly charts, sortable tables, and navigation tabs — viewable in any browser, no server required after rendering.
+Output is an **interactive HTML page** with Plotly charts, tables, and navigation tabs — viewable in any browser, no server required after rendering.
 
 ### Available Projections ("Render Modes")
 
