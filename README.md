@@ -8,7 +8,7 @@
 
 ![Net Worth Navigator — projection chart showing net worth trajectory with Monte Carlo bands, event markers, and interactive tabs](docs/assets/projection-chart.png)
 
-**v1.3.0** — A local net worth projection and financial event modeling tool.
+**v1.3.0** — A local net worth projection and financial event modeling tool. Create and compare multiple scenarios.
 
 > **Got 30 seconds?** Jump straight to [Quick Start: View a Sample](#try-the-sample-scenario-recommended)
 > and see a working projection without touching the command line.
@@ -17,7 +17,23 @@
 
 ## How It Started
 
-I wanted a retirement planner that I could actually *tune* — tweak an assumption, add a planned expense, shift a retirement date, and see the impact in seconds without jumping through hoops or paying another subscription fee. I wasn't willing to pay ongoing monthly charges for a service I'd only look at every few months.
+I was late to the retirement savings game.
+
+The first part of my adult life was spent careening through a series of interesting, questionable, and financially unsound adventures far from my home country. I was 43 before I made my first 401(k) contribution.
+
+I also grew up in a household where financial education simply was not a thing. No investing basics. No retirement planning. No explanation of what a 401(k) was supposed to do, or why compound interest was quietly judging me from the future.
+
+So it took me a while to get my bearings.
+
+As I got closer to my 60s, the vague anxiety started turning into specific questions. What kind of retirement could my wife and I reasonably plan for? Could we stay in the U.S. in the house we loved? Would we need to move overseas for a lower-cost life? What would happen if we retired earlier, later, spent more, spent less, downsized, or changed course?
+
+The frustrating part was not that the questions were complicated. The frustrating part was that I could not easily model them.
+
+I wanted a retirement planner I could actually tune: change an assumption, add a planned expense, shift a retirement date, adjust income, compare scenarios, and see the impact quickly. I did not want to fight a spreadsheet. I did not want to re-enter the same numbers into a dozen calculators. And I did not want another monthly subscription for something I might only use a few times a year.
+
+So I started building **Net Worth Navigator**.
+
+It began as a way to answer my own questions with more clarity and less guesswork. The goal is not to predict the future perfectly. The goal is to make the tradeoffs visible, test assumptions quickly, and turn retirement planning from a fog bank into something you can actually navigate.
 
 I do **not** have a background in accounting or financial planning. I'm way more comfortable in PowerShell than in Python and JavaScript — which is what this project is made of. This project is **vibe coded**. AI lets me focus on the creative work and the architecture side without getting bogged down in every implementation detail. If that bothers you, that's fine — this project may not be for you. Somewhere in here there's probably code that would make a senior developer wince.
 
@@ -134,9 +150,15 @@ This checks Python version, dependencies, and file structure. You should see `�
 
 ### Try the Sample Scenario (Recommended)
 
-The fastest way to see what Net Worth Navigator can do is to view one of the pre-built sample plans. There are two ways to do this:
+The fastest way to see what Net Worth Navigator can do is to view one of the pre-built sample plans. There are three ways to do this:
 
-#### Option A: Use the Web UI (Easiest — No Command Line After Setup)
+#### Option A: View the Pre-Rendered Sample (No Setup Required)
+
+A sample projection is included in the repository — no Python, no web server, no installation needed:
+
+- **[View Sample Projection →](docs/samples/sample-projection.html)** — a complete deterministic projection for a single-person household (Alex). Open it directly in your browser.
+
+#### Option B: Use the Web UI (Easiest — No Command Line After Setup)
 
 Once you've installed and set up the project, start the web editor:
 
@@ -164,7 +186,7 @@ Now open **http://localhost:8010/setup** in your browser. From the Setup Panel:
 
 > **Tip:** Press the **`?` button** in the toolbar to enable help mode — info icons appear on the KPI boxes and tab labels with plain-language explanations.
 
-#### Option B: Command Line (Quick One-Liner)
+#### Option C: Command Line (Quick One-Liner)
 
 ```bash
 # Linux/macOS:
@@ -542,10 +564,7 @@ If Net Worth Navigator has been useful to you — saved you time, gave you confi
 
 This project took a lot of time and care, and I spent an embarrassing amount on API tokens during development. Every dollar helps offset those costs.
 
-[☕ Buy Me a Coffee](#) *(link coming soon)*
-[💛 Donate via PayPal](#) *(link coming soon)*
-
-> *I've never asked for donations before, so bear with me while I figure out the mechanics. If nothing's linked yet, just knowing someone found this useful is already enough.*
+[☕ Buy Me a Coffee](https://buymeacoffee.com/lemurtech)
 
 ---
 
