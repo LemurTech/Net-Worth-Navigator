@@ -2284,7 +2284,7 @@ def build_chart(
     )
 
     scenario_slug = getattr(scenario, "slug", None)
-    edit_config_href = f"/finances/config/?scenario={scenario_slug}" if scenario_slug else "/finances/config/"
+    edit_config_href = "https://github.com/LemurTech/Net-Worth-Navigator"
 
     # Tab-label tooltips — explain what each tab shows. Rendered via the same
     # help-mode SVG icon as the KPI strip, but the tooltip itself is CSS
@@ -2345,7 +2345,7 @@ def build_chart(
     <div class="setup-status-warning">
       <strong>⚠️ Setup Incomplete</strong> — This projection uses placeholder or sample data.
       <a href="{edit_config_href}">Edit your scenario</a> to enter real household values, or
-      <a href="/finances/config/setup">use the Setup Panel</a> to create a new scenario from scratch.
+      <a href="https://github.com/LemurTech/Net-Worth-Navigator/blob/main/scenarios/starter.toml">view the starter template</a> to get started from scratch.
     </div>
 """
     
@@ -2365,8 +2365,8 @@ def build_chart(
       </ul>
       <p class="sample-guide-tip"><strong>💡 Tip:</strong> Click year columns in tables to highlight that year across all data. Try switching between projection modes (deterministic, historical, Monte Carlo) using the Simulation tab.</p>
       <div class="sample-guide-actions">
-        <a href="/finances/config/?scenario=sample" target="_top" class="sample-guide-btn">View Sample Config</a>
-        <a href="/finances/config/setup?action=new-template" target="_top" class="sample-guide-btn sample-guide-btn-primary">Create Your Own</a>
+        <a href="https://github.com/LemurTech/Net-Worth-Navigator/blob/main/scenarios/sample.toml" target="_top" class="sample-guide-btn">View Sample Config</a>
+        <a href="https://github.com/LemurTech/Net-Worth-Navigator#create-your-own-scenario" target="_top" class="sample-guide-btn sample-guide-btn-primary">Create Your Own</a>
       </div>
     </div>
 """
