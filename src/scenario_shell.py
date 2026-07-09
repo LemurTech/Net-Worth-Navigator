@@ -648,7 +648,7 @@ def build_scenario_shell(
         const compareLink = document.getElementById("compare-link");
         if (compareLink) {{
           const defaultSlug = manifest.default_slug || "";
-          const compareUrl = new URL("compare.html", window.location.origin);
+          const compareUrl = new URL("compare.html", window.location.href);
           compareUrl.searchParams.set("a", selected.slug);
           if (selected.slug !== defaultSlug && defaultSlug) {{
             compareUrl.searchParams.set("b", defaultSlug);
