@@ -3,6 +3,18 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-09 (v1.3.0 — GitHub Pages: full projection shell with 4 samples × 3 modes)
+
+### Added
+
+- **Full projection shell on gh-pages** — `projection.html` shell page with all 4 sample scenarios (sample, sample-couples, sample-a, sample-b) × 3 render modes (deterministic, historical, monte_carlo). Landing page CTA updated to launch the shell.
+- **Definitions page** — `definitions.html` rebuilt with Pages-appropriate URLs.
+- **Compare page** — `compare.html` included for side-by-side scenario comparison.
+
+### Changed
+
+- **Landing page** — Demo link now points to `./projection.html?scenario=sample` instead of the deterministic-only sample page.
+
 ## 2026-07-08 (v1.3.0 — README rewrite, sample projection, GitHub Pages)
 
 ### Added
