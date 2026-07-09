@@ -156,7 +156,7 @@ The fastest way to see what Net Worth Navigator can do is to view one of the pre
 
 A sample projection is included in the repository — no Python, no web server, no installation needed:
 
-- **[View Sample Projection →](docs/samples/sample-projection.html)** — a complete deterministic projection for a single-person household (Alex). Open it directly in your browser.
+- **[View Sample Projection →](https://raw.githubusercontent.com/LemurTech/Net-Worth-Navigator/main/docs/samples/sample-projection.html)** — a complete deterministic projection for a single-person household (Alex). Open it directly in your browser.
 
 #### Option B: Use the Web UI (Easiest — No Command Line After Setup)
 
