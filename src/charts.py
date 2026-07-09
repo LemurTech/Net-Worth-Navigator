@@ -2344,8 +2344,8 @@ def build_chart(
             setup_warning_html = f"""
     <div class="setup-status-warning">
       <strong>⚠️ Setup Incomplete</strong> — This projection uses placeholder or sample data.
-      <a href="{edit_config_href}">Edit your scenario</a> to enter real household values, or
-      <a href="https://github.com/LemurTech/Net-Worth-Navigator/blob/main/scenarios/starter.toml">view the starter template</a> to get started from scratch.
+      <a href="{edit_config_href}" target="_top">Edit your scenario</a> to enter real household values, or
+      <a href="https://github.com/LemurTech/Net-Worth-Navigator/blob/main/scenarios/starter.toml" target="_top">view the starter template</a> to get started from scratch.
     </div>
 """
     
@@ -2383,7 +2383,7 @@ def build_chart(
 </head>
 <body>
   <div class="page-toolbar">
-    <a class="toolbar-link" href="{edit_config_href}">Edit Config</a>
+    <a class="toolbar-link" href="{edit_config_href}" target="_top">Edit Config</a>
     <button class="help-mode-toggle" id="help-mode-toggle" title="Toggle help mode">
       <span class="help-icon">?</span>
     </button>
