@@ -3,6 +3,29 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-08 (v1.3.0 — README rewrite, sample projection, GitHub Pages)
+
+### Added
+
+- **Pre-rendered sample projection** — `docs/samples/sample-projection.html` committed. Viewable in-repo or via GitHub Pages at `https://lemurtech.github.io/Net-Worth-Navigator/docs/samples/sample-projection.html`.
+- **GitHub Pages branch** — orphan `gh-pages` branch with `index.html` landing page (dark card with badges, demo link, repo links) and `docs/samples/sample-projection.html`. Serves from branch root.
+- **README banner image** — projection chart screenshot (`docs/assets/projection-chart.png`) below badge row.
+
+### Changed
+
+- **README badges** — Replaced CI and Docs shields (no pipeline/docs site) with last-commit and GPL license badges.
+- **"How It Started"** — Rewritten with personal backstory.
+- **README Option A** — Added pre-rendered sample link as the quickest intro (no setup). Renumbered B→B, C→C.
+- **Donation link** — Buy Me a Coffee placeholder replaced with live `buymeacoffee.com/lemurtech` link.
+
+### Fixed
+
+- **Sample projection link** — Changed from raw.githubusercontent.com (serves as plain text) to GitHub Pages URL.
+
+### Decisions
+
+- **gh-pages branch** — Public sample content served from an orphan branch, separate from main's `docs/` (Memory Bank stays private within main). Adopted 2026-07-08.
+
 ## 2026-07-07 (v1.3.0 — Windows Unicode fix + Accounts tab loading)
 
 ### Fixed

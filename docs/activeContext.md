@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-07
-**Status:** v1.3.0 — Windows Unicode fix (non-ASCII chars in print() crash cp1252). Accounts tab loads Manual Entry fields on first click. Two commits pushed.
+**Status:** v1.3.0 — Windows Unicode fix, Accounts tab loading fix, README rewrite, GitHub Pages branch.
 
 ---
 
@@ -88,7 +88,16 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 - Support section with donation links
 - Monarch referral link
 
-## Open Items
+### README + GitHub Pages (2026-07-08)
+
+- **Badge cleanup:** Replaced CI and Docs badges (no pipeline/docs site yet) with last-commit and GPL license badges.
+- **Banner image:** Projection chart screenshot added below the badge row.
+- **"How It Started" rewrite** with personal backstory.
+- **Donation link:** Buy Me a Coffee placeholder replaced with live `buymeacoffee.com/lemurtech` link.
+- **Pre-rendered sample:** `docs/samples/sample-projection.html` committed for in-repo preview.
+- **GitHub Pages:** Orphan `gh-pages` branch created with `index.html` landing page and sample projection. Serve from branch root. URL: `https://lemurtech.github.io/Net-Worth-Navigator/`
+
+### Open Items
 
 ### Feature gaps
 
