@@ -381,7 +381,7 @@ def build_scenario_shell(
             <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">
               <span class="linkbtn-full">Open Scenario Page</span><span class="linkbtn-short">Open</span>
             </a>
-            <a class="linkbtn" id="compare-link" href="/finances/compare.html" target="_blank" rel="noreferrer">
+            <a class="linkbtn" id="compare-link" href="compare.html" target="_blank" rel="noreferrer">
               <span class="linkbtn-full">Compare Scenarios</span><span class="linkbtn-short">Compare</span>
             </a>
             <button class="linkbtn" id="help-mode-toggle" type="button" title="Toggle help tooltips">?</button>
@@ -546,13 +546,17 @@ def build_scenario_shell(
       }}
 
       const scenarios = Array.isArray(manifest.scenarios) ? manifest.scenarios : [];
+      // Only show visual separator when there's a mix of user and sample scenarios
+      const hasUserScenarios = scenarios.some(function(s) {{
+        return !s.name || !s.name.toLowerCase().startsWith('sample');
+      }});
 
       select.innerHTML = "";
       let insertedDivider = false;
       scenarios.forEach((scenario) => {{
         // Insert a visual separator before the first sample scenario
         const isSample = scenario.name && scenario.name.toLowerCase().startsWith('sample');
-        if (isSample && !insertedDivider && select.options.length > 0) {{
+        if (isSample && hasUserScenarios && !insertedDivider) {{
           const divider = document.createElement("option");
           divider.disabled = true;
           divider.textContent = "\u2500\u2500\u2500\u2500\u2500";
@@ -644,7 +648,7 @@ def build_scenario_shell(
         const compareLink = document.getElementById("compare-link");
         if (compareLink) {{
           const defaultSlug = manifest.default_slug || "";
-          const compareUrl = new URL("/finances/compare.html", window.location.origin);
+          const compareUrl = new URL("compare.html", window.location.origin);
           compareUrl.searchParams.set("a", selected.slug);
           if (selected.slug !== defaultSlug && defaultSlug) {{
             compareUrl.searchParams.set("b", defaultSlug);
