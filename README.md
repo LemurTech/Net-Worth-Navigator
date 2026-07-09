@@ -1,9 +1,9 @@
 # Net Worth Navigator
 
-![GitHub Release](https://img.shields.io/github/v/release/LemurTech/Net-Worth-Navigator)
+[![GitHub Release](https://img.shields.io/github/v/release/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/releases)
 [![GitHub issues](https://img.shields.io/github/issues/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/issues)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/LemurTech/Net-Worth-Navigator/total)
-![GitHub last commit](https://img.shields.io/github/last-commit/LemurTech/Net-Worth-Navigator)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/LemurTech/Net-Worth-Navigator/total)](https://github.com/LemurTech/Net-Worth-Navigator/releases)
+[![GitHub last commit](https://img.shields.io/github/last-commit/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/commits/main)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 ![Net Worth Navigator — projection chart showing net worth trajectory with Monte Carlo bands, event markers, and interactive tabs](docs/assets/projection-chart.png)
