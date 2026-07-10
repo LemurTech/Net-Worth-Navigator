@@ -479,7 +479,7 @@ Set `[data_source].mode = "synthetic"` in your scenario or select **Manual entry
 
 For Manual Entry, add up the balances in each bucket and enter the totals. Don't worry about perfect categorization — you can change it later.
 
-*(Screenshot coming: Manual Entry form with annotated callouts)*
+![Annotated Manual Entry form showing the five account-bucket sections: Data Source selector, Investable Balances, Non-Investable assets, Property Values, and Liability Balances](docs/assets/manual-entry-annotated.png)
 
 **How often to update your balances?** As often as you like — monthly as part of a regular finances check-in, or quarterly for a broader review. Simply open the Setup Panel, update the numbers, and re-render.
 
