@@ -481,9 +481,9 @@ For Manual Entry, add up the balances in each bucket and enter the totals. Don't
 
 *(Screenshot coming: Manual Entry form with annotated callouts)*
 
-**How often to update your balances?** As often as you like — monthly as part of a regular finances check-in, or quarterly for a broader review. Simply open the Setup Panel, update the numbers, and re-render. Each update replaces the previous starting point.
+**How often to update your balances?** As often as you like — monthly as part of a regular finances check-in, or quarterly for a broader review. Simply open the Setup Panel, update the numbers, and re-render.
 
-> **How balance updates work:** The chart always starts at your scenario's configured start year. Updating your balances simply refreshes what the model uses as the starting point at that year — you never need to bump the start year forward. For example, if your start year is 2025 and you enter new balances in 2026, the model just uses those updated numbers as the 2025 starting point and projects forward as before.
+> **How balance updates work:** The model doesn't track *when* a balance was captured — it just uses whatever numbers you provide as the starting point at your scenario's configured `start_year`. For best accuracy, set `start_year` close to the date of your latest balance data. For example, if it's 2030 and you're entering today's balances, set `start_year = 2030` so the projection starts from where you actually are.
 
 Best for: first-time users, quick what-if scenarios, users without an app subscription like Monarch.
 
@@ -516,7 +516,7 @@ To use: In the Setup Panel's Accounts tab, select **CSV Import** as your data so
 
 **How often to re-import?** As often as you export from your source — monthly or quarterly. Re-importing preserves your previous classifications, so new imports only need attention for new or changed accounts. The `Date` column tells the importer which snapshot to use — even if the export contains historical data, the latest available entry for each account is used as the starting balance.
 
-> **How balance updates work:** The chart always starts at your scenario's configured start year. Each CSV import refreshes the starting balances at that year — you never need to bump the start year forward. The `Date` column in the CSV is just used to pick the latest snapshot for each account; the projection year is independent.
+> **How balance updates work:** The `Date` column in the CSV is used to pick the latest snapshot for each account — the date itself is then discarded. The resulting balances are used as the starting point at your scenario's configured `start_year`, regardless of when they were captured. For best accuracy, set `start_year` close to the date of your latest CSV data.
 
 Best for: users who want a one-time Monarch data snapshot without running the MCP server, who use other apps with compatible exports, or who want full control over account classification.
 
@@ -547,7 +547,7 @@ uv run python login_setup.py   # sends OTP to your email
 
 **Automating updates:** Because Monarch pulls live data on each run, you can set up a scheduled task (cron on Linux/macOS, Task Scheduler on Windows) to run `run.py --offline` once a month or once a quarter. The `--offline` flag uses cached Monarch balances, so no re-authentication is needed for routine runs.
 
-> **How balance updates work:** The chart always starts at your scenario's configured start year. Each Monarch sync (or offline render with cached balances) refreshes the starting balances at that year — you never need to bump the start year forward.
+> **How balance updates work:** Live or cached Monarch balances are used as the starting point at your scenario's configured `start_year`, regardless of when they were fetched. For best accuracy, set `start_year` close to the current date so the projection starts from where you actually are.
 
 Best for: active Monarch Money subscribers who want automatic balance updates.
 
