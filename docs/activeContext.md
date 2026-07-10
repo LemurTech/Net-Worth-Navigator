@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-10
-**Status:** v1.3.1 — Clone/delete bug fixes, nightly scenario backup, git hooks.
+**Status:** v1.4.0 — Start-year auto-alignment with balance data as-of date.
 
 ---
 
@@ -126,6 +126,10 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 - `resolve_state_tax_system()` in `src/tax_model.py` — Maryland's county-level income tax (1.75%-3.2%) is not modeled. State-only brackets provide a useful approximation.
 - Validation hardening (Phase 3 from state tax plan): `validate_scenario()` should fail on unknown/misspelled state names instead of silently producing $0.
 - No-verification flag on several states' bracket data — should verify against official DOR sources.
+
+### Streamlining candidates
+
+- **`[simulation].clamp_start_year`** — The opt-out exists in code (`default: true`) but is undocumented in user-facing README by design. There's no clear use case for disabling it. Consider removing the option entirely in a future version if no one asks for it.
 
 ### Confirmation needed
 

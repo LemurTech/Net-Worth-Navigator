@@ -82,6 +82,11 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Projection window used by the yearly model.",
             },
             {
+                "key": "[simulation].clamp_start_year",
+                "summary": "When true and balance data has a known as-of date newer than start_year, the projection start is auto-adjusted forward to match the data year. Set to false to disable.",
+                "options": ["`true` (default)", "`false`"],
+            },
+            {
                 "key": "[simulation].render_modes",
                 "summary": "Which pre-rendered modes the scenario shell should build and expose.",
                 "options": ["`deterministic`", "`historical`", "`monte_carlo`"],

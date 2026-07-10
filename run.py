@@ -79,7 +79,7 @@ def load_cache() -> dict:
             "Run without --offline first to create the cache."
         )
     data = json.loads(CACHE_FILE.read_text())
-    ts   = data.get("timestamp", "unknown")
+    ts   = data.get("cache_timestamp", data.get("generated_at", "unknown"))
     print(f"  Using cached balances from {ts}")
     return data
 
@@ -260,20 +260,34 @@ def main():
 
     # 1. Balances — synthetic, csv_import, live, or cached
     cache_timestamp = None
+    data_as_of = None
     if use_synthetic:
         portfolio, extras, liability_balances, property_values, retirement_owner_seed, basis_seed = _synthetic_inputs_from_config(config)
         raw_accounts = []
+        # data_as_of stays None — no clamp for synthetic
     elif use_csv_import:
         print("=> Reading account balances from [csv_source]...")
         portfolio, extras, liability_balances, property_values, retirement_owner_seed, basis_seed = build_csv_starting_inputs(config)
         raw_accounts = []
+        csv_source = config.get("csv_source", {}) or {}
+        last_import = csv_source.get("last_import") if isinstance(csv_source, dict) else None
+        if last_import:
+            try:
+                data_as_of = datetime.fromisoformat(last_import).date()
+            except (ValueError, TypeError):
+                pass
         print(f"  Investable:     ${sum(portfolio.values()):>12,.2f}")
         print(f"  Home value:     ${extras.get('home_value', 0.0):>12,.2f}")
         print(f"  Liabilities:    ${sum(liability_balances.values()):>12,.2f}")
         print(f"  Accounts:       {len(config.get('csv_source', {}).get('accounts', {}))} from CSV import")
     elif OFFLINE:
         cached = load_cache()
-        cache_timestamp = cached.get("timestamp")
+        cache_timestamp = cached.get("cache_timestamp", cached.get("generated_at"))
+        if cache_timestamp:
+            try:
+                data_as_of = datetime.fromisoformat(cache_timestamp).date()
+            except (ValueError, TypeError):
+                pass
         raw_accounts = cached.get("raw_accounts")
         if raw_accounts is not None:
             portfolio, extras = classify_accounts(raw_accounts, config=config)
@@ -303,6 +317,7 @@ def main():
             print("  Offline (cached):  python run.py --offline")
             print("  No Monarch:        set [data_source].mode = \"synthetic\" in your scenario")
             sys.exit(1)
+        data_as_of = datetime.now().date()
         portfolio, extras = classify_accounts(raw_accounts, config=config)
         liability_balances = extract_liability_balances(raw_accounts, config=config)
         property_values = extract_real_estate_accounts(raw_accounts, config=config)
@@ -336,6 +351,7 @@ def main():
             property_values=property_values,
             retirement_owner_balances=retirement_owner_seed,
             basis_seeds=basis_seed,
+            data_as_of=data_as_of,
             config=mode_config,
         )
         df = projection_result.yearly_df

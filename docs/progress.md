@@ -3,6 +3,30 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-10 (v1.4.0 — Start-year auto-alignment with balance data as-of date)
+
+### Added
+
+- **Auto-clamp start_year at render time** — If balance data has a known as-of date newer than the configured `start_year`, the projection start is automatically shifted forward to match the data's year. Covers all three data source paths:
+  - **Manual entry**: today's date is recorded when balances are entered
+  - **CSV import**: `last_import` date from the upload timestamp
+  - **Monarch live/cache**: fetch date (live) or `cache_timestamp` (offline)
+  - **Synthetic mode**: no `data_as_of` — no clamp (opt-in by design)
+- **Event scan on clamp** — Lists enabled events that fall before the clamped start year in the CLI/console warning message.
+- **`last_csv_data_date()` helper** in `csv_importer.py` — returns the latest date across all CSV entries, zero-tuple-impact on existing callers.
+- **`clamped_start_year` field** on `ProjectionResult` — downstream consumers can read whether a clamp occurred and to what year.
+- **Yellow clamp notice CSS** in render overlay — fires when `job.detail` contains the clamp message.
+- **`[simulation].clamp_start_year`** config option (default `true`) — undocumented in user-facing README; exists as a safety valve. Flagged in Memory Bank as a streamlining candidate.
+
+### Fixed
+
+- **`load_cache()` timestamp key** — wrongly read `"timestamp"` instead of `"cache_timestamp"` (with `"generated_at"` fallback).
+
+### Changed
+
+- **README callouts** — All three "How balance updates work" sections (Manual Entry, CSV Import, Monarch) rewritten to describe the auto-clamp behavior instead of telling users to manually keep `start_year` aligned.
+- **Definitions page** — Added `[simulation].clamp_start_year` entry.
+
 ## 2026-07-10 (v1.3.1 — Setup Panel clone/delete fixes, nightly backup, git hooks)
 
 ### Added

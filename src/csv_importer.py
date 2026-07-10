@@ -11,7 +11,7 @@ Three public functions:
 """
 
 import csv
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -121,6 +121,33 @@ def accounts_from_csv(csv_path: str | Path) -> dict[str, float]:
     """Convenience: parse CSV and return {name: balance} dict (latest per account)."""
     entries = parse_csv(csv_path)
     return {e["name"]: e["balance"] for e in entries}
+
+
+def last_csv_data_date(entries: list[dict]) -> datetime.date | None:
+    """Return the latest date across all CSV entries, or None if empty.
+
+    entries should be the list returned by parse_csv() — each entry must
+    have a 'date' key as a %Y-%m-%d string.
+    """
+    latest: date | None = None
+    for e in entries:
+        raw = e.get("date")
+        if not raw:
+            continue
+        try:
+            if isinstance(raw, str):
+                dt = datetime.strptime(raw, "%Y-%m-%d").date()
+            elif isinstance(raw, datetime):
+                dt = raw.date()
+            elif isinstance(raw, date):
+                dt = raw
+            else:
+                continue
+            if latest is None or dt > latest:
+                latest = dt
+        except (ValueError, TypeError):
+            continue
+    return latest
 
 
 def merge_accounts(

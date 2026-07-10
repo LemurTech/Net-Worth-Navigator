@@ -8,6 +8,7 @@ Returns a pandas DataFrame with one row per year:
 """
 
 from copy import deepcopy
+from datetime import date
 from pathlib import Path
 from dataclasses import dataclass
 import random
@@ -147,6 +148,7 @@ class ProjectionResult:
     outcomes_df: pd.DataFrame | None = None
     run_count: int = 1
     display_path_kind: str = "deterministic"
+    clamped_start_year: int | None = None
 
 
 def _clamp_amount(value: object, *, default: float = 0.0) -> float:
@@ -2943,9 +2945,36 @@ def run_projection_result(
     property_values: dict[str, float] | None = None,
     retirement_owner_balances: dict[str, dict[str, float]] | None = None,
     basis_seeds: dict[str, float] | None = None,
+    data_as_of: date | None = None,
     config: dict | None = None,
 ) -> ProjectionResult:
     config = resolve_runtime_config(config or load_config())
+    
+    # ── Auto-clamp start_year to match balance data as-of date ────────────
+    sim = config.get("simulation", {})
+    start_year = int(sim.get("start_year", 2026))
+    clamp_enabled = bool(sim.get("clamp_start_year", True))
+    clamped_start_year = start_year
+    if data_as_of is not None and clamp_enabled:
+        as_of_year = data_as_of.year
+        if as_of_year > start_year:
+            clamped_start_year = as_of_year
+            print(f"Note: Balance data is from {as_of_year}. "
+                  f"Projection start adjusted from {start_year} to {as_of_year}.")
+            # Scan events that fall before the clamped year
+            events = [e for e in config.get("events", [])
+                      if isinstance(e, dict) and e.get("enabled", False)]
+            pre_clamp = [e for e in events
+                         if isinstance(e.get("year"), int) and e["year"] < as_of_year]
+            if pre_clamp:
+                labels = ", ".join(str(e.get("label", e.get("type", "?")))
+                                   for e in pre_clamp[:10])
+                more = f" ... and {len(pre_clamp) - 10} more" if len(pre_clamp) > 10 else ""
+                print(f"  Note: {len(pre_clamp)} event(s) before {as_of_year} "
+                      f"will not appear: {labels}{more}")
+            # Apply clamp to the config for downstream use
+            config["simulation"]["start_year"] = clamped_start_year
+
     simulation_settings = _normalize_simulation_settings(config)
     success_settings = _normalize_success_settings(config)
     if simulation_settings["mode"] == "deterministic":
@@ -2967,6 +2996,8 @@ def run_projection_result(
             band_df=None,
             outcomes_df=None,
         )
+        summary["data_as_of_clamped"] = clamped_start_year != start_year
+        summary["clamped_start_year"] = clamped_start_year
         return ProjectionResult(
             mode="deterministic",
             yearly_df=yearly_df,
@@ -2976,6 +3007,8 @@ def run_projection_result(
             outcomes_df=None,
             run_count=1,
             display_path_kind="deterministic",
+            clamped_start_year=clamped_start_year
+                if clamped_start_year != start_year else None,
         )
 
     run_frames: list[pd.DataFrame] = []
@@ -3047,6 +3080,8 @@ def run_projection_result(
         outcomes_df=outcomes_df,
         run_labels=run_labels,
     )
+    summary["data_as_of_clamped"] = clamped_start_year != start_year
+    summary["clamped_start_year"] = clamped_start_year
     return ProjectionResult(
         mode=str(simulation_settings["mode"]),
         yearly_df=primary_df,
@@ -3056,6 +3091,8 @@ def run_projection_result(
         outcomes_df=outcomes_df,
         run_count=len(run_frames),
         display_path_kind="median",
+        clamped_start_year=clamped_start_year
+            if clamped_start_year != start_year else None,
     )
 
 
