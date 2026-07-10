@@ -265,6 +265,13 @@ Once you've installed and set up the project, start the web editor:
 .venv\Scripts\python.exe admin_app.py
 ```
 
+> **Windows Firewall:** Windows Security may warn that *Windows Firewall has blocked some features of Python*. When this happens:
+> 1. Click the **Allow access** notification
+> 2. If a dialog opens, uncheck **Public networks** (keep Private networks checked)
+> 3. Click **Allow access**
+>
+> This is safe — the editor only listens on your local machine.
+
 </details>
 
 <details>
@@ -275,13 +282,6 @@ Once you've installed and set up the project, start the web editor:
 ```
 
 </details>
-
-> **Windows users:** Windows Security may warn that *Windows Firewall has blocked some features of Python*. When this happens:
-> 1. Click the **Allow access** notification
-> 2. If a dialog opens, uncheck **Public networks** (keep Private networks checked)
-> 3. Click **Allow access**
->
-> This is safe — the editor only listens on your local machine.
 
 Now open **http://localhost:8010/setup** in your browser. From the Setup Panel:
 
@@ -464,9 +464,9 @@ Click the **`?` button** in the projection page toolbar to enable help mode. Inf
 
 Net Worth Navigator supports three ways to get your starting balances:
 
-### Manual Entry (No Accounts Needed)
+### Manual Entry (the Bucket Approach)
 
-Set `[data_source].mode = "synthetic"` in your scenario or select **Manual entry** in the Setup Panel's Accounts tab. Enter your balances directly in the structured form. This is the easiest way to get started — no Monarch subscription, no CSV export, nothing to configure beyond the numbers you already know.
+Set `[data_source].mode = "synthetic"` in your scenario or select **Manual entry** in the Setup Panel's Accounts tab. Enter your balances directly in the structured form. This is the easiest way to get started — no app subscription, no CSV export, nothing to configure beyond the numbers you already know.
 
 **What are account totals?** Your net worth is made of different "buckets":
 
@@ -481,7 +481,40 @@ For Manual Entry, add up the balances in each bucket and enter the totals. Don't
 
 *(Screenshot coming: Manual Entry form with annotated callouts)*
 
-Best for: first-time users, quick what-if scenarios, users without Monarch Money.
+**How often to update your balances?** As often as you like — monthly as part of a regular finances check-in, or quarterly for a broader review. Simply open the Setup Panel, update the numbers, and re-render. Each update replaces the previous starting point.
+
+> **How balance updates work:** You don't need to change your scenario's start year each time you update balances. The model treats whatever balances you enter as the new year-0 anchor and projects forward from there. Updating balances in the middle of your scenario's timeline is fine — the model uses the latest numbers as the starting point.
+
+Best for: first-time users, quick what-if scenarios, users without an app subscription like Monarch.
+
+### CSV Import (Monarch Money and other personal finance apps)
+
+Export your accounts to CSV and upload them through the Setup Panel. This lets you classify accounts (taxable, traditional IRA, Roth, cash, etc.) and assign ownership per person. Re-importing preserves your previous classifications — only new accounts need attention.
+
+**Getting the CSV export:** In the Monarch Money app, open the **Accounts** page and click **Download CSV**. The export contains a day-by-day historical record of every account's balance — from the earliest data Monarch has for you through today. If you use another personal finance app, check whether it can export account balances in a similar format (see below).
+
+**CSV format required:**
+
+Your CSV must have these columns in the header row, in any order:
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| `Date` | Balance snapshot date (ISO format) | `2026-01-15` |
+| `Account Name` | Name of the account | `Vanguard Roth IRA` |
+| `Group` | Account group / category | `Investments` |
+| `Balance` | Account balance (numbers only, or with `$` prefix) | `45230.50` or `$45,230.50` |
+
+This is the format that Monarch Money uses for CSV exports. If you export from another tool, check whether its export has these same column names. If they match, you can import directly. If not, rename the columns in a spreadsheet first.
+
+*(Screenshot coming: CSV import preview in the Setup Panel showing account table with category/owner dropdowns)*
+
+To use: In the Setup Panel's Accounts tab, select **CSV Import** as your data source, upload your CSV file, review the parsed accounts, and click Import & Save.
+
+**How often to re-import?** As often as you export from your source — monthly or quarterly. Re-importing preserves your previous classifications, so new imports only need attention for new or changed accounts. The `Date` column tells the importer which snapshot to use — even if the export contains historical data, the latest available entry for each account is used as the starting balance.
+
+> **How balance updates work:** You don't need to change your scenario's start year. Each CSV import updates the year-0 anchor. The model always projects forward from the latest available balance data.
+
+Best for: users who want a one-time Monarch data snapshot without running the MCP server, who use other apps with compatible exports, or who want full control over account classification.
 
 ### Monarch Money (Live Sync)
 
@@ -510,30 +543,11 @@ uv run python login_setup.py   # sends OTP to your email
 .venv/bin/python run.py --scenario myplan --offline
 ```
 
+**Automating updates:** Because Monarch pulls live data on each run, you can set up a scheduled task (cron on Linux/macOS, Task Scheduler on Windows) to run `run.py --offline` once a month or once a quarter. The `--offline` flag uses cached Monarch balances, so no re-authentication is needed for routine runs.
+
+> **How balance updates work:** You don't need to change your scenario's start year. Each Monarch sync (or offline render with cached balances) updates the year-0 anchor. The model always projects forward from the latest available balance data.
+
 Best for: active Monarch Money subscribers who want automatic balance updates.
-
-### CSV Import
-
-Export your accounts to CSV and upload them through the Setup Panel. This lets you classify accounts (taxable, traditional IRA, Roth, cash, etc.) and assign ownership per person. Re-importing preserves your previous classifications — only new accounts need attention.
-
-**CSV format required:**
-
-Your CSV must have these columns in the header row, in any order:
-
-| Column | Description | Example |
-|--------|-------------|---------|
-| `Date` | Balance snapshot date (ISO format) | `2026-01-15` |
-| `Account Name` | Name of the account | `Vanguard Roth IRA` |
-| `Group` | Account group / category | `Investments` |
-| `Balance` | Account balance (numbers only, or with `$` prefix) | `45230.50` or `$45,230.50` |
-
-This is the format that Monarch Money uses for CSV exports. If you export from another tool, check whether its export has these same column names. If they match, you can import directly. If not, rename the columns in a spreadsheet first.
-
-*(Screenshot coming: CSV import preview in the Setup Panel showing account table with category/owner dropdowns)*
-
-To use: In the Setup Panel's Accounts tab, select **CSV Import** as your data source, upload your CSV file, review the parsed accounts, and click Import & Save.
-
-Best for: users who want a one-time Monarch data snapshot without running the MCP server, who use other apps with compatible exports, or who want full control over account classification.
 
 ---
 
