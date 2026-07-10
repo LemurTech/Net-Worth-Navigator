@@ -483,7 +483,7 @@ For Manual Entry, add up the balances in each bucket and enter the totals. Don't
 
 **How often to update your balances?** As often as you like — monthly as part of a regular finances check-in, or quarterly for a broader review. Simply open the Setup Panel, update the numbers, and re-render. Each update replaces the previous starting point.
 
-> **How balance updates work:** You don't need to change your scenario's start year each time you update balances. The model treats whatever balances you enter as the new year-0 anchor and projects forward from there. Updating balances in the middle of your scenario's timeline is fine — the model uses the latest numbers as the starting point.
+> **How balance updates work:** The chart always starts at your scenario's configured start year. Updating your balances simply refreshes what the model uses as the starting point at that year — you never need to bump the start year forward. For example, if your start year is 2025 and you enter new balances in 2026, the model just uses those updated numbers as the 2025 starting point and projects forward as before.
 
 Best for: first-time users, quick what-if scenarios, users without an app subscription like Monarch.
 
@@ -491,7 +491,11 @@ Best for: first-time users, quick what-if scenarios, users without an app subscr
 
 Export your accounts to CSV and upload them through the Setup Panel. This lets you classify accounts (taxable, traditional IRA, Roth, cash, etc.) and assign ownership per person. Re-importing preserves your previous classifications — only new accounts need attention.
 
-**Getting the CSV export:** In the Monarch Money app, open the **Accounts** page and click **Download CSV**. The export contains a day-by-day historical record of every account's balance — from the earliest data Monarch has for you through today. If you use another personal finance app, check whether it can export account balances in a similar format (see below).
+**Getting the CSV export:** In the Monarch Money app, open the **Accounts** page and click **Download CSV**. The export contains a day-by-day historical record of every account's balance — from the earliest data Monarch has for you through today. 
+
+> **Don't have Monarch yet?** Use my referral link for [50% off your first year](https://monarch.com/referral/9pw7upznv4?r_source=copy). It helps offset the token costs of building this thing.
+
+You are not limited to using Monarch, however. If you use another personal finance app, check whether it can export account balances in a similar format (see below).
 
 **CSV format required:**
 
@@ -512,15 +516,13 @@ To use: In the Setup Panel's Accounts tab, select **CSV Import** as your data so
 
 **How often to re-import?** As often as you export from your source — monthly or quarterly. Re-importing preserves your previous classifications, so new imports only need attention for new or changed accounts. The `Date` column tells the importer which snapshot to use — even if the export contains historical data, the latest available entry for each account is used as the starting balance.
 
-> **How balance updates work:** You don't need to change your scenario's start year. Each CSV import updates the year-0 anchor. The model always projects forward from the latest available balance data.
+> **How balance updates work:** The chart always starts at your scenario's configured start year. Each CSV import refreshes the starting balances at that year — you never need to bump the start year forward. The `Date` column in the CSV is just used to pick the latest snapshot for each account; the projection year is independent.
 
 Best for: users who want a one-time Monarch data snapshot without running the MCP server, who use other apps with compatible exports, or who want full control over account classification.
 
 ### Monarch Money (Live Sync)
 
 If you have a [Monarch Money](https://www.monarchmoney.com/) subscription, Net Worth Navigator can pull your live account balances on each run. This requires the [Monarch MCP Server](https://github.com/robcerda/monarch-mcp-server) installed on your system.
-
-> **Don't have Monarch yet?** Use my referral link for [50% off your first year](https://monarch.com/referral/9pw7upznv4?r_source=copy). It helps offset the token costs of building this thing.
 
 ```bash
 # Set the Monarch MCP path (if not at default /opt/monarch-mcp-server)
@@ -545,7 +547,7 @@ uv run python login_setup.py   # sends OTP to your email
 
 **Automating updates:** Because Monarch pulls live data on each run, you can set up a scheduled task (cron on Linux/macOS, Task Scheduler on Windows) to run `run.py --offline` once a month or once a quarter. The `--offline` flag uses cached Monarch balances, so no re-authentication is needed for routine runs.
 
-> **How balance updates work:** You don't need to change your scenario's start year. Each Monarch sync (or offline render with cached balances) updates the year-0 anchor. The model always projects forward from the latest available balance data.
+> **How balance updates work:** The chart always starts at your scenario's configured start year. Each Monarch sync (or offline render with cached balances) refreshes the starting balances at that year — you never need to bump the start year forward.
 
 Best for: active Monarch Money subscribers who want automatic balance updates.
 
