@@ -198,35 +198,47 @@ cd Net-Worth-Navigator
 
 ### Set Up the Environment
 
-```bash
-# Create a virtual environment (do this once)
-# Linux/macOS:
-python3 -m venv .venv
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
-# Windows PowerShell:
+```powershell
 python -m venv .venv
-```
-
-```bash
-# Install dependencies (do this once)
-# Linux/macOS:
-.venv/bin/python -m pip install -r requirements.txt
-
-# Windows PowerShell:
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+</details>
+
+<details>
+<summary><b>Linux / macOS</b></summary>
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+</details>
 
 **Troubleshooting:** If `pip install` fails, make sure you're using the `.venv/bin/python` (or `.venv\Scripts\python.exe` on Windows) path — don't just run `pip install` directly, as that may use your system Python instead of the virtual environment.
 
 ### Verify the Installation
 
-```bash
-# Linux/macOS:
-.venv/bin/python scripts/verify_install.py
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
-# Windows:
+```powershell
 .venv\Scripts\python.exe scripts/verify_install.py
 ```
+
+</details>
+
+<details>
+<summary><b>Linux / macOS</b></summary>
+
+```bash
+.venv/bin/python scripts/verify_install.py
+```
+
+</details>
 
 This checks Python version, dependencies, and file structure. You should see `[OK] All checks passed!` at the end.
 
@@ -246,13 +258,23 @@ A sample projection is included on the project's GitHub Pages site — no Python
 
 Once you've installed and set up the project, start the web editor:
 
-```bash
-# Linux/macOS:
-.venv/bin/python admin_app.py
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
-# Windows:
+```powershell
 .venv\Scripts\python.exe admin_app.py
 ```
+
+</details>
+
+<details>
+<summary><b>Linux / macOS</b></summary>
+
+```bash
+.venv/bin/python admin_app.py
+```
+
+</details>
 
 > **Windows users:** Windows Security may warn that *Windows Firewall has blocked some features of Python*. When this happens:
 > 1. Click the **Allow access** notification
@@ -273,17 +295,25 @@ Now open **http://localhost:8010/setup** in your browser. From the Setup Panel:
 
 #### Option C: Command Line (Quick One-Liner)
 
-```bash
-# Linux/macOS:
-.venv/bin/python run.py --scenario sample
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
-# Windows:
+```powershell
 .venv\Scripts\python.exe run.py --scenario sample
-
-# Then open the output file:
-# Linux/macOS:  open output/scenarios/sample/deterministic/projection.html
-# Windows:      start output\scenarios\sample\deterministic\projection.html
+start output\scenarios\sample\deterministic\projection.html
 ```
+
+</details>
+
+<details>
+<summary><b>Linux / macOS</b></summary>
+
+```bash
+.venv/bin/python run.py --scenario sample
+open output/scenarios/sample/deterministic/projection.html
+```
+
+</details>
 
 Both sample scenarios use **fictional data** (starting balances, income, life events) — no real financial information, no external accounts needed. They show you what a complete projection looks like with charts, cash flow tables, tax estimates, event timeline, and more.
 
@@ -296,8 +326,24 @@ Once you've explored the samples, create a household plan of your own.
 #### Option A: Web UI (Recommended)
 
 1. Start the editor (if not already started from previous steps):
-   - Linux/macOS: `.venv/bin/python admin_app.py`
-   - Windows: `.venv\Scripts\python.exe admin_app.py`
+
+   <details>
+   <summary><b>Windows (PowerShell)</b></summary>
+
+   ```powershell
+   .venv\Scripts\python.exe admin_app.py
+   ```
+
+   </details>
+
+   <details>
+   <summary><b>Linux / macOS</b></summary>
+
+   ```bash
+   .venv/bin/python admin_app.py
+   ```
+
+   </details>
 2. Open **http://localhost:8010/setup**
 3. Click **New from Template** in the action bar at the bottom
 4. Choose **Single-Person** or **Couple / Two-Person**
@@ -311,25 +357,35 @@ Once you've explored the samples, create a household plan of your own.
 
 #### Option B: Command Line
 
-```bash
-# Copy a starter template
-# Linux/macOS:
-cp scenarios/starter.toml scenarios/myplan.toml
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
-# Windows:
+```powershell
 copy scenarios\starter.toml scenarios\myplan.toml
+```
 
-# Edit your scenario file (any text editor works)
-# Update every field marked  ← YOUR VALUE
-# Set [scenario].slug to "myplan"
+Edit the file in any text editor. Update every field marked `← YOUR VALUE`. Set `[scenario].slug` to `"myplan"`.
 
-# Run the projection
-# Linux/macOS:
-.venv/bin/python run.py --scenario myplan
-
-# Windows:
+```powershell
 .venv\Scripts\python.exe run.py --scenario myplan
 ```
+
+</details>
+
+<details>
+<summary><b>Linux / macOS</b></summary>
+
+```bash
+cp scenarios/starter.toml scenarios/myplan.toml
+```
+
+Edit the file in any text editor. Update every field marked `← YOUR VALUE`. Set `[scenario].slug` to `"myplan"`.
+
+```bash
+.venv/bin/python run.py --scenario myplan
+```
+
+</details>
 
 ---
 
