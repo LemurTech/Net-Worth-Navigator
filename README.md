@@ -499,16 +499,17 @@ You are not limited to using Monarch, however. If you use another personal finan
 
 **CSV format required:**
 
-Your CSV must have these columns in the header row, in any order:
+Your CSV must have these three columns in the header row:
 
 | Column | Description | Example |
 |--------|-------------|---------|
-| `Date` | Balance snapshot date (ISO format) | `2026-01-15` |
-| `Account Name` | Name of the account | `Vanguard Roth IRA` |
-| `Group` | Account group / category | `Investments` |
-| `Balance` | Account balance (numbers only, or with `$` prefix) | `45230.50` or `$45,230.50` |
+| `Date` | Balance snapshot date (YYYY-MM-DD) | `2026-01-15` |
+| `Account` | Name of the account | `Vanguard Roth IRA` |
+| `Balance` | Account balance (positive number for assets, negative for debts) | `45230.50` |
 
-This is the format that Monarch Money uses for CSV exports. If you export from another tool, check whether its export has these same column names. If they match, you can import directly. If not, rename the columns in a spreadsheet first.
+This is the format that Monarch Money uses for CSV exports (accessible from the **Accounts** page via **Download CSV**). The export includes a day-by-day history of every account balance. Other personal finance apps may use different column names — rename your columns to `Date`, `Account`, `Balance` in a spreadsheet before importing.
+
+> **How it works:** The importer reads the CSV, groups rows by `Account` name, and keeps the latest `Date`'s `Balance` for each account. A sample CSV is available at [`docs/assets/sample-accounts.csv`](docs/assets/sample-accounts.csv).
 
 *(Screenshot coming: CSV import preview in the Setup Panel showing account table with category/owner dropdowns)*
 
