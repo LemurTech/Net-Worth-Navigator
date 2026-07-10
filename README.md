@@ -10,8 +10,23 @@
 
 **v1.3.0** — A local net worth projection and financial event modeling tool. Create and compare multiple scenarios.
 
-> **Got 30 seconds?** Jump straight to [Quick Start: View a Sample](#try-the-sample-scenario-recommended)
-> and see a working projection without touching the command line.
+> **Got 30 seconds?** Jump straight to the [pre-rendered sample](#option-a-view-the-pre-rendered-sample-no-setup-required) and explore a working projection without installing anything.
+
+---
+
+## What Is Net Worth Navigator?
+
+Net Worth Navigator projects your household net worth forward **year by year**, modeling compound growth, income, spending, taxes, loans, and life events. It answers questions like:
+
+- *Are we on track for retirement?*
+- *What happens if one of us retires earlier?*
+- *How long does the portfolio last at this spending level?*
+- *What if we sell the house, move, or downsize later?*
+- *What if Social Security starts at a different age?*
+
+Output is an **interactive HTML page** with Plotly charts, tables, and navigation tabs — viewable in any browser, no server required after rendering.
+
+Three **data source modes** let you get started with or without financial accounts: Manual Entry (no accounts needed), Monarch Money live sync, or CSV import.
 
 ---
 
@@ -41,33 +56,99 @@ But despite being built this way, a ton of time, care, and **actual token cost**
 
 ---
 
-## Table of Contents
+## Who This Is For
 
-- [Quick Start](#quick-start)
-  - [Prerequisites: Install Python](#prerequisites-install-python)
-  - [Get the Code](#get-the-code)
-  - [Try the Sample Scenario (Recommended)](#try-the-sample-scenario-recommended)
-  - [Create Your Own Scenario](#create-your-own-scenario)
-- [What It Does](#what-it-does)
-- [Feature Overview](#feature-overview)
-- [Sample Scenarios](#sample-scenarios)
-- [Using the Web UI](#using-the-web-ui)
-  - [The Projection Shell](#the-projection-shell)
-  - [The Scenario Setup Panel](#the-scenario-setup-panel)
-  - [The Compare Page](#the-compare-page)
-  - [Help Mode](#help-mode)
-- [Data Sources](#data-sources)
-  - [Manual Entry (No Accounts Needed)](#manual-entry-no-accounts-needed)
-  - [Monarch Money (Live Sync)](#monarch-money-live-sync)
-  - [CSV Import](#csv-import)
-- [Who This Is For](#who-this-is-for)
-- [Who This Is Not For (Yet)](#who-this-is-not-for-yet)
-- [Current Modeling Status](#current-modeling-status)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Security Notes](#security-notes)
-- [Support the Project](#support-the-project)
-- [License](#license)
+Net Worth Navigator is a good fit if you:
+
+- want a **strategic, year-by-year planning model** rather than a monthly budgeting app
+- want to test scenario changes — retirement timing, spending changes, home sale/purchase plans, recurring expenses, early-death cases
+- are comfortable with **simplified but improving** tax modeling (bracket-based federal, state tax with 50-state support, RMD)
+- want to run everything **locally** with no ongoing subscription fees
+- want interactive charts you can share with a partner or advisor
+
+### Who This Is Not For (Yet)
+
+Net Worth Navigator is **not** a full-fidelity financial planning system. It is a poor fit if you need:
+
+- **Tax-return accuracy** — full wage withholding, credits, deductions, Medicare IRMAA, NIIT, AMT, or state-specific edge cases beyond the current simplified layers
+- **Retirement withdrawal optimization** — tax-minimizing decumulation strategy generation (see [OWL](https://github.com/mdlacasse/Owl) for that — it may be integrated downstream)
+- **Precise Social Security analysis** — across all spousal, survivor, divorce, disability, child, or family-benefit rules
+- **Estate planning** — trust flows, inheritance timing, step-up basis, beneficiary-by-beneficiary rules
+- **Households of 3+ people** — the engine supports at most two
+- **Monthly cash flow** — paycheck timing, contribution timing within the year, short-term liquidity
+- **Detailed liability modeling** — beyond simple amortized loans and mortgages
+- **Employer plan rules** — vesting schedules, catch-up contributions, plan loan behavior
+- **Healthcare modeling** — long-term care, insurance claims, medical underwriting
+- **Point-and-click consumer onboarding** — you will edit configuration files or use the structured Setup Panel; there is no TurboTax-style wizard
+
+### Current Modeling Limitations
+
+- Survivor Social Security is simplified — intentionally rule-based, not a full SSA calculator
+- Wages are typically modeled as net cash (take-home), not a full gross-pay-through-tax pipeline
+- Taxable brokerage withdrawals use simplified taxable-fraction assumptions, not lot-level cost basis
+- Spending is annual, not category-by-category with transaction history
+- The engine is **scenario-driven, not recommendation-driven** — it tells you what your assumptions imply, not what you *should* choose
+
+### What It Can Reasonably Approximate Today
+
+Even with those caveats, the app is already useful for real planning questions:
+
+- Accumulation-to-retirement transition planning
+- Survivor-phase planning at a household level
+- Comparing multiple retirement ages or Social Security start ages
+- Testing recurring expense burdens and one-time shocks
+- Home sale / relocation / downsizing scenarios
+- Comparing cash-reserve and withdrawal-order policies
+- Rough decumulation stress-testing before using a specialized withdrawal optimizer
+
+---
+
+## Feature Overview
+
+| Feature | Status |
+|---------|--------|
+| Household types: single-person and couples | ✅ Supported |
+| Data sources: manual entry, Monarch Money live sync, CSV import | ✅ All three |
+| Deterministic projection | ✅ |
+| Monte Carlo simulation | ✅ |
+| Historical return backtesting | ✅ |
+| Withdrawal policy controls (cash targets, withdrawal order, surplus routing) | ✅ |
+| Tax modeling (federal brackets, SS taxation, state tax with 50-state support, RMD) | ✅ |
+| Event system with 10+ event types (Expense, Income, Retire, Buy/Sell Home, New Job, etc.) | ✅ |
+| Recurring events and multi-person events | ✅ |
+| Scenario comparison page | ✅ |
+| Web-based configuration UI | ✅ |
+| Config validation with actionable error messages | ✅ |
+| Help mode with contextual tooltips | ✅ |
+| Liabilities amortization and payoff tracking | ✅ |
+| Cash reserve modeling and visualization | ✅ |
+| Scenario cloning, renaming, deletion | ✅ |
+| CSV account import | ✅ |
+| Interactive Plotly HTML output (no server needed) | ✅ |
+
+---
+
+## What It Does
+
+Net Worth Navigator projects your household net worth forward year by year. It models:
+
+- **Compound growth** across account types — taxable brokerage, traditional IRA/401(k), Roth IRA/401(k), and cash
+- **Household income** — wages, self-employment, and planned retirement dates per person
+- **Discrete financial events** — one-time expenses (medical, home purchase, car replacement), income changes, anniversary spending shifts, and recurring costs
+- **Social Security** — income at planned start ages, with survivor benefit step-up
+- **Liabilities** — amortized loans (mortgage, auto loans) with automated payoff detection and freed cash flow
+- **Taxes** — bracket-based federal income tax, Social Security provisional income taxation, state tax (choose from all 50 states), RMD modeling, and configurable filing status
+- **Multiple scenarios** — compare different assumptions (retirement age, spending level, investment returns, home sale timing) side by side
+
+### Available Projections ("Render Modes")
+
+Each scenario can render in up to three modes:
+
+| Mode | What It Shows |
+|------|---------------|
+| **Deterministic** | A single trajectory using fixed return assumptions — clean, clear, easy to understand. Start here. |
+| **Historical** | Runs the model against actual market return sequences from a bundled dataset (US balanced portfolio, 1926–present). Shows what *would have happened* starting in each historical year. |
+| **Monte Carlo** | Runs thousands of simulations with randomized returns. Shows probability bands (10th–90th percentile), median outcome, and success/failure metrics. |
 
 ---
 
@@ -80,16 +161,18 @@ Net Worth Navigator is a Python application. You need **Python 3.11 or later** t
 **New to Python?** Here's what to do:
 
 1. **Download Python** from [python.org/downloads](https://www.python.org/downloads/). Get the latest 3.11.x, 3.12.x, or 3.13.x release.
-2. **Install it.** On Windows, **check the box that says "Add Python to PATH"** during installation — this is critical. On Linux/macOS, your system may already have Python (run `python3 --version` in a terminal to check).
+2. **Install it.**
+   - **Windows:** **Check the box that says "Add Python to PATH"** during installation — this is critical.
+   - **Linux/macOS:** Your system may already have Python. Run `python3 --version` in a terminal to check.
 3. **Verify.** Open a terminal (PowerShell on Windows, Terminal on macOS/Linux) and run:
    ```
    python --version
    ```
    (On Linux/macOS you might need `python3 --version` instead.)
-   
+
    You should see something like `Python 3.12.4`. If you see `Python 3.11` or higher, you're good.
 
-**What's a "virtual environment"?** You'll see `.venv` in many commands below. A virtual environment is an isolated folder that keeps this project's dependencies separate from your other Python projects. You create it once and activate it when you want to run the app. The commands below handle creating and using it — follow along and you'll be fine.
+**What's a "virtual environment"?** You'll see `.venv` in many commands below. A virtual environment is an isolated folder that keeps this project's dependencies separate from your other Python projects. You create it once and use it when you want to run the app. The commands below handle creating and using it — follow along and you'll be fine.
 
 **On Linux:** You may also need to install the `python3-venv` package:
 ```bash
@@ -111,19 +194,20 @@ git clone https://github.com/LemurTech/Net-Worth-Navigator.git
 cd Net-Worth-Navigator
 ```
 
-**Windows:** If you don't have Git installed, download it from [git-scm.com](https://git-scm.com/). There are plenty of YouTube videos and blogs that will walk you through a proper installation. If that puts you off, you can also just download the repository as a ZIP from the project page and extract it to a folder of your choice. (But the magic of Git is that it makes the app super-easy to update later on!)
+**Windows:** If you don't have Git installed, download it from [git-scm.com](https://git-scm.com/). You can also download the repository as a ZIP from the project page and extract it to a folder of your choice. (But Git makes updating the app much easier later on!)
 
 ### Set Up the Environment
 
 ```bash
 # Create a virtual environment (do this once)
-
 # Linux/macOS:
 python3 -m venv .venv
 
 # Windows PowerShell:
 python -m venv .venv
+```
 
+```bash
 # Install dependencies (do this once)
 # Linux/macOS:
 .venv/bin/python -m pip install -r requirements.txt
@@ -144,7 +228,7 @@ python -m venv .venv
 .venv\Scripts\python.exe scripts/verify_install.py
 ```
 
-This checks Python version, dependencies, and file structure. You should see `✅ All checks passed!` at the end.
+This checks Python version, dependencies, and file structure. You should see `[OK] All checks passed!` at the end.
 
 ---
 
@@ -154,11 +238,11 @@ The fastest way to see what Net Worth Navigator can do is to view one of the pre
 
 #### Option A: View the Pre-Rendered Sample (No Setup Required)
 
-A sample projection is included in the repository — no Python, no web server, no installation needed:
+A sample projection is included on the project's GitHub Pages site — no Python, no web server, no installation needed:
 
 - **[View Sample Projection →](https://lemurtech.github.io/Net-Worth-Navigator/)** — interactive projection shell with 4 sample scenarios and 3 render modes (deterministic, historical, Monte Carlo). No installation needed.
 
-#### Option B: Use the Web UI (Easiest — No Command Line After Setup)
+#### Option B: Use the Web UI (Easiest After Setup)
 
 Once you've installed and set up the project, start the web editor:
 
@@ -170,17 +254,18 @@ Once you've installed and set up the project, start the web editor:
 .venv\Scripts\python.exe admin_app.py
 ```
 
-> Windows users: Windows Security may post a warning at this point that *Windows Firewall has blocked some features of Python on all public and private networks*.
+> **Windows users:** Windows Security may warn that *Windows Firewall has blocked some features of Python*. When this happens:
+> 1. Click the **Allow access** notification
+> 2. If a dialog opens, uncheck **Public networks** (keep Private networks checked)
+> 3. Click **Allow access**
 >
-> 1. Click the `Show more` link
-> 2. Uncheck `Public Networks`
-> 3. Click `Allow`
+> This is safe — the editor only listens on your local machine.
 
 Now open **http://localhost:8010/setup** in your browser. From the Setup Panel:
 
 1. Look at the **scenario dropdown** at the top of the page.
 2. Scroll past the separator (`─────`) to find the **Sample Plans** section.
-3. Choose **"Sample Plan (Single-Person)"** or **"Sample Couples Plan"**.
+3. Choose **"Sample Plan (Single-Person)"** or **"Sample Couples Plan"** .
 4. Click **Render** to generate the projection.
 5. Open **http://localhost:8010/projection.html** — your browser will show the interactive projection shell with charts, tables, and navigation tabs.
 
@@ -210,7 +295,9 @@ Once you've explored the samples, create a household plan of your own.
 
 #### Option A: Web UI (Recommended)
 
-1. Start the editor (if not already started from previous steps): `.venv/bin/python admin_app.py` (or `.venv\Scripts\python.exe admin_app.py` on Windows)
+1. Start the editor (if not already started from previous steps):
+   - Linux/macOS: `.venv/bin/python admin_app.py`
+   - Windows: `.venv\Scripts\python.exe admin_app.py`
 2. Open **http://localhost:8010/setup**
 3. Click **New from Template** in the action bar at the bottom
 4. Choose **Single-Person** or **Couple / Two-Person**
@@ -230,7 +317,7 @@ Once you've explored the samples, create a household plan of your own.
 cp scenarios/starter.toml scenarios/myplan.toml
 
 # Windows:
-copy scenarios\starter.toml to scenarios\myplan.toml
+copy scenarios\starter.toml scenarios\myplan.toml
 
 # Edit your scenario file (any text editor works)
 # Update every field marked  ← YOUR VALUE
@@ -243,58 +330,6 @@ copy scenarios\starter.toml to scenarios\myplan.toml
 # Windows:
 .venv\Scripts\python.exe run.py --scenario myplan
 ```
-
----
-
-## What It Does
-
-Net Worth Navigator projects your household net worth forward year by year. It models:
-
-- **Compound growth** across account types — taxable brokerage, traditional IRA/401(k), Roth IRA/401(k), and cash
-- **Household income** — wages, self-employment, and planned retirement dates per person
-- **Discrete financial events** — one-time expenses (medical, home purchase, car replacement), income changes, anniversary spending shifts, and recurring costs
-- **Social Security** — income at planned start ages, with survivor benefit step-up
-- **Liabilities** — amortized loans (mortgage, auto loans) with automated payoff detection and freed cash flow
-- **Taxes** — bracket-based federal income tax, Social Security provisional income taxation, state tax (Oregon supported; other states accept simplified brackets), RMD modeling, and configurable filing status
-- **Multiple scenarios** — compare different assumptions (retirement age, spending level, investment returns, home sale timing) side by side
-
-Output is an **interactive HTML page** with Plotly charts, tables, and navigation tabs — viewable in any browser, no server required after rendering.
-
-### Available Projections ("Render Modes")
-
-Each scenario can render in up to three modes:
-
-| Mode | What It Shows |
-|------|---------------|
-| **Deterministic** | A single trajectory using fixed return assumptions — clean, clear, easy to understand. Start here. |
-| **Historical** | Runs the model against actual market return sequences from a bundled dataset (US balanced portfolio, 1926–present). Shows what *would have happened* starting in each historical year. |
-| **Monte Carlo** | Runs thousands of simulations with randomized returns. Shows probability bands (10th–90th percentile), median outcome, and success/failure metrics. |
-
----
-
-## Feature Overview
-
-| Feature | Status |
-|---------|--------|
-| Household types: single-person and couples | ✅ Supported |
-| Data sources: manual entry, Monarch Money live sync, CSV import | ✅ All three |
-| Deterministic projection | ✅ |
-| Monte Carlo simulation | ✅ |
-| Historical return backtesting | ✅ |
-| Withdrawal policy controls (cash targets, withdrawal order, surplus routing) | ✅ |
-| Tax modeling (federal brackets, SS taxation, state tax, RMD) | ✅ |
-| Event system with 10+ event types (Expense, Income, Retire, Buy/Sell Home, New Job, etc.) | ✅ |
-| Recurring events and multi-person events | ✅ |
-| Scenario comparison page | ✅ |
-| Web-based configuration UI | ✅ |
-| Web-based scenario comparison | ✅ |
-| Config validation with actionable error messages | ✅ |
-| Help mode with contextual tooltips | ✅ |
-| Liabilities amortization and payoff tracking | ✅ |
-| Cash reserve modeling and visualization | ✅ |
-| Scenario cloning, renaming, deletion | ✅ |
-| CSV account import | ✅ |
-| Interactive Plotly HTML output (no server needed) | ✅ |
 
 ---
 
@@ -377,6 +412,19 @@ Net Worth Navigator supports three ways to get your starting balances:
 
 Set `[data_source].mode = "synthetic"` in your scenario or select **Manual entry** in the Setup Panel's Accounts tab. Enter your balances directly in the structured form. This is the easiest way to get started — no Monarch subscription, no CSV export, nothing to configure beyond the numbers you already know.
 
+**What are account totals?** Your net worth is made of different "buckets":
+
+- **Cash** — checking, savings, money market accounts
+- **Taxable brokerage** — regular investment accounts (not retirement accounts)
+- **Traditional IRA / 401(k)** — pre-tax retirement accounts; you'll pay taxes on withdrawals
+- **Roth IRA / 401(k)** — after-tax retirement accounts; withdrawals are tax-free
+- **Home value** — what your home is approximately worth today
+- **Liabilities** — mortgages, car loans, other debts
+
+For Manual Entry, add up the balances in each bucket and enter the totals. Don't worry about perfect categorization — you can change it later.
+
+*(Screenshot coming: Manual Entry form with annotated callouts)*
+
 Best for: first-time users, quick what-if scenarios, users without Monarch Money.
 
 ### Monarch Money (Live Sync)
@@ -410,72 +458,49 @@ Best for: active Monarch Money subscribers who want automatic balance updates.
 
 ### CSV Import
 
-Export your Monarch accounts to CSV and upload them through the Setup Panel. This lets you classify accounts (taxable, traditional IRA, Roth, cash, etc.) and assign ownership per person. Re-importing preserves your previous classifications — only new accounts need attention.
+Export your accounts to CSV and upload them through the Setup Panel. This lets you classify accounts (taxable, traditional IRA, Roth, cash, etc.) and assign ownership per person. Re-importing preserves your previous classifications — only new accounts need attention.
 
-To use: In the Setup Panel's Accounts tab, select **CSV Import** as your data source, upload your Monarch CSV export, review the parsed accounts, and click Import & Save.
+**CSV format required:**
 
-Best for: users who want a one-time Monarch data snapshot without running the MCP server, or want full control over account classification.
+Your CSV must have these columns in the header row, in any order:
 
----
+| Column | Description | Example |
+|--------|-------------|---------|
+| `Date` | Balance snapshot date (ISO format) | `2026-01-15` |
+| `Account Name` | Name of the account | `Vanguard Roth IRA` |
+| `Group` | Account group / category | `Investments` |
+| `Balance` | Account balance (numbers only, or with `$` prefix) | `45230.50` or `$45,230.50` |
 
-## Who This Is For
+This is the format that Monarch Money uses for CSV exports. If you export from another tool, check whether its export has these same column names. If they match, you can import directly. If not, rename the columns in a spreadsheet first.
 
-Net Worth Navigator is a good fit if you:
+*(Screenshot coming: CSV import preview in the Setup Panel showing account table with category/owner dropdowns)*
 
-- want a **strategic, year-by-year planning model** rather than a monthly budgeting app
-- want to test scenario changes — retirement timing, spending changes, home sale/purchase plans, recurring expenses, early-death cases
-- are comfortable with **simplified but improving** tax modeling (bracket-based federal, Oregon state, configurable state brackets, RMD)
-- want to run everything **locally** with no ongoing subscription fees
-- want interactive charts you can share with a partner or advisor
+To use: In the Setup Panel's Accounts tab, select **CSV Import** as your data source, upload your CSV file, review the parsed accounts, and click Import & Save.
 
-Common questions it answers:
-
-- *"What happens if one of us retires earlier?"*
-- *"How long does the portfolio last under this spending level?"*
-- *"What if we sell the house, move, or downsize later?"*
-- *"What if Social Security starts at a different age?"*
-- *"How does the outcome change if we adjust contributions, spending, or withdrawal order?"*
-- *"What's our cash reserve trajectory — do we ever dip below our target?"*
+Best for: users who want a one-time Monarch data snapshot without running the MCP server, who use other apps with compatible exports, or who want full control over account classification.
 
 ---
 
-## Who This Is Not For (Yet)
+## Configuration
 
-Net Worth Navigator is **not** a full-fidelity financial planning system. It's a poor fit if you need:
+Scenario settings live in `scenarios/*.toml` files. Each file is a complete self-contained plan. Key sections:
 
-- **Tax-return accuracy** — full wage withholding, credits, deductions, Medicare IRMAA, NIIT, AMT, or state-specific edge cases beyond the current simplified layers
-- **Retirement withdrawal optimization** — tax-minimizing decumulation strategy generation (see [OWL](https://github.com/mdlacasse/Owl) for that — it may be integrated downstream)
-- **Precise Social Security analysis** — across all spousal, survivor, divorce, disability, child, or family-benefit rules
-- **Estate planning** — trust flows, inheritance timing, step-up basis, beneficiary-by-beneficiary rules
-- **Households of 3+ people** — the engine supports at most two
-- **Monthly cash flow** — paycheck timing, contribution timing within the year, short-term liquidity
-- **Detailed liability modeling** — beyond simple amortized loans and mortgages
-- **Employer plan rules** — vesting schedules, catch-up contributions, plan loan behavior
-- **Healthcare modeling** — long-term care, insurance claims, medical underwriting
-- **Point-and-click consumer onboarding** — you will edit configuration files or use the structured Setup Panel; there is no TurboTax-style wizard
+| Section | Purpose |
+|---------|---------|
+| `[scenario]` | Name, slug, description, household type |
+| `[display]` | Chart title |
+| `[data_source]` | Balance source: `monarch`, `synthetic` (manual), or `csv_import` |
+| `[synthetic_start]` | Starting balances (for manual entry mode) |
+| `[csv_source]` | CSV import metadata and per-account balances |
+| `[person1]` / `[person2]` | Household members: name, DOB, income, retirement year, Social Security |
+| `[spending]` | Retirement spending targets |
+| `[withdrawal_policy]` | Cash reserve targets, withdrawal order, surplus routing per phase |
+| `[assumptions]` | Investment returns, inflation, allocation |
+| `[accounts]` | Account classification and ownership (Monarch / CSV mode only) |
+| `[[liabilities]]` | Loans: mortgage, auto, etc. with rate, terms, extra payments |
+| `[[events]]` | Life events with type, amount, year, enabled flag |
 
-### Current Modeling Limitations
-
-- Events do not auto-cancel on death unless you explicitly configure them that way
-- Account ownership transfer at death is handled by planning assumption, not a full estate engine
-- Survivor Social Security is simplified — intentionally rule-based, not a full SSA calculator
-- Death is modeled at annual resolution, not exact date within the year
-- Wages are typically modeled as net cash (take-home), not a full gross-pay-through-tax pipeline
-- Taxable brokerage withdrawals use simplified taxable-fraction assumptions, not lot-level cost basis
-- Spending is annual, not category-by-category with transaction history
-- The engine is **scenario-driven, not recommendation-driven** — it tells you what your assumptions imply, not what you *should* choose
-
-### What It Can Reasonably Approximate Today
-
-Even with those caveats, the app is already useful for real planning questions:
-
-- Accumulation-to-retirement transition planning
-- Survivor-phase planning at a household level
-- Comparing multiple retirement ages or Social Security start ages
-- Testing recurring expense burdens and one-time shocks
-- Home sale / relocation / downsizing scenarios
-- Comparing cash-reserve and withdrawal-order policies
-- Rough decumulation stress-testing before using a specialized withdrawal optimizer
+All config keys use **snake_case**. Event person references use `person = "person1"` or `person = "person2"`. See the starter templates and sample files for annotated examples of every field.
 
 ---
 
@@ -520,30 +545,7 @@ Net-Worth-Navigator/
 └── config.toml                   ← Legacy compatibility (migration fallback)
 ```
 
----
 
-## Configuration
-
-Scenario settings live in `scenarios/*.toml` files. Each file is a complete self-contained plan. Key sections:
-
-| Section | Purpose |
-|---------|---------|
-| `[scenario]` | Name, slug, description, household type |
-| `[display]` | Chart title |
-| `[data_source]` | Balance source: `monarch`, `synthetic` (manual), or `csv_import` |
-| `[synthetic_start]` | Starting balances (for manual entry mode) |
-| `[csv_source]` | CSV import metadata and per-account balances |
-| `[person1]` / `[person2]` | Household members: name, DOB, income, retirement year, Social Security |
-| `[spending]` | Retirement spending targets |
-| `[withdrawal_policy]` | Cash reserve targets, withdrawal order, surplus routing per phase |
-| `[assumptions]` | Investment returns, inflation, allocation |
-| `[accounts]` | Account classification and ownership (Monarch / CSV mode only) |
-| `[[liabilities]]` | Loans: mortgage, auto, etc. with rate, terms, extra payments |
-| `[[events]]` | Life events with type, amount, year, enabled flag |
-
-All config keys use **snake_case**. Event person references use `person = "person1"` or `person = "person2"`. See the starter templates and sample files for annotated examples of every field.
-
----
 
 ## Security Notes
 
@@ -555,6 +557,31 @@ Use common sense:
 - Run the web UI only when you're actively editing configurations
 - Don't forward port 8010 through your router
 - Don't run `admin_app.py` on a shared or public network
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely Cause & Fix |
+|---------|-------------------|
+| `python` not found | Python isn't installed or isn't on your PATH. **Windows:** Re-run the Python installer and check "Add Python to PATH". **Linux/macOS:** Try `python3` instead of `python`. |
+| `pip install` fails | You're using the system Python, not the virtual environment. Make sure you use the full path: `.venv/bin/python -m pip install ...` (Linux/macOS) or `.venv\Scripts\python.exe -m pip install ...` (Windows). |
+| `cannot execute binary file` (Windows) | You're running a Linux-format path on Windows. Use backslashes: `.venv\Scripts\python.exe` not `.venv/bin/python`. |
+| `ExecutionPolicy` error (Windows PowerShell) | PowerShell restricts script execution. Run this once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then retry. |
+| Windows Firewall blocks the editor | When the firewall prompt appears: click "Allow access", uncheck "Public networks", keep "Private networks" checked. |
+| `ModuleNotFoundError: No module named 'plotly'` | Dependencies aren't installed. Run `.venv/bin/python -m pip install -r requirements.txt` (Linux/macOS) or `.venv\Scripts\python.exe -m pip install -r requirements.txt` (Windows). |
+| `verify_install.py` shows `[FAIL]` | Run it again with the correct Python path (see above). If it still fails, check that all files are present — try `git clone` again or re-extract the ZIP. |
+| Empty chart / "No data" after render | Your scenario may be using `data_source.mode = "monarch"` but Monarch isn't set up. Either configure Monarch (see [Data Sources](#monarch-money-live-sync)) or switch to Manual Entry mode. |
+| Can't find the output HTML | Output files are in `output/scenarios/<slug>/<mode>/projection.html`. If you ran `run.py --scenario sample`, look in `output/scenarios/sample/deterministic/projection.html`. |
+| `ImportError: cannot import name 'tomllib'` | Your Python is older than 3.11. Install Python 3.11 or later and recreate the virtual environment. |
+| Config editor shows "Internal Server Error" | Restart the editor: press Ctrl+C to stop it, then run `.venv/bin/python admin_app.py` (Linux/macOS) or `.venv\Scripts\python.exe admin_app.py` (Windows) again. |
+| Changes to the editor don't appear | Hard-refresh your browser (Ctrl+Shift+R on Windows/Linux, Cmd+Shift+R on macOS). Browser cache may be serving an older version. |
+
+**Still stuck?** Open an [issue on GitHub](https://github.com/LemurTech/Net-Worth-Navigator/issues) and include:
+- Your operating system (Windows 10/11, macOS, Linux distro)
+- Python version (`python --version` output)
+- The full error message (copy and paste, don't paraphrase)
+- What you were trying to do when the error occurred
 
 ---
 
