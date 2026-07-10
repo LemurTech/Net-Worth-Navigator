@@ -511,7 +511,7 @@ This is the format that Monarch Money uses for CSV exports (accessible from the 
 
 > **How it works:** The importer reads the CSV, groups rows by `Account` name, and keeps the latest `Date`'s `Balance` for each account. A sample CSV is available at [`docs/assets/sample-accounts.csv`](docs/assets/sample-accounts.csv).
 
-*(Screenshot coming: CSV import preview in the Setup Panel showing account table with category/owner dropdowns)*
+![CSV import preview in the Setup Panel showing the file upload, parsed account list with category and owner dropdowns, and Source column](docs/assets/csv-import-preview.png)
 
 To use: In the Setup Panel's Accounts tab, select **CSV Import** as your data source, upload your CSV file, review the parsed accounts, and click Import & Save.
 
