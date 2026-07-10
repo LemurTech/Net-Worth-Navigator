@@ -252,7 +252,7 @@ The fastest way to see what Net Worth Navigator can do is to view one of the pre
 
 A sample projection is included on the project's GitHub Pages site — no Python, no web server, no installation needed:
 
-- **[View Sample Projection →](https://lemurtech.github.io/Net-Worth-Navigator/)** — interactive projection shell with 4 sample scenarios and 3 render modes (deterministic, historical, Monte Carlo). No installation needed.
+- **[View Sample Projection →](https://lemurtech.github.io/Net-Worth-Navigator/demo/projection.html)** — interactive projection shell with 4 sample scenarios and 3 render modes (deterministic, historical, Monte Carlo). No installation needed.
 
 #### Option B: Use the Web UI (Easiest After Setup)
 
