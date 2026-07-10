@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-07
-**Status:** v1.3.0 — Windows Unicode fix, Accounts tab loading fix, README rewrite, GitHub Pages branch.
+**Last updated:** 2026-07-10
+**Status:** v1.3.1 — Clone/delete bug fixes, nightly scenario backup, git hooks.
 
 ---
 
@@ -90,6 +90,28 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 
 ### README + GitHub Pages (2026-07-08)
 
+### Bug Fixes — Setup Panel Clone & Delete (2026-07-10)
+
+**Clone via Setup Panel silently failed** — `initCloneScenario()` sent `FormData` (multipart) but the backend `_parse_form()` only decodes URL-encoded form bodies. The form fields were silently lost; the JS redirected to the new slug where no file existed, showing the "scenarios/ directory is empty" error.
+
+**Fix:** Switched to `URLSearchParams` with `Content-Type: application/x-www-form-urlencoded`, matching the Save/Render/Validate pattern used elsewhere.
+
+**Clone warning false positive** — The Monarch warning when cloning synthetic-mode scenarios read `_accountsData.source_mode`, which is only populated after the Accounts tab loads. If the user cloned without opening Accounts, the fallback defaulted to `'monarch'`.
+
+**Fix:** Now parses `data_source.mode` directly from the TOML textarea content, which is always authoritative regardless of UI state.
+
+**Clone auto-render delay** — After creating a clone, the backend ran `_render_projection_offline()` (all 3 modes) before responding. This made the clone appear to hang.
+
+**Fix:** Removed auto-render from the clone flow. Clones are instant; the user renders via Save + Re-render when ready.
+
+**Delete modal stuck** — After deleting a scenario, the endpoint called `_render_projection_offline(None)` which re-projects all scenarios just to rebuild the shell pages, blocking the response.
+
+**Fix:** Replaced with lightweight shell rebuild: `write_scenarios_index()` + `build_scenario_shell()` + `build_compare_page()` — no projection, instant response.
+
+**Nightly scenario backup** — Nightly cron (`4d0e4e6f1a35`) backs up gitignored personal .toml files to `/home/lemurtech/.nwn-backups/` with 30-day rolling retention.
+
+**Git hooks** — `post-checkout` warns if personal scenarios go missing; `pre-rebase` + `post-rewrite` auto-snapshot and restore; `pre-commit` blocks committing personal scenarios.
+
 - **Badge cleanup:** Replaced CI and Docs badges (no pipeline/docs site yet) with last-commit and GPL license badges.
 - **Banner image:** Projection chart screenshot added below the badge row.
 - **"How It Started" rewrite** with personal backstory.
@@ -110,6 +132,11 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 - Confirm survivor spending percentage (currently 70% of retirement spending).
 - Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available.
 - Validate `[withdrawal_policy]` cash targets match intent: Accumulation $40K, Retirement $50K, Survivor $30K.
+
+### Safeguards in place
+
+- **Nightly backup cron** (`4d0e4e6f1a35`) — backs up gitignored personal scenario .toml files every midnight to `/home/lemurtech/.nwn-backups/`, 30-day retention.
+- **Git hooks** — `post-checkout` warns if personal scenarios go missing; `pre-rebase` + `post-rewrite` auto-snapshot/restore; `pre-commit` blocks committing personal scenarios.
 
 ---
 

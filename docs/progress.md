@@ -3,7 +3,23 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
-## 2026-07-09 (v1.3.0 — GitHub Pages: full projection shell with 4 samples × 3 modes)
+## 2026-07-10 (v1.3.1 — Setup Panel clone/delete fixes, nightly backup, git hooks)
+
+### Added
+
+- **Nightly scenario backup** — Cron job (`4d0e4e6f1a35`) backs up gitignored personal .toml files to `/home/lemurtech/.nwn-backups/` every midnight with 30-day rolling retention.
+- **Git hooks** — `post-checkout` warns if personal scenarios go missing; `pre-rebase` + `post-rewrite` auto-snapshot and restore; `pre-commit` blocks committing personal scenarios.
+
+### Fixed
+
+- **Clone via Setup Panel silently failed** — `initCloneScenario()` sent `FormData` (multipart) but backend `_parse_form()` only decodes URL-encoded form bodies. Form fields were lost; redirect showed "scenarios/ directory is empty". Switched to `URLSearchParams` with correct `Content-Type`.
+- **Clone Monarch warning false positive** — `_accountsData.source_mode` only populated after Accounts tab load. Now parses `data_source.mode` directly from TOML textarea content.
+- **Clone auto-render delay** — Removed `_render_projection_offline()` from clone flow. Instant clone; render on demand.
+- **Delete modal stuck** — Replaced `_render_projection_offline(None)` (re-projects all scenarios) with lightweight shell rebuild (`write_scenarios_index` + shell builders).
+
+### Changed
+
+- **Scenario file safeguards** — Both nightly backups and git hooks now protect personal (gitignored) scenario files from accidental destruction during git operations.
 
 ### Added
 

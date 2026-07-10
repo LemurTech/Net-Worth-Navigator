@@ -21,7 +21,8 @@ from fastapi.templating import Jinja2Templates
 from src.config_loader import merge_tax_tables, TAX_TABLES_DIR
 from src.csv_importer import accounts_from_csv, merge_accounts, parse_csv
 from src.definitions_page import build_definitions_page_html
-from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes, SCENARIOS_DIR
+from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes, SCENARIOS_DIR, write_scenarios_index
+from src.scenario_shell import build_scenario_shell, build_compare_page
 
 APP_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_ROOT / "output"
@@ -814,37 +815,13 @@ async def editor_submit(request: Request) -> HTMLResponse:
                 slug=clone_slug,
                 description=clone_description,
             )
-            clone_render = _render_projection_offline(created.slug)
-            if clone_render.returncode != 0:
-                details = "\n".join(
-                    part for part in [
-                        (clone_render.stdout or "").strip(),
-                        (clone_render.stderr or "").strip(),
-                    ] if part
-                ).strip()
-                context = _build_context(
-                    request,
-                    content=content,
-                    status_kind="error",
-                    status_title="Scenario cloned but render failed",
-                    status_message=f"Created scenario '{created.name}' ({created.slug}), but its initial render failed.",
-                    details=details or "No process output captured.",
-                    scenario_slug=created.slug,
-                    last_action=action,
-                    clone_name="",
-                    clone_slug="",
-                    clone_description="",
-                )
-                return templates.TemplateResponse(request, "config_editor.html", context, status_code=500)
-
             cloned_content = _read_config_text(created.slug)
             context = _build_context(
                 request,
                 content=cloned_content,
                 status_kind="success",
                 status_title="Scenario cloned",
-                status_message=f"Created and rendered scenario '{created.name}' ({created.slug}).",
-                details=(clone_render.stdout or "").strip() or None,
+                status_message=f"Created scenario '{created.name}' ({created.slug}). Render it via Save + Re-render when ready.",
                 scenario_slug=created.slug,
                 last_action=action,
                 clone_name="",
@@ -1115,8 +1092,31 @@ async def delete_scenario(request: Request) -> JSONResponse:
         shutil.rmtree(deploy_scenario_dir, ignore_errors=True)
 
     # Rebuild the shell + compare pages so the deleted scenario disappears from selectors
+    # (lightweight — just rewrites manifest + HTML, no re-projection)
     try:
-        _render_projection_offline(None)  # offline render of default refreshes shell pages
+        from src.definitions_page import build_definitions_page_html
+        # Rebuild scenario index (discovers only surviving scenario files)
+        ts = datetime.now().isoformat()
+        write_scenarios_index(output_root=OUTPUT_DIR / "scenarios", cache_timestamp=None)
+        # Re-read the updated index
+        index_path = OUTPUT_DIR / "scenarios" / "index.json"
+        with open(index_path) as fh:
+            manifest = json.load(fh)
+        # Rebuild shell pages
+        build_scenario_shell(
+            manifest=manifest,
+            output_path=OUTPUT_DIR / "projection.html",
+        )
+        build_compare_page(
+            manifest=manifest,
+            output_path=OUTPUT_DIR / "compare.html",
+        )
+        # Rebuild definitions page
+        defs_html = build_definitions_page_html(
+            editor_url="/finances/config/",
+            projection_url="/finances/projection.html",
+        )
+        (OUTPUT_DIR / "definitions.html").write_text(defs_html, encoding="utf-8")
     except Exception:
         pass  # non-fatal; shell pages will be stale until next render
 

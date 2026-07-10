@@ -2892,7 +2892,11 @@
           if (!content) return;
 
           // Soft warning when cloning a Monarch-mode scenario
-          var sourceMode = (_accountsData && _accountsData.source_mode) || 'monarch';
+          // Parse data_source.mode directly from the TOML text
+          // (authoritative — no dependency on radio button state)
+          var sourceMode = 'monarch';
+          var modeMatch = content.value.match(/^\[data_source\]\s*[\s\S]*?^\s*mode\s*=\s*"(monarch|synthetic|csv_import)"/m);
+          if (modeMatch) sourceMode = modeMatch[1];
           if (sourceMode !== 'synthetic') {
             var proceed = confirm(
               'The source scenario is configured for Monarch data.\n\n' +
@@ -2906,17 +2910,17 @@
 
           btn.disabled = true;
           btn.textContent = 'Cloning…';
-          var formData = new FormData();
-          formData.set('content', content.value);
-          formData.set('scenario_slug', currentScenarioSlug);
-          formData.set('action', 'clone');
-          formData.set('clone_name', name.trim());
-          formData.set('clone_slug', slug.trim());
-          formData.set('clone_description', (desc || '').trim());
+          var params = new URLSearchParams();
+          params.set('content', content.value);
+          params.set('scenario_slug', currentScenarioSlug);
+          params.set('action', 'clone');
+          params.set('clone_name', name.trim());
+          params.set('clone_slug', slug.trim());
+          params.set('clone_description', (desc || '').trim());
           fetch(editorRelativeUrl(''), {
             method: 'POST',
-            body: formData,
-            headers: { 'x-requested-with': 'fetch' },
+            body: params.toString(),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-requested-with': 'fetch' },
           }).then(function (r) { return r.text(); }).then(function () {
             showSuccess('Scenario "' + name.trim() + '" cloned.');
             window.location.href = window.location.href.split('?')[0] + '?scenario=' + slug.trim();
