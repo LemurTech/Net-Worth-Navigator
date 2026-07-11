@@ -11,6 +11,8 @@
 **v1.3.0** — A local net worth projection and financial event modeling tool. Create and compare multiple scenarios.
 
 > **Got 30 seconds?** Jump straight to the [pre-rendered sample](#option-a-view-the-pre-rendered-sample-no-setup-required) and explore a working projection without installing anything.
+>
+> **New here?** The [Net Worth Navigator User Guide](https://lemurtech.github.io/Net-Worth-Navigator/) has full walkthroughs, explanations, and troubleshooting.
 
 ---
 
