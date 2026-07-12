@@ -3,6 +3,13 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-12 (v1.4.1 — Shell iframe recursion fix for missing scenario modes)
+
+### Fixed
+
+- **Shell page iframe recursion** — When `scenarios/index.json` contained scenarios with zero rendered modes (e.g., after an incomplete deploy), `projectionUrlFor()` returned `"#"` as a fallback. Setting `frame.src = "#"` loaded the shell page inside its own iframe, creating infinite iframe nesting and filling the browser with scrollbars. Changed fallback to `""` (empty string — safe, no load).
+- **No-mode guard added** — `activateScenario()` now checks whether the selected scenario has any rendered mode entries. If none exist, it shows an actionable empty-state message ("No projection available — use Save + Re-render") with a link to the editor, instead of silently loading a bad URL.
+
 ## 2026-07-10 (v1.4.0 — Start-year auto-alignment with balance data as-of date)
 
 ### Added

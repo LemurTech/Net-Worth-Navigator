@@ -577,7 +577,7 @@ def build_scenario_shell(
 
       function projectionUrlFor(selectedScenario, selectedMode, {{ embed = false, force = false }} = {{}}) {{
         const selected = modeEntryFor(selectedScenario, selectedMode);
-        if (!selected) return "#";
+        if (!selected) return "";
         const base = selected.projection_path;
         const version = selected.rendered_at || manifest.generated_at || new Date().toISOString();
         const params = new URLSearchParams();
@@ -619,7 +619,7 @@ def build_scenario_shell(
           emptyState.classList.add("active");
           description.textContent = "Render a scenario from the editor to populate the public selector.";
           frame.removeAttribute("src");
-          openLink.setAttribute("href", "#");
+          openLink.setAttribute("href", "{setup_url}");
           modeSelect.innerHTML = "";
           modeSelect.disabled = true;
           const emptySetupLink = document.getElementById("setup-scenarios-link");
@@ -632,7 +632,20 @@ def build_scenario_shell(
         select.value = selected.slug;
         const resolvedMode = populateModeOptions(selected, requestedMode || getModeFromQuery() || selected.default_mode);
         const selectedModeEntry = modeEntryFor(selected, resolvedMode);
-        const modeLabel = selectedModeEntry?.label || "Mode unavailable";
+        if (!selectedModeEntry) {{
+          // Scenario exists but has no rendered modes — show actionable empty state
+          frameWrap.classList.add("empty");
+          emptyState.classList.add("active");
+          description.textContent = "No projection available for \"" + selected.name + "\". Open the editor and use Save + Re-render.";
+          frame.removeAttribute("src");
+          openLink.setAttribute("href", setupUrlFor(selected));
+          const setupLink = document.getElementById("setup-scenarios-link");
+          if (setupLink) {{
+            setupLink.href = setupUrlFor(selected);
+          }}
+          return;
+        }}
+        const modeLabel = selectedModeEntry.label;
         const scenarioText = selected.description || "No description provided.";
         description.textContent = scenarioText;
         frame.src = projectionUrlFor(selected, resolvedMode, {{ embed: true }});

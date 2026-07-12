@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-10
-**Status:** v1.4.0 — Start-year auto-alignment with balance data as-of date.
+**Last updated:** 2026-07-12
+**Status:** v1.4.1 — Shell iframe recursion fix for missing scenario modes.
 
 ---
 
