@@ -3,6 +3,12 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-12 (v1.4.2 — Shell page JS syntax error fix)
+
+### Fixed
+
+- **Shell page SyntaxError at line 602** — The no-mode guard message string used `\"` inside a Python f-string (`f"""..."""`), where `\"` is consumed as a Python quote escape, producing bare `""` in the JS output instead of the intended `\"`. This caused `SyntaxError: Unexpected string` at line 602, preventing the entire script from executing — the `fetch()` for the scenario manifest never ran, leaving the page stuck at "Reading scenario manifest…". Replaced outer JS quotes with single quotes to avoid the escaping issue entirely.
+
 ## 2026-07-12 (v1.4.1 — Shell iframe recursion fix for missing scenario modes)
 
 ### Fixed

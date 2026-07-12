@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-12
-**Status:** v1.4.1 — Shell iframe recursion fix for missing scenario modes.
+**Status:** v1.4.2 — Shell page JS syntax error fix (f-string quote escaping).
 
 ---
 

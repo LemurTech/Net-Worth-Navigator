@@ -636,7 +636,7 @@ def build_scenario_shell(
           // Scenario exists but has no rendered modes — show actionable empty state
           frameWrap.classList.add("empty");
           emptyState.classList.add("active");
-          description.textContent = "No projection available for \"" + selected.name + "\". Open the editor and use Save + Re-render.";
+          description.textContent = 'No projection available for "' + selected.name + '". Open the editor and use Save + Re-render.';
           frame.removeAttribute("src");
           openLink.setAttribute("href", setupUrlFor(selected));
           const setupLink = document.getElementById("setup-scenarios-link");
