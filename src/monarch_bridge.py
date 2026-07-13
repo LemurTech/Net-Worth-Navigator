@@ -20,9 +20,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from src.config_loader import load_config as shared_load_config
+from src.config_loader import CONFIG_PATH as DEFAULT_CONFIG_PATH, load_config as shared_load_config
 
-CONFIG_PATH = Path(__file__).parent.parent / "config.toml"
+CONFIG_PATH = DEFAULT_CONFIG_PATH
 
 _DEFAULT_MCP_ROOT = Path("/opt/monarch-mcp-server" if sys.platform != "win32" else r"C:\monarch-mcp-server")
 
