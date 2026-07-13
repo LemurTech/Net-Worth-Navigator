@@ -13,7 +13,7 @@ Three public functions:
 import csv
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from src.monarch_bridge import (
     classify_accounts,
@@ -26,7 +26,7 @@ from src.monarch_bridge import (
 _DATE_FMTS = ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y/%m/%d")
 
 
-def _parse_date(val: str) -> datetime | None:
+def _parse_date(val: str) -> Optional[datetime]:
     """Try common date formats; return None if none match."""
     cleaned = val.strip().strip('"')
     for fmt in _DATE_FMTS:
@@ -123,13 +123,13 @@ def accounts_from_csv(csv_path: str | Path) -> dict[str, float]:
     return {e["name"]: e["balance"] for e in entries}
 
 
-def last_csv_data_date(entries: list[dict]) -> datetime.date | None:
+def last_csv_data_date(entries: list[dict]) -> Optional[date]:
     """Return the latest date across all CSV entries, or None if empty.
 
     entries should be the list returned by parse_csv() — each entry must
     have a 'date' key as a %Y-%m-%d string.
     """
-    latest: date | None = None
+    latest: Optional[date] = None
     for e in entries:
         raw = e.get("date")
         if not raw:
