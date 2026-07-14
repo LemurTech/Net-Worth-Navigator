@@ -588,7 +588,7 @@ def build_scenario_shell(
       }}
 
       function setupUrlFor(selected) {{
-        const url = new URL("{setup_url}", window.location.origin);
+        const url = new URL("{setup_url}", window.location.href);
         if (selected && selected.slug) {{
           url.searchParams.set("scenario", selected.slug);
         }}
