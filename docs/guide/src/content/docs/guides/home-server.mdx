@@ -1,0 +1,60 @@
+---
+title: Running on a Home Web Server
+description: Serve the projection pages from a local web server for access on any device
+---
+
+Net Worth Navigator generates static HTML files — no backend server needed after rendering. You can serve these files from any web server on your local network, making them accessible from tablets, phones, and other computers in your home.
+
+## Why Run a Web Server?Section titled "Why Run a Web Server?"
+
+The generated projection pages work when opened as local files (`file://`), but serving them from a web server gives you:
+
+- **Network access** — view projections from any device on your LAN (phone, tablet, TV)
+- **Scenario switching** — the shell page loads the scenario manifest from the server, giving you access to all scenarios without re-rendering
+- **Compare page** — the comparison feature reads sidecar data files, which require HTTP serving to work correctly
+
+## Quick Start: Python's Built-in ServerSection titled "Quick Start: Python's Built-in Server"
+
+The simplest approach — no additional software needed:
+
+```bash
+cd output
+python3 -m http.server 8010
+```
+
+Then visit **[http://localhost:8010/projection.html](http://localhost:8010/projection.html)** from the same machine, or **http://YOUR_IP:8010/projection.html** from another device on your network.
+
+Find your local IP with `ip addr` (Linux), `ipconfig` (Windows), or `ifconfig` (macOS).
+
+## Option: Run Alongside the Web UI EditorSection titled "Option: Run Alongside the Web UI Editor"
+
+When you run `admin_app.py`, it starts a FastAPI server on port 8010 that serves both the configuration editor **and** the static output files. So if you're already using the Setup Panel, your projections are already being served:
+
+```bash
+.venv/bin/python admin_app.py
+# → Serves projection at http://localhost:8010/projection.html
+```
+## Option: Dedicated Web Server (nginx)Section titled "Option: Dedicated Web Server (nginx)"
+
+For a more permanent setup, you can serve the output directory with a dedicated web server like nginx. A minimal configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name networth.local;
+    root /path/to/Net-Worth-Navigator/output;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+## Security NoteSection titled "Security Note"
+
+The built-in Python server and the web UI editor listen on **localhost** by default — only accessible from the machine running them. To access from other devices on your network, you need to bind to `0.0.0.0`:
+
+```bash
+python3 -m http.server 8010 --bind 0.0.0.0
+```
+
+**Important:** Only do this on a trusted local network. There is no authentication. See the [Security Notes](/Net-Worth-Navigator/reference/license/) for more details.

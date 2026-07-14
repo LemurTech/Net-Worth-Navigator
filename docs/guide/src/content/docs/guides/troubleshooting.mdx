@@ -1,0 +1,63 @@
+---
+title: Troubleshooting
+description: Common issues and how to fix them
+---
+
+Here are the most common issues encountered when setting up and running Net Worth Navigator.
+
+## Common IssuesSection titled "Common Issues"
+
+Symptom
+Likely Cause & Fix
+
+`python` not found
+Python isn't installed or isn't on your PATH. **Windows:** Re-run the Python installer and check "Add Python to PATH". **Linux/macOS:** Try `python3` instead of `python`.
+
+`pip install` fails
+You're using the system Python, not the virtual environment. Use the full path: `.venv/bin/python -m pip install ...` (Linux/macOS) or `.venv\Scripts\python.exe -m pip install ...` (Windows).
+
+`cannot execute binary file` (Windows)
+You're running a Linux-format path on Windows. Use backslashes: `.venv\Scripts\python.exe` not `.venv/bin/python`.
+
+`ExecutionPolicy` error (Windows PowerShell)
+PowerShell restricts script execution. Run this once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then retry.
+
+Windows Firewall blocks the editor
+When the firewall prompt appears: click **Allow access**, uncheck **Public networks**, keep **Private networks** checked.
+
+`ModuleNotFoundError: No module named 'plotly'`
+Dependencies aren't installed. Run `.venv/bin/python -m pip install -r requirements.txt` (Linux/macOS) or `.venv\Scripts\python.exe -m pip install -r requirements.txt` (Windows).
+
+`verify_install.py` shows `[FAIL]`
+Run it again with the correct Python path (see above). If it still fails, check that all files are present — try `git clone` again or re-extract the ZIP.
+
+Empty chart / "No data" after render
+Your scenario may be using `data_source.mode = "monarch"` but Monarch isn't set up. Either [configure Monarch](/Net-Worth-Navigator/data-sources/monarch-money/) or switch to Manual Entry mode.
+
+Can't find the output HTML
+Output files are in `output/scenarios///projection.html`. If you ran `run.py --scenario sample`, look in `output/scenarios/sample/deterministic/projection.html`.
+
+`ImportError: cannot import name 'tomllib'`
+Your Python is older than 3.11. Install Python 3.11 or later and recreate the virtual environment.
+
+Config editor shows "Internal Server Error"
+Restart the editor: press Ctrl+C to stop it, then run the start command again.
+
+Changes to the editor don't appear
+Hard-refresh your browser (Ctrl+Shift+R on Windows/Linux, Cmd+Shift+R on macOS). Browser cache may be serving an older version.
+
+## Still Stuck?Section titled "Still Stuck?"
+
+Open an [issue on GitHub](https://github.com/LemurTech/Net-Worth-Navigator/issues) and include:
+
+- **Operating system** (Windows 10/11, macOS, Linux distro)
+- **Python version** (`python --version` or `python3 --version`)
+- **Data source mode** (Manual, Monarch, or CSV)
+- **The full error message** — copy and paste, don't paraphrase
+- **Does it happen with a sample scenario?** Try reproducing with the sample plan first
+- **What you were trying to do** when the error occurred
+
+## Getting HelpSection titled "Getting Help"
+
+- **GitHub Issues** — bug reports and feature requests
+- **README** — the [Troubleshooting section](https://github.com/LemurTech/Net-Worth-Navigator#troubleshooting) in the README is maintained alongside this guide

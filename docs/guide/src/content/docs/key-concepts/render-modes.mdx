@@ -1,0 +1,25 @@
+---
+title: Render Modes
+description: Deterministic, Historical, and Monte Carlo projection modes
+---
+
+Each scenario can be rendered in up to three modes. The modes differ only in how investment returns are applied — everything else (income, spending, events, taxes) uses the same engine.
+
+## Deterministic ModeSection titled "Deterministic Mode"
+
+**The default. Start here.**
+
+A single trajectory using fixed return assumptions from your scenario's `[assumptions]` section:
+
+- `stock_return` — expected annual stock return
+- `bond_return` — expected annual bond return
+- `equity_allocation` — percentage allocated to stocks (rest in bonds)
+- `inflation` — annual inflation rate
+
+The blended return is computed as: `equity_allocation * stock_return + (1 - equity_allocation) * bond_return`
+
+Every year uses the same return. The result is a clean, single-line chart that's easy to understand. Use this mode for most analysis and scenario comparison.
+
+**Best for:** day-to-day planning, scenario comparison, what-if analysis.
+
+![Deterministic projection — a single clean line chart showing the net worth trajectory under fixed return assumptions

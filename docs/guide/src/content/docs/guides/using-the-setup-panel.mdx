@@ -1,0 +1,77 @@
+---
+title: Using the Setup Panel
+description: A visual tour of the browser-based configuration interface
+---
+
+The Setup Panel at `http://localhost:8010/setup` is the primary way to create, edit, and manage your scenarios. It has three tabs and a global action bar.
+
+## Quick StartSection titled "Quick Start"
+
+- Start the editor: `.venv/bin/python admin_app.py` (Linux/macOS) or `.venv\Scripts\python.exe admin_app.py` (Windows)
+- Open **[http://localhost:8010/setup](http://localhost:8010/setup)**
+- Click **New from Template**
+- Choose **Single-Person** or **Couple / Two-Person**, enter a name, and click **Create**
+- You're now in the Setup Panel for your new scenario. Fill in each tab:
+
+1. **Metadata tab** — edit your plan name, description, household members, cash targets, and investment assumptions
+- **Accounts tab** — select your data source (Manual, Monarch, or CSV) and enter your starting balances
+- **Raw TOML tab** — make advanced edits directly in the configuration file
+- Click **Save** to save your changes
+- Click **Validate** to check for configuration errors
+- Click **Re-render** to generate the projection
+
+**Tip:** The **Withdrawal / Surplus Order** settings in the Metadata tab control the priority of account buckets. Feel free to leave the defaults — they're sensible for most households.
+
+## The Three TabsSection titled "The Three Tabs"
+### Metadata TabSection titled "Metadata Tab"
+
+This tab holds your scenario's high-level settings:
+
+- **Plan Name & Description** — a human-readable name and notes
+- **Household Members** — names, birth years, retirement years, and age sliders for each person
+- **Cash Targets** — reserve targets for accumulation, retirement, and survivor phases
+- **Assumptions & Years** — stock return, bond return, inflation, equity allocation, start/end years, state tax selection
+- **Withdrawal / Surplus Order** — drag-to-reorder chips controlling the priority of account buckets
+- **Data Source** — select Manual Entry, Monarch Money, or CSV Import
+
+### Accounts TabSection titled "Accounts Tab"
+
+Changes based on your selected data source:
+
+- **Manual Entry:** Structured form for investable balances (taxable, traditional IRA, Roth, cash), non-investable assets (home value, vehicles), property values, and liability balances
+- **Monarch Money:** Account table with category/owner/disabled controls and a **Refresh from Monarch** button
+- **CSV Import:** File upload, parsed account preview with category/owner dropdowns, and **Import & Save**
+
+### Raw TOML TabSection titled "Raw TOML Tab"
+
+A text editor for the raw TOML configuration file. Every setting in the metadata and accounts tabs is stored here. Use this tab for bulk edits, copy-pasting event blocks, or advanced configuration changes that aren't exposed in the structured controls.
+
+## Global Action BarSection titled "Global Action Bar"
+
+At the bottom of the panel:
+
+Button
+What It Does
+
+**Save**
+Saves current changes
+
+**Validate**
+Runs semantic validation on your config
+
+**Save + Re-render**
+Saves and renders the current scenario
+
+**Save + Render All**
+Saves and re-renders every scenario
+
+**New from Template**
+Creates a new scenario from a starter template
+
+## Scenario ManagementSection titled "Scenario Management"
+
+- **Scenario dropdown** at the top — switch between your plans. User scenarios appear first, then a separator, then sample scenarios
+- **Rename** — change the slug via the edit button next to the slug
+- **Default checkbox** — mark a scenario as the default (appears first in the projection shell)
+- **Clone** — duplicate the current scenario (changes to suggested slug if the name exists)
+- **Delete** — remove the scenario with confirmation

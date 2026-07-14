@@ -1,0 +1,71 @@
+---
+title: Project Structure
+description: Layout of the repository
+---
+
+```plaintext
+Net-Worth-Navigator/
+├── run.py                        ← Main entry point (CLI)
+├── admin_app.py                  ← Web UI backend (FastAPI)
+├── scripts/
+│   └── verify_install.py         ← Installation health check
+├── src/
+│   ├── model.py                  ← Year-by-year simulation engine
+│   ├── charts.py                 ← Plotly HTML chart and page builder
+│   ├── tables.py                 ← HTML table builders
+│   ├── scenario_shell.py         ← Shell and compare page HTML
+│   ├── tax_model.py              ← Federal + state tax modeling
+│   ├── monarch_bridge.py         ← Monarch Money sync
+│   ├── config_loader.py          ← Config merging and resolution
+│   ├── scenarios.py              ← Scenario discovery and manifest
+│   ├── sidecars.py               ← CSV/JSON analysis sidecars
+│   ├── csv_importer.py           ← CSV account import
+│   └── version.py                ← Single source of truth
+├── scenarios/
+│   ├── starter.toml              ← Single-person blank template
+│   ├── starter-couple.toml       ← Couples blank template
+│   ├── sample.toml               ← Single-person demo (Alex)
+│   ├── sample-couples.toml       ← Couples demo (Alex & Sam)
+│   ├── sample-a.toml             ← A/B comparison — moderate
+│   ├── sample-b.toml             ← A/B comparison — growth
+│   └── (your scenarios here)
+├── config/
+│   ├── tax_tables/               ← State tax bracket files
+│   └── return_sequences/
+│       └── us_balanced_returns.csv
+├── templates/
+│   ├── config_editor.html        ← Raw TOML editor (legacy)
+│   └── setup_panel.html          ← Scenario Setup Panel UI
+├── output/                       ← Generated HTML (gitignored)
+├── tests/                        ← Python test suite
+├── docs/                         ← Memory Bank + plans
+│   ├── guide/                    ← User Guide (Starlight)
+│   ├── assets/                   ← Screenshots and media
+│   └── plans/                    ← Design plans
+└── config.toml                   ← Legacy compatibility
+```
+## Key FilesSection titled "Key Files"
+
+File
+Purpose
+
+`run.py`
+CLI entry point. Run with `--scenario ` for single scenarios, `--offline` for cache-only
+
+`admin_app.py`
+FastAPI server for the Setup Panel and raw TOML editor
+
+`src/model.py`
+Core simulation engine — year-by-year cash flow, events, taxes, growth
+
+`src/charts.py`
+Generates the interactive Plotly HTML output with all tabs
+
+`src/tax_model.py`
+Bracket-based federal tax, state tax (all 50 states), SS taxation, RMD
+
+`src/monarch_bridge.py`
+Live Monarch Money integration and account classification
+
+`src/csv_importer.py`
+CSV parsing, account merging, and classification

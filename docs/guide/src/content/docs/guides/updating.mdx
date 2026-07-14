@@ -1,0 +1,101 @@
+---
+title: Updating Net Worth Navigator
+description: How to update the project using Git or by downloading a new release
+---
+
+Net Worth Navigator is actively developed, with new features and fixes released regularly. This page explains how to update your local installation.
+
+## Quick AnswerSection titled "Quick Answer"
+
+How you installed
+How to update
+
+**Git clone**
+`git pull` (see [Using Git](#using-git) below)
+
+**ZIP download**
+Download the latest ZIP and re-apply your scenarios (see [ZIP update](#zip-download-update) below)
+
+**Before updating:** Make a backup of your `scenarios/` directory. Your scenario files contain your personal financial data and are not part of the project code.
+
+## Using GitSection titled "Using Git"
+
+If you cloned the repository with Git, updating is straightforward:
+
+```bash
+cd /path/to/Net-Worth-Navigator
+git pull
+```
+
+This downloads the latest changes from the repository. After pulling, re-install any new dependencies:
+
+```bash
+.venv/bin/python -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Your personal scenario files (in `scenarios/`) are preserved — they are not tracked by Git by default, so `git pull` won't touch them.
+
+### What if Git reports a conflict?Section titled "What if Git reports a conflict?"
+
+If you have made local changes to files that are also tracked by Git (such as `run.py` or `README.md`), `git pull` may report a conflict. The safest approach is to stash your changes, pull, then re-apply:
+
+```bash
+git stash
+git pull
+git stash pop
+```
+
+If the stash pop causes conflicts, review the changes and keep yours or the upstream version as appropriate.
+
+### After updatingSection titled "After updating"
+
+- Verify the installation:
+
+```bash
+.venv/bin/python scripts/verify_install.py
+```
+- Re-render your scenarios:
+
+```bash
+.venv/bin/python run.py --offline --scenario myplan
+```
+- Check the [release notes](https://github.com/LemurTech/Net-Worth-Navigator/releases) for any breaking changes to your scenario configuration.
+
+## ZIP Download UpdateSection titled "ZIP Download Update"
+
+If you originally downloaded the project as a ZIP file:
+
+- **Back up your scenarios** — copy your entire `scenarios/` folder to a safe location
+- Download the latest ZIP from the [releases page](https://github.com/LemurTech/Net-Worth-Navigator/releases) or the main repository page
+- Extract it to a new folder (don't overwrite your existing installation)
+- Copy your backed-up `scenarios/` folder into the new installation
+- Create a fresh virtual environment and install dependencies:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+- Verify and re-render as above
+
+**Tip:** If you find yourself updating frequently, consider cloning with Git instead. It makes updates much simpler.
+
+## Checking Your VersionSection titled "Checking Your Version"
+
+To see which version you have:
+
+```bash
+.venv/bin/python run.py --version
+```
+
+The version number follows [SemVer](https://semver.org/) (`MAJOR.MINOR.PATCH`). A MAJOR bump means your scenario TOML files may need changes. MINOR and PATCH bumps are backward-compatible.
+
+## Release NotesSection titled "Release Notes"
+
+All releases are documented on the [GitHub Releases page](https://github.com/LemurTech/Net-Worth-Navigator/releases). Key things to look for in release notes:
+
+- **Breaking changes** — TOML schema changes, removed features, or behavior changes that may affect your scenarios
+- **New features** — what was added and how to use it
+- **Bug fixes** — issues that were resolved

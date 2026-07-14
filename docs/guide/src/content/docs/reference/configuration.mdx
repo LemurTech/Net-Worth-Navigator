@@ -1,0 +1,158 @@
+---
+title: Configuration Reference
+description: Full TOML schema for scenario files
+---
+
+Scenario settings live in `scenarios/*.toml` files. Each file is a complete self-contained financial plan.
+
+All config keys use **snake_case** (lowercase with underscores). Section headers are also lowercase or snake_case.
+
+## Top-Level Sections
+
+### `[scenario]`
+
+```toml
+[scenario]
+name = "My Retirement Plan"         # Human-readable name
+slug = "myplan"                     # URL-friendly ID (used in --scenario flag)
+description = "A comfortable retirement with regular travel."
+household_type = "couple"           # "single" or "couple" (inferred from [person2] if absent)
+is_default = false                  # Marks this as the default scenario
+is_template = true                  # Hidden from UI dropdown (for starter templates only)
+```
+
+### `[simulation]`
+
+```toml
+[simulation]
+start_year = 2026
+end_year = 2060
+render_modes = ["deterministic", "historical", "monte_carlo"]
+num_runs = 1000                     # Monte Carlo simulation count
+seed = 42                           # Random seed for reproducible MC results
+portfolio_return_volatility = 0.12  # Annual return volatility for MC sampling
+historical_returns_path = "config/return_sequences/us_balanced_returns.csv"
+real_dollar_basis = true            # Show values in start-year purchasing power (default false)
+```
+
+**`real_dollar_basis`** — When `true`, all chart and table monetary figures are deflated to start-year purchasing power (for example, in 2026 dollars when `start_year = 2026`). The chart subtitle shows a "(in YYYY dollars)" tag and a value-basis note appears on the page. Default `false` (nominal future-dollar display).
+
+### `[data_source]`
+
+```toml
+[data_source]
+mode = "synthetic"                  # "monarch", "synthetic", or "csv_import"
+```
+
+### `[synthetic_start]`
+
+Used only when `[data_source].mode = "synthetic"`:
+
+```toml
+[synthetic_start]
+taxable = 120000
+trad_ira = 380000
+roth = 95000
+cash = 45000
+home_value = 620000
+vehicles = 0
+taxable_cost_basis = 0
+roth_contribution_basis = 0
+```
+
+### `[person1]` / `[person2]`
+
+```toml
+[person1]
+name = "Alex"
+dob = "1972-06-15"                 # YYYY-MM-DD format
+life_expectancy = 90                # Age at end-of-plan
+retirement_year = 2038
+ss_start_age = 67
+
+# Income
+annual_take_home = 130000          # Net (take-home) income
+annual_take_home_real_raise = 0.01 # Annual real raise above inflation
+gross_income = 180000              # Gross income (for contribution calculations)
+contribution_method = "percent_of_income"
+retirement_contribution_percent = 0.24
+annual_401k_contribution_split = { trad_ira = 0.70, roth = 0.30 }
+annual_ira_contribution = 0
+
+# Social Security (age-keyed monthly amounts)
+[social_security_benefits]
+67 = 2600
+70 = 3200
+```
+
+### `[spending]`
+
+```toml
+[spending]
+retirement_annual = 82000          # Annual spending in retirement (both alive)
+survivor_percent_of_retirement = 0.70  # Survivor phase spending as % of retirement
+debt_service_handling = "auto_reduce"  # "auto_reduce" or "included_in_target"
+```
+
+### `[withdrawal_policy]`
+
+```toml
+[withdrawal_policy]
+accumulation_cash_target = 40000
+retirement_cash_target = 50000
+survivor_cash_target = 30000
+
+accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
+retirement_withdrawal_order = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+survivor_withdrawal_order = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+
+accumulation_surplus_order = ["roth", "taxable"]
+retirement_surplus_order = ["roth", "taxable"]
+survivor_surplus_order = ["roth", "taxable"]
+```
+
+### `[assumptions]`
+
+```toml
+[assumptions]
+stock_return = 0.07
+bond_return = 0.035
+inflation = 0.03
+equity_allocation = 0.70
+```
+
+### `[[liabilities]]`
+
+```toml
+[[liabilities]]
+name = "Home Mortgage"
+annual_rate = 0.065
+monthly_base = 1675
+monthly_escrow = 420              # Property tax + insurance (subtracted from freed cash)
+monthly_extra = 0
+type = "mortgage"
+
+[[liabilities]]
+name = "RAV4 Hybrid Auto Loan"
+annual_rate = 0.049
+monthly_base = 495
+monthly_extra = 0
+type = "auto"
+```
+
+### `[[events]]`
+
+See the [Event Types](/Net-Worth-Navigator/reference/event-types/) page for the full schema of each event type.
+
+### `[accounts]`
+
+Used only in Monarch or CSV Import mode:
+
+```toml
+[accounts]
+disabled = ["Account Name A", "Account Name B"]
+
+"Vanguard Traditional IRA" = { category = "trad_ira", owner = "person1" }
+"Vanguard Roth IRA" = { category = "roth", owner = "person2" }
+"Checking" = "cash"
+```
