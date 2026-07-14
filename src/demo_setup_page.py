@@ -74,17 +74,28 @@ _STYLES = """
   .toml-box { background: #0f1725; border-radius: 6px; border: 1px solid #243142;
               padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
               font-size: 12px; line-height: 1.5; color: #cbd5e1;
-              overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+              overflow-x: auto; white-space: pre; }
   .toml-box .comment { color: #64748b; font-style: italic; }
   .data-source-badge { display: inline-block; padding: 2px 10px;
                        border-radius: 99px; font-size: 11px; font-weight: 600;
                        background: #1e293b; color: #94a3b8;
                        border: 1px solid #475569; }
+  .scenario-select { background: #1e293b; color: #e5edf7; border: 1px solid #475569;
+                     border-radius: 6px; padding: 6px 10px; font-size: 13px;
+                     font-family: inherit; cursor: pointer;
+                     min-width: 180px; }
 """
 
 
-def build_demo_setup_page(*, config_path: Path, output_path: Path, slug: str) -> None:
-    """Generate a static read-only setup page from a scenario TOML file."""
+def build_demo_setup_page(
+    *, config_path: Path, output_path: Path, slug: str,
+    scenario_options: list[tuple[str, str]] | None = None,
+) -> None:
+    """Generate a static read-only setup page from a scenario TOML file.
+
+    scenario_options: list of (slug, name) for the scenario selector dropdown.
+                      If None, no dropdown is shown.
+    """
     import tomllib
 
     raw_toml = config_path.read_text(encoding="utf-8")
@@ -143,6 +154,15 @@ def build_demo_setup_page(*, config_path: Path, output_path: Path, slug: str) ->
     spending_retirement = spending.get("retirement_annual", "")
     debt_handling = spending.get("debt_service_handling", "")
 
+    # ── Scenario options dropdown ──────────────────────────────────────
+    selector_html = ""
+    if scenario_options:
+        def _option_tag(s, n):
+            sel = " selected" if s == slug else ""
+            return f'<option value="./scenarios/{s}/setup.html"{sel}>{escape(n)}</option>'
+        opts = "".join(_option_tag(s, n) for s, n in scenario_options)
+        selector_html = f'<select class="scenario-select" onchange="window.location.href=this.value">{opts}</select>'
+    
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,12 +173,15 @@ def build_demo_setup_page(*, config_path: Path, output_path: Path, slug: str) ->
 </head>
 <body>
 
-<div class="page-header">
+|<div class="page-header">
   <div>
     <h1 class="page-title">Scenario Setup <span class="version-tag">read-only demo</span></h1>
     <p class="page-subtitle">{escape(scenario.get("name", slug))}</p>
   </div>
-  <a class="back-link" href="./projection.html?scenario={escape(slug)}">← Back to projection</a>
+  <div style="display:flex;align-items:center;gap:10px">
+    {selector_html}
+    <a class="back-link" href="./projection.html?scenario={escape(slug)}">← Back to projection</a>
+  </div>
 </div>
 
 <div class="config-section">

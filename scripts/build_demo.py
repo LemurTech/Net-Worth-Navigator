@@ -83,6 +83,18 @@ def main():
     sys.path.insert(0, str(REPO_ROOT))
     from src.demo_setup_page import build_demo_setup_page  # noqa: E402
 
+    # Build name map from TOML files
+    import tomllib
+    scenario_names = {}
+    for slug in SAMPLE_SLUGS:
+        cfg_path = REPO_ROOT / "scenarios" / f"{slug}.toml"
+        if cfg_path.exists():
+            cfg = tomllib.loads(cfg_path.read_text())
+            scenario_names[slug] = cfg.get("scenario", {}).get("name", slug)
+        else:
+            scenario_names[slug] = slug
+    scenario_options = [(s, scenario_names[s]) for s in SAMPLE_SLUGS]
+
     for slug in SAMPLE_SLUGS:
         config_path = REPO_ROOT / "scenarios" / f"{slug}.toml"
         if config_path.exists():
@@ -90,6 +102,7 @@ def main():
                 config_path=config_path,
                 output_path=DEMO / "scenarios" / slug / "setup.html",
                 slug=slug,
+                scenario_options=scenario_options,
             )
             print(f"  {slug}/setup.html")
 
@@ -98,6 +111,7 @@ def main():
         config_path=REPO_ROOT / "scenarios" / "sample.toml",
         output_path=DEMO / "setup.html",
         slug="sample",
+        scenario_options=scenario_options,
     )
     print("  demo/setup.html (default)")
 
