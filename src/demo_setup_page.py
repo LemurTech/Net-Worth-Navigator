@@ -48,6 +48,7 @@ def _fmt_dollar(val, default="") -> str:
 _STYLES = """
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
          margin: 0; padding: 20px; background: #0b1220; color: #e5edf7; }
+  html { background: #0b1220; }
   .page-header { display: flex; align-items: center; justify-content: space-between;
                  margin-bottom: 20px; padding-bottom: 12px;
                  border-bottom: 1px solid #243142; flex-wrap: wrap; gap: 8px; }
