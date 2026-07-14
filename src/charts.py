@@ -168,7 +168,7 @@ _TABS_CSS = """
   .kpi-value { font-size: 29px; line-height: 1.05; font-weight: 700; color: #f8fafc;
                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid #243142;
-          overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
   .tab-btn { padding: 8px 18px; border: none; background: none; cursor: pointer;
              font-size: 14px; color: #93a4ba; border-bottom: 3px solid transparent;
              margin-bottom: -2px; transition: color .15s; flex: 0 0 auto;
