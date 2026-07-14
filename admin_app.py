@@ -119,6 +119,13 @@ def _backup_and_write(content: str, scenario_slug: str | None = None) -> Path:
         backup_path.write_text(current_content, encoding="utf-8")
 
     _config_path(scenario_slug).write_text(content, encoding="utf-8")
+    # fsync to flush through bind-mount / Docker storage delay
+    config_path = _config_path(scenario_slug)
+    fd = os.open(str(config_path), os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     _prune_backups(backup_dir)
     return backup_path
 
@@ -1192,6 +1199,13 @@ def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None 
         backup_path.write_text(current_content, encoding="utf-8")
 
     config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    # fsync to flush the write through any bind-mount / Docker storage delay
+    # so the file is immediately visible from the host side.
+    fd = os.open(str(config_path), os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     _prune_backups(backup_dir)
     return backup_path
 
@@ -1756,7 +1770,18 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         )
         if not any_recognized:
             return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)
-        # Recognized fields were sent but none changed — still a success (e.g. Save + Re-render after identical save)
+        # Recognized fields were sent but none changed — still a success
+        # BUT: if _raw_toml_content was provided, the user's raw edits need
+        # to be persisted even though the form fields didn't change.
+        if raw_content and isinstance(raw_content, str) and raw_content.strip():
+            backup_path = _backup_and_write_toml(doc, scenario_slug)
+            return JSONResponse({
+                "ok": True,
+                "message": "Raw TOML updated.",
+                "changed_keys": [],
+                "backup_path": str(backup_path),
+                "toml_content": doc.as_string(),
+            })
         return JSONResponse({
             "ok": True,
             "message": "No changes detected.",

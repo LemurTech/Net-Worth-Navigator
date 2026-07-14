@@ -741,7 +741,7 @@
       <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
       <div class="tab-content tab-card" id="tab-toml">
         <div class="editor-head">Edit the raw scenario TOML below.</div>
-        <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
+        <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content | safe }}</textarea>
       </div>
     </div><!-- /#tab-card -->
 
