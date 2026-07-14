@@ -168,7 +168,7 @@ _TABS_CSS = """
   .kpi-value { font-size: 29px; line-height: 1.05; font-weight: 700; color: #f8fafc;
                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid #243142;
-          overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
   .tab-btn { padding: 8px 18px; border: none; background: none; cursor: pointer;
              font-size: 14px; color: #93a4ba; border-bottom: 3px solid transparent;
              margin-bottom: -2px; transition: color .15s; flex: 0 0 auto;
@@ -2240,6 +2240,17 @@ def build_chart(
         config=dict(scrollZoom=True, displaylogo=False),
     )
     kpi_html = _build_kpi_summary(config, projection_result)
+
+    # Value-basis badge — visible indicator when real-dollar deflation is active
+    value_basis_html = ""
+    if projection_result.simulation.get("real_dollar_basis"):
+        sim = config.get("simulation", {})
+        start_year = int(sim.get("start_year", 2026))
+        value_basis_html = (
+            "<div class='modeling-note'><strong>Value basis:</strong> "
+            f"All figures in {start_year} dollars (deflated by assumed inflation).</div>"
+        )
+
     tax_note_html = _build_tax_semantics_note()
 
     # Build table HTML
@@ -2392,6 +2403,7 @@ def build_chart(
     {setup_warning_html}
     {sample_guide_html}
     {kpi_html}
+    {value_basis_html}
     {chart_div}
     <div class="event-label-controls" id="event-label-controls">
       <label><input type="checkbox" id="event-labels-show-all" checked> Show all event labels</label>
@@ -2598,6 +2610,17 @@ def _build_figure(
 
     title_text = config.get("display", {}).get("projection_title", "Household Projection")
 
+    # ── Build subtitle with real-dollar indicator ──────────────────────────
+    subtitle = "Values shown are end-of-year estimates, anchored to live Monarch balances"
+    real_dollar_basis = (
+        projection_result is not None
+        and projection_result.simulation.get("real_dollar_basis", False)
+    )
+    if real_dollar_basis:
+        sim = config.get("simulation", {})
+        start_year = int(sim.get("start_year", 2026))
+        subtitle += f" (in {start_year} dollars)"
+
     # ── Age labels below x-axis (separate from tick text so hover stays clean) ─
     for year in tickvals:
         age_label = _age_label_for_year(config, year)
@@ -2614,8 +2637,7 @@ def _build_figure(
         title=dict(
             text=(
                 f"{title_text}"
-                "<br><sup>Values shown are end-of-year estimates, "
-                "anchored to live Monarch balances</sup>"
+                f"<br><sup>{subtitle}</sup>"
             ),
             font=dict(size=20),
         ),

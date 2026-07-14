@@ -119,6 +119,13 @@ def _backup_and_write(content: str, scenario_slug: str | None = None) -> Path:
         backup_path.write_text(current_content, encoding="utf-8")
 
     _config_path(scenario_slug).write_text(content, encoding="utf-8")
+    # fsync to flush through bind-mount / Docker storage delay
+    config_path = _config_path(scenario_slug)
+    fd = os.open(str(config_path), os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     _prune_backups(backup_dir)
     return backup_path
 
@@ -738,9 +745,6 @@ async def editor_home(request: Request) -> HTMLResponse:
 @app.get("/setup", response_class=HTMLResponse)
 @app.get("/finances/config/setup", response_class=HTMLResponse)
 async def setup_panel(request: Request, response: Response) -> HTMLResponse:
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
     scenario_slug = request.query_params.get("scenario")
     try:
         content = _read_config_text(scenario_slug)
@@ -757,7 +761,11 @@ async def setup_panel(request: Request, response: Response) -> HTMLResponse:
         clone_slug="",
         clone_description="",
     )
-    return templates.TemplateResponse(request, "setup_panel.html", context)
+    tmpl = templates.TemplateResponse(request, "setup_panel.html", context)
+    tmpl.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    tmpl.headers["Pragma"] = "no-cache"
+    tmpl.headers["Expires"] = "0"
+    return tmpl
 
 
 @app.get("/definitions", response_class=HTMLResponse)
@@ -1191,6 +1199,13 @@ def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None 
         backup_path.write_text(current_content, encoding="utf-8")
 
     config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    # fsync to flush the write through any bind-mount / Docker storage delay
+    # so the file is immediately visible from the host side.
+    fd = os.open(str(config_path), os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     _prune_backups(backup_dir)
     return backup_path
 
@@ -1665,6 +1680,15 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
 
     doc, _ = _toml_open(scenario_slug)
+    
+    # If the client included the raw TOML textarea content, use that as the
+    # base document instead of re-reading the file.  This preserves any raw
+    # edits the user made (e.g. uncommenting real_dollar_basis) that would
+    # otherwise be lost when the file is re-read and overwritten.
+    raw_content = body.get("_raw_toml_content")
+    if raw_content and isinstance(raw_content, str) and raw_content.strip():
+        doc = tomlkit.parse(raw_content)
+    
     changed_keys: list[str] = []
 
     def _value_differs(parent: dict, key: str, typed) -> bool:
@@ -1746,7 +1770,18 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         )
         if not any_recognized:
             return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)
-        # Recognized fields were sent but none changed — still a success (e.g. Save + Re-render after identical save)
+        # Recognized fields were sent but none changed — still a success
+        # BUT: if _raw_toml_content was provided, the user's raw edits need
+        # to be persisted even though the form fields didn't change.
+        if raw_content and isinstance(raw_content, str) and raw_content.strip():
+            backup_path = _backup_and_write_toml(doc, scenario_slug)
+            return JSONResponse({
+                "ok": True,
+                "message": "Raw TOML updated.",
+                "changed_keys": [],
+                "backup_path": str(backup_path),
+                "toml_content": doc.as_string(),
+            })
         return JSONResponse({
             "ok": True,
             "message": "No changes detected.",

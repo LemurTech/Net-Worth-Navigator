@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-12
-**Status:** v1.4.2 — Shell page JS syntax error fix (f-string quote escaping).
+**Last updated:** 2026-07-14
+**Status:** v1.5.0 — Real-dollar inflation-adjusted display (Phase 1) merged to main.
 
 ---
 
@@ -49,6 +49,29 @@ cd /home/lemurtech/Net-Worth-Navigator
 ---
 
 ## What's New
+
+### Real-Dollar Display — Phase 1 (2026-07-14)
+
+**Merged to main as v1.5.0**
+
+Adds `[simulation].real_dollar_basis = true/false` (default `false`). When enabled, all chart and table monetary values are deflated to start-year purchasing power using the configured inflation rate. Applies to deterministic, historical, and Monte Carlo modes.
+
+**Implementation:** A single `_apply_real_dollar_basis()` function in `model.py` applies cumulative deflation `(1+inflation)^{-(year-start)}` to 76 whitelisted monetary columns, liability balance columns (pattern-match), and percentile-suffixed band columns (pattern-match). Non-monetary columns (ratios, tax rates, flags, names) are untouched.
+
+**Indicators:** When real-dollar mode is active, the chart subtitle shows "(in YYYY dollars)" and a value-basis note appears below the KPI strip. No indicators when nominal (default).
+
+**Bug fixes discovered during development:**
+- **Raw TOML edits lost on Save** — `saveEverything()` only read form fields, not the raw textarea. Server returned 200 with correct `toml_content` but didn't persist when form fields hadn't changed. Fixed by sending `_raw_toml_content` and always writing when present.
+- **Browser caching setup page** — Cache-control headers set on the wrong Response object (injected param vs returned TemplateResponse). Fixed by setting on the TemplateResponse.
+- **HTML entity corruption** — `{{ content }}` in Jinja2 auto-escaped `&` to `&amp;`, breaking tomlkit parsing. Fixed with `{{ content | safe }}`.
+- **Bind mount propagation delay** — Docker volume writes weren't immediately visible from the host. Added `os.fsync()` after every scenario file write.
+- **Tab row vertical scrollbar** — `overflow-x: auto` forced `overflow-y: auto`. Added `overflow-y: hidden` to `.tabs`.
+
+**Sample and personal scenarios updated** to enable `real_dollar_basis = true` by default.
+
+**Docs:** Config Reference and FAQ updated in Starlight User Guide.
+
+**Phase 2 (planned):** Client-side JS toggle to switch between nominal and real-dollar views in the same rendered page (both datasets embedded).
 
 ### Windows Unicode Print Fix (2026-07-07)
 

@@ -55,6 +55,7 @@ mode         = "deterministic"
 num_runs     = 250
 seed         = 42
 portfolio_return_volatility = 0.17   # Slightly higher vol: growth-tilted portfolio
+real_dollar_basis = true      # show all values in start-year purchasing power
 
 [display]
 projection_title = "Sample B — Optimistic Plan (Synthetic Demo)"

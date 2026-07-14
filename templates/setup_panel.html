@@ -741,7 +741,7 @@
       <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
       <div class="tab-content tab-card" id="tab-toml">
         <div class="editor-head">Edit the raw scenario TOML below.</div>
-        <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content }}</textarea>
+        <textarea id="raw-toml-content" name="content" spellcheck="false" wrap="off">{{ content | safe }}</textarea>
       </div>
     </div><!-- /#tab-card -->
 
@@ -1333,6 +1333,13 @@
         try {
           // 1. Save metadata (quick controls)
           var body = collectQuickControls();
+          // Include raw TOML textarea content so the server uses the
+          // user's latest raw edits (e.g. uncommented real_dollar_basis)
+          // as the base document instead of reading the stale file on disk.
+          var rawEl = document.getElementById('raw-toml-content');
+          if (rawEl && rawEl.value) {
+            body._raw_toml_content = rawEl.value;
+          }
           apiPost('api/save-quick-controls', body).then(function (data) {
             if (!data.ok) {
               if (onError) onError(data.error || 'Save failed.');

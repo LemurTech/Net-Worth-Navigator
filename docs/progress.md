@@ -3,6 +3,72 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-13 (v1.4.4 — Real-dollar inflation-adjusted display, Phase 1)
+
+**Branch:** `feature/real-dollar-display` (not yet merged to main)
+
+### Added
+
+- **`[simulation].real_dollar_basis` config field** — When `true`, all chart and table monetary values are deflated to start-year purchasing power using the configured inflation rate. Default is `false` (nominal display).
+- **`_apply_real_dollar_basis()` in `model.py`** — Applies cumulative deflation `(1+inflation)^{-(year-start)}` to 76 whitelisted monetary columns plus liability-balance and percentile-suffixed columns via pattern matching. Non-monetary columns (ratios, tax rates, flags, enum strings) are left untouched.
+- **Definitions page entry** — Documented at `[simulation].real_dollar_basis` on the shared definitions page.
+- **Sample scenario documentation** — Commented example in all sample TOML files.
+
+### Changed
+
+- **Deterministic and stochastic render paths** — Both now apply deflation after the yearly model runs, before summary computation and chart generation. All downstream consumers (charts, tables, KPI strip, sidecar CSVs, simulation summary) automatically render in the configured basis.
+
+### Technical
+
+- Deflation is applied per-run-frame in stochastic modes before median/band/outcome computation, so all summary statistics (terminal values, percentiles, success rates) are in real-dollar terms.
+- Zero overhead when `real_dollar_basis = false` (the default) — the deflation pass is skipped entirely.
+- 147 existing tests pass; 6 pre-existing failures unchanged.
+
+### Plans
+
+- **Phase 2:** Client-side JS toggle to switch nominal/real-dollar views in the same rendered page. This would embed both datasets in the HTML and let the user toggle without re-rendering.
+
+## 2026-07-14 (v1.5.0 — Real-dollar inflation-adjusted display, Phase 1)
+
+**Branch:** `feature/real-dollar-display` → merged to main
+
+### Added
+
+- **`[simulation].real_dollar_basis` config field** — When `true`, all chart and table monetary values are deflated to start-year purchasing power using the configured inflation rate. Default is `false` (nominal display).
+- **`_apply_real_dollar_basis()` in `model.py`** — Applies cumulative deflation `(1+inflation)^{-(year-start)}` to 76 whitelisted monetary columns plus liability-balance and percentile-suffixed columns via pattern matching. Non-monetary columns (ratios, tax rates, flags, enum strings) are left untouched.
+- **Real-dollar indicators** — Chart subtitle shows "(in YYYY dollars)" and page shows a value-basis note when mode is active. No indicators in nominal mode (clean default).
+- **Definitions page entry** — Documented at `[simulation].real_dollar_basis` on the shared definitions page.
+- **Sample scenario default** — All four sample scenarios set `real_dollar_basis = true` by default.
+
+### Fixed
+
+- **Raw TOML edits lost on Save** — `saveEverything()` only collected form-field data. The server returned correct `toml_content` in the response but skipped the file write when no form fields had changed, even when `_raw_toml_content` was provided. Server now always persists when raw content is present.
+- **Browser caching of setup page** — Cache-control headers were set on the injected `Response` parameter but lost because the function returned a different `TemplateResponse` object. Fixed by setting headers on the `TemplateResponse` before returning.
+- **HTML entity corruption in raw TOML** — `{{ content }}` in Jinja2 auto-escaped `&` to `&amp;`, which broke tomlkit parsing when the content was sent back. Fixed with `{{ content | safe }}`.
+- **Bind mount propagation delay** — Docker volume writes weren't immediately visible from the host. Added `os.fsync()` after every scenario file write in both `_backup_and_write_toml()` and `_backup_and_write()`.
+- **Tab row vertical scrollbar** — `overflow-x: auto` on `.tabs` forced `overflow-y: auto`. Added `overflow-y: hidden`.
+
+### Changed
+
+- **Deterministic and stochastic render paths** — Both now apply deflation after the yearly model runs, before summary computation and chart generation. All downstream consumers (charts, tables, KPI strip, sidecar CSVs, simulation summary) automatically render in the configured basis.
+- **Personal scenarios** — All personal scenario TOML files updated with `real_dollar_basis = true`.
+
+### Documentation
+
+- **Starlight Config Reference** — Added `real_dollar_basis` to the `[simulation]` TOML example with a description paragraph.
+- **Starlight FAQ** — Replaced the "Current limitation: nominal only" note with a description of the new real-dollar display feature.
+
+### Plans
+
+- **Phase 2:** Client-side JS toggle to switch nominal/real-dollar views in the same rendered page (both datasets embedded).
+- **Demo deploy:** Before next gh-pages deploy, re-render only sample scenarios and filter personal scenarios from the manifest.
+
+### Technical
+
+- Deflation is applied per-run-frame in stochastic modes before median/band/outcome computation, so all summary statistics (terminal values, percentiles, success rates) are in real-dollar terms.
+- Zero overhead when `real_dollar_basis = false` (the default) — the deflation pass is skipped entirely.
+- 147 existing tests pass; 6 pre-existing failures unchanged.
+
 ## 2026-07-12 (v1.4.2 — Shell page JS syntax error fix)
 
 ### Fixed
