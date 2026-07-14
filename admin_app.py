@@ -1347,7 +1347,9 @@ async def api_refresh_monarch() -> JSONResponse:
                     "Monarch MCP server is not installed on this system. "
                     "Switch to Manual Entry (synthetic) mode instead, or install and "
                     "configure the Monarch MCP server. "
-                    f"(Expected: {MCP_PYTHON})"
+                    f"(Checked: {MCP_PYTHON}; "
+                    "set the MONARCH_MCP_PATH environment variable to your MCP "
+                    "server's root directory to use a custom location.)"
                 ),
             },
             status_code=503,

@@ -94,7 +94,9 @@ def fetch_raw_accounts() -> list[dict]:
             "To run without Monarch, set  [data_source].mode = \"synthetic\"  in your\n"
             "scenario TOML and provide starting balances in [synthetic_start].\n"
             "To use a custom Monarch MCP install location, set the MONARCH_MCP_PATH\n"
-            "environment variable to your server's root directory before running."
+            "environment variable to the root directory of your MCP server installation\n"
+            "(e.g. MONARCH_MCP_PATH=/opt/monarch-mcp-server on Linux or\n"
+            "MONARCH_MCP_PATH=C:\\monarch-mcp-server on Windows) before running."
         )
     result = subprocess.run(
         [str(MCP_PYTHON), "-c", _FETCH_SCRIPT],

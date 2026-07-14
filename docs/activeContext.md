@@ -158,12 +158,6 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 
 - **`[simulation].clamp_start_year`** — The opt-out exists in code (`default: true`) but is undocumented in user-facing README by design. There's no clear use case for disabling it. Consider removing the option entirely in a future version if no one asks for it.
 
-### Confirmation needed
-
-- Confirm survivor spending percentage (currently 70% of retirement spending).
-- Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available.
-- Validate `[withdrawal_policy]` cash targets match intent: Accumulation $40K, Retirement $50K, Survivor $30K.
-
 ### Safeguards in place
 
 - **Nightly backup cron** (`4d0e4e6f1a35`) — backs up gitignored personal scenario .toml files every midnight to `/home/lemurtech/.nwn-backups/`, 30-day retention.
@@ -191,6 +185,7 @@ docs/references/
 - **Monarch not installed:** Set `[data_source].mode = "synthetic"` or select Manual Entry in Setup Panel.
 - **Monarch auth expires:** Re-auth via `cd /opt/monarch-mcp-server && uv run python login_setup.py`
 - **`nwn-config-editor` must be restarted after `admin_app.py` changes.** `cd /opt/hal-pages && docker compose restart nwn-config-editor`.
+- **Docker container needs Monarch MCP mounts.** The `nwn-config-editor` container cannot access `/opt/monarch-mcp-server`, the uv Python binary, or the token directory unless they are explicitly mounted in `docker-compose.yml`. Required mounts: `/opt/monarch-mcp-server` (ro), `/root/.local/share/uv` (ro), `/root/.monarch-mcp-server`. Without these, the "Refresh from Monarch" button returns a 503 with "not installed on this system."
 - **`output/` is gitignored.** Generated HTML and sidecar data not tracked.
 - **`POST /api/save-classification` replaces entire `[accounts]` section.** Send ALL accounts.
 - **`table_set` in `_QUICK_CONTROL_MAP`** writes to `[taxes].table_set`. Selector defaults to None if no `table_set` is set.
