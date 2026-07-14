@@ -33,22 +33,29 @@
   .toml-box { background: #0f1725; border-radius: 6px; border: 1px solid #243142;
               padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
               font-size: 12px; line-height: 1.5; color: #cbd5e1;
-              overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+              overflow-x: auto; white-space: pre; }
   .toml-box .comment { color: #64748b; font-style: italic; }
   .data-source-badge { display: inline-block; padding: 2px 10px;
                        border-radius: 99px; font-size: 11px; font-weight: 600;
                        background: #1e293b; color: #94a3b8;
                        border: 1px solid #475569; }
+  .scenario-select { background: #1e293b; color: #e5edf7; border: 1px solid #475569;
+                     border-radius: 6px; padding: 6px 10px; font-size: 13px;
+                     font-family: inherit; cursor: pointer;
+                     min-width: 180px; }
 </style>
 </head>
 <body>
 
-<div class="page-header">
+|<div class="page-header">
   <div>
     <h1 class="page-title">Scenario Setup <span class="version-tag">read-only demo</span></h1>
     <p class="page-subtitle">Sample Couples Plan</p>
   </div>
-  <a class="back-link" href="./projection.html?scenario=sample-couples">← Back to projection</a>
+  <div style="display:flex;align-items:center;gap:10px">
+    <select class="scenario-select" onchange="window.location.href=this.value"><option value="./scenarios/sample/setup.html">Sample Plan (Single-Person)</option><option value="./scenarios/sample-a/setup.html">Sample A Plan</option><option value="./scenarios/sample-b/setup.html">Sample B Plan</option><option value="./scenarios/sample-couples/setup.html" selected>Sample Couples Plan</option></select>
+    <a class="back-link" href="./projection.html?scenario=sample-couples">← Back to projection</a>
+  </div>
 </div>
 
 <div class="config-section">
