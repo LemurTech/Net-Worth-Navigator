@@ -349,7 +349,7 @@
               <span class="linkbtn-full">Compare Scenarios</span><span class="linkbtn-short">Compare</span>
             </a>
             <button class="linkbtn" id="help-mode-toggle" type="button" title="Toggle help tooltips">?</button>
-            <a class="linkbtn primary" id="setup-scenarios-link" href="https://github.com/LemurTech/Net-Worth-Navigator">
+            <a class="linkbtn primary" id="setup-scenarios-link" href="http://casalemuria.lan/finances/config/setup?readonly=1">
               <span class="linkbtn-full">Scenario Setup</span><span class="linkbtn-short">Setup</span>
             </a>
           </div>
@@ -551,7 +551,7 @@
       }
 
       function setupUrlFor(selected) {
-        const url = new URL("https://github.com/LemurTech/Net-Worth-Navigator", window.location.origin);
+        const url = new URL("http://casalemuria.lan/finances/config/setup?readonly=1", window.location.origin);
         if (selected && selected.slug) {
           url.searchParams.set("scenario", selected.slug);
         }
@@ -582,12 +582,12 @@
           emptyState.classList.add("active");
           description.textContent = "Render a scenario from the editor to populate the public selector.";
           frame.removeAttribute("src");
-          openLink.setAttribute("href", "https://github.com/LemurTech/Net-Worth-Navigator");
+          openLink.setAttribute("href", "http://casalemuria.lan/finances/config/setup?readonly=1");
           modeSelect.innerHTML = "";
           modeSelect.disabled = true;
           const emptySetupLink = document.getElementById("setup-scenarios-link");
           if (emptySetupLink) {
-            emptySetupLink.setAttribute("href", "https://github.com/LemurTech/Net-Worth-Navigator");
+            emptySetupLink.setAttribute("href", "http://casalemuria.lan/finances/config/setup?readonly=1");
           }
           return;
         }
