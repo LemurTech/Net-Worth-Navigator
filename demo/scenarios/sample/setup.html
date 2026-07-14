@@ -9,12 +9,18 @@
          margin: 0; padding: 20px; background: #0b1220; color: #e5edf7; }
   .page-header { display: flex; align-items: center; justify-content: space-between;
                  margin-bottom: 20px; padding-bottom: 12px;
-                 border-bottom: 1px solid #243142; }
+                 border-bottom: 1px solid #243142; flex-wrap: wrap; gap: 8px; }
+  .page-header .controls { display: flex; align-items: center; gap: 10px;
+                           flex-shrink: 0; }
   .page-title { font-size: 22px; font-weight: 700; margin: 0; }
   .page-subtitle { font-size: 13px; color: #9fb2c8; margin: 2px 0 0; }
   .back-link { color: #7dd3fc; font-size: 13px; font-weight: 600;
-               text-decoration: none; }
+               text-decoration: none; white-space: nowrap; }
   .back-link:hover { color: #fff; }
+  @media (max-width: 600px) {
+    .page-header { flex-direction: column; align-items: flex-start; }
+    .page-header .controls { width: 100%; justify-content: space-between; }
+  }
   .version-tag { font-size: 11px; color: #64748b; font-weight: 400;
                  margin-left: 8px; letter-spacing: 0.03em; }
   .config-section { background: #111827; border-radius: 8px;
@@ -52,7 +58,7 @@
     <h1 class="page-title">Scenario Setup <span class="version-tag">read-only demo</span></h1>
     <p class="page-subtitle">Sample Plan (Single-Person)</p>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
+  <div class="controls">
     <select class="scenario-select" onchange="window.location.href=this.value"><option value="../sample/setup.html" selected>Sample Plan (Single-Person)</option><option value="../sample-a/setup.html">Sample A Plan</option><option value="../sample-b/setup.html">Sample B Plan</option><option value="../sample-couples/setup.html">Sample Couples Plan</option></select>
     <a class="back-link" href="./projection.html?scenario=sample">← Back to projection</a>
   </div>
