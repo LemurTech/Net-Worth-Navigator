@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Net Worth Navigator Definitions</title>
+  <style>
+    :root {
+      --bg: #08111d;
+      --panel: rgba(15, 23, 37, 0.92);
+      --panel-2: #111827;
+      --text: #e5edf7;
+      --muted: #9fb2c8;
+      --border: #243142;
+      --accent: #7dd3fc;
+      --accent-2: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(14,165,233,.16), transparent 30%),
+        linear-gradient(180deg, #08111d, #0b1220 48%, #08111d);
+      line-height: 1.5;
+    }
+    .page {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    .hero {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .eyebrow {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+    }
+    .lead {
+      margin: 0;
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--text);
+      background: var(--panel);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, #1fb6ff, #0b8fd0);
+      border-color: rgba(125, 211, 252, 0.8);
+      color: #06111d;
+    }
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 0 16px;
+      margin-bottom: 12px;
+      background: linear-gradient(180deg, rgba(8,17,29,.98), rgba(8,17,29,.88), rgba(8,17,29,0));
+      backdrop-filter: blur(6px);
+    }
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(125, 211, 252, 0.12);
+      background: rgba(17,24,39,0.8);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .nav a:hover { color: var(--text); border-color: var(--accent); }
+    .section {
+      margin-bottom: 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(0,0,0,.24);
+    }
+    .section-head {
+      padding: 18px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      background:
+        linear-gradient(180deg, rgba(17,24,39,0.98), rgba(17,24,39,0.78)),
+        radial-gradient(circle at top right, rgba(125,211,252,.18), transparent 28%);
+    }
+    .section-head h2 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      letter-spacing: -0.03em;
+    }
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 860px;
+    }
+    .defs {
+      display: grid;
+      gap: 0;
+    }
+    .def {
+      display: grid;
+      grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+      gap: 14px;
+      padding: 16px 20px;
+      border-top: 1px solid rgba(36,49,66,.7);
+    }
+    .def:first-child { border-top: none; }
+    .term {
+      color: #d8ecff;
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .term code {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 7px;
+      background: #0b1220;
+      color: #d8ecff;
+      overflow-wrap: anywhere;
+    }
+    .detail p {
+      margin: 0;
+      color: var(--text);
+    }
+    .options {
+      margin: 10px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 6px;
+    }
+    .options li {
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: rgba(8,17,29,0.65);
+      color: #d3dfed;
+      border: 1px solid rgba(36,49,66,.55);
+      font-size: 13px;
+    }
+    .options code {
+      color: #d8ecff;
+      background: rgba(17,24,39,0.9);
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+    .foot {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 820px) {
+      .def {
+        grid-template-columns: 1fr;
+      }
+      .page {
+        padding: 22px 14px 36px;
+      }
+      .section-head {
+        padding: 16px 16px 12px;
+      }
+      .def {
+        padding: 14px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Net Worth Navigator Reference</div>
+      <h1>Definitions And Options</h1>
+      <p class="lead">This page is the plain-English companion to the scenario TOML files. It groups parameters by purpose, explains what each one is for, and calls out the most important option values without forcing the config files themselves to become a handbook.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/finances/projection.html" target="_blank" rel="noreferrer">Open Projection</a>
+        <a class="btn" href="/finances/config/" target="_blank" rel="noreferrer">Open Config Editor</a>
+      </div>
+    </section>
+    <nav class="nav"><a href='#scenario-and-display'>Scenario And Display</a><a href='#data-source-and-synthetic-start'>Data Source And Synthetic Start</a><a href='#simulation'>Simulation</a><a href='#stochastic-success-rules'>Stochastic Success Rules</a><a href='#people'>People</a><a href='#spending'>Spending</a><a href='#withdrawal-policy'>Withdrawal Policy</a><a href='#taxes-and-rmd'>Taxes And RMD</a><a href='#market-and-economic-assumptions'>Market And Economic Assumptions</a><a href='#accounts-metadata'>Accounts Metadata</a><a href='#events'>Events</a></nav>
+    <section class='section' id='scenario-and-display'><div class='section-head'><h2>Scenario And Display</h2><p>High-level metadata that names the scenario and controls how it appears in the selector and chart chrome.</p></div><div class='defs'><div class='def'><div class='term'><code>[scenario].name</code></div><div class='detail'><p>Human-friendly scenario name shown in the shell and editor.</p></div></div><div class='def'><div class='term'><code>[scenario].slug</code></div><div class='detail'><p>Stable file-safe id used in URLs, output folders, and editor routing.</p></div></div><div class='def'><div class='term'><code>[scenario].description</code></div><div class='detail'><p>Short plain-English description of what is different about the scenario.</p></div></div><div class='def'><div class='term'><code>[scenario].is_default</code></div><div class='detail'><p>Marks the scenario the public selector should open first.</p><ul class='options'><li><code>true</code> = default starting scenario</li><li><code>false</code> = alternate scenario</li></ul></div></div><div class='def'><div class='term'><code>[display].projection_title</code></div><div class='detail'><p>Subtitle text shown in the projection page header/chart title area.</p></div></div></div></section><section class='section' id='data-source-and-synthetic-start'><div class='section-head'><h2>Data Source And Synthetic Start</h2><p>Controls where year-0 balances come from. Most real household scenarios use Monarch data; demo/share-safe scenarios use synthetic balances.</p></div><div class='defs'><div class='def'><div class='term'><code>[data_source].mode</code></div><div class='detail'><p>Choose whether the scenario starts from live/cached Monarch balances or explicit synthetic amounts.</p><ul class='options'><li><code>monarch</code> = live or cached classified account balances</li><li><code>synthetic</code> = balances come from <code>[synthetic_start]</code></li></ul></div></div><div class='def'><div class='term'><code>[synthetic_start].taxable / trad_ira / roth / cash</code></div><div class='detail'><p>Starting investable balances for synthetic scenarios.</p></div></div><div class='def'><div class='term'><code>[synthetic_start].home_value / vehicles / other</code></div><div class='detail'><p>Starting non-investable rollups for synthetic scenarios.</p></div></div><div class='def'><div class='term'><code>[synthetic_start.property_values]</code></div><div class='detail'><p>Optional named real-estate balances so future `SellHome` events can target a specific property.</p></div></div><div class='def'><div class='term'><code>[synthetic_start.liability_balances]</code></div><div class='detail'><p>Optional named starting liability balances keyed to `[[liabilities]].name`.</p></div></div><div class='def'><div class='term'><code>[synthetic_start.retirement_owner_balances]</code></div><div class='detail'><p>Optional owner split for starting traditional/Roth balances when one combined number is not good enough.</p></div></div><div class='def'><div class='term'><code>[synthetic_start].taxable_cost_basis</code></div><div class='detail'><p>Optional explicit starting cost basis inside the synthetic taxable account.</p></div></div><div class='def'><div class='term'><code>[synthetic_start].roth_contribution_basis</code></div><div class='detail'><p>Optional explicit starting Roth contribution basis, separate from Roth earnings.</p></div></div></div></section><section class='section' id='simulation'><div class='section-head'><h2>Simulation</h2><p>Controls the time range and which engine mode is rendered.</p></div><div class='defs'><div class='def'><div class='term'><code>[simulation].start_year / end_year</code></div><div class='detail'><p>Projection window used by the yearly model.</p></div></div><div class='def'><div class='term'><code>[simulation].clamp_start_year</code></div><div class='detail'><p>When true and balance data has a known as-of date newer than start_year, the projection start is auto-adjusted forward to match the data year. Set to false to disable.</p><ul class='options'><li><code>true</code> (default)</li><li><code>false</code></li></ul></div></div><div class='def'><div class='term'><code>[simulation].render_modes</code></div><div class='detail'><p>Which pre-rendered modes the scenario shell should build and expose.</p><ul class='options'><li><code>deterministic</code></li><li><code>historical</code></li><li><code>monte_carlo</code></li></ul></div></div><div class='def'><div class='term'><code>[simulation].mode</code></div><div class='detail'><p>Single-run compatibility setting; the renderer overrides this per mode when batch rendering multiple outputs.</p><ul class='options'><li><code>deterministic</code> = one straight-line run</li><li><code>historical</code> = rolling historical return windows</li><li><code>monte_carlo</code> = randomized annual return paths</li></ul></div></div><div class='def'><div class='term'><code>[simulation].num_runs</code></div><div class='detail'><p>Number of Monte Carlo runs to simulate.</p></div></div><div class='def'><div class='term'><code>[simulation].seed</code></div><div class='detail'><p>Optional random seed so Monte Carlo results are repeatable.</p></div></div><div class='def'><div class='term'><code>[simulation].portfolio_return_volatility</code></div><div class='detail'><p>Annual return variability used by Monte Carlo around the blended stock/bond return.</p></div></div><div class='def'><div class='term'><code>[simulation].historical_returns_path</code></div><div class='detail'><p>CSV file with `year,return` columns used to create rolling historical return sequences.</p></div></div></div></section><section class='section' id='stochastic-success-rules'><div class='section-head'><h2>Stochastic Success Rules</h2><p>Used by both Monte Carlo and historical modes to decide whether a run counts as a success or failure.</p></div><div class='defs'><div class='def'><div class='term'><code>[monte_carlo.success].failure_mode</code></div><div class='detail'><p>Main failure rule for stochastic reporting.</p><ul class='options'><li><code>net_worth_below_zero</code> = fail once total net worth drops below zero</li><li><code>liquid_depletion</code> = fail when investable liquid assets are exhausted</li><li><code>spending_shortfall</code> = fail when required spending is not fully funded</li><li><code>preserve_home_equity</code> = fail when the plan needs to consume protected home equity</li><li><code>custom</code> = compare one output column against a threshold</li></ul></div></div><div class='def'><div class='term'><code>[monte_carlo.success].minimum_spending_funded_ratio</code></div><div class='detail'><p>Funding threshold used by `spending_shortfall` mode. `1.0` means fully funded.</p></div></div><div class='def'><div class='term'><code>[monte_carlo.success].allow_home_equity_for_spending</code></div><div class='detail'><p>Whether home equity can count as available funding in success calculations.</p></div></div><div class='def'><div class='term'><code>[monte_carlo.success].allow_debt_for_spending</code></div><div class='detail'><p>Whether going negative / borrowing can still count as funded in success calculations.</p></div></div><div class='def'><div class='term'><code>[monte_carlo.success].failure_grace_period_months</code></div><div class='detail'><p>Lets a run experience temporary pressure before it becomes a true failure.</p></div></div><div class='def'><div class='term'><code>[monte_carlo.success].custom_failure_column / operator / threshold</code></div><div class='detail'><p>Advanced custom comparator used only when `failure_mode = &quot;custom&quot;`.</p></div></div></div></section><section class='section' id='people'><div class='section-head'><h2>People</h2><p>Each household member gets an independent profile. `person1` and `person2` are the canonical keys used across the app.</p></div><div class='defs'><div class='def'><div class='term'><code>[personX].name</code></div><div class='detail'><p>Display name used in tables, legends, and synthesized event labels.</p></div></div><div class='def'><div class='term'><code>[personX].dob</code></div><div class='detail'><p>Date of birth used for age labels, end-of-plan timing, and RMD age checks.</p></div></div><div class='def'><div class='term'><code>[personX].life_expectancy</code></div><div class='detail'><p>Modeled terminal age, not a prediction.</p></div></div><div class='def'><div class='term'><code>[personX].retirement_year</code></div><div class='detail'><p>First model year in which wage income stops for that person.</p></div></div><div class='def'><div class='term'><code>[personX].annual_take_home</code></div><div class='detail'><p>Annual wage cashflow input. Usually treated as net cash unless taxes are switched to `taxable_wages` mode.</p></div></div><div class='def'><div class='term'><code>[personX].annual_take_home_is_net_of_retirement_contributions</code></div><div class='detail'><p>Use `true` when 401(k)/similar payroll contributions are already excluded from take-home pay.</p></div></div><div class='def'><div class='term'><code>[personX].annual_take_home_real_raise</code></div><div class='detail'><p>Real wage growth above inflation.</p></div></div><div class='def'><div class='term'><code>[personX].annual_401k_contribution</code></div><div class='detail'><p>Total annual workplace retirement contribution input for that person.</p></div></div><div class='def'><div class='term'><code>[personX].annual_401k_contribution_extra_increase</code></div><div class='detail'><p>Additional annual growth applied to the 401(k) contribution path beyond the wage-growth path.</p></div></div><div class='def'><div class='term'><code>[personX].contribution_method</code></div><div class='detail'><p>401(k) contribution method: `flat` (default) or `percent_of_gross`. In `percent_of_gross` mode, contributions are computed from gross_income × retirement_contribution_percent.</p></div></div><div class='def'><div class='term'><code>[personX].gross_income</code></div><div class='detail'><p>Gross annual income used for percentage-based 401(k) contribution computation. Only used when `contribution_method = &quot;percent_of_gross&quot;`.</p></div></div><div class='def'><div class='term'><code>[personX].gross_income_annual_increase_percent</code></div><div class='detail'><p>Combined annual gross income increase (COLA + performance + merit) as a decimal. Example: 0.05 = 5% annual increase.</p></div></div><div class='def'><div class='term'><code>[personX].retirement_contribution_percent</code></div><div class='detail'><p>401(k) contribution as a percentage of gross income. Example: 0.12 = 12% of gross.</p></div></div><div class='def'><div class='term'><code>[personX].retirement_contribution_annual_increase_percent</code></div><div class='detail'><p>Annual percentage-point increase in 401(k) contribution rate (auto-escalation). Example: 0.02 = increase contribution rate by 2 percentage points each year.</p></div></div><div class='def'><div class='term'><code>[personX].retirement_contribution_max_percent</code></div><div class='detail'><p>Maximum contribution percentage cap. The contribution rate stops escalating once it reaches this value. Example: 0.18 = never exceed 18% of gross income.</p></div></div><div class='def'><div class='term'><code>[personX].annual_401k_employer_match</code></div><div class='detail'><p>Flat annual employer 401(k) match dollar amount. Used when `annual_401k_employer_match_mode = &quot;flat&quot;` (default).</p></div></div><div class='def'><div class='term'><code>[personX].annual_401k_employer_match_mode</code></div><div class='detail'><p>Employer match mode: `flat` (default) or `percent_of_gross`. In percent mode, the employer matches `match_rate` of employee contributions up to `match_max_percent` of gross income.</p></div></div><div class='def'><div class='term'><code>[personX].annual_401k_employer_match_rate</code></div><div class='detail'><p>Percentage of employee contribution the employer matches. Example: 0.50 = 50 cents per dollar contributed.</p></div></div><div class='def'><div class='term'><code>[personX].annual_401k_employer_match_max_percent</code></div><div class='detail'><p>Maximum percentage of gross income the employer will match. Example: 0.06 = match applies only to the first 6% of salary contributed.</p></div></div><div class='def'><div class='term'><code>[personX].annual_ira_contribution</code></div><div class='detail'><p>Direct IRA contribution modeled as a cash outflow plus deposit into `trad_ira` or `roth`.</p></div></div><div class='def'><div class='term'><code>[personX].annual_401k_contribution_bucket / annual_ira_contribution_bucket</code></div><div class='detail'><p>Optional simple routing override for retirement contributions.</p><ul class='options'><li><code>trad_ira</code></li><li><code>roth</code></li></ul></div></div><div class='def'><div class='term'><code>[personX].annual_401k_contribution_split</code></div><div class='detail'><p>Optional proportional split for one bundled workplace plan spanning traditional and Roth dollars.</p></div></div><div class='def'><div class='term'><code>[personX].rmd_trad_ira_share</code></div><div class='detail'><p>Share of the household traditional balance attributed to that person for RMD math.</p></div></div><div class='def'><div class='term'><code>[personX].ss_start_age</code></div><div class='detail'><p>Age when that person starts Social Security in the synthesized runtime config.</p></div></div><div class='def'><div class='term'><code>[personX].social_security_benefits</code></div><div class='detail'><p>Age-to-monthly-benefit lookup used by the runtime Social Security event builder.</p></div></div></div></section><section class='section' id='spending'><div class='section-head'><h2>Spending</h2><p>Baseline living-expense controls outside of one-off events.</p></div><div class='defs'><div class='def'><div class='term'><code>[spending].retirement_annual</code></div><div class='detail'><p>Household retirement spending target.</p></div></div><div class='def'><div class='term'><code>[spending].survivor_percent_of_retirement</code></div><div class='detail'><p>Survivor spending target expressed as a share of the couple retirement target.</p></div></div><div class='def'><div class='term'><code>[spending].spending_basis</code></div><div class='detail'><p>How to interpret the retirement/spending targets over time.</p><ul class='options'><li><code>real</code> = today’s dollars, then CPI-adjusted</li><li><code>nominal</code> = fixed nominal amounts</li></ul></div></div><div class='def'><div class='term'><code>[spending].pre_retirement_spending</code></div><div class='detail'><p>Optional explicit pre-retirement annual spending target. Highest-precedence control.</p></div></div><div class='def'><div class='term'><code>[spending].annual_savings_override</code></div><div class='detail'><p>Optional explicit pre-retirement savings target when you want to derive spending from savings rather than the default implied math.</p></div></div></div></section><section class='section' id='withdrawal-policy'><div class='section-head'><h2>Withdrawal Policy</h2><p>Controls how NWN preserves cash reserves, covers deficits, and routes surplus cash in each life phase.</p></div><div class='defs'><div class='def'><div class='term'><code>[withdrawal_policy].*_cash_target</code></div><div class='detail'><p>Target cash reserve for `accumulation`, `retirement`, and `survivor` phases.</p></div></div><div class='def'><div class='term'><code>[withdrawal_policy].*_withdrawal_order</code></div><div class='detail'><p>Bucket order used to cover deficits in each phase.</p><ul class='options'><li><code>cash_above_target</code> = only spend cash above the reserve floor</li><li><code>taxable</code> = withdraw from taxable brokerage</li><li><code>trad_ira</code> = withdraw from pre-tax retirement assets</li><li><code>roth</code> = withdraw from Roth assets</li><li><code>cash_below_target</code> = break the reserve itself only as a last resort</li></ul></div></div><div class='def'><div class='term'><code>[withdrawal_policy].*_surplus_order</code></div><div class='detail'><p>Where extra cash should be reinvested after the reserve is full.</p><ul class='options'><li><code>taxable</code></li><li><code>roth</code></li><li><code>trad_ira</code></li></ul></div></div></div></section><section class='section' id='taxes-and-rmd'><div class='section-head'><h2>Taxes And RMD</h2><p>Ordinary-income-focused household tax controls plus optional Required Minimum Distribution settings.</p></div><div class='defs'><div class='def'><div class='term'><code>[taxes].enabled</code></div><div class='detail'><p>Turns the bracket-based tax engine on or off.</p></div></div><div class='def'><div class='term'><code>[taxes].table_set</code></div><div class='detail'><p>Shared tax reference dataset loaded from `config/tax_tables/`.</p></div></div><div class='def'><div class='term'><code>[taxes].*_filing_status</code></div><div class='detail'><p>Federal/state filing status to use in `pre_retirement`, `retirement`, and `survivor` phases.</p><ul class='options'><li><code>single</code></li><li><code>married_joint</code></li><li><code>head_of_household</code> when supported by the table set</li></ul></div></div><div class='def'><div class='term'><code>[taxes].wage_tax_treatment</code></div><div class='detail'><p>How wage income should enter the tax model.</p><ul class='options'><li><code>net_cash</code> = wages stay as after-tax cashflow only</li><li><code>taxable_wages</code> = wages are treated as taxable income</li></ul></div></div><div class='def'><div class='term'><code>[taxes.rmd].enabled</code></div><div class='detail'><p>Force RMD withdrawals from traditional retirement balances when age thresholds are met.</p></div></div><div class='def'><div class='term'><code>[taxes.rmd].start_age</code></div><div class='detail'><p>Starting age for RMD enforcement.</p></div></div><div class='def'><div class='term'><code>[taxes.rmd.factors]</code></div><div class='detail'><p>Optional age-to-divisor overrides for the lifetime table.</p></div></div></div></section><section class='section' id='market-and-economic-assumptions'><div class='section-head'><h2>Market And Economic Assumptions</h2><p>Return, inflation, and simplified fallback-tax assumptions used by the yearly engine.</p></div><div class='defs'><div class='def'><div class='term'><code>[assumptions].stock_return / bond_return / equity_allocation</code></div><div class='detail'><p>Defines the blended investable return path used in deterministic mode and as the center of stochastic mode.</p></div></div><div class='def'><div class='term'><code>[assumptions].inflation</code></div><div class='detail'><p>CPI assumption used for real-dollar spending growth and some other inflation-linked paths.</p></div></div><div class='def'><div class='term'><code>[assumptions].cash_return</code></div><div class='detail'><p>Separate growth rate for cash balances so reserves do not inherit the stock/bond blend.</p></div></div><div class='def'><div class='term'><code>[assumptions].real_estate_appreciation</code></div><div class='detail'><p>Home/property appreciation assumption, independent from CPI.</p></div></div><div class='def'><div class='term'><code>[assumptions].real_estate_sale_fee_rate</code></div><div class='detail'><p>Default transaction-cost assumption for `SellHome` events.</p></div></div><div class='def'><div class='term'><code>[assumptions].effective_tax_rate_pre_retirement / effective_tax_rate_post_retirement</code></div><div class='detail'><p>Legacy fallback tax rates used only when the bracket-based tax engine is disabled/incomplete.</p></div></div><div class='def'><div class='term'><code>[assumptions].taxable_withdrawal_taxable_fraction</code></div><div class='detail'><p>Legacy fallback only. If no explicit taxable basis seed is given, this implies the starting cost-basis share of the taxable account.</p></div></div><div class='def'><div class='term'><code>[assumptions].trad_ira_withdrawal_taxable_fraction</code></div><div class='detail'><p>Taxable share of traditional-account withdrawals. Usually `1.0`.</p></div></div><div class='def'><div class='term'><code>[assumptions].initial_taxable_cost_basis_fraction</code></div><div class='detail'><p>Optional direct opening assumption for how much of the taxable account is cost basis.</p></div></div><div class='def'><div class='term'><code>[assumptions].initial_roth_contribution_basis_fraction</code></div><div class='detail'><p>Optional opening assumption for how much of the Roth balance is contribution basis rather than earnings.</p></div></div></div></section><section class='section' id='accounts-metadata'><div class='section-head'><h2>Accounts Metadata</h2><p>Maps live Monarch account names into NWN’s simplified model buckets and lets you add better opening metadata where needed.</p></div><div class='defs'><div class='def'><div class='term'><code>[accounts]</code></div><div class='detail'><p>Main account-classification block keyed by exact Monarch account name.</p></div></div><div class='def'><div class='term'><code>Category strings</code></div><div class='detail'><p>Simple classification for one account.</p><ul class='options'><li><code>taxable</code></li><li><code>trad_ira</code></li><li><code>roth</code></li><li><code>cash</code></li><li><code>real_estate</code></li><li><code>vehicle</code></li><li><code>liability</code></li><li><code>ignore</code></li></ul></div></div><div class='def'><div class='term'><code>{ category = &quot;...&quot;, owner = &quot;...&quot; }</code></div><div class='detail'><p>Inline-table form used when you need owner attribution or extra metadata.</p><ul class='options'><li><code>owner = &quot;person1&quot;</code></li><li><code>owner = &quot;person2&quot;</code></li></ul></div></div><div class='def'><div class='term'><code>opening_balance_split</code></div><div class='detail'><p>Splits one live account across multiple investable buckets at year 0.</p></div></div><div class='def'><div class='term'><code>basis_fraction</code></div><div class='detail'><p>Optional taxable-account metadata: share of the starting taxable balance treated as cost basis.</p></div></div><div class='def'><div class='term'><code>roth_contribution_basis_fraction</code></div><div class='detail'><p>Optional Roth-account metadata: share of the starting Roth balance treated as contribution basis.</p></div></div><div class='def'><div class='term'><code>[accounts].disabled</code></div><div class='detail'><p>Exact account names to exclude without deleting the underlying category mapping.</p></div></div></div></section><section class='section' id='events'><div class='section-head'><h2>Events</h2><p>Discrete scenario changes. Each `[[events]]` item has `enabled`, `type`, `label`, and then type-specific fields.</p></div><div class='defs'><div class='def'><div class='term'><code>Common event fields</code></div><div class='detail'><p>Use `enabled = true/false` to toggle, keep `label` human-friendly, and prefer exact years over prose.</p></div></div><div class='def'><div class='term'><code>Retire</code></div><div class='detail'><p>Stops a person’s wage income from its `year` onward.</p><ul class='options'><li>Fields: <code>person</code>, <code>year</code></li></ul></div></div><div class='def'><div class='term'><code>SocialSecurity</code></div><div class='detail'><p>Adds Social Security income for a person from its `year` onward.</p><ul class='options'><li>Fields: <code>person</code>, <code>year</code>, <code>monthly_benefit</code></li><li>Optional: <code>taxable</code>, <code>taxable_fraction</code></li></ul></div></div><div class='def'><div class='term'><code>Expense</code></div><div class='detail'><p>One-time outflow.</p><ul class='options'><li>Fields: <code>year</code>, <code>amount</code> (usually negative)</li><li><code>expense_kind = &quot;mandatory&quot; | &quot;discretionary&quot;</code></li><li><code>funding = &quot;cash_reserve_first&quot;</code> to let this event break reserve protection first</li></ul></div></div><div class='def'><div class='term'><code>Income</code></div><div class='detail'><p>One-time or bounded extra income stream.</p><ul class='options'><li>Fields: <code>year</code>, <code>amount</code></li><li>Optional: <code>end_year</code>, <code>taxable</code>, <code>taxable_fraction</code></li></ul></div></div><div class='def'><div class='term'><code>BuyHome</code></div><div class='detail'><p>Uses cash for a purchase and, when `price` is supplied, creates/updates a tracked property.</p><ul class='options'><li>Fields: <code>year</code>, <code>down_payment</code>, <code>price</code></li><li>Optional: <code>property</code>, <code>mortgage_rate</code>, <code>term_years</code></li></ul></div></div><div class='def'><div class='term'><code>SellHome</code></div><div class='detail'><p>Converts a named property into net cash proceeds and can optionally reinvest some or all of it.</p><ul class='options'><li>Fields: <code>year</code>, <code>property</code></li><li>Optional: <code>liability_names</code>, <code>sale_fee_rate</code>, <code>reinvest_to</code>, <code>reinvest_fraction</code></li></ul></div></div><div class='def'><div class='term'><code>NewJob / CareerBreak / Education / Marriage / SpendingShift</code></div><div class='detail'><p>Additional event types for job changes, pauses, tuition, informational life events, and baseline-spending regime changes.</p></div></div><div class='def'><div class='term'><code>ContributionChange</code></div><div class='detail'><p>Override one or more per-person contribution amounts starting from a given year. Useful for modelling a mid-scenario step-up or step-down in 401(k) or IRA contributions (e.g. restoring full 401(k) contributions after an early mortgage payoff).</p><ul class='options'><li>Required: <code>year</code>, <code>person</code> (<code>person1</code> or <code>person2</code>)</li><li>Optional: <code>annual_401k_contribution</code> — new absolute dollar amount</li><li>Optional: <code>annual_ira_contribution</code> — new absolute dollar amount</li><li>Optional: <code>annual_401k_employer_match</code> — new employer match dollar amount (flat mode)</li><li>Optional: <code>annual_401k_contribution_delta</code> — relative dollar change (+/-) to 401(k) contribution</li><li>Optional: <code>annual_ira_contribution_delta</code> — relative dollar change (+/-) to IRA contribution</li><li>Optional: <code>annual_401k_employer_match_delta</code> — relative dollar change (+/-) to employer match</li><li>Optional: <code>annual_401k_employer_match_mode</code> — &quot;flat&quot; or &quot;percent_of_gross&quot;</li><li>Optional: <code>annual_401k_employer_match_rate</code> — match rate as decimal (e.g. 0.50 = 50% match)</li><li>Optional: <code>annual_401k_employer_match_max_percent</code> — max salary % matched (e.g. 0.06)</li><li>Optional: <code>gross_income</code> — new gross income for percentage-based contributions</li><li>Optional: <code>gross_income_annual_increase_percent</code> — new gross income increase rate</li><li>Optional: <code>retirement_contribution_percent</code> — new contribution percentage</li><li>Optional: <code>retirement_contribution_annual_increase_percent</code> — new escalation rate</li><li>Optional: <code>retirement_contribution_max_percent</code> — new percentage cap</li><li>Multiple events for the same person are applied in year order; later years win</li></ul></div></div><div class='def'><div class='term'><code>Recurring controls</code></div><div class='detail'><p>Repeat a compatible event without copying it many times.</p><ul class='options'><li><code>repeat_every_years</code></li><li><code>repeat_until_year</code></li><li><code>repeat_count</code></li><li><code>chart_first_occurrence_only</code> for decluttering labels</li></ul></div></div></div></section>
+    <div class="foot">Keep the TOML concise. Put durable explanation here, then link to this page from the shell, editor, and scenario pages.</div>
+  </div>
+</body>
+</html>

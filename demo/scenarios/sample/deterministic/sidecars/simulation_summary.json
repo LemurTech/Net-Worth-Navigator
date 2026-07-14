@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "mode": "deterministic",
+  "failure_mode": "spending_shortfall",
+  "run_count": 1,
+  "display_path_kind": "deterministic",
+  "start_year": 2026,
+  "end_year": 2062,
+  "retirement_year": 2040,
+  "success_settings": {
+    "failure_mode": "spending_shortfall",
+    "minimum_spending_funded_ratio": 1.0,
+    "allow_home_equity_for_spending": false,
+    "allow_debt_for_spending": false,
+    "failure_grace_period_months": 0.0,
+    "custom_failure_column": null,
+    "custom_failure_operator": "<",
+    "custom_failure_threshold": 0.0
+  },
+  "terminal_total_net_worth": 4436361.9055052325,
+  "terminal_investable_net_worth": 3301975.7679249872,
+  "success": true,
+  "data_as_of_clamped": false,
+  "clamped_start_year": 2026
+}

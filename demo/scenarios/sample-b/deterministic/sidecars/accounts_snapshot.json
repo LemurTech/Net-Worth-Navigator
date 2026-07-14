@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-07-10T16:16:34.013317",
+  "mode": "synthetic",
+  "cache_timestamp": null,
+  "portfolio": {
+    "taxable": 125000.0,
+    "trad_ira": 350000.0,
+    "roth": 110000.0,
+    "cash": 45000.0
+  },
+  "extras": {
+    "home_value": 520000.0,
+    "vehicles": 0.0,
+    "other": 0.0
+  },
+  "liability_balances": {
+    "Sample Mortgage": 265000.0
+  },
+  "property_values": {
+    "Sample Residence": 520000.0
+  },
+  "raw_accounts": []
+}

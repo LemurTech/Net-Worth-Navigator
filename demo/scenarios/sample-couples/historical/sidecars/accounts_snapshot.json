@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-07-10T16:14:22.758464",
+  "mode": "synthetic",
+  "cache_timestamp": null,
+  "portfolio": {
+    "taxable": 120000.0,
+    "trad_ira": 380000.0,
+    "roth": 95000.0,
+    "cash": 45000.0
+  },
+  "extras": {
+    "home_value": 620000.0,
+    "vehicles": 0.0,
+    "other": 0.0
+  },
+  "liability_balances": {
+    "Home Mortgage": 365000.0,
+    "RAV4 Hybrid Auto Loan": 28000.0
+  },
+  "property_values": {
+    "Sample Residence": 620000.0
+  },
+  "raw_accounts": []
+}

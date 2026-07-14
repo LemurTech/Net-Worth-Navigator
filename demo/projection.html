@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Net Worth Navigator</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111827'/%3E%3Cg fill='none' stroke='%237dd3fc' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,22 10,18 15,20 20,12 26,7'/%3E%3C/g%3E%3Cg fill='%2338bdf8' opacity='0.35'%3E%3Crect x='5' y='23' width='3' height='5' rx='0.8'/%3E%3Crect x='9' y='21' width='3' height='7' rx='0.8'/%3E%3Crect x='14' y='22' width='3' height='6' rx='0.8'/%3E%3Crect x='19' y='16' width='3' height='12' rx='0.8'/%3E%3Crect x='24' y='14' width='3' height='14' rx='0.8'/%3E%3C/g%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #08111d;
+      --panel: rgba(15, 23, 37, 0.9);
+      --panel-2: #111827;
+      --text: #e5edf7;
+      --muted: #9fb2c8;
+      --border: #243142;
+      --accent: #7dd3fc;
+      --accent-strong: #0ea5e9;
+      --shadow: 0 18px 40px rgba(0,0,0,.24);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(14,165,233,.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(56,189,248,.10), transparent 22%),
+        linear-gradient(180deg, #08111d, #0b1220 46%, #08111d);
+    }
+    .page {
+      width: 100%;
+      padding: 10px 10px 14px;
+    }
+    .topbar {
+      display: grid;
+      gap: 10px;
+      padding: 2px 2px 6px;
+      margin-bottom: 6px;
+    }
+    .topbar-title {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+    }
+    .version-tag {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .selector-card {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+    .control-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .selector-group {
+      display: flex;
+      gap: 10px;
+      flex: 1 1 420px;
+      min-width: 0;
+    }
+    .selector-main {
+      min-width: 0;
+      flex: 1 1 0;
+    }
+    select {
+      appearance: none;
+      width: 100%;
+      height: 42px;
+      padding: 9px 40px 9px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(125, 211, 252, 0.18);
+      background: linear-gradient(180deg, #101a2a, #0f1725);
+      color: #f8fafc;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.2;
+      opacity: 1;
+      -webkit-text-fill-color: #f8fafc;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      text-shadow: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background-image:
+        linear-gradient(180deg, #101a2a, #0f1725),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M3 5.25 7 9l4-3.75' fill='none' stroke='%23f8fafc' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat, no-repeat;
+      background-position: 0 0, right 14px center;
+      background-size: auto, 14px 14px;
+    }
+    select:focus {
+      outline: none;
+      border-color: rgba(125, 211, 252, 0.6);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 3px rgba(14,165,233,0.16);
+    }
+    select option {
+      color: #f8fafc;
+      background: #101a2a;
+    }
+    .scenario-summary {
+      min-width: 0;
+      flex: 1 1 0;
+      display: flex;
+      align-items: center;
+    }
+    .scenario-desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: break-word;
+    }
+    .control-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: nowrap;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+    .linkbtn-short { display: none; }
+    .linkbtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 42px;
+      padding: 0 14px;
+      border: 1px solid rgba(125, 211, 252, 0.16);
+      border-radius: 12px;
+      color: var(--text);
+      text-decoration: none;
+      background: linear-gradient(180deg, rgba(22,34,52,0.96), rgba(20,31,48,0.86));
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform .14s ease, border-color .14s ease, background .14s ease;
+    }
+    .linkbtn:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .linkbtn.primary {
+      background: linear-gradient(180deg, #1fb6ff, #0b8fd0);
+      border-color: rgba(125, 211, 252, 0.8);
+      color: #06111d;
+      box-shadow: 0 10px 24px rgba(14,165,233,.24);
+    }
+    #help-mode-toggle {
+      width: 42px;
+      padding: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    #help-mode-toggle.active {
+      background: #0369a1;
+      border-color: #0369a1;
+      color: #fff;
+    }
+    .frame-card {
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+    .frame-wrap {
+      border-radius: 0;
+      overflow: hidden;
+      border: none;
+      background: transparent;
+      min-height: 195vh;
+    }
+    iframe {
+      display: block;
+      width: 100%;
+      height: 195vh;
+      border: none;
+      background: transparent;
+    }
+    .empty-state {
+      display: none;
+      padding: 56px 28px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .empty-state.active {
+      display: block;
+    }
+    .frame-wrap.empty iframe {
+      display: none;
+    }
+    .frame-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      text-align: right;
+      padding-right: 2px;
+    }
+    @media (max-width: 980px) {
+      .topbar-title { font-size: 24px; }
+      .scenario-summary {
+        align-items: flex-start;
+        order: 3;
+        flex-basis: 100%;
+      }
+      .control-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-start;
+      }
+      .linkbtn {
+        flex: 0 0 auto;
+      }
+      .frame-wrap, iframe {
+        min-height: 175vh;
+        height: 175vh;
+      }
+    }
+    /* Plan Name / Plan Type stay on one line at virtually all widths — select
+       text ellipsizes instead of forcing a stack. Only the narrowest phones
+       (< 360px, smaller than any current production device) fall back to a
+       vertical stack, since below that width even ellipsized selects become
+       too cramped to tap accurately. */
+    @media (max-width: 359px) {
+      .selector-group {
+        flex-direction: column;
+      }
+    }
+    @media (max-width: 720px) {
+      .page {
+        padding: 8px 8px 12px;
+      }
+      .topbar-title {
+        font-size: 22px;
+      }
+      .scenario-desc {
+        font-size: 12px;
+      }
+      select {
+        font-size: 13px;
+        padding: 8px 32px 8px 10px;
+        background-position: 0 0, right 10px center;
+      }
+      .control-actions {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        width: 100%;
+        flex-basis: 100%;
+      }
+      .linkbtn, #help-mode-toggle {
+        width: auto;
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0 6px;
+        font-size: 12.5px;
+      }
+      .linkbtn-full { display: none; }
+      .linkbtn-short { display: inline; }
+    }
+    @media (max-width: 520px) {
+      .frame-wrap, iframe {
+        min-height: 150vh;
+        height: 150vh;
+      }
+    }
+    /* Data freshness indicator — hidden by default, shown by JS only when cache exists */
+    .freshness-bar { display: none; align-items: center; gap: 6px;
+                     margin: 2px 0 4px; padding: 0 2px;
+                     font-size: 11px; color: var(--muted); }
+    .freshness-bar.visible { display: flex; }
+    .freshness-bar .dot { display: inline-block; width: 7px; height: 7px;
+                          border-radius: 50%; flex-shrink: 0; }
+    .freshness-bar .dot.healthy { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.50); }
+    .freshness-bar .dot.stale { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.50); }
+    .freshness-bar .dot.missing { background: #64748b; }
+    .freshness-bar .label { color: var(--muted); }
+    /* First-time welcome overlay — rendered in the SHELL page (not the embedded
+       iframe) so position:fixed centers against the real browser viewport
+       instead of the iframe's own (much taller) box. */
+    .welcome-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                       background: rgba(0, 0, 0, 0.85); z-index: 20000;
+                       display: flex; align-items: center; justify-content: center;
+                       animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .welcome-content { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                       border: 2px solid #0284c7; border-radius: 12px; padding: 32px 40px;
+                       /* This page has a global box-sizing:border-box reset (unlike the
+                          standalone projection page), so max-width must include padding+
+                          border to render the same content width: 620 + 2*40 + 2*2 = 704. */
+                       max-width: 704px; width: 90vw; color: #e2e8f0; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+    .welcome-content h2 { margin: 0 0 16px 0; color: #7dd3fc; font-size: 24px;
+                          display: flex; align-items: center; gap: 12px; }
+    .welcome-content h2::before { content: '👋'; font-size: 28px; }
+    .welcome-content p { margin: 0 0 20px 0; line-height: 1.6; color: #cbd5e1; }
+    .welcome-highlights { list-style: none; padding: 0; margin: 0 0 24px 0; }
+    .welcome-highlights li { padding: 10px 0; border-bottom: 1px solid #334155;
+                             display: flex; align-items: start; gap: 12px; }
+    .welcome-highlights li:last-child { border-bottom: none; }
+    .welcome-highlights li::before { content: '✓'; color: #10b981; font-weight: 700;
+                                     font-size: 18px; flex-shrink: 0; }
+    .welcome-actions { display: flex; gap: 12px; justify-content: flex-end; }
+    .welcome-btn { padding: 10px 20px; border-radius: 6px; font-size: 14px;
+                   font-weight: 600; cursor: pointer; transition: all 0.2s;
+                   border: 1px solid transparent; }
+    .welcome-btn-primary { background: #0284c7; color: #fff; border-color: #0369a1; }
+    .welcome-btn-primary:hover { background: #0369a1; }
+    .welcome-btn-secondary { background: transparent; color: #94a3b8;
+                             border-color: #475569; }
+    .welcome-btn-secondary:hover { border-color: #64748b; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="topbar">
+      <div class="topbar-title">Net Worth Navigator<span class="version-tag">v1.4.3</span></div>
+      <div class="freshness-bar" id="freshness-bar">
+        <span class="dot missing" id="freshness-dot"></span>
+        <span class="label" id="freshness-label">Syncing data…</span>
+      </div>
+      <div class="selector-card">
+        <div class="control-row">
+          <div class="selector-group">
+            <div class="selector-main">
+              <select id="scenario-select" aria-label="Select scenario"></select>
+            </div>
+            <div class="selector-main">
+              <select id="mode-select" aria-label="Select mode"></select>
+            </div>
+          </div>
+          <div class="scenario-summary">
+            <div class="scenario-desc" id="scenario-description">Reading scenario manifest…</div>
+          </div>
+          <div class="control-actions">
+            <a class="linkbtn" id="open-scenario-link" href="#" target="_blank" rel="noreferrer">
+              <span class="linkbtn-full">Open Scenario Page</span><span class="linkbtn-short">Open</span>
+            </a>
+            <a class="linkbtn" id="compare-link" href="compare.html" target="_blank" rel="noreferrer">
+              <span class="linkbtn-full">Compare Scenarios</span><span class="linkbtn-short">Compare</span>
+            </a>
+            <button class="linkbtn" id="help-mode-toggle" type="button" title="Toggle help tooltips">?</button>
+            <a class="linkbtn primary" id="setup-scenarios-link" href="/finances/config/setup">
+              <span class="linkbtn-full">Scenario Setup</span><span class="linkbtn-short">Setup</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="frame-card">
+      <div class="frame-wrap" id="frame-wrap">
+        <iframe id="scenario-frame" title="Scenario projection"></iframe>
+        <div class="empty-state" id="empty-state">No rendered scenario is available yet. Save and render a scenario from the config editor to populate this page.</div>
+      </div>
+      <div class="frame-note">Manifest source: <code>scenarios/index.json</code></div>
+    </section>
+  </div>
+
+  <script>
+    const inlineManifest = {"generated_at": "2026-07-11T19:16:03.226018", "cache_timestamp": null, "default_slug": "default", "scenarios": [{"slug": "sample-a", "name": "Sample A Plan", "description": "Conservative: longer careers, lower spending, SS at 67, trad-heavy contributions.", "config_path": "scenarios/sample-a.toml", "projection_path": "scenarios/sample-a/deterministic/projection.html", "rendered_at": "2026-07-10T16:15:05.122280", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-a/deterministic/projection.html", "rendered_at": "2026-07-10T16:15:05.122280"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-a/historical/projection.html", "rendered_at": "2026-07-10T16:15:10.518229"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-a/monte_carlo/projection.html", "rendered_at": "2026-07-10T16:15:46.018892"}], "data_source_mode": "synthetic", "is_default": false}, {"slug": "sample-b", "name": "Sample B Plan", "description": "Optimistic: early retirement, higher spending, SS at 70, Roth-heavy contributions.", "config_path": "scenarios/sample-b.toml", "projection_path": "scenarios/sample-b/deterministic/projection.html", "rendered_at": "2026-07-10T16:16:34.011436", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-b/deterministic/projection.html", "rendered_at": "2026-07-10T16:16:34.011436"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-b/historical/projection.html", "rendered_at": "2026-07-10T16:16:39.802381"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-b/monte_carlo/projection.html", "rendered_at": "2026-07-10T16:17:24.066962"}], "data_source_mode": "synthetic", "is_default": false}, {"slug": "sample-couples", "name": "Sample Couples Plan", "description": "Share-safe couples reference scenario with full inline documentation.", "config_path": "scenarios/sample-couples.toml", "projection_path": "scenarios/sample-couples/deterministic/projection.html", "rendered_at": "2026-07-10T16:14:18.471726", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-couples/deterministic/projection.html", "rendered_at": "2026-07-10T16:14:18.471726"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-couples/historical/projection.html", "rendered_at": "2026-07-10T16:14:22.756685"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-couples/monte_carlo/projection.html", "rendered_at": "2026-07-10T16:15:00.155327"}], "data_source_mode": "synthetic", "is_default": false}, {"slug": "sample", "name": "Sample Plan (Single-Person)", "description": "Single-person share-safe reference scenario with full inline documentation.", "config_path": "scenarios/sample.toml", "projection_path": "scenarios/sample/deterministic/projection.html", "rendered_at": "2026-07-10T16:21:04.694873", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample/deterministic/projection.html", "rendered_at": "2026-07-10T16:21:04.694873"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample/historical/projection.html", "rendered_at": "2026-07-10T16:21:08.917833"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample/monte_carlo/projection.html", "rendered_at": "2026-07-10T16:21:37.364562"}], "data_source_mode": "synthetic", "is_default": false}]};
+    const manifestUrl = "scenarios/index.json";
+    const initialDefaultSlug = "default";
+
+    function getScenarioFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("scenario");
+    }
+
+    function getModeFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("mode");
+    }
+
+    function setQueryState(slug, mode) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("scenario", slug);
+      if (mode) {
+        url.searchParams.set("mode", mode);
+      } else {
+        url.searchParams.delete("mode");
+      }
+      window.history.replaceState({}, "", url);
+    }
+
+    // Help mode toggle — syncs state to the embedded scenario iframe via postMessage.
+    (function initHelpModeToggle() {
+      const helpBtn = document.getElementById("help-mode-toggle");
+      const frame = document.getElementById("scenario-frame");
+      if (!helpBtn || !frame) return;
+
+      const helpModeActive = localStorage.getItem("nwn-help-mode") === "true";
+      if (helpModeActive) {
+        helpBtn.classList.add("active");
+      }
+
+      helpBtn.addEventListener("click", function() {
+        const isActive = helpBtn.classList.toggle("active");
+        localStorage.setItem("nwn-help-mode", isActive ? "true" : "false");
+        if (frame.contentWindow) {
+          frame.contentWindow.postMessage({ type: "toggle-help-mode", active: isActive }, "*");
+        }
+      });
+
+      // Re-apply help mode whenever a new scenario/mode is loaded into the iframe.
+      frame.addEventListener("load", function() {
+        const active = localStorage.getItem("nwn-help-mode") === "true";
+        if (active && frame.contentWindow) {
+          setTimeout(function() {
+            frame.contentWindow.postMessage({ type: "toggle-help-mode", active: true }, "*");
+          }, 100);
+        }
+      });
+    })();
+
+    // First-time welcome overlay — the embedded projection page asks the shell
+    // (this page) to display it, since position:fixed inside the iframe centers
+    // against the iframe's own tall box rather than the visible viewport.
+    function showWelcomeOverlay() {
+      if (document.querySelector(".welcome-overlay")) return;
+      const overlay = document.createElement("div");
+      overlay.className = "welcome-overlay";
+
+      const content = document.createElement("div");
+      content.className = "welcome-content";
+      content.innerHTML = `
+        <h2>Welcome to Your Retirement Projection!</h2>
+        <p>Here's a quick tour of the key features:</p>
+        <ul class="welcome-highlights">
+          <li><strong>Your chart shows net worth over time</strong> — Hover over any point to see details</li>
+          <li><strong>Click year columns in tables</strong> to highlight that year across all data</li>
+          <li><strong>Switch tabs below</strong> to explore detailed breakdowns (Accounts, Cash Flow, Tax, etc.)</li>
+          <li><strong>Need help?</strong> Click the <strong>?</strong> button to enable contextual tooltips</li>
+        </ul>
+        <div class="welcome-actions">
+          <button class="welcome-btn welcome-btn-secondary" id="welcome-later">Remind me later</button>
+          <button class="welcome-btn welcome-btn-primary" id="welcome-dismiss">Got it, don't show again</button>
+        </div>
+      `;
+
+      overlay.appendChild(content);
+      document.body.appendChild(overlay);
+
+      document.getElementById("welcome-dismiss").addEventListener("click", function() {
+        localStorage.setItem("nwn-welcome-seen", "true");
+        document.body.removeChild(overlay);
+      });
+      document.getElementById("welcome-later").addEventListener("click", function() {
+        document.body.removeChild(overlay);
+      });
+      overlay.addEventListener("click", function(e) {
+        if (e.target === overlay) document.body.removeChild(overlay);
+      });
+    }
+
+    window.addEventListener("message", function(event) {
+      if (event.data && event.data.type === "show-welcome-overlay") {
+        showWelcomeOverlay();
+      }
+    });
+
+    function populateShell(manifest) {
+      const select = document.getElementById("scenario-select");
+      const modeSelect = document.getElementById("mode-select");
+      const description = document.getElementById("scenario-description");
+      const frame = document.getElementById("scenario-frame");
+      const openLink = document.getElementById("open-scenario-link");
+      const frameWrap = document.getElementById("frame-wrap");
+      const emptyState = document.getElementById("empty-state");
+
+      // Data freshness indicator — updates when scenario changes
+      function updateFreshnessForScenario(scenario) {
+        const bar = document.getElementById("freshness-bar");
+        const dot = document.getElementById("freshness-dot");
+        const label = document.getElementById("freshness-label");
+        if (!bar || !dot || !label) return;
+        // Hide for synthetic scenarios (no live Monarch data)
+        if (!scenario || scenario.data_source_mode === "synthetic") {
+          bar.classList.remove("visible");
+          return;
+        }
+        const ts = manifest.cache_timestamp;
+        if (!ts) {
+          bar.classList.remove("visible");
+          return;
+        }
+        bar.classList.add("visible");
+        const cacheDate = new Date(ts);
+        const now = new Date();
+        const daysOld = (now - cacheDate) / (1000 * 60 * 60 * 24);
+        const dateStr = cacheDate.toLocaleDateString("en-US", {
+          year: "numeric", month: "short", day: "numeric",
+        });
+        if (daysOld > 30) {
+          dot.className = "dot stale";
+          label.textContent = "Balances: " + dateStr + " (stale — " + Math.round(daysOld) + " days old)";
+        } else {
+          dot.className = "dot healthy";
+          label.textContent = "Live balances: " + dateStr;
+        }
+      }
+
+      const scenarios = Array.isArray(manifest.scenarios) ? manifest.scenarios : [];
+      // Only show visual separator when there's a mix of user and sample scenarios
+      const hasUserScenarios = scenarios.some(function(s) {
+        return !s.name || !s.name.toLowerCase().startsWith('sample');
+      });
+
+      select.innerHTML = "";
+      let insertedDivider = false;
+      scenarios.forEach((scenario) => {
+        // Insert a visual separator before the first sample scenario
+        const isSample = scenario.name && scenario.name.toLowerCase().startsWith('sample');
+        if (isSample && hasUserScenarios && !insertedDivider) {
+          const divider = document.createElement("option");
+          divider.disabled = true;
+          divider.textContent = "─────";
+          select.appendChild(divider);
+          insertedDivider = true;
+        }
+        const option = document.createElement("option");
+        option.value = scenario.slug;
+        option.textContent = scenario.name;
+        select.appendChild(option);
+      });
+
+      function modeEntryFor(selectedScenario, mode) {
+        const modes = Array.isArray(selectedScenario?.modes) ? selectedScenario.modes : [];
+        return modes.find((entry) => entry.mode === mode) || modes.find((entry) => entry.mode === selectedScenario?.default_mode) || modes[0] || null;
+      }
+
+      function projectionUrlFor(selectedScenario, selectedMode, { embed = false, force = false } = {}) {
+        const selected = modeEntryFor(selectedScenario, selectedMode);
+        if (!selected) return "";
+        const base = selected.projection_path;
+        const version = selected.rendered_at || manifest.generated_at || new Date().toISOString();
+        const params = new URLSearchParams();
+        if (embed) params.set("embed", "1");
+        params.set("v", version);
+        if (force) params.set("refresh", Date.now().toString());
+        return `${base}?${params.toString()}`;
+      }
+
+      function setupUrlFor(selected) {
+        const url = new URL("/finances/config/setup", window.location.origin);
+        if (selected && selected.slug) {
+          url.searchParams.set("scenario", selected.slug);
+        }
+        return url.toString();
+      }
+
+      function populateModeOptions(selectedScenario, requestedMode) {
+        const modes = Array.isArray(selectedScenario?.modes) ? selectedScenario.modes : [];
+        modeSelect.innerHTML = "";
+        modes.forEach((entry) => {
+          const option = document.createElement("option");
+          option.value = entry.mode;
+          option.textContent = entry.label;
+          modeSelect.appendChild(option);
+        });
+        const resolvedMode = modeEntryFor(selectedScenario, requestedMode)?.mode || "";
+        if (resolvedMode) {
+          modeSelect.value = resolvedMode;
+        }
+        modeSelect.disabled = modes.length <= 1;
+        return resolvedMode;
+      }
+
+      function activateScenario(slug, requestedMode = null) {
+        const selected = scenarios.find((scenario) => scenario.slug === slug) || scenarios.find((scenario) => scenario.slug === manifest.default_slug) || scenarios[0];
+        if (!selected) {
+          frameWrap.classList.add("empty");
+          emptyState.classList.add("active");
+          description.textContent = "Render a scenario from the editor to populate the public selector.";
+          frame.removeAttribute("src");
+          openLink.setAttribute("href", "/finances/config/setup");
+          modeSelect.innerHTML = "";
+          modeSelect.disabled = true;
+          const emptySetupLink = document.getElementById("setup-scenarios-link");
+          if (emptySetupLink) {
+            emptySetupLink.setAttribute("href", "/finances/config/setup");
+          }
+          return;
+        }
+
+        select.value = selected.slug;
+        const resolvedMode = populateModeOptions(selected, requestedMode || getModeFromQuery() || selected.default_mode);
+        const selectedModeEntry = modeEntryFor(selected, resolvedMode);
+        if (!selectedModeEntry) {
+          // Scenario exists but has no rendered modes — show actionable empty state
+          frameWrap.classList.add("empty");
+          emptyState.classList.add("active");
+          description.textContent = 'No projection available for "' + selected.name + '". Open the editor and use Save + Re-render.';
+          frame.removeAttribute("src");
+          openLink.setAttribute("href", setupUrlFor(selected));
+          const setupLink = document.getElementById("setup-scenarios-link");
+          if (setupLink) {
+            setupLink.href = setupUrlFor(selected);
+          }
+          return;
+        }
+        const modeLabel = selectedModeEntry.label;
+        const scenarioText = selected.description || "No description provided.";
+        description.textContent = scenarioText;
+        frame.src = projectionUrlFor(selected, resolvedMode, { embed: true });
+        openLink.href = projectionUrlFor(selected, resolvedMode, { embed: false });
+        const setupLink = document.getElementById("setup-scenarios-link");
+        if (setupLink) {
+          setupLink.href = setupUrlFor(selected);
+        }
+        frameWrap.classList.remove("empty");
+        emptyState.classList.remove("active");
+        setQueryState(selected.slug, resolvedMode);
+
+        // Keep Compare Scenarios link scoped to the active scenario vs default
+        const compareLink = document.getElementById("compare-link");
+        if (compareLink) {
+          const defaultSlug = manifest.default_slug || "";
+          const compareUrl = new URL("compare.html", window.location.href);
+          compareUrl.searchParams.set("a", selected.slug);
+          if (selected.slug !== defaultSlug && defaultSlug) {
+            compareUrl.searchParams.set("b", defaultSlug);
+          }
+          compareLink.href = compareUrl.toString();
+        }
+        updateFreshnessForScenario(selected);
+      }
+
+      select.addEventListener("change", () => activateScenario(select.value));
+      modeSelect.addEventListener("change", () => activateScenario(select.value, modeSelect.value));
+      activateScenario(getScenarioFromQuery() || manifest.default_slug || initialDefaultSlug, getModeFromQuery());
+    }
+
+    fetch(manifestUrl, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : inlineManifest)
+      .catch(() => inlineManifest)
+      .then(populateShell);
+  </script>
+</body>
+</html>

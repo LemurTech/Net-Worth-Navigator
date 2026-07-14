@@ -1,0 +1,115 @@
+year,label,event_type,expense_kind,amount
+2026,Home maintenance reserve,Expense,mandatory,-4000.0
+2027,Travel,Expense,discretionary,-12000.0
+2027,Home maintenance reserve,Expense,mandatory,-4000.0
+2028,Home maintenance reserve,Expense,mandatory,-4000.0
+2029,Travel,Expense,discretionary,-12000.0
+2029,Home maintenance reserve,Expense,mandatory,-4000.0
+2030,Home maintenance reserve,Expense,mandatory,-4000.0
+2031,Travel,Expense,discretionary,-12000.0
+2031,Home maintenance reserve,Expense,mandatory,-4000.0
+2031,Vehicle purchase,Expense,mandatory,-34000.0
+2032,Home maintenance reserve,Expense,mandatory,-4000.0
+2033,Travel,Expense,discretionary,-12000.0
+2033,Home maintenance reserve,Expense,mandatory,-4000.0
+2033,HVAC replacement,Expense,mandatory,-13500.0
+2034,Home maintenance reserve,Expense,mandatory,-4000.0
+2034,Part-time consulting,Income,,22000.0
+2035,Travel (post-retirement),Expense,discretionary,-16000.0
+2035,Home maintenance reserve,Expense,mandatory,-4000.0
+2035,Part-time consulting,Income,,22000.0
+2036,Travel (post-retirement),Expense,discretionary,-16000.0
+2036,Home renovation,Expense,discretionary,-42000.0
+2036,Home maintenance reserve,Expense,mandatory,-4000.0
+2036,Part-time consulting,Income,,22000.0
+2037,Travel (post-retirement),Expense,discretionary,-16000.0
+2037,Home maintenance reserve,Expense,mandatory,-4000.0
+2037,Part-time consulting,Income,,22000.0
+2038,Travel (post-retirement),Expense,discretionary,-16000.0
+2038,Home maintenance reserve,Expense,mandatory,-4000.0
+2039,Travel (post-retirement),Expense,discretionary,-16000.0
+2039,Home maintenance reserve,Expense,mandatory,-4000.0
+2040,Travel (post-retirement),Expense,discretionary,-16000.0
+2040,Home maintenance reserve,Expense,mandatory,-4000.0
+2041,Travel (post-retirement),Expense,discretionary,-16000.0
+2041,Home maintenance reserve,Expense,mandatory,-4000.0
+2041,Roof replacement,Expense,mandatory,-20000.0
+2042,Travel (post-retirement),Expense,discretionary,-16000.0
+2042,Home maintenance reserve,Expense,mandatory,-4000.0
+2043,Travel (post-retirement),Expense,discretionary,-16000.0
+2043,Home maintenance reserve,Expense,mandatory,-4000.0
+2043,Vehicle replacement,Expense,mandatory,-38000.0
+2044,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2044,Travel (post-retirement),Expense,discretionary,-16000.0
+2044,Home maintenance reserve,Expense,mandatory,-4000.0
+2045,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2045,Travel (post-retirement),Expense,discretionary,-16000.0
+2045,Home maintenance reserve,Expense,mandatory,-4000.0
+2046,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2046,Travel (post-retirement),Expense,discretionary,-16000.0
+2046,Home maintenance reserve,Expense,mandatory,-4000.0
+2047,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2047,Travel (post-retirement),Expense,discretionary,-16000.0
+2047,Home maintenance reserve,Expense,mandatory,-4000.0
+2048,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2048,Travel (post-retirement),Expense,discretionary,-16000.0
+2048,Home maintenance reserve,Expense,mandatory,-4000.0
+2049,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2049,Travel (post-retirement),Expense,discretionary,-16000.0
+2049,Home maintenance reserve,Expense,mandatory,-4000.0
+2050,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2050,Travel (post-retirement),Expense,discretionary,-16000.0
+2050,Home maintenance reserve,Expense,mandatory,-4000.0
+2051,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2051,Travel (post-retirement),Expense,discretionary,-16000.0
+2051,Home maintenance reserve,Expense,mandatory,-4000.0
+2052,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2052,Travel (post-retirement),Expense,discretionary,-16000.0
+2052,Home maintenance reserve,Expense,mandatory,-4000.0
+2053,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2053,Travel (post-retirement),Expense,discretionary,-16000.0
+2053,Home maintenance reserve,Expense,mandatory,-4000.0
+2053,Care support,Expense,mandatory,-26000.0
+2054,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2054,Travel (post-retirement),Expense,discretionary,-16000.0
+2054,Home maintenance reserve,Expense,mandatory,-4000.0
+2054,Care support,Expense,mandatory,-26000.0
+2055,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2055,Travel (post-retirement),Expense,discretionary,-16000.0
+2055,Home maintenance reserve,Expense,mandatory,-4000.0
+2055,Care support,Expense,mandatory,-26000.0
+2056,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2056,Travel (post-retirement),Expense,discretionary,-16000.0
+2056,Home maintenance reserve,Expense,mandatory,-4000.0
+2056,Care support,Expense,mandatory,-26000.0
+2057,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2057,Travel (post-retirement),Expense,discretionary,-16000.0
+2057,Home maintenance reserve,Expense,mandatory,-4000.0
+2057,Care support,Expense,mandatory,-26000.0
+2058,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2058,Home maintenance reserve,Expense,mandatory,-4000.0
+2058,Care support,Expense,mandatory,-26000.0
+2059,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2059,Home maintenance reserve,Expense,mandatory,-4000.0
+2059,Care support,Expense,mandatory,-26000.0
+2060,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2060,Home maintenance reserve,Expense,mandatory,-4000.0
+2060,Care support,Expense,mandatory,-26000.0
+2061,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2061,Home maintenance reserve,Expense,mandatory,-4000.0
+2061,Care support,Expense,mandatory,-26000.0
+2062,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2062,Home maintenance reserve,Expense,mandatory,-4000.0
+2062,Care support,Expense,mandatory,-26000.0
+2063,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2063,Home maintenance reserve,Expense,mandatory,-4000.0
+2063,Care support,Expense,mandatory,-26000.0
+2064,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2064,Home maintenance reserve,Expense,mandatory,-4000.0
+2064,Care support,Expense,mandatory,-26000.0
+2065,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2065,Home maintenance reserve,Expense,mandatory,-4000.0
+2065,Care support,Expense,mandatory,-26000.0
+2066,Property tax + insurance (post-payoff),Expense,mandatory,-5400.0
+2066,Home maintenance reserve,Expense,mandatory,-4000.0
+2066,Care support,Expense,mandatory,-26000.0

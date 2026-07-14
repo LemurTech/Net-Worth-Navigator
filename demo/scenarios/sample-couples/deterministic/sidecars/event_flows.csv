@@ -1,0 +1,80 @@
+year,label,event_type,expense_kind,amount
+2026,Home maintenance reserve,Expense,mandatory,-3500.0
+2027,Travel,Expense,discretionary,-8000.0
+2027,Home maintenance reserve,Expense,mandatory,-3500.0
+2028,Home maintenance reserve,Expense,mandatory,-3500.0
+2029,Travel,Expense,discretionary,-8000.0
+2029,Home maintenance reserve,Expense,mandatory,-3500.0
+2030,Home maintenance reserve,Expense,mandatory,-3500.0
+2031,Travel,Expense,discretionary,-8000.0
+2031,Home maintenance reserve,Expense,mandatory,-3500.0
+2032,Home maintenance reserve,Expense,mandatory,-3500.0
+2032,Vehicle purchase,Expense,mandatory,-26000.0
+2033,Travel,Expense,discretionary,-8000.0
+2033,Home maintenance reserve,Expense,mandatory,-3500.0
+2034,Home maintenance reserve,Expense,mandatory,-3500.0
+2034,HVAC replacement,Expense,mandatory,-12000.0
+2035,Travel,Expense,discretionary,-8000.0
+2035,Home maintenance reserve,Expense,mandatory,-3500.0
+2036,Home maintenance reserve,Expense,mandatory,-3500.0
+2037,Travel,Expense,discretionary,-8000.0
+2037,Home maintenance reserve,Expense,mandatory,-3500.0
+2038,Home maintenance reserve,Expense,mandatory,-3500.0
+2038,Part-time consulting,Income,,18000.0
+2039,Travel,Expense,discretionary,-8000.0
+2039,Home maintenance reserve,Expense,mandatory,-3500.0
+2039,Part-time consulting,Income,,18000.0
+2040,Home maintenance reserve,Expense,mandatory,-3500.0
+2040,Part-time consulting,Income,,18000.0
+2041,Travel,Expense,discretionary,-8000.0
+2041,Home maintenance reserve,Expense,mandatory,-3500.0
+2041,Part-time consulting,Income,,18000.0
+2042,Home maintenance reserve,Expense,mandatory,-3500.0
+2042,Part-time consulting,Income,,18000.0
+2043,Travel,Expense,discretionary,-8000.0
+2043,Home maintenance reserve,Expense,mandatory,-3500.0
+2043,Roof replacement,Expense,mandatory,-18000.0
+2044,Home maintenance reserve,Expense,mandatory,-3500.0
+2044,Vehicle replacement,Expense,mandatory,-30000.0
+2045,Travel,Expense,discretionary,-8000.0
+2045,Home maintenance reserve,Expense,mandatory,-3500.0
+2046,Home maintenance reserve,Expense,mandatory,-3500.0
+2047,Travel,Expense,discretionary,-8000.0
+2047,Home maintenance reserve,Expense,mandatory,-3500.0
+2048,Home maintenance reserve,Expense,mandatory,-3500.0
+2049,Travel,Expense,discretionary,-8000.0
+2049,Home maintenance reserve,Expense,mandatory,-3500.0
+2050,Home maintenance reserve,Expense,mandatory,-3500.0
+2051,Travel,Expense,discretionary,-8000.0
+2051,Home maintenance reserve,Expense,mandatory,-3500.0
+2052,Home maintenance reserve,Expense,mandatory,-3500.0
+2053,Travel,Expense,discretionary,-8000.0
+2053,Home maintenance reserve,Expense,mandatory,-3500.0
+2053,Care support,Expense,mandatory,-25000.0
+2054,Home maintenance reserve,Expense,mandatory,-3500.0
+2054,Care support,Expense,mandatory,-25000.0
+2055,Travel,Expense,discretionary,-8000.0
+2055,Home maintenance reserve,Expense,mandatory,-3500.0
+2055,Care support,Expense,mandatory,-25000.0
+2056,Home maintenance reserve,Expense,mandatory,-3500.0
+2056,Care support,Expense,mandatory,-25000.0
+2057,Home maintenance reserve,Expense,mandatory,-3500.0
+2057,Care support,Expense,mandatory,-25000.0
+2058,Home maintenance reserve,Expense,mandatory,-3500.0
+2058,Care support,Expense,mandatory,-25000.0
+2059,Home maintenance reserve,Expense,mandatory,-3500.0
+2059,Care support,Expense,mandatory,-25000.0
+2060,Home maintenance reserve,Expense,mandatory,-3500.0
+2060,Care support,Expense,mandatory,-25000.0
+2061,Home maintenance reserve,Expense,mandatory,-3500.0
+2061,Care support,Expense,mandatory,-25000.0
+2062,Home maintenance reserve,Expense,mandatory,-3500.0
+2062,Care support,Expense,mandatory,-25000.0
+2063,Home maintenance reserve,Expense,mandatory,-3500.0
+2063,Care support,Expense,mandatory,-25000.0
+2064,Home maintenance reserve,Expense,mandatory,-3500.0
+2064,Care support,Expense,mandatory,-25000.0
+2065,Home maintenance reserve,Expense,mandatory,-3500.0
+2065,Care support,Expense,mandatory,-25000.0
+2066,Home maintenance reserve,Expense,mandatory,-3500.0
+2066,Care support,Expense,mandatory,-25000.0
