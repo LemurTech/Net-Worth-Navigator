@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-14
-**Status:** v1.5.0 — Real-dollar inflation-adjusted display (Phase 1) merged to main.
+**Status:** v1.5.0 — Real-dollar display shipped, Starlight source now tracked in main repo.
 
 ---
 
@@ -144,6 +144,10 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 
 ### Open Items
 
+### Docs source tracking
+
+- **Starlight source now tracked in main repo** (2026-07-14). `docs/guide/` was previously a nested git repo with no remote — source content lived only locally. After accidental deletion during gh-pages deploy, all 30 content pages were restored from live HTML output and `docs/guide/.git` was removed. Future edits to the guide should be made to `docs/guide/src/content/docs/` and committed to main, then re-deployed to gh-pages via `git worktree add`.
+
 ### Feature gaps
 
 - `resolve_state_tax_system()` in `src/tax_model.py` — Maryland's county-level income tax (1.75%-3.2%) is not modeled. State-only brackets provide a useful approximation.
@@ -192,3 +196,4 @@ docs/references/
 - **`table_set` in `_QUICK_CONTROL_MAP`** writes to `[taxes].table_set`. Selector defaults to None if no `table_set` is set.
 - **Maryland county tax** is not modeled. State-only brackets approximate state liability.
 - **Montana and Alabama tax Social Security** (`tax_social_security = true` in TOML).
+- **`docs/guide/` was a nested git repo** (fixed 2026-07-14). The Starlight site source was initialized as a standalone git repo inside `docs/guide/` with no remote, so none of the source content was tracked by the main NWN repo. This was discovered when it was accidentally deleted during a gh-pages deploy. Fix: `docs/guide/.git` was removed and all files are now tracked by the main NWN repo. Do NOT re-initialize a nested repo there. To deploy: build with `npx astro build` in `docs/guide/`, then use `git worktree add` to push to the `gh-pages` branch.

@@ -69,6 +69,18 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - Zero overhead when `real_dollar_basis = false` (the default) — the deflation pass is skipped entirely.
 - 147 existing tests pass; 6 pre-existing failures unchanged.
 
+## 2026-07-14 — Starlight source restoration + gh-pages cleanup
+
+### Fixed
+
+- **Starlight source lost during gh-pages deploy** — `docs/guide/` was a nested git repo with no remote. When the working tree was cleaned out during a `gh-pages` branch swap, all `.mdx` source files were deleted. Recovered by extracting content from the live gh-pages HTML output and reconstructing all 30 content pages. `docs/guide/.git` removed; files now tracked directly by the main NWN repo.
+- **Welcome page demo link** — The `/getting-started/` landing page said "Jump straight to the live demo" but the link pointed to the Guide home page instead of `https://lemurtech.github.io/Net-Worth-Navigator/demo/projection.html`. Fixed by creating a proper `getting-started/index.mdx` source page.
+
+### Changed
+
+- **Starlight source now in main repo** — `docs/guide/` is no longer a standalone git repo. All source files (content, config, assets) are committed to `main` and pushed to GitHub. Future gh-pages deploys should use `git worktree add` from `main` after building.
+- **`astro.config.mjs` restored** — Full sidebar configuration with all sections, correct `base` path for GitHub Pages, edit links, and social link.
+
 ## 2026-07-12 (v1.4.2 — Shell page JS syntax error fix)
 
 ### Fixed
