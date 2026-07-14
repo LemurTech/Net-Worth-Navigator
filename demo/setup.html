@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NWN Demo — Scenario Setup</title>
+  <style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         margin: 0; padding: 20px; background: #0b1220; color: #e5edf7; }
+  .page-header { display: flex; align-items: center; justify-content: space-between;
+                 margin-bottom: 20px; padding-bottom: 12px;
+                 border-bottom: 1px solid #243142; }
+  .page-title { font-size: 22px; font-weight: 700; margin: 0; }
+  .page-subtitle { font-size: 13px; color: #9fb2c8; margin: 2px 0 0; }
+  .back-link { color: #7dd3fc; font-size: 13px; font-weight: 600;
+               text-decoration: none; }
+  .back-link:hover { color: #fff; }
+  .version-tag { font-size: 11px; color: #64748b; font-weight: 400;
+                 margin-left: 8px; letter-spacing: 0.03em; }
+  .config-section { background: #111827; border-radius: 8px;
+                    border: 1px solid #243142; margin-bottom: 14px;
+                    padding: 16px; }
+  .config-section h3 { margin: 0 0 12px; font-size: 15px; color: #f8fafc;
+                       padding-bottom: 8px; border-bottom: 1px solid #243142; }
+  .field-row { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 8px; }
+  .field { flex: 1 1 180px; min-width: 140px; }
+  .field-label { font-size: 11px; color: #9fb2c8; font-weight: 600;
+                 letter-spacing: 0.03em; text-transform: uppercase;
+                 display: block; margin-bottom: 2px; }
+  .field-value { font-size: 14px; color: #e5edf7; padding: 4px 0;
+                 font-variant-numeric: tabular-nums; }
+  .field-note { font-size: 11px; color: #64748b; margin-top: 1px; }
+  .toml-box { background: #0f1725; border-radius: 6px; border: 1px solid #243142;
+              padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
+              font-size: 12px; line-height: 1.5; color: #cbd5e1;
+              overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .toml-box .comment { color: #64748b; font-style: italic; }
+  .data-source-badge { display: inline-block; padding: 2px 10px;
+                       border-radius: 99px; font-size: 11px; font-weight: 600;
+                       background: #1e293b; color: #94a3b8;
+                       border: 1px solid #475569; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Scenario Setup <span class="version-tag">read-only demo</span></h1>
+    <p class="page-subtitle">Sample Plan (Single-Person)</p>
+  </div>
+  <a class="back-link" href="./projection.html?scenario=sample">← Back to projection</a>
+</div>
+
+<div class="config-section">
+  <h3>Data Source</h3>
+  <div class="field-row">
+    <div class="field">
+      <span class="field-label">Mode</span>
+      <div><span class="data-source-badge">synthetic</span></div>
+    </div>
+    <div class="field"><span class="field-label">State Tax</span><div class="field-value">2025_us_federal_oregon</div></div>
+    <div class="field"><span class="field-label">Real-Dollar Display</span><div class="field-value">Enabled (start-year dollars)</div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Household</h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Type</span><div class="field-value">single</div></div>
+    <div class="field"><span class="field-label">Render Modes</span><div class="field-value">deterministic, historical, monte_carlo</div></div>
+    <div class="field"><span class="field-label">Projection Window</span><div class="field-value">2026 – 2062</div></div>
+  </div>
+  
+    <div class="field-row">
+      <div class="field"><span class="field-label">Name</span><div class="field-value">Alex</div></div>
+      <div class="field"><span class="field-label">Birth Year</span><div class="field-value">1972</div></div>
+      <div class="field"><span class="field-label">Life Expectancy</span><div class="field-value">90</div></div>
+      <div class="field"><span class="field-label">Retirement Year</span><div class="field-value">2040</div></div>
+      <div class="field"><span class="field-label">SS Start Age</span><div class="field-value">67</div></div>
+      <div class="field"><span class="field-label">Annual Take-Home</span><div class="field-value">$62,000</div></div>
+      <div class="field"><span class="field-label">Gross Income</span><div class="field-value">$90,000</div></div>
+      <div class="field"><span class="field-label">Contribution %</span><div class="field-value">20.0%</div></div>
+    </div>
+</div>
+
+<div class="config-section">
+  <h3>Investment Assumptions</h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Stock Return</span><div class="field-value">7.0%</div></div>
+    <div class="field"><span class="field-label">Bond Return</span><div class="field-value">4.0%</div></div>
+    <div class="field"><span class="field-label">Inflation</span><div class="field-value">3.0%</div></div>
+    <div class="field"><span class="field-label">Equity Allocation</span><div class="field-value">70.0%</div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Spending & Withdrawals</h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Retirement Spending</span><div class="field-value">$60,000</div></div>
+    <div class="field"><span class="field-label">Debt Handling</span><div class="field-value">—</div></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Cash Target (Accumulation)</span><div class="field-value">$30,000</div></div>
+    <div class="field"><span class="field-label">Cash Target (Retirement)</span><div class="field-value">$55,000</div></div>
+    <div class="field"><span class="field-label">Cash Target (Survivor)</span><div class="field-value"></div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Starting Balances <span class="data-source-badge" style="font-size:10px">synthetic</span></h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Taxable</span><div class="field-value">$80,000</div></div>
+    <div class="field"><span class="field-label">Traditional IRA</span><div class="field-value">$250,000</div></div>
+    <div class="field"><span class="field-label">Roth</span><div class="field-value">$55,000</div></div>
+    <div class="field"><span class="field-label">Cash</span><div class="field-value">$30,000</div></div>
+    <div class="field"><span class="field-label">Home Value</span><div class="field-value">$380,000</div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Raw Configuration</h3>
+  <div class="toml-box"># Net Worth Navigator — Single-Person Sample Plan (Reference Documentation)
+#
+# This file demonstrates how to configure a single-person household.  It uses
+# synthetic starting balances (no Monarch account needed) and is safe to share.
+#
+# Household: Alex (person1, b. 1972). Single, working into their 60s,
+# contributing to 401(k)/IRA, owns a home with a mortgage and a car loan.
+#
+# Key differences from the couples version (sample-couples.toml):
+# - No [person2] section — household_type auto-infers as &quot;single&quot;
+# - No survivor spending phase — it is not applicable
+# - Tax filing status defaults to &quot;single&quot; instead of &quot;married_joint&quot;
+# - Social Security survivor benefit logic is not applied
+# - All person2-referencing fields are omitted
+#
+# Scenario files are TOML. Fields can be commented out with #.
+# Events can be toggled on/off with enabled = true/false without deleting them.
+# All monetary values are in today&#x27;s USD unless noted.
+
+# ─── Scenario Metadata ─────────────────────────────────────────────────────────
+
+[scenario]
+name        = &quot;Sample Plan (Single-Person)&quot;
+slug        = &quot;sample&quot;
+description = &quot;Single-person share-safe reference scenario with full inline documentation.&quot;
+is_default  = false
+# household_type is omitted — inferred as &quot;single&quot; from absence of [person2]
+# To explicitly set:  household_type = &quot;single&quot;
+
+# ─── Data Source (synthetic → no Monarch call, no cache) ───────────────────────
+
+[data_source]
+mode = &quot;synthetic&quot;   # synthetic | monarch
+
+# ─── Synthetic Starting Balances ───────────────────────────────────────────────
+
+[synthetic_start]
+# Investable buckets
+taxable  = 80000
+trad_ira = 250000
+roth     = 55000
+cash     = 30000
+# Optional explicit basis seeds (if omitted, defaults to 50% taxable cost basis,
+# 100% Roth contribution basis):
+# taxable_cost_basis = 84000
+# roth_contribution_basis = 70000
+
+# Non-investable balances
+home_value = 380000
+vehicles   = 0
+other      = 0
+
+# Named property balances for SellHome / property-tracking events
+[synthetic_start.property_values]
+&quot;Single Residence&quot; = 380000
+
+# Named liability balances (must match [[liabilities]].name entries)
+[synthetic_start.liability_balances]
+&quot;Home Mortgage&quot; = 280000
+&quot;RAV4 Hybrid Auto Loan&quot; = 25000
+
+# ─── Simulation Controls ───────────────────────────────────────────────────────
+
+[simulation]
+start_year  = 2026
+end_year    = 2062
+render_modes = [&quot;deterministic&quot;, &quot;historical&quot;, &quot;monte_carlo&quot;]
+mode = &quot;deterministic&quot;   # compatibility/default single-run mode
+# num_runs = 250                          # Monte Carlo run count (default 250)
+# seed = 12345                            # reproducibility seed
+# portfolio_return_volatility = 0.15      # annual stdev for blended investable return
+# historical_returns_path = &quot;config/return_sequences/us_balanced_returns.csv&quot;
+real_dollar_basis = true      # show all values in start-year purchasing power
+
+# ─── Display Settings ──────────────────────────────────────────────────────────
+
+[display]
+projection_title = &quot;Single-Person Sample (Synthetic Demo)&quot;
+
+# ─── Stochastic Success / Failure Rules ────────────────────────────────────────
+
+[monte_carlo.success]
+failure_mode = &quot;spending_shortfall&quot;
+# Possible values: &quot;net_worth_below_zero&quot; | &quot;liquid_depletion&quot; |
+#   &quot;spending_shortfall&quot; | &quot;preserve_home_equity&quot; | &quot;custom&quot;
+minimum_spending_funded_ratio = 1.0
+allow_home_equity_for_spending = false
+allow_debt_for_spending = false
+failure_grace_period_months = 0
+# custom_failure_column   = &quot;spending_funded_ratio&quot;
+# custom_failure_operator = &quot;&lt;&quot;
+# custom_failure_threshold = 1.0
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Household Members ─────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[person1]
+name              = &quot;Alex&quot;
+dob               = &quot;1972-03-15&quot;   # YYYY-MM-DD
+life_expectancy   = 90             # modeled terminal age (not a prediction)
+retirement_year   = 2040           # first year wages stop in the model
+
+# Employment income inputs (annual, nominal dollars)
+annual_take_home  = 62000          # net-cash wage input (see [taxes].wage_tax_treatment)
+annual_take_home_is_net_of_retirement_contributions = true  # true = do NOT subtract payroll contributions again
+annual_take_home_real_raise = 0.01  # real raise above inflation
+
+# Retirement contributions — percentage of gross income
+contribution_method = &quot;percent_of_gross&quot;
+gross_income = 90000                   # gross annual income (used for contribution math only)
+gross_income_annual_increase_percent = 0.04   # combined COLA + performance
+retirement_contribution_percent = 0.20       # 20% of gross income
+retirement_contribution_annual_increase_percent = 0.00  # no auto-escalation
+retirement_contribution_max_percent = 0.30     # never exceed 30% of gross
+
+# Employer match
+annual_401k_employer_match_mode = &quot;percent_of_gross&quot;
+annual_401k_employer_match_rate = 1.0
+annual_401k_employer_match_max_percent = 0.06
+
+annual_ira_contribution  = 0
+
+# Share of household traditional retirement balance for RMD math
+rmd_trad_ira_share = 1.0
+
+ss_start_age = 67
+
+[person1.social_security_benefits]
+&quot;62&quot; = 1400
+&quot;63&quot; = 1500
+&quot;64&quot; = 1620
+&quot;65&quot; = 1740
+&quot;66&quot; = 1880
+&quot;67&quot; = 2020
+&quot;68&quot; = 2170
+&quot;69&quot; = 2330
+&quot;70&quot; = 2500
+
+[person1.annual_401k_contribution_split]
+trad_ira = 0.70
+roth     = 0.30
+
+# ────────────────────────────────────────────────────────────────────────────────
+# NOTE: No [person2] section is present.  The engine auto-infers
+# household_type = &quot;single&quot; and skips all person2 logic.
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Spending &amp; Withdrawal Policy ──────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[spending]
+retirement_annual = 60000            # annual spending target (single person)
+spending_basis = &quot;real&quot;              # &quot;real&quot; inflates spending annually | &quot;nominal&quot; keeps it flat
+# Note: survivor_* fields are not applicable for single-person households
+
+[withdrawal_policy]
+# Cash reserve targets by phase
+accumulation_cash_target = 30000
+retirement_cash_target   = 55000
+# survivor_* fields are not applicable for single-person households
+
+# Withdrawal order when cash is below target (which buckets to sell first)
+accumulation_withdrawal_order = [&quot;cash_above_target&quot;, &quot;taxable&quot;, &quot;roth&quot;, &quot;trad_ira&quot;, &quot;cash_below_target&quot;]
+retirement_withdrawal_order   = [&quot;cash_above_target&quot;, &quot;trad_ira&quot;, &quot;taxable&quot;, &quot;roth&quot;, &quot;cash_below_target&quot;]
+
+# Surplus reinvestment order when cash is above target (which buckets get the extra)
+accumulation_surplus_order = [&quot;taxable&quot;, &quot;roth&quot;, &quot;trad_ira&quot;]
+retirement_surplus_order   = [&quot;taxable&quot;, &quot;roth&quot;, &quot;trad_ira&quot;]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Market Assumptions ────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[assumptions]
+stock_return  = 0.07   # annual nominal return on equities
+bond_return   = 0.04   # annual nominal return on bonds
+inflation     = 0.03   # annual inflation rate
+cash_return   = 0.03   # annual return on cash buckets (defaults to inflation if omitted)
+real_estate_appreciation = 0.03   # annual home-value appreciation
+equity_allocation       = 0.70   # fraction of investable portfolio in equities (rest in bonds)
+real_estate_sale_fee_rate = 0.06 # fee deducted from gross sale proceeds
+
+effective_tax_rate_pre_retirement  = 0.22  # legacy flat-tax fallback (see [taxes] for current model)
+effective_tax_rate_post_retirement = 0.15  # legacy flat-tax fallback
+
+# Account-mechanics defaults
+taxable_withdrawal_taxable_fraction = 0.50   # 50% of taxable withdrawals are realized gains
+trad_ira_withdrawal_taxable_fraction = 1.00  # 100% of traditional withdrawals are taxable
+# initial_taxable_cost_basis_fraction = 0.50
+# initial_roth_contribution_basis_fraction = 1.00
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Tax Engine ────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[taxes]
+enabled = true
+table_set = &quot;2025_us_federal_oregon&quot;   # shared tax table reference in config/tax_tables/
+# For single-person households, filing status defaults to &quot;single&quot;
+# for both pre_retirement and retirement phases (survivor is not applicable)
+pre_retirement_filing_status = &quot;single&quot;
+retirement_filing_status     = &quot;single&quot;
+wage_tax_treatment = &quot;net_cash&quot;        # &quot;net_cash&quot; (current) | &quot;taxable_wages&quot; (future)
+
+[taxes.rmd]
+enabled    = true
+start_age  = 73
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Liabilities ───────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[liabilities]]
+name        = &quot;Home Mortgage&quot;
+annual_rate = 0.0575
+monthly_base  = 2163
+monthly_extra = 200                 
+type        = &quot;mortgage&quot;
+
+[[liabilities]]
+name          = &quot;RAV4 Hybrid Auto Loan&quot;
+annual_rate   = 0.065
+monthly_base  = 550
+monthly_extra = 0
+type          = &quot;auto&quot;
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Events ────────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Each [[events]] block is one event. Set enabled = false to exclude it from
+# the current run without deleting configuration.
+#
+# Event types and required fields:
+# ┌─────────────────────┬──────────────────────────────────────────────────────┐
+# │ EndOfPlan           │ person, year — zeroes income, triggers SS survivor   │
+# │ Retire              │ person, year — permanent stop to wages (runtime)    │
+# │ SocialSecurity      │ person, year, monthly_benefit                      │
+# │ Expense             │ year, amount (negative), optional expense_kind/     │
+# │                     │   repeat_every_years, chart_first_occurrence_only   │
+# │ Income              │ year, amount (positive), optional end_year, taxable │
+# │ BuyHome / SellHome  │ year + property/mortgage fields                    │
+# │ NewJob / CareerBreak│ person, year/start_year/end_year, income fields    │
+# │ Education           │ person, start_year, end_year, annual_cost          │
+# │ SpendingShift       │ start_year, mode, optional end_year                │
+# │ ContributionChange  │ year, person + contribution/employer override fields│
+# │ Marriage            │ year (informational)                               │
+# └─────────────────────┴──────────────────────────────────────────────────────┘
+#
+# Recurring controls: repeat_every_years, repeat_until_year, repeat_count
+# Chart decluttering:   chart_first_occurrence_only = true (show only first label)
+
+# ─── 1. Plan Boundary / Life Expectancy ────────────────────────────────────────
+
+[[events]]
+enabled = true
+type    = &quot;EndOfPlan&quot;
+label   = &quot;End of Plan (Alex)&quot;
+person  = &quot;person1&quot;
+year    = 2062                      # 1972 + 90
+
+# ─── 2. Pre-Retirement / Near-Term Known Events ────────────────────────────────
+
+# --- ContributionChange ---
+# Override one or more per-person contribution amounts from a given year onward.
+# Useful for restoring full 401(k) contributions after an early mortgage payoff,
+# or stepping down contributions before a planned career break.
+#
+# Absolute fields (replace the current value):
+#   annual_401k_contribution, annual_ira_contribution, annual_401k_employer_match
+#
+# Delta fields (add to the computed dollar amount, works in both flat and percent modes):
+#   annual_401k_contribution_delta, annual_ira_contribution_delta,
+#   annual_401k_employer_match_delta
+#
+# Percent-mode fields:
+#   gross_income, gross_income_annual_increase_percent, retirement_contribution_percent,
+#   retirement_contribution_annual_increase_percent, retirement_contribution_max_percent
+#
+# Employer-match percent-mode fields:
+#   annual_401k_employer_match_mode, annual_401k_employer_match_rate,
+#   annual_401k_employer_match_max_percent
+#
+# Example (commented — not active in this sample scenario):
+# [[events]]
+# enabled = true
+# type    = &quot;ContributionChange&quot;
+# label   = &quot;401k step-up (mortgage paid off)&quot;
+# year    = 2033
+# person  = &quot;person1&quot;
+# annual_401k_contribution_delta = 12000   # redirect freed mortgage cash into 401(k)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ─── 3. Lifestyle Before and During Retirement ─────────────────────────────────
+
+# Recurring travel (every other year, starting in 2027)
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Travel&quot;
+year    = 2027
+amount  = -8000
+expense_kind = &quot;discretionary&quot;
+funding = &quot;cash_reserve_first&quot;
+repeat_every_years = 2
+repeat_until_year  = 2055
+chart_first_occurrence_only = true
+
+# Annual home maintenance reserve
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Home maintenance reserve&quot;
+year    = 2026
+amount  = -3500
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+# One-time large home repairs
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;HVAC replacement&quot;
+year    = 2034
+amount  = -12000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Roof replacement&quot;
+year    = 2043
+amount  = -18000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+# ─── 4. Vehicle Lifecycle ──────────────────────────────────────────────────────
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Vehicle purchase&quot;
+year    = 2032
+amount  = -26000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Vehicle replacement&quot;
+year    = 2044
+amount  = -30000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+# ─── 5. Income Events ─────────────────────────────────────────────────────────
+
+# Bounded side income during early retirement
+[[events]]
+enabled = true
+type    = &quot;Income&quot;
+label   = &quot;Part-time consulting&quot;
+year    = 2038
+amount  = 18000
+end_year = 2042
+taxable  = true
+
+# ─── 6. Later-Life Care ────────────────────────────────────────────────────────
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Care support&quot;
+year    = 2053
+amount  = -25000
+expense_kind = &quot;mandatory&quot;
+repeat_every_years = 1
+chart_first_occurrence_only = true
+</div>
+  <div class="field-note" style="margin-top:6px">This is a read-only demo. The configuration shown here is for reference only.</div>
+</div>
+
+</body>
+</html>

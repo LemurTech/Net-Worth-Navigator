@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NWN Demo — Scenario Setup</title>
+  <style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         margin: 0; padding: 20px; background: #0b1220; color: #e5edf7; }
+  .page-header { display: flex; align-items: center; justify-content: space-between;
+                 margin-bottom: 20px; padding-bottom: 12px;
+                 border-bottom: 1px solid #243142; }
+  .page-title { font-size: 22px; font-weight: 700; margin: 0; }
+  .page-subtitle { font-size: 13px; color: #9fb2c8; margin: 2px 0 0; }
+  .back-link { color: #7dd3fc; font-size: 13px; font-weight: 600;
+               text-decoration: none; }
+  .back-link:hover { color: #fff; }
+  .version-tag { font-size: 11px; color: #64748b; font-weight: 400;
+                 margin-left: 8px; letter-spacing: 0.03em; }
+  .config-section { background: #111827; border-radius: 8px;
+                    border: 1px solid #243142; margin-bottom: 14px;
+                    padding: 16px; }
+  .config-section h3 { margin: 0 0 12px; font-size: 15px; color: #f8fafc;
+                       padding-bottom: 8px; border-bottom: 1px solid #243142; }
+  .field-row { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 8px; }
+  .field { flex: 1 1 180px; min-width: 140px; }
+  .field-label { font-size: 11px; color: #9fb2c8; font-weight: 600;
+                 letter-spacing: 0.03em; text-transform: uppercase;
+                 display: block; margin-bottom: 2px; }
+  .field-value { font-size: 14px; color: #e5edf7; padding: 4px 0;
+                 font-variant-numeric: tabular-nums; }
+  .field-note { font-size: 11px; color: #64748b; margin-top: 1px; }
+  .toml-box { background: #0f1725; border-radius: 6px; border: 1px solid #243142;
+              padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
+              font-size: 12px; line-height: 1.5; color: #cbd5e1;
+              overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .toml-box .comment { color: #64748b; font-style: italic; }
+  .data-source-badge { display: inline-block; padding: 2px 10px;
+                       border-radius: 99px; font-size: 11px; font-weight: 600;
+                       background: #1e293b; color: #94a3b8;
+                       border: 1px solid #475569; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Scenario Setup <span class="version-tag">read-only demo</span></h1>
+    <p class="page-subtitle">Sample B Plan</p>
+  </div>
+  <a class="back-link" href="./projection.html?scenario=sample-b">← Back to projection</a>
+</div>
+
+<div class="config-section">
+  <h3>Data Source</h3>
+  <div class="field-row">
+    <div class="field">
+      <span class="field-label">Mode</span>
+      <div><span class="data-source-badge">synthetic</span></div>
+    </div>
+    <div class="field"><span class="field-label">State Tax</span><div class="field-value">2025_us_federal_oregon</div></div>
+    <div class="field"><span class="field-label">Real-Dollar Display</span><div class="field-value">Enabled (start-year dollars)</div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Household</h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Type</span><div class="field-value">couple</div></div>
+    <div class="field"><span class="field-label">Render Modes</span><div class="field-value">deterministic, historical, monte_carlo</div></div>
+    <div class="field"><span class="field-label">Projection Window</span><div class="field-value">2026 – 2066</div></div>
+  </div>
+  
+    <div class="field-row">
+      <div class="field"><span class="field-label">Name</span><div class="field-value">Alex</div></div>
+      <div class="field"><span class="field-label">Birth Year</span><div class="field-value">1969</div></div>
+      <div class="field"><span class="field-label">Life Expectancy</span><div class="field-value">90</div></div>
+      <div class="field"><span class="field-label">Retirement Year</span><div class="field-value">2034</div></div>
+      <div class="field"><span class="field-label">SS Start Age</span><div class="field-value">70</div></div>
+      <div class="field"><span class="field-label">Annual Take-Home</span><div class="field-value">$78,000</div></div>
+      <div class="field"><span class="field-label">Gross Income</span><div class="field-value">$110,000</div></div>
+      <div class="field"><span class="field-label">Contribution %</span><div class="field-value">22.0%</div></div>
+    </div><hr style="border:none;border-top:1px solid #243142;margin:8px 0">
+    <div class="field-row">
+      <div class="field"><span class="field-label">Name</span><div class="field-value">Sam</div></div>
+      <div class="field"><span class="field-label">Birth Year</span><div class="field-value">1974</div></div>
+      <div class="field"><span class="field-label">Life Expectancy</span><div class="field-value">92</div></div>
+      <div class="field"><span class="field-label">Retirement Year</span><div class="field-value">2038</div></div>
+      <div class="field"><span class="field-label">SS Start Age</span><div class="field-value">70</div></div>
+      <div class="field"><span class="field-label">Annual Take-Home</span><div class="field-value">$52,000</div></div>
+      <div class="field"><span class="field-label">Gross Income</span><div class="field-value">$65,000</div></div>
+      <div class="field"><span class="field-label">Contribution %</span><div class="field-value">15.0%</div></div>
+    </div>
+</div>
+
+<div class="config-section">
+  <h3>Investment Assumptions</h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Stock Return</span><div class="field-value">8.0%</div></div>
+    <div class="field"><span class="field-label">Bond Return</span><div class="field-value">4.5%</div></div>
+    <div class="field"><span class="field-label">Inflation</span><div class="field-value">3.0%</div></div>
+    <div class="field"><span class="field-label">Equity Allocation</span><div class="field-value">78.0%</div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Spending & Withdrawals</h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Retirement Spending</span><div class="field-value">$96,000</div></div>
+    <div class="field"><span class="field-label">Debt Handling</span><div class="field-value">auto_reduce</div></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Cash Target (Accumulation)</span><div class="field-value">$50,000</div></div>
+    <div class="field"><span class="field-label">Cash Target (Retirement)</span><div class="field-value">$90,000</div></div>
+    <div class="field"><span class="field-label">Cash Target (Survivor)</span><div class="field-value">$65,000</div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Starting Balances <span class="data-source-badge" style="font-size:10px">synthetic</span></h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Taxable</span><div class="field-value">$125,000</div></div>
+    <div class="field"><span class="field-label">Traditional IRA</span><div class="field-value">$350,000</div></div>
+    <div class="field"><span class="field-label">Roth</span><div class="field-value">$110,000</div></div>
+    <div class="field"><span class="field-label">Cash</span><div class="field-value">$45,000</div></div>
+    <div class="field"><span class="field-label">Home Value</span><div class="field-value">$520,000</div></div>
+  </div>
+</div>
+
+<div class="config-section">
+  <h3>Raw Configuration</h3>
+  <div class="toml-box"># Net Worth Navigator — Sample B: Optimistic Plan
+#
+# Household: Alex (b. 1969) and Sam (b. 1974). Same starting balances as
+# Sample A — the two scenarios are the same household making DIFFERENT choices.
+# Compare these scenarios to see how retirement timing, spending, and strategy
+# affect long-term outcomes.
+#
+# Sample B profile — &quot;Early and ambitious&quot;:
+#   • Retire earlier (Alex at 65, Sam at 64) — 4-6 years ahead of Sample A
+#   • Higher retirement spending ($96K/yr — $16K more than A)
+#   • Social Security delayed to 70 for maximum monthly benefit
+#   • Roth-heavy contributions (25% trad / 75% Roth) for tax-free retirement income
+#   • Growth-tilted 78% equity allocation
+#   • Aggressive extra mortgage payments to eliminate debt before retirement
+#   • More travel and a home renovation shortly after early retirement
+#
+# Key question: Does earlier retirement + higher spending succeed because of
+# higher returns + SS delay + Roth flexibility, or does Sample A&#x27;s longer
+# career ultimately produce a stronger outcome?
+
+[scenario]
+name        = &quot;Sample B Plan&quot;
+slug        = &quot;sample-b&quot;
+description = &quot;Optimistic: early retirement, higher spending, SS at 70, Roth-heavy contributions.&quot;
+is_default  = false
+
+[data_source]
+mode = &quot;synthetic&quot;
+
+# ─── Starting Balances ────────────────────────────────────────────────────────
+# Identical to Sample A — this is the same household at the same point in time.
+
+[synthetic_start]
+taxable  = 125000
+trad_ira = 350000
+roth     = 110000
+cash     = 45000
+home_value = 520000
+vehicles   = 0
+other      = 0
+
+[synthetic_start.property_values]
+&quot;Sample Residence&quot; = 520000
+
+[synthetic_start.liability_balances]
+&quot;Sample Mortgage&quot; = 265000
+
+# ─── Simulation ───────────────────────────────────────────────────────────────
+
+[simulation]
+start_year  = 2026
+end_year    = 2066
+render_modes = [&quot;deterministic&quot;, &quot;historical&quot;, &quot;monte_carlo&quot;]
+mode         = &quot;deterministic&quot;
+num_runs     = 250
+seed         = 42
+portfolio_return_volatility = 0.17   # Slightly higher vol: growth-tilted portfolio
+real_dollar_basis = true      # show all values in start-year purchasing power
+
+[display]
+projection_title = &quot;Sample B — Optimistic Plan (Synthetic Demo)&quot;
+
+[monte_carlo.success]
+failure_mode                    = &quot;spending_shortfall&quot;
+minimum_spending_funded_ratio   = 1.0
+allow_home_equity_for_spending  = false
+allow_debt_for_spending         = false
+failure_grace_period_months     = 6   # One difficult year is not failure
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Household Members ─────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[person1]
+name             = &quot;Alex&quot;
+dob              = &quot;1969-04-12&quot;
+life_expectancy  = 90
+retirement_year  = 2034                 # Age 65 — early retirement goal
+
+annual_take_home = 78000
+annual_take_home_is_net_of_retirement_contributions = true
+annual_take_home_real_raise = 0.015     # Stronger career trajectory assumption
+
+contribution_method                      = &quot;percent_of_gross&quot;
+gross_income                             = 110000
+gross_income_annual_increase_percent     = 0.05
+retirement_contribution_percent          = 0.22   # 22% of gross — saving aggressively for early exit
+retirement_contribution_annual_increase_percent = 0.01
+retirement_contribution_max_percent      = 0.30
+
+annual_401k_employer_match_mode        = &quot;percent_of_gross&quot;
+annual_401k_employer_match_rate        = 1.0
+annual_401k_employer_match_max_percent = 0.06
+
+ss_start_age       = 70                 # Delay SS: 8% per-year credit, max monthly benefit
+rmd_trad_ira_share = 0.50               # Closer to 50/50: more Roth concentration
+
+[person1.annual_401k_contribution_split]
+trad_ira = 0.25   # Roth-heavy: smaller current deduction, larger tax-free balance in retirement
+roth     = 0.75
+
+[person1.social_security_benefits]
+62 = 1700
+63 = 1840
+64 = 1990
+65 = 2160
+66 = 2340
+67 = 2520
+68 = 2710
+69 = 2910
+70 = 3120
+
+
+[person2]
+name             = &quot;Sam&quot;
+dob              = &quot;1974-10-03&quot;
+life_expectancy  = 92
+retirement_year  = 2038                 # Age 64 — retires close to Alex
+
+annual_take_home = 52000
+annual_take_home_is_net_of_retirement_contributions = true
+annual_take_home_real_raise = 0.010     # Stronger than Sample A
+
+contribution_method                      = &quot;percent_of_gross&quot;
+gross_income                             = 65000
+gross_income_annual_increase_percent     = 0.045
+retirement_contribution_percent          = 0.15   # Higher contribution rate than Sample A
+retirement_contribution_annual_increase_percent = 0.01
+retirement_contribution_max_percent      = 0.25
+
+annual_401k_employer_match_mode        = &quot;percent_of_gross&quot;
+annual_401k_employer_match_rate        = 1.0
+annual_401k_employer_match_max_percent = 0.06
+
+ss_start_age       = 70                 # Both delay SS
+rmd_trad_ira_share = 0.50
+
+[person2.annual_401k_contribution_split]
+trad_ira = 0.25
+roth     = 0.75
+
+[person2.social_security_benefits]
+62 = 1100
+63 = 1180
+64 = 1270
+65 = 1370
+66 = 1480
+67 = 1600
+68 = 1730
+69 = 1860
+70 = 2010
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Spending, Withdrawal, and Assumptions ─────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[spending]
+retirement_annual              = 96000   # Higher lifestyle: $16K/yr more than Sample A
+survivor_percent_of_retirement = 0.70
+debt_service_handling          = &quot;auto_reduce&quot;
+spending_basis                 = &quot;real&quot;
+
+[withdrawal_policy]
+accumulation_cash_target = 50000
+retirement_cash_target   = 90000
+survivor_cash_target     = 65000
+
+# Taxable-first in retirement: preserve Roth for later, let taxable gains realize
+accumulation_withdrawal_order = [&quot;cash_above_target&quot;, &quot;taxable&quot;, &quot;roth&quot;, &quot;trad_ira&quot;, &quot;cash_below_target&quot;]
+retirement_withdrawal_order   = [&quot;cash_above_target&quot;, &quot;taxable&quot;, &quot;roth&quot;, &quot;trad_ira&quot;, &quot;cash_below_target&quot;]
+survivor_withdrawal_order     = [&quot;cash_above_target&quot;, &quot;taxable&quot;, &quot;roth&quot;, &quot;trad_ira&quot;, &quot;cash_below_target&quot;]
+
+accumulation_surplus_order = [&quot;roth&quot;, &quot;taxable&quot;]   # Prioritize Roth fill while working
+retirement_surplus_order   = [&quot;roth&quot;, &quot;taxable&quot;]
+survivor_surplus_order     = [&quot;roth&quot;, &quot;taxable&quot;]
+
+[assumptions]
+stock_return             = 0.080         # Optimistic long-run equity return assumption
+bond_return              = 0.045
+inflation                = 0.030
+cash_return              = 0.030
+real_estate_appreciation = 0.035
+equity_allocation        = 0.78          # Growth-tilted: 78% equity vs A&#x27;s 70%
+real_estate_sale_fee_rate = 0.06
+
+effective_tax_rate_pre_retirement  = 0.22
+effective_tax_rate_post_retirement = 0.13  # Lower: large Roth base reduces taxable withdrawals
+
+taxable_withdrawal_taxable_fraction   = 0.45   # More basis in taxable account: Roth-spill
+trad_ira_withdrawal_taxable_fraction  = 1.00
+
+[taxes]
+enabled = true
+table_set = &quot;2025_us_federal_oregon&quot;
+pre_retirement_filing_status = &quot;married_joint&quot;
+retirement_filing_status     = &quot;married_joint&quot;
+survivor_filing_status       = &quot;single&quot;
+wage_tax_treatment           = &quot;net_cash&quot;
+
+[taxes.rmd]
+enabled   = true
+start_age = 73
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Liabilities ───────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[liabilities]]
+name           = &quot;Sample Mortgage&quot;
+annual_rate    = 0.0575
+monthly_base   = 2100
+monthly_escrow = 450               # Property tax + insurance
+monthly_extra  = 500               # Aggressive paydown — goal: paid off before retirement
+type           = &quot;mortgage&quot;
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── Events ────────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Property and liability escrow replacement post-payoff ─────────────────────
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Property tax + insurance (post-payoff)&quot;
+year    = 2044                     # Approx payoff year at $500 extra/mo
+amount  = -5400
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+# ── Recurring discretionary travel ───────────────────────────────────────────
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Travel&quot;
+year    = 2027
+amount  = -12000                   # More generous travel budget
+expense_kind = &quot;discretionary&quot;
+funding = &quot;cash_reserve_first&quot;
+repeat_every_years = 2
+repeat_until_year  = 2033
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Travel (post-retirement)&quot;
+year    = 2035
+amount  = -16000                   # Annual travel once both retire
+expense_kind = &quot;discretionary&quot;
+funding = &quot;cash_reserve_first&quot;
+repeat_every_years = 1
+repeat_until_year  = 2057
+chart_first_occurrence_only = true
+
+# ── Home renovation shortly after early retirement ───────────────────────────
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Home renovation&quot;
+year    = 2036
+amount  = -42000                   # Celebrating early retirement
+expense_kind = &quot;discretionary&quot;
+funding = &quot;cash_reserve_first&quot;
+
+# ── Ongoing home maintenance ─────────────────────────────────────────────────
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Home maintenance reserve&quot;
+year    = 2026
+amount  = -4000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;HVAC replacement&quot;
+year    = 2033
+amount  = -13500
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Roof replacement&quot;
+year    = 2041
+amount  = -20000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+# ── Vehicle lifecycle ────────────────────────────────────────────────────────
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Vehicle purchase&quot;
+year    = 2031
+amount  = -34000                   # Nicer vehicle
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Vehicle replacement&quot;
+year    = 2043
+amount  = -38000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+
+# ── Bridge income: consulting before SS kicks in ──────────────────────────────
+[[events]]
+enabled = true
+type    = &quot;Income&quot;
+label   = &quot;Part-time consulting&quot;
+year    = 2034                     # Starts at early retirement
+amount  = 22000
+end_year = 2037                    # Ends when both are retired and settled
+taxable  = true
+
+# ── Later-life care ──────────────────────────────────────────────────────────
+[[events]]
+enabled = true
+type    = &quot;Expense&quot;
+label   = &quot;Care support&quot;
+year    = 2053
+amount  = -26000
+expense_kind = &quot;mandatory&quot;
+funding = &quot;cash_reserve_first&quot;
+repeat_every_years = 1
+chart_first_occurrence_only = true
+</div>
+  <div class="field-note" style="margin-top:6px">This is a read-only demo. The configuration shown here is for reference only.</div>
+</div>
+
+</body>
+</html>
