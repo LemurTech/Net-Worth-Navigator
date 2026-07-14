@@ -1665,6 +1665,15 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
 
     doc, _ = _toml_open(scenario_slug)
+    
+    # If the client included the raw TOML textarea content, use that as the
+    # base document instead of re-reading the file.  This preserves any raw
+    # edits the user made (e.g. uncommenting real_dollar_basis) that would
+    # otherwise be lost when the file is re-read and overwritten.
+    raw_content = body.get("_raw_toml_content")
+    if raw_content and isinstance(raw_content, str) and raw_content.strip():
+        doc = tomlkit.parse(raw_content)
+    
     changed_keys: list[str] = []
 
     def _value_differs(parent: dict, key: str, typed) -> bool:

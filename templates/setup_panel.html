@@ -1333,6 +1333,13 @@
         try {
           // 1. Save metadata (quick controls)
           var body = collectQuickControls();
+          // Include raw TOML textarea content so the server uses the
+          // user's latest raw edits (e.g. uncommented real_dollar_basis)
+          // as the base document instead of reading the stale file on disk.
+          var rawEl = document.getElementById('raw-toml-content');
+          if (rawEl && rawEl.value) {
+            body._raw_toml_content = rawEl.value;
+          }
           apiPost('api/save-quick-controls', body).then(function (data) {
             if (!data.ok) {
               if (onError) onError(data.error || 'Save failed.');
