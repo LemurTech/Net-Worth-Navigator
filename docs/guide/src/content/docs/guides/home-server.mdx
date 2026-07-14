@@ -49,6 +49,28 @@ server {
     }
 }
 ```
+## Option: Docker (All-in-One)Section titled "Option: Docker (All-in-One)"
+
+If you're comfortable with Docker, the repo includes a sample `docker-compose.yml` that runs the Web UI editor and nginx in containers:
+
+```bash
+docker compose up -d
+```
+
+Then visit **[http://localhost/setup](http://localhost/setup)**.
+
+This gives you the Setup Panel, projection shell, compare page, and nginx static file serving — all in one command, no Python environment needed on your host.
+
+### Monarch Money in Docker
+
+If you use Monarch Money for live balance sync, the config-editor container needs access to your Monarch MCP server. The sample `docker-compose.yml` includes commented-out mount points with instructions. In short:
+
+**On Linux** — uncomment the `/opt/monarch-mcp-server` bind mount in `docker-compose.yml`. If your MCP server uses uv (Python under `~/.local/share/uv`), also mount that directory.
+
+**On Windows** — set the `MONARCH_MCP_PATH` environment variable in `docker-compose.yml` and bind-mount your MCP installation directory.
+
+Without Monarch, Manual Entry and CSV Import modes work fine with no extra configuration.
+
 ## Security NoteSection titled "Security Note"
 
 The built-in Python server and the web UI editor listen on **localhost** by default — only accessible from the machine running them. To access from other devices on your network, you need to bind to `0.0.0.0`:

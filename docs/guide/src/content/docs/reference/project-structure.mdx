@@ -7,6 +7,9 @@ description: Layout of the repository
 Net-Worth-Navigator/
 ├── run.py                        ← Main entry point (CLI)
 ├── admin_app.py                  ← Web UI backend (FastAPI)
+├── docker-compose.yml            ← Sample Docker deployment
+├── Dockerfile.config-editor      ← Docker image for the config editor
+├── nginx-default.conf            ← Sample nginx config (for Docker)
 ├── scripts/
 │   └── verify_install.py         ← Installation health check
 ├── src/
@@ -54,6 +57,12 @@ CLI entry point. Run with `--scenario ` for single scenarios, `--offline` for ca
 
 `admin_app.py`
 FastAPI server for the Setup Panel and raw TOML editor
+
+`Dockerfile.config-editor`
+Builds the Docker image to containerize the Web UI editor
+
+`docker-compose.yml`
+Sample Docker Compose file — runs the editor + nginx in containers
 
 `src/model.py`
 Core simulation engine — year-by-year cash flow, events, taxes, growth

@@ -1,0 +1,67 @@
+# ── Net Worth Navigator · Sample Docker Compose ─────────────────────────────
+# Run the Web UI editor + nginx projection server in Docker containers.
+#
+# Quick start (Manual Entry mode — no Monarch needed):
+#   docker compose up -d
+#
+# Then visit: http://localhost/setup
+#
+# ── Monarch Money Integration (optional) ────────────────────────────────────
+#
+# If you use Monarch Money for live balance sync, the config-editor container
+# needs access to your Monarch MCP server installation. Two options:
+#
+# Option A — Bind mount (recommended for Linux):
+#   Uncomment the /opt/monarch-mcp-server volume below. If your MCP server's
+#   .venv symlinks to a uv-managed Python, also mount the uv cache.
+#
+# Option B — Custom path via MONARCH_MCP_PATH (recommended for Windows):
+#   Set the environment variable to your MCP server root directory, and make
+#   sure that path is bind-mounted. Uncomment and edit the 'environment' and
+#   extra volume entries below.
+#
+# Without either option, the "Refresh from Monarch" button will show a helpful
+# error. Manual Entry and CSV Import modes work fine without Monarch.
+# ────────────────────────────────────────────────────────────────────────────
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nwn-nginx
+    restart: unless-stopped
+    ports:
+      - "${NWN_PORT:-80}:80"
+    volumes:
+      - ./output:/usr/share/nginx/html:ro
+      - ./nginx-default.conf:/etc/nginx/conf.d/default.conf:ro
+
+  config-editor:
+    build:
+      context: .
+      dockerfile: Dockerfile.config-editor
+    container_name: nwn-config-editor
+    restart: unless-stopped
+    working_dir: /app
+    expose:
+      - "8010"
+    volumes:
+      - .:/app
+
+      # ── Monarch MCP (uncomment if you use Monarch Money) ──────────────────
+      # Linux — default install location:
+      # - /opt/monarch-mcp-server:/opt/monarch-mcp-server:ro
+      #
+      # Linux — if your MCP uses uv (Python installed under ~/.local/share/uv):
+      # - ${HOME}/.local/share/uv:${HOME}/.local/share/uv:ro
+      #
+      # Linux — auth token (file-based fallback; only needed if not using keyring):
+      # - ${HOME}/.monarch-mcp-server:${HOME}/.monarch-mcp-server
+      #
+      # Windows — custom install (adjust the host path to your MCP location):
+      # - C:\monarch-mcp-server:/opt/monarch-mcp-server:ro
+      #
+      # If you installed Monarch MCP somewhere other than the defaults above,
+      # set MONARCH_MCP_PATH to the root directory of your install:
+      # environment:
+      #   - MONARCH_MCP_PATH=/path/to/your/monarch-mcp-server
+      # ──────────────────────────────────────────────────────────────────────
