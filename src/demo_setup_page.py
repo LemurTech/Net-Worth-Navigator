@@ -190,14 +190,13 @@ def build_demo_setup_page(
 </head>
 <body>
 
-|<div class="page-header">
+<div class="page-header">
   <div>
     <h1 class="page-title">Scenario Setup <span class="version-tag">read-only demo</span></h1>
-    <p class="page-subtitle">{escape(scenario.get("name", slug))}</p>
   </div>
   <div class="controls">
-    {selector_html}
     <a class="back-link" href="{back_relbase}projection.html?scenario={escape(slug)}">← Back to projection</a>
+    {selector_html}
   </div>
 </div>
 
