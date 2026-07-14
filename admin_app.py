@@ -738,9 +738,6 @@ async def editor_home(request: Request) -> HTMLResponse:
 @app.get("/setup", response_class=HTMLResponse)
 @app.get("/finances/config/setup", response_class=HTMLResponse)
 async def setup_panel(request: Request, response: Response) -> HTMLResponse:
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
     scenario_slug = request.query_params.get("scenario")
     try:
         content = _read_config_text(scenario_slug)
@@ -757,7 +754,11 @@ async def setup_panel(request: Request, response: Response) -> HTMLResponse:
         clone_slug="",
         clone_description="",
     )
-    return templates.TemplateResponse(request, "setup_panel.html", context)
+    tmpl = templates.TemplateResponse(request, "setup_panel.html", context)
+    tmpl.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    tmpl.headers["Pragma"] = "no-cache"
+    tmpl.headers["Expires"] = "0"
+    return tmpl
 
 
 @app.get("/definitions", response_class=HTMLResponse)
