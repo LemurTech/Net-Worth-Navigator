@@ -103,6 +103,7 @@ def main():
                 output_path=DEMO / "scenarios" / slug / "setup.html",
                 slug=slug,
                 scenario_options=scenario_options,
+                setup_relbase="../",
             )
             print(f"  {slug}/setup.html")
 
@@ -112,6 +113,7 @@ def main():
         output_path=DEMO / "setup.html",
         slug="sample",
         scenario_options=scenario_options,
+        setup_relbase="./scenarios/",
     )
     print("  demo/setup.html (default)")
 

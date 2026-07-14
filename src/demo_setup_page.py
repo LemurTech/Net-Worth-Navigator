@@ -90,11 +90,15 @@ _STYLES = """
 def build_demo_setup_page(
     *, config_path: Path, output_path: Path, slug: str,
     scenario_options: list[tuple[str, str]] | None = None,
+    setup_relbase: str = "./scenarios/",
 ) -> None:
     """Generate a static read-only setup page from a scenario TOML file.
 
     scenario_options: list of (slug, name) for the scenario selector dropdown.
                       If None, no dropdown is shown.
+    setup_relbase: relative path prefix for the scenario option URLs.
+                   Default: "./scenarios/" (works from demo/ root).
+                   For pages in demo/scenarios/<slug>/, pass "../".
     """
     import tomllib
 
@@ -159,7 +163,7 @@ def build_demo_setup_page(
     if scenario_options:
         def _option_tag(s, n):
             sel = " selected" if s == slug else ""
-            return f'<option value="./scenarios/{s}/setup.html"{sel}>{escape(n)}</option>'
+            return f'<option value="{setup_relbase}{s}/setup.html"{sel}>{escape(n)}</option>'
         opts = "".join(_option_tag(s, n) for s, n in scenario_options)
         selector_html = f'<select class="scenario-select" onchange="window.location.href=this.value">{opts}</select>'
     
