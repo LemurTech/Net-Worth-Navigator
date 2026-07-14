@@ -47,7 +47,8 @@ def _fmt_dollar(val, default="") -> str:
 
 _STYLES = """
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         margin: 0; padding: 20px; background: #0b1220; color: #e5edf7; }
+         margin: 0; padding: 20px; background: #0b1220; color: #e5edf7;
+         caret-color: transparent; }
   html { background: #0b1220; }
   * { outline: none; }
   .page-header { display: flex; align-items: center; justify-content: space-between;
@@ -99,6 +100,7 @@ def build_demo_setup_page(
     *, config_path: Path, output_path: Path, slug: str,
     scenario_options: list[tuple[str, str]] | None = None,
     setup_relbase: str = "./scenarios/",
+    back_relbase: str = "./",
 ) -> None:
     """Generate a static read-only setup page from a scenario TOML file.
 
@@ -107,6 +109,9 @@ def build_demo_setup_page(
     setup_relbase: relative path prefix for the scenario option URLs.
                    Default: "./scenarios/" (works from demo/ root).
                    For pages in demo/scenarios/<slug>/, pass "../".
+    back_relbase: relative path prefix for the back-to-projection link.
+                  Default: "./" (works from demo/ root).
+                  For pages in demo/scenarios/<slug>/, pass "../../".
     """
     import tomllib
 
@@ -192,7 +197,7 @@ def build_demo_setup_page(
   </div>
   <div class="controls">
     {selector_html}
-    <a class="back-link" href="./projection.html?scenario={escape(slug)}">← Back to projection</a>
+    <a class="back-link" href="{back_relbase}projection.html?scenario={escape(slug)}">← Back to projection</a>
   </div>
 </div>
 

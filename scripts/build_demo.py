@@ -104,6 +104,7 @@ def main():
                 slug=slug,
                 scenario_options=scenario_options,
                 setup_relbase="../",
+                back_relbase="../../",
             )
             print(f"  {slug}/setup.html")
 
