@@ -3,6 +3,31 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-13 (v1.4.4 — Real-dollar inflation-adjusted display, Phase 1)
+
+**Branch:** `feature/real-dollar-display` (not yet merged to main)
+
+### Added
+
+- **`[simulation].real_dollar_basis` config field** — When `true`, all chart and table monetary values are deflated to start-year purchasing power using the configured inflation rate. Default is `false` (nominal display).
+- **`_apply_real_dollar_basis()` in `model.py`** — Applies cumulative deflation `(1+inflation)^{-(year-start)}` to 76 whitelisted monetary columns plus liability-balance and percentile-suffixed columns via pattern matching. Non-monetary columns (ratios, tax rates, flags, enum strings) are left untouched.
+- **Definitions page entry** — Documented at `[simulation].real_dollar_basis` on the shared definitions page.
+- **Sample scenario documentation** — Commented example in all sample TOML files.
+
+### Changed
+
+- **Deterministic and stochastic render paths** — Both now apply deflation after the yearly model runs, before summary computation and chart generation. All downstream consumers (charts, tables, KPI strip, sidecar CSVs, simulation summary) automatically render in the configured basis.
+
+### Technical
+
+- Deflation is applied per-run-frame in stochastic modes before median/band/outcome computation, so all summary statistics (terminal values, percentiles, success rates) are in real-dollar terms.
+- Zero overhead when `real_dollar_basis = false` (the default) — the deflation pass is skipped entirely.
+- 147 existing tests pass; 6 pre-existing failures unchanged.
+
+### Plans
+
+- **Phase 2:** Client-side JS toggle to switch nominal/real-dollar views in the same rendered page. This would embed both datasets in the HTML and let the user toggle without re-rendering.
+
 ## 2026-07-12 (v1.4.2 — Shell page JS syntax error fix)
 
 ### Fixed

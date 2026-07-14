@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-12
-**Status:** v1.4.2 — Shell page JS syntax error fix (f-string quote escaping).
+**Last updated:** 2026-07-13
+**Status:** v1.4.4 on `feature/real-dollar-display` branch — Real-dollar inflation-adjusted display (Phase 1).
 
 ---
 
@@ -49,6 +49,21 @@ cd /home/lemurtech/Net-Worth-Navigator
 ---
 
 ## What's New
+
+### Real-Dollar Display — Phase 1 (2026-07-13)
+
+**Feature branch:** `feature/real-dollar-display`
+
+Adds `[simulation].real_dollar_basis = true/false` (default `false`). When enabled, all chart and table monetary values are deflated to start-year purchasing power using the configured inflation rate. Applies to deterministic, historical, and Monte Carlo modes.
+
+**Implementation:** A single `_apply_real_dollar_basis()` function in `model.py` applies cumulative deflation `(1+inflation)^{-(year-start)}` to all 76 whitelisted monetary columns, liability balance columns (pattern-match), and percentile-suffixed band columns (pattern-match). Non-monetary columns (ratios, tax rates, flags, names) are untouched.
+
+**Scope:**
+- Charts, tables, KPI strip, sidecar CSVs, simulation summary — all automatically real-dollar
+- Compare page — works correctly when both scenarios use the same basis
+- 147 existing tests pass (6 pre-existing failures unchanged)
+
+**Phase 2 (planned):** Client-side toggle to switch between nominal and real-dollar views in the same rendered page (both datasets embedded).
 
 ### Windows Unicode Print Fix (2026-07-07)
 

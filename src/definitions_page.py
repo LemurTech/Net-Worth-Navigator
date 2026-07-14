@@ -87,6 +87,11 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "options": ["`true` (default)", "`false`"],
             },
             {
+                "key": "[simulation].real_dollar_basis",
+                "summary": "When true, all chart and table figures are shown in start-year purchasing power (deflated by cumulative inflation). False (default) shows nominal future-year values.",
+                "options": ["`false` (default) — nominal dollars", "`true` — deflated to start-year dollars"],
+            },
+            {
                 "key": "[simulation].render_modes",
                 "summary": "Which pre-rendered modes the scenario shell should build and expose.",
                 "options": ["`deterministic`", "`historical`", "`monte_carlo`"],

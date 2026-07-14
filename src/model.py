@@ -136,6 +136,56 @@ UNIFORM_LIFETIME_FACTORS = {
 }
 
 
+# ── Real-dollar (inflation-adjusted) display — monetary column whitelist ──────
+
+_REAL_DOLLAR_MONETARY_COLUMNS = {
+    # Core value columns
+    "net_worth", "total_net_worth", "home_value", "mortgage", "home_equity",
+    "cash", "taxable", "trad_ira", "roth",
+    # Income
+    "person1_income", "person2_income",
+    # Spending, taxes, cash flow
+    "annual_spend", "annual_taxes", "annual_federal_taxes", "annual_state_taxes",
+    "net_flow", "required_outflows", "event_outflow_total", "funding_shortfall",
+    "freed_payments",
+    # Tax base columns
+    "taxable_income", "taxable_wage_income", "non_ss_taxable_income",
+    "withdrawal_taxable_income", "other_taxable_income",
+    "taxable_social_security_income", "social_security_provisional_income",
+    "federal_standard_deduction", "federal_taxable_after_deduction",
+    "state_standard_deduction", "state_taxable_before_deduction", "state_taxable_income",
+    # Withdrawal character details
+    "taxable_withdrawal_basis_portion", "taxable_withdrawal_gain_portion",
+    "roth_withdrawal_basis_portion", "roth_withdrawal_earnings_portion",
+    # RMD
+    "rmd_required", "rmd_withdrawn", "rmd_shortfall",
+    # Contributions
+    "contribution_trad_ira", "contribution_roth",
+    "contribution_employee_trad_ira", "contribution_employee_roth",
+    "contribution_employee_trad_ira_person1", "contribution_employee_roth_person1",
+    "contribution_employee_trad_ira_person2", "contribution_employee_roth_person2",
+    "contribution_trad_ira_person1", "contribution_roth_person1",
+    "contribution_trad_ira_person2", "contribution_roth_person2",
+    "contribution_total",
+    # Withdrawals
+    "withdrawal_cash", "withdrawal_taxable", "withdrawal_trad_ira", "withdrawal_roth",
+    "withdrawal_trad_ira_person1", "withdrawal_trad_ira_person2",
+    "withdrawal_roth_person1", "withdrawal_roth_person2",
+    # Surplus routing
+    "surplus_to_taxable", "surplus_to_trad_ira", "surplus_to_roth",
+    # Employer match
+    "employer_match_total", "employer_match_person1", "employer_match_person2",
+    # Basis tracking
+    "taxable_cost_basis", "taxable_unrealized_gain",
+    "roth_contribution_basis", "roth_earnings",
+    # Owner splits
+    "trad_ira_person1", "trad_ira_person2",
+    "roth_person1", "roth_person2",
+    # Contribution limit overage
+    "person1_over_total_limit", "person2_over_total_limit",
+}
+
+
 @dataclass
 class ProjectionResult:
     """Normalized projection output for deterministic and stochastic modes."""
@@ -2313,6 +2363,7 @@ def _normalize_simulation_settings(config: dict) -> dict[str, object]:
         "seed": seed,
         "portfolio_return_volatility": return_volatility,
         "historical_returns_path": historical_returns_path,
+        "real_dollar_basis": bool(sim.get("real_dollar_basis", False)),
     }
 
 
@@ -2987,6 +3038,8 @@ def run_projection_result(
             basis_seeds=basis_seeds,
             config=config,
         )
+        if simulation_settings.get("real_dollar_basis"):
+            yearly_df = _apply_real_dollar_basis(yearly_df, config)
         summary = _projection_summary(
             config=config,
             simulation_settings=simulation_settings,
@@ -3066,6 +3119,9 @@ def run_projection_result(
                 )
             )
             run_labels.append(label)
+
+    if simulation_settings.get("real_dollar_basis"):
+        run_frames = [_apply_real_dollar_basis(f, config) for f in run_frames]
 
     primary_df = _build_primary_path_from_runs(run_frames)
     band_df = _build_band_frame(run_frames)
@@ -4158,6 +4214,54 @@ def _run_projection_yearly(
             last_row[f"liability_{slug}_balance"] = lib["balance"]
 
     return pd.DataFrame(rows)
+
+
+def _apply_real_dollar_basis(
+    df: pd.DataFrame, config: dict
+) -> pd.DataFrame:
+    """Deflate monetary DataFrame columns to start-year purchasing power.
+
+    Uses the configured inflation rate to compute a cumulative deflator
+    per year: value_real = value_nominal * (1 + inflation)^{-(year - start)}.
+
+    Only columns in _REAL_DOLLAR_MONETARY_COLUMNS are deflated.  Liability
+    balance columns (``liability_*_balance``) and percentile-suffixed columns
+    (``total_net_worth_p10``, etc.) are matched by pattern.
+
+    Returns a copy; the original DataFrame is not modified.
+    """
+    assumptions = config.get("assumptions", {})
+    inflation = float(assumptions.get("inflation", 0.0))
+    sim = config.get("simulation", {})
+    start_year = int(sim.get("start_year", 2026))
+
+    if inflation <= 0.0 or df.empty:
+        return df
+
+    yr = df["year"].astype(float)
+    deflator = (1.0 + inflation) ** -(yr - start_year)
+
+    result = df.copy()
+    for col in result.columns:
+        if col == "year":
+            continue
+        if col in _REAL_DOLLAR_MONETARY_COLUMNS:
+            result[col] = result[col] * deflator
+        elif col.startswith("liability_") and col.endswith("_balance"):
+            result[col] = result[col] * deflator
+        else:
+            # Check for percentile-suffixed monetary columns
+            # (e.g. total_net_worth_p10, annual_spend_p25)
+            # Strip the _pNN suffix and check the base name.
+            ppos = col.rfind("_p")
+            if ppos > 0 and ppos + 2 < len(col):
+                suffix = col[ppos + 2:]
+                if suffix.isdigit():
+                    base = col[:ppos]
+                    if base in _REAL_DOLLAR_MONETARY_COLUMNS:
+                        result[col] = result[col] * deflator
+
+    return result
 
 
 def _person_income_components(
