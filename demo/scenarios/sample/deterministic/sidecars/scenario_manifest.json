@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-10T16:21:04.696073",
+  "generated_at": "2026-07-13T21:37:25.687364",
   "mode": "synthetic",
   "cache_timestamp": null,
   "scenario": {
@@ -26,6 +26,7 @@
       "monte_carlo"
     ],
     "mode": "deterministic",
+    "real_dollar_basis": true,
     "result_mode": "deterministic",
     "run_count": 1,
     "display_path_kind": "deterministic"
@@ -949,8 +950,8 @@
       "custom_failure_operator": "<",
       "custom_failure_threshold": 0.0
     },
-    "terminal_total_net_worth": 4436361.9055052325,
-    "terminal_investable_net_worth": 3301975.7679249872,
+    "terminal_total_net_worth": 1530688.706685572,
+    "terminal_investable_net_worth": 1139288.7066855722,
     "success": true,
     "data_as_of_clamped": false,
     "clamped_start_year": 2026

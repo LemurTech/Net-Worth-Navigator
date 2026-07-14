@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-10T16:16:34.013317",
+  "generated_at": "2026-07-13T21:39:29.569664",
   "mode": "synthetic",
   "cache_timestamp": null,
   "scenario": {
@@ -29,6 +29,7 @@
     "num_runs": 250,
     "seed": 42,
     "portfolio_return_volatility": 0.17,
+    "real_dollar_basis": true,
     "result_mode": "deterministic",
     "run_count": 1,
     "display_path_kind": "deterministic"
@@ -1493,8 +1494,8 @@
       "custom_failure_operator": "<",
       "custom_failure_threshold": 0.0
     },
-    "terminal_total_net_worth": 7043774.462971481,
-    "terminal_investable_net_worth": 4912900.881036339,
+    "terminal_total_net_worth": 2159317.246491751,
+    "terminal_investable_net_worth": 1506083.3731253496,
     "success": true,
     "data_as_of_clamped": false,
     "clamped_start_year": 2026

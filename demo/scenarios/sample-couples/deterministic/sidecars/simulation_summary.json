@@ -17,8 +17,8 @@
     "custom_failure_operator": "<",
     "custom_failure_threshold": 0.0
   },
-  "terminal_total_net_worth": 11668243.040107446,
-  "terminal_investable_net_worth": 9585105.706136836,
+  "terminal_total_net_worth": 3576979.723756292,
+  "terminal_investable_net_worth": 2938379.723756292,
   "success": true,
   "data_as_of_clamped": false,
   "clamped_start_year": 2026
