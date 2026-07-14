@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T13:21:23.452499",
+  "generated_at": "2026-07-14T13:36:19.365376",
   "mode": "synthetic",
   "cache_timestamp": null,
   "scenario": {
@@ -952,32 +952,27 @@
       "custom_failure_operator": "<",
       "custom_failure_threshold": 0.0
     },
-    "terminal_total_net_worth": 849307.4250129191,
-    "terminal_investable_net_worth": 457907.42501291924,
-    "success_rate": 0.624,
-    "failure_rate": 0.376,
-    "probability_of_success": 0.624,
+    "terminal_total_net_worth": 580056.2498894347,
+    "terminal_investable_net_worth": 188656.24988943472,
+    "success_rate": 0.552,
+    "failure_rate": 0.44799999999999995,
+    "probability_of_success": 0.552,
     "terminal_total_net_worth_p10": 341163.0374994039,
-    "terminal_total_net_worth_p50": 849307.4250129191,
-    "terminal_total_net_worth_p90": 3726785.3675467907,
+    "terminal_total_net_worth_p50": 580056.2498894347,
+    "terminal_total_net_worth_p90": 3836121.8983004848,
     "terminal_investable_net_worth_p10": -50236.962500596004,
-    "terminal_investable_net_worth_p50": 457907.42501291924,
-    "terminal_investable_net_worth_p90": 3335385.3675467907,
-    "median_terminal_net_worth": 849307.4250129191,
-    "median_terminal_liquid_net_worth": 457907.42501291924,
+    "terminal_investable_net_worth_p50": 188656.24988943472,
+    "terminal_investable_net_worth_p90": 3444721.8983004848,
+    "median_terminal_net_worth": 580056.2498894347,
+    "median_terminal_liquid_net_worth": 188656.24988943472,
     "worst_decile_terminal_net_worth": 341163.0374994039,
-    "failed_run_count": 94,
-    "successful_run_count": 156,
+    "failed_run_count": 112,
+    "successful_run_count": 138,
     "first_failure_period_distribution": [
       {
         "year": 2046,
         "run_count": 2,
         "probability": 0.008
-      },
-      {
-        "year": 2047,
-        "run_count": 1,
-        "probability": 0.004
       },
       {
         "year": 2048,
@@ -986,8 +981,8 @@
       },
       {
         "year": 2049,
-        "run_count": 2,
-        "probability": 0.008
+        "run_count": 3,
+        "probability": 0.012
       },
       {
         "year": 2050,
@@ -996,66 +991,66 @@
       },
       {
         "year": 2051,
-        "run_count": 2,
-        "probability": 0.008
-      },
-      {
-        "year": 2052,
-        "run_count": 6,
-        "probability": 0.024
-      },
-      {
-        "year": 2053,
-        "run_count": 13,
-        "probability": 0.052
-      },
-      {
-        "year": 2054,
-        "run_count": 7,
-        "probability": 0.028
-      },
-      {
-        "year": 2055,
         "run_count": 5,
         "probability": 0.02
       },
       {
-        "year": 2056,
-        "run_count": 13,
-        "probability": 0.052
-      },
-      {
-        "year": 2057,
-        "run_count": 11,
-        "probability": 0.044
-      },
-      {
-        "year": 2058,
-        "run_count": 6,
-        "probability": 0.024
-      },
-      {
-        "year": 2059,
-        "run_count": 4,
-        "probability": 0.016
-      },
-      {
-        "year": 2060,
-        "run_count": 6,
-        "probability": 0.024
-      },
-      {
-        "year": 2061,
+        "year": 2052,
         "run_count": 8,
         "probability": 0.032
       },
       {
+        "year": 2053,
+        "run_count": 11,
+        "probability": 0.044
+      },
+      {
+        "year": 2054,
+        "run_count": 3,
+        "probability": 0.012
+      },
+      {
+        "year": 2055,
+        "run_count": 15,
+        "probability": 0.06
+      },
+      {
+        "year": 2056,
+        "run_count": 14,
+        "probability": 0.056
+      },
+      {
+        "year": 2057,
+        "run_count": 10,
+        "probability": 0.04
+      },
+      {
+        "year": 2058,
+        "run_count": 11,
+        "probability": 0.044
+      },
+      {
+        "year": 2059,
+        "run_count": 5,
+        "probability": 0.02
+      },
+      {
+        "year": 2060,
+        "run_count": 7,
+        "probability": 0.028
+      },
+      {
+        "year": 2061,
+        "run_count": 7,
+        "probability": 0.028
+      },
+      {
         "year": 2062,
-        "run_count": 2,
-        "probability": 0.008
+        "run_count": 5,
+        "probability": 0.02
       }
     ],
-    "first_failure_year_p10": 2050,
+    "first_failure_year_p10": 2051,
     "first_failure_year_p50": 2056,
     "first_failure_year_p90": 2061,
     "run_labels": [
@@ -1310,20 +1305,20 @@
       "run_249",
       "run_250"
     ],
-    "probability_of_spending_shortfall": 0.376,
-    "probability_of_liquid_depletion": 0.376,
+    "probability_of_spending_shortfall": 0.448,
+    "probability_of_liquid_depletion": 0.448,
     "probability_of_net_worth_below_zero": 0.0,
-    "probability_of_home_equity_required": 0.376,
-    "peak_current_failure_trigger_rate": 0.376,
+    "probability_of_home_equity_required": 0.448,
+    "peak_current_failure_trigger_rate": 0.448,
     "peak_current_failure_trigger_year": 2062,
     "peak_temporary_pressure_rate": 0.0,
     "peak_temporary_pressure_year": 2026,
     "retirement_success_through_year_rate": 1.0,
     "retirement_current_failure_trigger_rate": 0.0,
     "retirement_temporary_pressure_rate": 0.0,
-    "retirement_total_net_worth_p10": 900660.4585090326,
-    "retirement_total_net_worth_p50": 1268240.0318898866,
-    "retirement_total_net_worth_p90": 2133467.7281346726,
+    "retirement_total_net_worth_p10": 878864.3370282664,
+    "retirement_total_net_worth_p50": 1266071.9099395368,
+    "retirement_total_net_worth_p90": 1885413.2486139485,
     "data_as_of_clamped": false,
     "clamped_start_year": 2026
   }

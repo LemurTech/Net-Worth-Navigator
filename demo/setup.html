@@ -9,14 +9,12 @@
          margin: 0; padding: 20px; background: #0b1220; color: #e5edf7;
          caret-color: transparent; }
   html { background: #0b1220; }
-  * { outline: none; }
+  * { outline: none; box-sizing: border-box; }
   .page-header { display: flex; align-items: center; justify-content: space-between;
                  margin-bottom: 20px; padding-bottom: 12px;
                  border-bottom: 1px solid #243142; flex-wrap: wrap; gap: 8px; }
-  .page-header .controls { display: flex; align-items: center; gap: 10px;
-                           flex-shrink: 0; }
+  .page-header .controls { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .page-title { font-size: 22px; font-weight: 700; margin: 0; }
-  .page-subtitle { font-size: 13px; color: #9fb2c8; margin: 2px 0 0; }
   .back-link { color: #7dd3fc; font-size: 13px; font-weight: 600;
                text-decoration: none; white-space: nowrap; }
   .back-link:hover { color: #fff; }
@@ -26,32 +24,58 @@
   }
   .version-tag { font-size: 11px; color: #64748b; font-weight: 400;
                  margin-left: 8px; letter-spacing: 0.03em; }
-  .config-section { background: #111827; border-radius: 8px;
-                    border: 1px solid #243142; margin-bottom: 14px;
-                    padding: 16px; }
-  .config-section h3 { margin: 0 0 12px; font-size: 15px; color: #f8fafc;
-                       padding-bottom: 8px; border-bottom: 1px solid #243142; }
-  .field-row { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 8px; }
-  .field { flex: 1 1 180px; min-width: 140px; }
-  .field-label { font-size: 11px; color: #9fb2c8; font-weight: 600;
-                 letter-spacing: 0.03em; text-transform: uppercase;
-                 display: block; margin-bottom: 2px; }
-  .field-value { font-size: 14px; color: #e5edf7; padding: 4px 0;
-                 font-variant-numeric: tabular-nums; }
-  .field-note { font-size: 11px; color: #64748b; margin-top: 1px; }
-  .toml-box { background: #0f1725; border-radius: 6px; border: 1px solid #243142;
-              padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
+  .scenario-select { background: #1e293b; color: #e5edf7; border: 1px solid #475569;
+                     border-radius: 6px; padding: 6px 10px; font-size: 13px;
+                     font-family: inherit; cursor: pointer; min-width: 180px; }
+
+  /* ── Tab bar ─────────────────────────────────────────────────── */
+  .tab-bar { display: flex; gap: 0; border-bottom: 2px solid #243142;
+             margin-bottom: 16px; }
+  .tab-bar label { padding: 10px 18px; border: none; cursor: pointer;
+                   font-size: 14px; color: #93a4ba; border-bottom: 3px solid transparent;
+                   margin-bottom: -2px; transition: color .15s; user-select: none; }
+  .tab-bar label:hover { color: #cbd5e1; }
+  .tab-content { display: none; }
+
+  /* Radio hack: show tab content when its radio is checked */
+  .tab-radio { display: none; }
+  #tab-r0:checked ~ .tab-bar label[for="tab-r0"],
+  #tab-r1:checked ~ .tab-bar label[for="tab-r1"],
+  #tab-r2:checked ~ .tab-bar label[for="tab-r2"],
+  #tab-r3:checked ~ .tab-bar label[for="tab-r3"] {
+    color: #f8fafc; border-bottom-color: #7dd3fc; }
+  #tab-r0:checked ~ #tab-c0 { display: block; }
+  #tab-r1:checked ~ #tab-c1 { display: block; }
+  #tab-r2:checked ~ #tab-c2 { display: block; }
+  #tab-r3:checked ~ #tab-c3 { display: block; }
+
+  /* ── Section card ─────────────────────────────────────────────── */
+  .section-card { background: #111827; border-radius: 8px;
+                  border: 1px solid #243142; margin-bottom: 14px;
+                  padding: 16px; }
+  .section-card h3 { margin: 0 0 12px; font-size: 15px; color: #f8fafc;
+                     padding-bottom: 8px; border-bottom: 1px solid #243142;
+                     font-weight: 600; }
+  .field-row { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 10px; }
+  .field { flex: 1 1 180px; min-width: 140px; display: flex; flex-direction: column; }
+  .field-label { font-size: 11px; color: #94a3b8; font-weight: 600;
+                 letter-spacing: 0.04em; text-transform: uppercase;
+                 display: block; margin-bottom: 4px; }
+  .field-value { padding: 8px 12px; border: 1px solid #334155; border-radius: 8px;
+                 background: rgba(15,23,37,0.5); color: #e5edf7; font-size: 14px;
+                 font-variant-numeric: tabular-nums; min-height: 18px; line-height: 1.4; }
+  .field-value.mono { font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+                      font-size: 13px; }
+  .field-note { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .toml-box { background: rgba(15,23,37,0.5); border-radius: 8px;
+              border: 1px solid #334155; padding: 12px;
+              font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
               font-size: 12px; line-height: 1.5; color: #cbd5e1;
               overflow-x: auto; white-space: pre; }
-  .toml-box .comment { color: #64748b; font-style: italic; }
-  .data-source-badge { display: inline-block; padding: 2px 10px;
+  .data-source-badge { display: inline-block; padding: 4px 12px;
                        border-radius: 99px; font-size: 11px; font-weight: 600;
                        background: #1e293b; color: #94a3b8;
                        border: 1px solid #475569; }
-  .scenario-select { background: #1e293b; color: #e5edf7; border: 1px solid #475569;
-                     border-radius: 6px; padding: 6px 10px; font-size: 13px;
-                     font-family: inherit; cursor: pointer;
-                     min-width: 180px; }
 </style>
 </head>
 <body>
@@ -66,25 +90,36 @@
   </div>
 </div>
 
-<div class="config-section">
-  <h3>Data Source</h3>
+<!-- ── Tab radio buttons (CSS-only) ────────────────────────────── -->
+<input type="radio" name="tabs" class="tab-radio" id="tab-r0" checked>
+<input type="radio" name="tabs" class="tab-radio" id="tab-r1">
+<input type="radio" name="tabs" class="tab-radio" id="tab-r2">
+
+<div class="tab-bar">
+  <label for="tab-r0">Metadata</label>
+  <label for="tab-r1">Accounts</label>
+  <label for="tab-r2">Raw TOML</label>
+</div>
+
+<!-- ══════════════════ TAB: METADATA ═══════════════════════════ -->
+<div class="tab-content" id="tab-c0">
+
+<div class="section-card">
+  <h3>Scenario</h3>
   <div class="field-row">
-    <div class="field">
-      <span class="field-label">Mode</span>
-      <div><span class="data-source-badge">synthetic</span></div>
-    </div>
-    <div class="field"><span class="field-label">State Tax</span><div class="field-value">2025_us_federal_oregon</div></div>
-    <div class="field"><span class="field-label">Real-Dollar Display</span><div class="field-value">Enabled (start-year dollars)</div></div>
+    <div class="field" style="flex:2 1 300px"><span class="field-label">Plan Name</span><div class="field-value">Sample Plan (Single-Person)</div></div>
+  </div>
+  <div class="field-row">
+    <div class="field" style="flex:2 1 300px"><span class="field-label">Description</span><div class="field-value">Single-person share-safe reference scenario with full inline documentation.</div></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Slug</span><div class="field-value mono">sample</div></div>
+    <div class="field"><span class="field-label">Household Type</span><div class="field-value">single</div></div>
   </div>
 </div>
 
-<div class="config-section">
-  <h3>Household</h3>
-  <div class="field-row">
-    <div class="field"><span class="field-label">Type</span><div class="field-value">single</div></div>
-    <div class="field"><span class="field-label">Render Modes</span><div class="field-value">deterministic, historical, monte_carlo</div></div>
-    <div class="field"><span class="field-label">Projection Window</span><div class="field-value">2026 – 2062</div></div>
-  </div>
+<div class="section-card">
+  <h3>People</h3>
   
     <div class="field-row">
       <div class="field"><span class="field-label">Name</span><div class="field-value">Alex</div></div>
@@ -92,13 +127,13 @@
       <div class="field"><span class="field-label">Life Expectancy</span><div class="field-value">90</div></div>
       <div class="field"><span class="field-label">Retirement Year</span><div class="field-value">2040</div></div>
       <div class="field"><span class="field-label">SS Start Age</span><div class="field-value">67</div></div>
-      <div class="field"><span class="field-label">Annual Take-Home</span><div class="field-value">$62,000</div></div>
+      <div class="field"><span class="field-label">Take-Home Pay</span><div class="field-value">$62,000</div></div>
       <div class="field"><span class="field-label">Gross Income</span><div class="field-value">$90,000</div></div>
-      <div class="field"><span class="field-label">Contribution %</span><div class="field-value">20.0%</div></div>
+      <div class="field"><span class="field-label">Contribution</span><div class="field-value">20.0%</div></div>
     </div>
 </div>
 
-<div class="config-section">
+<div class="section-card">
   <h3>Investment Assumptions</h3>
   <div class="field-row">
     <div class="field"><span class="field-label">Stock Return</span><div class="field-value">7.0%</div></div>
@@ -106,9 +141,15 @@
     <div class="field"><span class="field-label">Inflation</span><div class="field-value">3.0%</div></div>
     <div class="field"><span class="field-label">Equity Allocation</span><div class="field-value">70.0%</div></div>
   </div>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Projection Window</span><div class="field-value">2026 – 2062</div></div>
+    <div class="field"><span class="field-label">Render Modes</span><div class="field-value">deterministic, historical, monte_carlo</div></div>
+    <div class="field"><span class="field-label">State Tax</span><div class="field-value">2025_us_federal_oregon</div></div>
+    <div class="field"><span class="field-label">Real-Dollar Display</span><div class="field-value">Enabled (start-year dollars)</div></div>
+  </div>
 </div>
 
-<div class="config-section">
+<div class="section-card">
   <h3>Spending & Withdrawals</h3>
   <div class="field-row">
     <div class="field"><span class="field-label">Retirement Spending</span><div class="field-value">$60,000</div></div>
@@ -121,8 +162,20 @@
   </div>
 </div>
 
-<div class="config-section">
-  <h3>Starting Balances <span class="data-source-badge" style="font-size:10px">synthetic</span></h3>
+</div><!-- /#tab-c0 -->
+
+<!-- ══════════════════ TAB: ACCOUNTS ═══════════════════════════ -->
+<div class="tab-content" id="tab-c1">
+
+<div class="section-card">
+  <h3>Data Source</h3>
+  <div class="field-row">
+    <div class="field"><span class="field-label">Mode</span><div><span class="data-source-badge">synthetic</span></div></div>
+  </div>
+</div>
+
+<div class="section-card">
+  <h3>Starting Balances</h3>
   <div class="field-row">
     <div class="field"><span class="field-label">Taxable</span><div class="field-value">$80,000</div></div>
     <div class="field"><span class="field-label">Traditional IRA</span><div class="field-value">$250,000</div></div>
@@ -132,7 +185,12 @@
   </div>
 </div>
 
-<div class="config-section">
+</div><!-- /#tab-c1 -->
+
+<!-- ══════════════════ TAB: RAW TOML ═══════════════════════════ -->
+<div class="tab-content" id="tab-c2">
+
+<div class="section-card">
   <h3>Raw Configuration</h3>
   <div class="toml-box"># Net Worth Navigator — Single-Person Sample Plan (Reference Documentation)
 #
@@ -519,8 +577,10 @@ expense_kind = &quot;mandatory&quot;
 repeat_every_years = 1
 chart_first_occurrence_only = true
 </div>
-  <div class="field-note" style="margin-top:6px">This is a read-only demo. The configuration shown here is for reference only.</div>
+  <div class="field-note">This is a read-only demo. Configuration is for reference only.</div>
 </div>
+
+</div><!-- /#tab-c2 -->
 
 </body>
 </html>
