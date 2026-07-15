@@ -1725,6 +1725,7 @@ def _build_portfolio_chart(
     df: pd.DataFrame,
     config: dict | None = None,
     projection_result: ProjectionResult | None = None,
+    nominal_df: pd.DataFrame | None = None,
 ) -> str:
     paper_bg = "#111827"
     plot_bg = "#0f1725"
