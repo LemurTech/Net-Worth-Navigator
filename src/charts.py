@@ -184,18 +184,10 @@ _TABS_CSS = """
   }
 
   /* ── Real/nominal view visibility (body-class driven) ── */
-  /* Chart wrappers use position:absolute at 0×0 instead of display:none
-     so Plotly can initialize without adding to scrollHeight. */
   body.nwn-nominal .nwn-view-real { display: none !important; }
-  body.nwn-nominal .nwn-view-nominal {
-    position: static !important; width: auto !important; height: auto !important;
-    overflow: visible !important; visibility: visible !important;
-  }
-  body.nwn-real .nwn-view-nominal {
-    position: absolute !important; width: 0 !important; height: 0 !important;
-    overflow: hidden !important; visibility: hidden !important;
-  }
-  /* Span rules (KPI values, badge text) — unchanged display toggle */
+  body.nwn-nominal .nwn-view-nominal { display: block !important; }
+  body.nwn-real .nwn-view-nominal { display: none !important; }
+  /* Span rules (KPI values, badge text) */
   body.nwn-nominal span.nwn-view-real { display: none !important; }
   body.nwn-nominal span.nwn-view-nominal { display: inline !important; }
   body.nwn-real span.nwn-view-real { display: inline !important; }
@@ -1095,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', function() {
 (function() {
   var STORAGE_KEY = 'nwn-value-basis';
   var currentMode = localStorage.getItem(STORAGE_KEY) || 'real';
+  var _nominalRendered = false;
 
   function swapTableCells(toMode) {
     var cells = document.querySelectorAll('[data-nominal]');
@@ -1113,9 +1106,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function applyMode(mode) {
-    // Save zoom range from the currently visible chart before switching
-    var oldChartId = currentMode === 'real' || currentMode === undefined ? 'nwn-chart' : 'nwn-chart-nominal';
-    var newChartId = mode === 'real' ? 'nwn-chart' : 'nwn-chart-nominal';
+    var oldChartId = currentMode === 'real' ? 'nwn-chart' : 'nwn-chart-nominal';
     var savedRange = null;
     if (typeof Plotly !== 'undefined') {
       var oldEl = document.getElementById(oldChartId);
@@ -1130,13 +1121,24 @@ document.addEventListener('DOMContentLoaded', function() {
     localStorage.setItem(STORAGE_KEY, mode);
     currentMode = mode;
 
-    // Resize and sync zoom on the newly revealed chart
-    if (typeof Plotly !== 'undefined') {
-      var newEl = document.getElementById(newChartId);
-      if (newEl) Plotly.Plots.resize(newEl);
-      // Sync x-axis range from the previous chart
-      if (savedRange && newEl) {
-        Plotly.relayout(newEl, {'xaxis.range': savedRange});
+    // Lazy-initialize the nominal chart on first toggle (Plotly can't
+    // render correctly inside a display:none container at page load).
+    if (mode === 'nominal' && !_nominalRendered && typeof NWN_NOMINAL_FIGURE !== 'undefined') {
+      _nominalRendered = true;
+      Plotly.newPlot('nwn-chart-nominal', NWN_NOMINAL_FIGURE.data, NWN_NOMINAL_FIGURE.layout,
+        {scrollZoom: true, displaylogo: false, responsive: true});
+      if (savedRange) {
+        Plotly.relayout('nwn-chart-nominal', {'xaxis.range': savedRange});
+      }
+    } else if (typeof Plotly !== 'undefined') {
+      var newEl = document.getElementById(mode === 'real' ? 'nwn-chart' : 'nwn-chart-nominal');
+      if (newEl) {
+        requestAnimationFrame(function() {
+          Plotly.Plots.resize(newEl);
+          if (savedRange) {
+            Plotly.relayout(newEl, {'xaxis.range': savedRange});
+          }
+        });
       }
     }
   }
@@ -2391,17 +2393,23 @@ def build_chart(
     )
 
     # ── Nominal chart (when real-dollar deflation is active) ──
+    # Store as JSON for lazy initialization — Plotly can't render correctly
+    # inside a hidden container.  The chart is created fresh on first toggle.
     nominal_chart_html = ""
+    nominal_figure_json = ""
     if nominal_df is not None:
         nominal_fig = _build_figure(
             nominal_df, config, projection_result=projection_result,
             force_real_dollar_basis=False,
         )
-        nominal_chart_html = nominal_fig.to_html(
-            full_html=False,
-            include_plotlyjs=False,
-            div_id="nwn-chart-nominal",
-            config=dict(scrollZoom=True, displaylogo=False),
+        import json as _json
+        nominal_figure_json = _json.dumps(
+            nominal_fig.to_plotly_json(), default=str
+        )
+        nominal_chart_html = (
+            f"<div id=\"nwn-chart-nominal\" class=\"plotly-graph-div\""
+            f" style=\"height:100%; width:100%;\"></div>\n"
+            f"<script>var NWN_NOMINAL_FIGURE = {nominal_figure_json};</script>"
         )
 
     kpi_html = _build_kpi_summary(config, projection_result, nominal_df=nominal_df)
