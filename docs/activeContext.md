@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-15
-**Status:** v1.7.0 — Starlight User Guide fully restored after nested-repo data loss; 139 heading fixes, 15+ table repairs, 23 images recovered, Social Security page added, Docker sample deployed, Monarch MCP Docker mounts fixed.
+**Status:** v1.8.0 — Real-dollar JS toggle on `feat/real-dollar-toggle` branch; dual chart divs, data-nominal table cells, segmented pill in badge bar.
 
 ---
 
