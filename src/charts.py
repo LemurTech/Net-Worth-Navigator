@@ -2250,6 +2250,7 @@ def build_chart(
     """
     projection_result = _coerce_projection_result(projection)
     df = projection_result.yearly_df
+    nominal_df = projection_result.nominal_yearly_df
     config = resolve_runtime_config(config or load_config())
     baseline_config = resolve_runtime_config(baseline_config) if baseline_config is not None else None
     fig = _build_figure(df, config, projection_result=projection_result)
@@ -2261,7 +2262,22 @@ def build_chart(
         div_id="nwn-chart",
         config=dict(scrollZoom=True, displaylogo=False),
     )
-    kpi_html = _build_kpi_summary(config, projection_result)
+
+    # ── Nominal chart (when real-dollar deflation is active) ──
+    nominal_chart_html = ""
+    if nominal_df is not None:
+        nominal_fig = _build_figure(
+            nominal_df, config, projection_result=projection_result,
+            force_real_dollar_basis=False,
+        )
+        nominal_chart_html = nominal_fig.to_html(
+            full_html=False,
+            include_plotlyjs=False,
+            div_id="nwn-chart-nominal",
+            config=dict(scrollZoom=True, displaylogo=False),
+        )
+
+    kpi_html = _build_kpi_summary(config, projection_result, nominal_df=nominal_df)
 
     # Value-basis badge — visible indicator when real-dollar deflation is active
     value_basis_html = ""
@@ -2276,16 +2292,16 @@ def build_chart(
     tax_note_html = _build_tax_semantics_note()
 
     # Build table HTML
-    accounts_html  = _wrap_table_with_sticky_header(build_accounts_table(df, config=config))
-    cashflow_html  = _wrap_table_with_sticky_header(build_cashflow_table(df, config=config))
+    accounts_html  = _wrap_table_with_sticky_header(build_accounts_table(df, config=config, nominal_df=nominal_df))
+    cashflow_html  = _wrap_table_with_sticky_header(build_cashflow_table(df, config=config, nominal_df=nominal_df))
     cashflow_chart_html = _build_cashflow_chart(df, config=config)
-    tax_html       = _wrap_table_with_sticky_header(build_tax_table(df))
+    tax_html       = _wrap_table_with_sticky_header(build_tax_table(df, nominal_df=nominal_df))
     simulation_html = (
         _build_simulation_results_panel(projection_result)
         if projection_result.mode in {"monte_carlo", "historical"}
         else ""
     )
-    portfolio_html = _build_portfolio_chart(df, config=config, projection_result=projection_result)
+    portfolio_html = _build_portfolio_chart(df, config=config, projection_result=projection_result, nominal_df=nominal_df)
     gantt_html     = _build_gantt_chart(config, df)
     assumptions_html = build_assumptions_summary(
         config,
@@ -2426,7 +2442,8 @@ def build_chart(
     {sample_guide_html}
     {kpi_html}
     {value_basis_html}
-    {chart_div}
+    <div class="nwn-view-real">{chart_div}</div>
+    <div class="nwn-view-nominal" style="display:none">{nominal_chart_html}</div>
     <div class="event-label-controls" id="event-label-controls">
       <label><input type="checkbox" id="event-labels-show-all" checked> Show all event labels</label>
       <label><input type="checkbox" id="event-labels-keep-key" checked> Keep key labels when hidden</label>
@@ -2501,6 +2518,7 @@ def _build_figure(
     df: pd.DataFrame,
     config: dict,
     projection_result: ProjectionResult | None = None,
+    force_real_dollar_basis: bool | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     paper_bg = "#111827"
@@ -2635,8 +2653,12 @@ def _build_figure(
     # ── Build subtitle with real-dollar indicator ──────────────────────────
     subtitle = "Values shown are end-of-year estimates, anchored to live Monarch balances"
     real_dollar_basis = (
-        projection_result is not None
-        and projection_result.simulation.get("real_dollar_basis", False)
+        force_real_dollar_basis
+        if force_real_dollar_basis is not None
+        else (
+            projection_result is not None
+            and projection_result.simulation.get("real_dollar_basis", False)
+        )
     )
     if real_dollar_basis:
         sim = config.get("simulation", {})
