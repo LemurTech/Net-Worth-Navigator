@@ -1240,6 +1240,7 @@ def _xaxis_tick_spec(config: dict, years: list[int]) -> tuple[list[int], list[st
 def _build_kpi_summary(
     config: dict,
     projection: pd.DataFrame | ProjectionResult,
+    nominal_df: pd.DataFrame | None = None,
 ) -> str:
     projection_result = _coerce_projection_result(projection)
     df = projection_result.yearly_df
@@ -1252,53 +1253,71 @@ def _build_kpi_summary(
         match = df[df["year"] == retirement_year]
         if not match.empty:
             retirement_row = match.iloc[0]
+    # Nominal KPI rows (for dual-view when real-dollar deflation is active)
+    nominal_first_row = nominal_df.iloc[0] if nominal_df is not None else None
+    nominal_last_row = nominal_df.iloc[-1] if nominal_df is not None else None
+    nominal_retirement_row = None
+    if nominal_df is not None and retirement_year is not None:
+        match_nom = nominal_df[nominal_df["year"] == retirement_year]
+        if not match_nom.empty:
+            nominal_retirement_row = match_nom.iloc[0]
 
     if projection_result.mode == "monte_carlo":
         summary = projection_result.summary
         cards = [
-            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0))))),
+            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0)))), None),
             (
                 "Probability of Spending Shortfall",
                 _format_percent(float(summary.get("probability_of_spending_shortfall", 0.0))),
+                None,
             ),
             (
                 "Median Terminal Net Worth",
                 _format_compact_currency(float(summary.get("median_terminal_net_worth", summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"])))),
+                None,
             ),
             (
                 "Worst-Decile Terminal Net Worth",
                 _format_compact_currency(float(summary.get("worst_decile_terminal_net_worth", summary.get("terminal_total_net_worth_p10", last_row["total_net_worth"])))),
+                None,
             ),
         ]
     elif projection_result.mode == "historical":
         summary = projection_result.summary
         cards = [
-            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0))))),
+            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0)))), None),
             (
                 "Probability of Spending Shortfall",
                 _format_percent(float(summary.get("probability_of_spending_shortfall", 0.0))),
+                None,
             ),
             (
                 "Median Terminal Net Worth",
                 _format_compact_currency(float(summary.get("median_terminal_net_worth", summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"])))),
+                None,
             ),
             (
                 "Worst-Decile Terminal Net Worth",
                 _format_compact_currency(float(summary.get("worst_decile_terminal_net_worth", summary.get("terminal_total_net_worth_p10", last_row["total_net_worth"])))),
+                None,
             ),
         ]
     else:
         cards = [
-            ("Net Worth (EOY)", _format_compact_currency(first_row["total_net_worth"])),
+            ("Net Worth (EOY)", _format_compact_currency(first_row["total_net_worth"]),
+             _format_compact_currency(nominal_first_row["total_net_worth"]) if nominal_first_row is not None else None),
             (
                 "Net Worth at Retirement",
                 _format_compact_currency(retirement_row["total_net_worth"]) if retirement_row is not None else "—",
+                _format_compact_currency(nominal_retirement_row["total_net_worth"]) if nominal_retirement_row is not None else None,
             ),
             (
                 "Retirement Age",
                 str(_retirement_age(config, first_retire)) if _retirement_age(config, first_retire) is not None else "—",
+                None,
             ),
-            ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"])),
+            ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"]),
+             _format_compact_currency(nominal_last_row["total_net_worth"]) if nominal_last_row is not None else None),
         ]
 
     # Build tooltip tuples: (label, value, tooltip_text)
@@ -1322,9 +1341,12 @@ def _build_kpi_summary(
         f"{info_icon_svg}"
         f"<span class='tooltip-content'>{tooltip_map.get(label, '')}</span>"
         f"</div>"
-        f"<div class='kpi-value'>{value}</div>"
+        f"<div class='kpi-value'>"
+        + (f"<span class='nwn-view-real'>{value}</span><span class='nwn-view-nominal' style='display:none'>{nom}</span>"
+           if nom is not None else f"{value}")
+        + f"</div>"
         f"</div>"
-        for label, value in cards
+        for label, value, nom in cards
     )
     return f"<div class='kpi-strip'>{boxes}</div>"
 
