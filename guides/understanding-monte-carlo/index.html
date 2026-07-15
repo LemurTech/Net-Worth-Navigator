@@ -93,28 +93,60 @@
 <p>A wide band means high uncertainty — small changes in returns produce very different outcomes. A narrow band means the outcome is relatively predictable.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="understanding-success-and-failure">Understanding Success and Failure</h2><a class="sl-anchor-link" href="#understanding-success-and-failure"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Understanding Success and Failure”</span></a></div>
 <p>Success is defined by the <code dir="auto">failure_mode</code> in your scenario’s configuration:</p>
-<p>Failure Mode
-What Counts as Failure</p>
-<p><code dir="auto">net_worth_below_zero</code>
-Total net worth drops below zero</p>
-<p><code dir="auto">liquid_depletion</code>
-Available cash and investments are exhausted</p>
-<p><code dir="auto">spending_shortfall</code>
-Can’t meet the spending target</p>
-<p><code dir="auto">preserve_home_equity</code>
-Must sell the home to cover spending</p>
+<table>
+<thead>
+<tr>
+<th>Failure Mode</th>
+<th>What Counts as Failure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">net_worth_below_zero</code></td>
+<td>Total net worth drops below zero</td>
+</tr>
+<tr>
+<td><code dir="auto">liquid_depletion</code></td>
+<td>Available cash and investments are exhausted</td>
+</tr>
+<tr>
+<td><code dir="auto">spending_shortfall</code></td>
+<td>Can’t meet the spending target</td>
+</tr>
+<tr>
+<td><code dir="auto">preserve_home_equity</code></td>
+<td>Must sell the home to cover spending</td>
+</tr>
+</tbody>
+</table>
 <p>A 90% probability of success means that in 9 out of 10 simulations, the plan never triggered the failure condition. This does <strong>not</strong> mean there’s a 10% chance of going broke — it means that under 10% of the random return sequences tested, the plan didn’t hold up.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="key-metrics-in-the-simulation-tab">Key Metrics in the Simulation Tab</h2><a class="sl-anchor-link" href="#key-metrics-in-the-simulation-tab"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Key Metrics in the Simulation Tab”</span></a></div>
-<p>Metric
-What It Means</p>
-<p><strong>Median Terminal NW</strong>
-The middle outcome — half did better, half did worse</p>
-<p><strong>Worst-Decile Terminal NW</strong>
-The 10th percentile outcome. If you’re planning conservatively, plan for this.</p>
-<p><strong>First Failure Year</strong>
-The earliest year where any simulation failed. Tells you your risk window.</p>
-<p><strong>Peak Failure Rate</strong>
-The highest percentage of simulations failing in a single year. A spike here identifies a vulnerable period.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What It Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Median Terminal NW</strong></td>
+<td>The middle outcome — half did better, half did worse</td>
+</tr>
+<tr>
+<td><strong>Worst-Decile Terminal NW</strong></td>
+<td>The 10th percentile outcome. If you’re planning conservatively, plan for this.</td>
+</tr>
+<tr>
+<td><strong>First Failure Year</strong></td>
+<td>The earliest year where any simulation failed. Tells you your risk window.</td>
+</tr>
+<tr>
+<td><strong>Peak Failure Rate</strong></td>
+<td>The highest percentage of simulations failing in a single year. A spike here identifies a vulnerable period.</td>
+</tr>
+</tbody>
+</table>
 <div class="sl-heading-wrapper level-h2"><h2 id="tips-for-using-monte-carlo">Tips for Using Monte Carlo</h2><a class="sl-anchor-link" href="#tips-for-using-monte-carlo"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Tips for Using Monte Carlo”</span></a></div>
 <ul>
 <li><strong>Start with deterministic</strong> — get your assumptions right in deterministic mode first</li>
