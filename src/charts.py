@@ -184,10 +184,18 @@ _TABS_CSS = """
   }
 
   /* ── Real/nominal view visibility (body-class driven) ── */
+  /* Chart wrappers use position:absolute at 0×0 instead of display:none
+     so Plotly can initialize without adding to scrollHeight. */
   body.nwn-nominal .nwn-view-real { display: none !important; }
-  body.nwn-nominal .nwn-view-nominal { display: block !important; }
-  body.nwn-real .nwn-view-real { display: block !important; }
-  body.nwn-real .nwn-view-nominal { display: none !important; }
+  body.nwn-nominal .nwn-view-nominal {
+    position: static !important; width: auto !important; height: auto !important;
+    overflow: visible !important; visibility: visible !important;
+  }
+  body.nwn-real .nwn-view-nominal {
+    position: absolute !important; width: 0 !important; height: 0 !important;
+    overflow: hidden !important; visibility: hidden !important;
+  }
+  /* Span rules (KPI values, badge text) — unchanged display toggle */
   body.nwn-nominal span.nwn-view-real { display: none !important; }
   body.nwn-nominal span.nwn-view-nominal { display: inline !important; }
   body.nwn-real span.nwn-view-real { display: inline !important; }
