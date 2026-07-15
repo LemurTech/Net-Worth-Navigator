@@ -5,42 +5,19 @@ description: All supported event types and their properties
 
 Events are declared in your scenario TOML as `[[events]]` array entries. Each event has a `type` that determines its property schema and how it affects the model.
 
-## Common PropertiesSection titled "Common Properties"
+## Common Properties
 
 All events share these properties:
 
-Property
-Type
-Required
-Default
-Description
+| Property | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `enabled` | bool | Yes | — | Set to `false` to disable without deleting |
+| `type` | string | Yes | — | Determines the event behavior |
+| `label` | string | No | — | Display label on chart annotations |
+| `year` | int | Varies | — | The year the event occurs (required for most types) |
 
-`enabled`
-bool
-Yes
-—
-Set to `false` to disable without deleting
-
-`type`
-string
-Yes
-—
-Determines the event behavior
-
-`label`
-string
-No
-—
-Display label on chart annotations
-
-`year`
-int
-Varies
-—
-The year the event occurs (required for most types)
-
-## Event TypesSection titled "Event Types"
-### RetireSection titled "Retire"
+## Event Types
+### Retire
 
 Permanent from the specified year. Stops earned income for that person.
 
@@ -54,7 +31,7 @@ year = 2038
 
 Retirement and SocialSecurity events are auto-synthesized from per-person settings. Manual entries override the auto-synthesis.
 
-### SocialSecuritySection titled "SocialSecurity"
+### SocialSecurity
 
 Permanent from the specified year. Adds monthly Social Security income.
 
@@ -66,7 +43,7 @@ person = "person1"         # Required
 year = 2035
 monthly_benefit = 2400     # Required: monthly SS payment
 ```
-### ExpenseSection titled "Expense"
+### Expense
 
 One-time cash outflow. Can be recurring.
 
@@ -83,7 +60,7 @@ repeat_until_year = 2048           # Optional: last recurrence year
 repeat_count = 3                   # Alternative to repeat_until_year
 chart_first_occurrence_only = true # Optional: show only first annotation
 ```
-### IncomeSection titled "Income"
+### Income
 
 Adds income for a period (or a single year).
 
@@ -96,7 +73,7 @@ year = 2027
 amount = 15000                     # Positive = cash inflow
 end_year = 2029                    # Optional: last year of income
 ```
-### BuyHomeSection titled "BuyHome"
+### BuyHome
 
 Records a property purchase with optional mortgage.
 
@@ -112,7 +89,7 @@ property = "Beach House"           # Optional: name for tracking
 mortgage_rate = 0.065              # Optional: mortgage annual rate
 term_years = 30                    # Optional: mortgage term
 ```
-### SellHomeSection titled "SellHome"
+### SellHome
 
 Converts a named property to cash, net of fees and mortgage payoff.
 
@@ -128,7 +105,7 @@ liability_names = ["Home Mortgage"] # Optional: liabilities to pay off at sale
 reinvest_to = "taxable"            # Optional: bucket to deposit proceeds into
 reinvest_fraction = 0.5            # Optional: fraction to reinvest (rest stays cash)
 ```
-### NewJobSection titled "NewJob"
+### NewJob
 
 Replaces a person's income from the specified year.
 
@@ -140,7 +117,7 @@ person = "person2"
 year = 2026
 annual_income = 85000
 ```
-### CareerBreakSection titled "CareerBreak"
+### CareerBreak
 
 Zeroes a person's earned income for a period.
 
@@ -152,7 +129,7 @@ person = "person1"
 start_year = 2030                  # First year of break
 end_year = 2031                    # Last year of break (inclusive)
 ```
-### EducationSection titled "Education"
+### Education
 
 Subtracts annual cost for a period.
 
@@ -165,7 +142,7 @@ start_year = 2027
 end_year = 2030
 annual_cost = 15000
 ```
-### MarriageSection titled "Marriage"
+### Marriage
 
 Currently informational. Future: tax filing status change.
 
@@ -175,7 +152,7 @@ enabled = true
 type = "Marriage"
 year = 2027
 ```
-### SpendingShiftSection titled "SpendingShift"
+### SpendingShift
 
 Changes baseline retirement spending from a specified year.
 
@@ -190,18 +167,12 @@ retirement_annual = 65000          # New retirement spending level
 survivor_percent_of_retirement = 0.70  # New survivor %
 end_year = 2050                    # Optional: revert after this year
 ```
-## Recurring Event FieldsSection titled "Recurring Event Fields"
+## Recurring Event Fields
 
 Events that support recurrence (currently `Expense` and `Income`):
 
-Field
-What It Does
-
-`repeat_every_years`
-How many years between each repeat
-
-`repeat_until_year`
-The last year the event occurs (mutually exclusive with `repeat_count`)
-
-`repeat_count`
-Total number of occurrences (including the first)
+| Field | What It Does |
+|---|---|
+| `repeat_every_years` | How many years between each repeat |
+| `repeat_until_year` | The last year the event occurs (mutually exclusive with `repeat_count`) |
+| `repeat_count` | Total number of occurrences (including the first) |

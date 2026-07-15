@@ -1,0 +1,153 @@
+---
+// ImagePreview.astro — click-to-enlarge screenshots in the Starlight User Guide.
+// Appends an overlay to document.body so it sits above Starlight's layout.
+---
+
+<figure class="nwn-image-preview" data-src={Astro.props.src} data-alt={Astro.props.alt}>
+  <img
+    src={Astro.props.src}
+    alt={Astro.props.alt}
+    loading="lazy"
+    decoding="async"
+  />
+  {Astro.props.caption && <figcaption>{Astro.props.caption}</figcaption>}
+</figure>
+
+<style is:global>
+  .nwn-image-preview {
+    cursor: zoom-in;
+    margin: 1.5rem 0;
+  }
+  .nwn-image-preview img {
+    border-radius: 8px;
+    border: 1px solid var(--sl-color-gray-5);
+    max-width: 100%;
+    display: block;
+  }
+  .nwn-image-preview figcaption {
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+    text-align: center;
+    margin-top: 0.5rem;
+    font-style: italic;
+  }
+
+  /* Lightbox overlay — appended to body to escape Starlight stacking */
+  .nwn-lightbox {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2147483647 !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    cursor: zoom-out;
+  }
+  .nwn-lightbox--open {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  .nwn-lightbox img {
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    object-fit: contain !important;
+    border-radius: 8px !important;
+    transform: scale(0.92);
+    transition: transform 0.25s ease;
+  }
+  .nwn-lightbox--open img {
+    transform: scale(1);
+  }
+
+  /* Close button */
+  .nwn-lightbox-close {
+    position: absolute !important;
+    top: 1rem !important;
+    right: 1.5rem !important;
+    font-size: 2rem !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    cursor: pointer !important;
+    z-index: 1 !important;
+    background: none !important;
+    border: none !important;
+    line-height: 1 !important;
+    padding: 0.5rem !important;
+  }
+  .nwn-lightbox-close:hover {
+    color: #fff !important;
+  }
+</style>
+
+<script>
+  function initLightbox() {
+    document.querySelectorAll('.nwn-image-preview').forEach((figure) => {
+      if (figure.dataset.lightboxInit) return;
+      figure.dataset.lightboxInit = '1';
+
+      figure.addEventListener('click', () => {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'nwn-lightbox';
+
+        const img = document.createElement('img');
+        img.src = figure.dataset.src;
+        img.alt = figure.dataset.alt || '';
+
+        const close = document.createElement('button');
+        close.className = 'nwn-lightbox-close';
+        close.innerHTML = '&times;';
+
+        overlay.appendChild(close);
+        overlay.appendChild(img);
+        document.body.appendChild(overlay);
+
+        // Compensate for scrollbar removal
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.documentElement.style.overflow = 'hidden';
+        if (scrollbarWidth > 0) {
+          document.documentElement.style.paddingRight = scrollbarWidth + 'px';
+        }
+
+        // Animate in
+        requestAnimationFrame(() => {
+          overlay.classList.add('nwn-lightbox--open');
+        });
+
+        // Close on click-outside, X button, or Escape
+        function closeLightbox() {
+          overlay.classList.remove('nwn-lightbox--open');
+          overlay.addEventListener('transitionend', () => {
+            overlay.remove();
+            document.documentElement.style.overflow = '';
+            document.documentElement.style.paddingRight = '';
+          }, { once: true });
+        }
+
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay || e.target === close) {
+            closeLightbox();
+          }
+        });
+
+        document.addEventListener('keydown', function onEsc(e) {
+          if (e.key === 'Escape') {
+            closeLightbox();
+            document.removeEventListener('keydown', onEsc);
+          }
+        });
+      });
+    });
+  }
+
+  // Run on load and after Astro page transitions
+  initLightbox();
+  document.addEventListener('astro:page-load', initLightbox);
+</script>

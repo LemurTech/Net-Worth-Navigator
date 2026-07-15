@@ -5,21 +5,21 @@ description: Side-by-side comparison of multiple financial plans
 
 The Compare Page lets you overlay multiple scenarios on the same charts, view delta (difference) against a baseline, and compare key metrics side by side.
 
-## Opening the Compare PageSection titled "Opening the Compare Page"
+## Opening the Compare Page
 
 - From the **Projection Shell**, click **Compare Scenarios** in the toolbar
 - Direct URL: `http://localhost:8010/compare.html`
 - Deep-link with URL params: `compare.html?a=scenario_a&b=scenario_b&mode=deterministic`
 
-## Selecting ScenariosSection titled "Selecting Scenarios"
+## Selecting Scenarios
 
 - Click scenario chips at the top of the page to toggle them on/off
 - At least two scenarios must be selected for the comparison to render
 - The first selected scenario is treated as the **baseline** for delta calculations
 - Switch between Deterministic, Historical, and Monte Carlo modes using the mode selector
 
-## What You SeeSection titled "What You See"
-### Total Net Worth ChartSection titled "Total Net Worth Chart"
+## What You See
+### Total Net Worth Chart
 
 Overlays each scenario's net worth trajectory on a single chart. Each scenario gets a stable colour:
 
@@ -28,61 +28,41 @@ Overlays each scenario's net worth trajectory on a single chart. Each scenario g
 - Purple — third scenario
 - (More colours cycle for additional scenarios)
 
-### Investable Portfolio ChartSection titled "Investable Portfolio Chart"
+### Investable Portfolio Chart
 
 Same overlay comparison, but showing only investable assets (taxable, traditional IRA, Roth) — excluding cash and home equity.
 
-### Net Worth Delta ChartSection titled "Net Worth Delta Chart"
+### Net Worth Delta Chart
 
 Shows the difference between each non-baseline scenario and the baseline. This is useful for answering questions like *"How much more would I have at retirement if I started contributing earlier?"* or *"What's the cost of retiring two years later?"*
 
-### KPI TableSection titled "KPI Table"
+### KPI Table
 
 Side-by-side metrics for each selected scenario:
 
-Metric
-What It Shows
-
-Starting Net Worth
-Year-0 net worth
-
-Net Worth at Retirement
-Net worth in the retirement year of the first-retiring person
-
-Retirement Age
-Age at retirement
-
-End Net Worth
-Net worth at the end of the projection
-
-Ending Year
-The final year of the projection
+| Metric | What It Shows |
+|---|---|
+| Starting Net Worth | Year-0 net worth |
+| Net Worth at Retirement | Net worth in the retirement year of the first-retiring person |
+| Retirement Age | Age at retirement |
+| End Net Worth | Net worth at the end of the projection |
+| Ending Year | The final year of the projection |
 
 Rows are highlighted with **green** (positive) or **red** (negative) delta indicators showing how each scenario differs from the baseline.
 
-### Monte Carlo ModeSection titled "Monte Carlo Mode"
+### Monte Carlo Mode
 
 When viewing Monte Carlo mode, additional metrics appear:
 
-Metric
-What It Shows
+| Metric | What It Shows |
+|---|---|
+| Probability of Success | % of simulations that don't fail |
+| Worst-Decile Terminal NW | The 10th percentile ending net worth |
+| P10 / P25 / P50 / P75 / P90 | Terminal net worth percentile bands |
+| Peak Failure Rate | Highest % of simulations failing in a single year |
+| Median First Failure | The earliest year where failure occurs in the median case |
 
-Probability of Success
-% of simulations that don't fail
-
-Worst-Decile Terminal NW
-The 10th percentile ending net worth
-
-P10 / P25 / P50 / P75 / P90
-Terminal net worth percentile bands
-
-Peak Failure Rate
-Highest % of simulations failing in a single year
-
-Median First Failure
-The earliest year where failure occurs in the median case
-
-## TipsSection titled "Tips"
+## Tips
 
 - The compare page reads sidecar CSV data, so scenarios must have been rendered at least once with the current version
 - Use **Deterministic** mode for cleanest comparison between scenarios — random variation in Monte Carlo can obscure small differences

@@ -3,12 +3,15 @@ title: Account Types Explained
 description: The five account buckets used by the model
 ---
 
+import ImagePreview from '../../../components/ImagePreview.astro';
+
+
 Net Worth Navigator classifies your accounts into five buckets. Each bucket has different tax treatment, growth characteristics, and behavior in the simulation.
 
 See the [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/) page for an annotated screenshot of where these buckets appear in the Setup Panel.
 
-## The Five BucketsSection titled "The Five Buckets"
-### CashSection titled "Cash"
+## The Five Buckets
+### Cash
 
 **What it is:** Checking accounts, savings accounts, money market accounts, and any other liquid cash holdings.
 
@@ -16,7 +19,7 @@ See the [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/) page for
 
 **Tax treatment:** Interest is taxable as ordinary income, but simplified in the model.
 
-### Taxable BrokerageSection titled "Taxable Brokerage"
+### Taxable Brokerage
 
 **What it is:** Regular investment accounts — not tax-advantaged retirement accounts. Includes standard brokerage accounts and joint investment accounts.
 
@@ -24,7 +27,7 @@ See the [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/) page for
 
 **Tax treatment:** Withdrawals trigger taxable income for the gain portion. The model tracks a cost-basis ledger.
 
-### Traditional IRA / 401(k)Section titled "Traditional IRA / 401(k)"
+### Traditional IRA / 401(k)
 
 **What it is:** Pre-tax retirement accounts. Traditional IRA, traditional 401(k), and similar tax-deferred accounts.
 
@@ -32,7 +35,7 @@ See the [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/) page for
 
 **Tax treatment:** Full withdrawal amount is taxable as ordinary income. This is typically the largest source of taxable income in retirement.
 
-### Roth IRA / 401(k)Section titled "Roth IRA / 401(k)"
+### Roth IRA / 401(k)
 
 **What it is:** After-tax retirement accounts. Roth IRA, Roth 401(k), and similar accounts.
 
@@ -40,7 +43,7 @@ See the [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/) page for
 
 **Tax treatment:** No tax on qualified withdrawals. The model tracks contribution basis separately from earnings.
 
-### Home EquitySection titled "Home Equity"
+### Home Equity
 
 **What it is:** Home value minus mortgage balance. Tracked through the `home_value` field and liability balances.
 
@@ -48,7 +51,7 @@ See the [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/) page for
 
 **Tax treatment:** Home equity growth is not taxed in the model (principal residence capital gains exclusion is standard).
 
-## Owner AttributionSection titled "Owner Attribution"
+## Owner Attribution
 
 For couples, retirement accounts (traditional IRA and Roth) can be attributed to each person:
 
@@ -59,7 +62,7 @@ For couples, retirement accounts (traditional IRA and Roth) can be attributed to
 
 Owner attribution matters for RMD calculations, Social Security taxation, and survivor-phase planning. The Accounts and Portfolio tabs in the projection show per-person breakdowns.
 
-## The Bucket Approach in PracticeSection titled "The Bucket Approach in Practice"
+## The Bucket Approach in Practice
 
 When using [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/), you add up the balances in each bucket and enter the totals:
 
@@ -69,4 +72,4 @@ When using [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/), you 
 - Add up all cash accounts → **Cash**
 - Enter your estimated home value → **Home Value**
 
-![Manual Entry form in the Setup Panel with Investable Balances, Non-Investable assets, Property Values, and Liability Balances sections
+<ImagePreview src="/Net-Worth-Navigator/nwn-bucket-entry-form.png" alt="Manual Entry form in the Setup Panel" />

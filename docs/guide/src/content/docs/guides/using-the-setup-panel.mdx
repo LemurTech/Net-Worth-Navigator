@@ -5,7 +5,7 @@ description: A visual tour of the browser-based configuration interface
 
 The Setup Panel at `http://localhost:8010/setup` is the primary way to create, edit, and manage your scenarios. It has three tabs and a global action bar.
 
-## Quick StartSection titled "Quick Start"
+## Quick Start
 
 - Start the editor: `.venv/bin/python admin_app.py` (Linux/macOS) or `.venv\Scripts\python.exe admin_app.py` (Windows)
 - Open **[http://localhost:8010/setup](http://localhost:8010/setup)**
@@ -22,8 +22,8 @@ The Setup Panel at `http://localhost:8010/setup` is the primary way to create, e
 
 **Tip:** The **Withdrawal / Surplus Order** settings in the Metadata tab control the priority of account buckets. Feel free to leave the defaults — they're sensible for most households.
 
-## The Three TabsSection titled "The Three Tabs"
-### Metadata TabSection titled "Metadata Tab"
+## The Three Tabs
+### Metadata Tab
 
 This tab holds your scenario's high-level settings:
 
@@ -34,7 +34,7 @@ This tab holds your scenario's high-level settings:
 - **Withdrawal / Surplus Order** — drag-to-reorder chips controlling the priority of account buckets
 - **Data Source** — select Manual Entry, Monarch Money, or CSV Import
 
-### Accounts TabSection titled "Accounts Tab"
+### Accounts Tab
 
 Changes based on your selected data source:
 
@@ -42,33 +42,23 @@ Changes based on your selected data source:
 - **Monarch Money:** Account table with category/owner/disabled controls and a **Refresh from Monarch** button
 - **CSV Import:** File upload, parsed account preview with category/owner dropdowns, and **Import & Save**
 
-### Raw TOML TabSection titled "Raw TOML Tab"
+### Raw TOML Tab
 
 A text editor for the raw TOML configuration file. Every setting in the metadata and accounts tabs is stored here. Use this tab for bulk edits, copy-pasting event blocks, or advanced configuration changes that aren't exposed in the structured controls.
 
-## Global Action BarSection titled "Global Action Bar"
+## Global Action Bar
 
 At the bottom of the panel:
 
-Button
-What It Does
+| Button | What It Does |
+|---|---|
+| **Save** | Saves current changes |
+| **Validate** | Runs semantic validation on your config |
+| **Save + Re-render** | Saves and renders the current scenario |
+| **Save + Render All** | Saves and re-renders every scenario |
+| **New from Template** | Creates a new scenario from a starter template |
 
-**Save**
-Saves current changes
-
-**Validate**
-Runs semantic validation on your config
-
-**Save + Re-render**
-Saves and renders the current scenario
-
-**Save + Render All**
-Saves and re-renders every scenario
-
-**New from Template**
-Creates a new scenario from a starter template
-
-## Scenario ManagementSection titled "Scenario Management"
+## Scenario Management
 
 - **Scenario dropdown** at the top — switch between your plans. User scenarios appear first, then a separator, then sample scenarios
 - **Rename** — change the slug via the edit button next to the slug

@@ -5,7 +5,7 @@ description: How to interpret probability bands, success rates, and failure metr
 
 Monte Carlo simulation runs your scenario thousands of times with randomized annual returns. The result isn't a single prediction — it's a range of possible outcomes. This page explains how to read and use that information.
 
-## What Monte Carlo Tells YouSection titled "What Monte Carlo Tells You"
+## What Monte Carlo Tells You
 
 A deterministic projection says: *"If returns are exactly X% every year, here's your net worth."*
 
@@ -17,7 +17,7 @@ The key outputs are:
 - **The shaded band chart** — showing the range from pessimistic (10th percentile) to optimistic (90th percentile)
 - **The median line** — the middle-of-the-road outcome (50th percentile)
 
-## Reading the Band ChartSection titled "Reading the Band Chart"
+## Reading the Band Chart
 
 The main Monte Carlo chart shows your net worth trajectory as shaded regions:
 
@@ -27,45 +27,29 @@ The main Monte Carlo chart shows your net worth trajectory as shaded regions:
 
 A wide band means high uncertainty — small changes in returns produce very different outcomes. A narrow band means the outcome is relatively predictable.
 
-## Understanding Success and FailureSection titled "Understanding Success and Failure"
+## Understanding Success and Failure
 
 Success is defined by the `failure_mode` in your scenario's configuration:
 
-Failure Mode
-What Counts as Failure
-
-`net_worth_below_zero`
-Total net worth drops below zero
-
-`liquid_depletion`
-Available cash and investments are exhausted
-
-`spending_shortfall`
-Can't meet the spending target
-
-`preserve_home_equity`
-Must sell the home to cover spending
+| Failure Mode | What Counts as Failure |
+|---|---|
+| `net_worth_below_zero` | Total net worth drops below zero |
+| `liquid_depletion` | Available cash and investments are exhausted |
+| `spending_shortfall` | Can't meet the spending target |
+| `preserve_home_equity` | Must sell the home to cover spending |
 
 A 90% probability of success means that in 9 out of 10 simulations, the plan never triggered the failure condition. This does **not** mean there's a 10% chance of going broke — it means that under 10% of the random return sequences tested, the plan didn't hold up.
 
-## Key Metrics in the Simulation TabSection titled "Key Metrics in the Simulation Tab"
+## Key Metrics in the Simulation Tab
 
-Metric
-What It Means
+| Metric | What It Means |
+|---|---|
+| **Median Terminal NW** | The middle outcome — half did better, half did worse |
+| **Worst-Decile Terminal NW** | The 10th percentile outcome. If you're planning conservatively, plan for this. |
+| **First Failure Year** | The earliest year where any simulation failed. Tells you your risk window. |
+| **Peak Failure Rate** | The highest percentage of simulations failing in a single year. A spike here identifies a vulnerable period. |
 
-**Median Terminal NW**
-The middle outcome — half did better, half did worse
-
-**Worst-Decile Terminal NW**
-The 10th percentile outcome. If you're planning conservatively, plan for this.
-
-**First Failure Year**
-The earliest year where any simulation failed. Tells you your risk window.
-
-**Peak Failure Rate**
-The highest percentage of simulations failing in a single year. A spike here identifies a vulnerable period.
-
-## Tips for Using Monte CarloSection titled "Tips for Using Monte Carlo"
+## Tips for Using Monte Carlo
 
 - **Start with deterministic** — get your assumptions right in deterministic mode first
 - **Increase `num_runs`** for smoother bands — the default is 1000, but 5000+ gives cleaner percentiles
@@ -73,12 +57,12 @@ The highest percentage of simulations failing in a single year. A spike here ide
 - **Use `failure_grace_period_months`** — a 6-month grace period prevents temporary dips from counting as failures
 - **Compare scenarios in deterministic mode** — Monte Carlo adds stochastic noise that can obscure scenario differences
 
-## When Not to Use Monte CarloSection titled "When Not to Use Monte Carlo"
+## When Not to Use Monte Carlo
 
 - **Initial scenario design** — use deterministic, it's simpler and clearer
 - **Comparing two scenarios** — use deterministic; stochastic noise can make small differences invisible
 - **Presenting to a partner** — deterministic is easier to explain
 
-## Further ReadingSection titled "Further Reading"
+## Further Reading
 
 See the [Render Modes](/Net-Worth-Navigator/key-concepts/render-modes/) page for configuration details and the [Configuration Reference](/Net-Worth-Navigator/reference/configuration/) for the full `[monte_carlo.success]` schema.

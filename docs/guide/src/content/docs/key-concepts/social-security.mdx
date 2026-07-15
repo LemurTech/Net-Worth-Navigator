@@ -1,0 +1,83 @@
+---
+title: Social Security Benefits
+description: How to set up Social Security estimates in your scenario
+---
+
+Net Worth Navigator does **not** have a built-in Social Security calculation engine. You provide your own benefit estimates, which you can get directly from the Social Security Administration.
+
+## Getting Your Estimates
+
+Visit **[ssa.gov/myaccount](https://www.ssa.gov/myaccount/)** and log in to your Social Security account. Once inside:
+
+1. Go to the **"Estimate Your Future Benefits"** section
+2. Review your estimated monthly benefit at **full retirement age** (67 for most people)
+3. The SSA also provides estimates for early retirement (age 62) and delayed retirement (age 70)
+
+For the most accurate modeling, you'll want estimates at **each age from 62 to 70**. The SSA calculator may let you enter a specific claim age to see the adjusted amount — enter each age and record the monthly benefit.
+
+## Entering Benefits in Your Scenario
+
+Once you have your estimates, open your scenario TOML file (or use the **Raw TOML** tab in the Setup Panel). Find the `[person1]` section and add a `social_security_benefits` sub-table:
+
+```toml
+# Social Security timing
+ss_start_age = 67   # the age you plan to claim
+
+[person1.social_security_benefits]
+"62" = 1700   # estimated monthly benefit if claimed at 62
+"63" = 1840
+"64" = 1990
+"65" = 2130
+"66" = 2280
+"67" = 2440   # full retirement age benefit
+"68" = 2640
+"69" = 2840
+"70" = 3080   # maximum benefit (delayed credits stop here)
+```
+
+Do the same for `[person2]` if you're modeling a couple:
+
+```toml
+[person2.social_security_benefits]
+"62" = 1100
+"63" = 1180
+"64" = 1270
+"65" = 1360
+"66" = 1460
+"67" = 1550
+"68" = 1670
+"69" = 1800
+"70" = 1950
+```
+
+## How the Model Uses This Data
+
+- **`ss_start_age`** — the age at which Social Security payments begin for that person. This is the **source of truth** for SS timing. The model auto-synthesizes a `SocialSecurity` event from this setting — you don't need to write one manually.
+
+- **`social_security_benefits`** — a table mapping each claim age (62–70) to the estimated monthly benefit. The model looks up the benefit amount that matches your chosen `ss_start_age`. If `ss_start_age` is 67, it uses `"67" = 2440`.
+
+- **Widow/er step-up** — when one partner passes away (end-of-plan year), the survivor steps up to the deceased partner's benefit if it is higher. The survivor's own benefit is replaced starting at `survivor_ss_start_age` (default: 60).
+
+## Starter Templates
+
+The `starter.toml` and `starter-couple.toml` files include a commented guide for Social Security:
+
+```toml
+# Social Security benefit by claim age (get your estimate at ssa.gov/myaccount)
+[person1.social_security_benefits]
+67 = 0   # ← YOUR VALUE: estimated monthly benefit at your claim age
+```
+
+The sample scenarios (`sample.toml`, `sample-couples.toml`, `sample-a.toml`, `sample-b.toml`) include fully populated example benefit tables — look at them for reference if you're unsure about the format.
+
+## What the Model Does NOT Do
+
+Net Worth Navigator does **not** calculate or adjust Social Security benefits. It does not:
+
+- Apply the Social Security earnings test or bend-point formulas
+- Model spousal or divorced-spouse benefits
+- Apply WEP (Windfall Elimination Provision) or GPO (Government Pension Offset)
+- Adjust benefits for early/late retirement beyond the estimates you provide
+- Predict COLAs (cost-of-living adjustments) — use today's dollars and let the model's inflation setting handle purchasing power
+
+For any of the above, consult the [Social Security Administration](https://www.ssa.gov/benefits/retirement/planner.html) or a financial planner.

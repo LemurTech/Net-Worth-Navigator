@@ -3,6 +3,52 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-15 (v1.6.0–v1.7.0 — Starlight User Guide restoration + Docker sample + Monarch MCP mounts)
+
+### Added
+
+- **Social Security Benefits page** (`key-concepts/social-security.mdx`) in Starlight guide — SSA.gov walkthrough, age 62–70 benefit entry syntax, model semantics, what the model does NOT do
+- **Sample `docker-compose.yml`** at repo root — nginx + config-editor services with commented-out Monarch MCP mounts and platform-specific Linux/Windows instructions
+- **Sample `nginx-default.conf`** — companion nginx config for the Docker setup, proxies `/api` and `/setup` to config-editor container
+- **Docker "All-in-One" section** in `home-server.mdx` with Monarch Money in Docker subsection
+- **ImagePreview lightbox** component (`src/components/ImagePreview.astro`) recreated and wired into 6 guide pages
+
+### Changed
+
+- **Massive Starlight guide restoration** — all 28 content pages audited and repaired after the nested `docs/guide/` repo was accidentally deleted and source was reconstructed from live rendered HTML:
+  - 139 malformed headings fixed across 22 files (Starlight screen-reader "Section titled …" text concatenated into markdown)
+  - 5 files with injected `<starlight-tabs>` JS code blocks rewritten using proper MDX `<Tabs>/<TabItem>` components
+  - 4 broken image references repaired (missing `](path)` portion)
+  - 15+ flat key-value lists converted to proper Markdown tables across 10 pages
+  - `index.mdx` restored from Starlight default template to real NWN landing page
+  - `projection.mdx` reconstructed from 7 lines to full content with KPI strip, chart controls, tabbed panels, and more
+  - `render-modes.mdx` expanded from Deterministic-only to full Historical + Monte Carlo + Success Metrics + Configuration
+  - 23 guide images recovered from gh-pages branch into `docs/guide/public/`
+  - NWN favicon restored (chart sparkline SVG replaces Starlight default compass)
+  - 2 dead Starlight default `example.md` pages removed
+- **Content improvements across the guide:**
+  - `installation.mdx`: "Get the Code" rewritten with directory guidance, Git clone + ZIP download paths, platform-specific `cd` targets, expanded Linux tab content
+  - `home-server.mdx`: platform-specific Python server commands, IP-finding instructions for all three platforms
+  - `monarch-money.mdx`: "Automating Updates" expanded from 2 bullets to full platform tabs with actual cron syntax and 10-step Windows Task Scheduler walkthrough; "Option 2 … fallback" → "alternative"
+  - `quick-start.mdx`: list indentation fixed under Web UI section
+  - `license.mdx`: section ordering (Security first, License last)
+- **Monarch MCP detection** (`admin_app.py`, `src/monarch_bridge.py`): error messages now mention `MONARCH_MCP_PATH` env var with platform-specific examples
+- **Docker Compose** (`/opt/hal-pages/docker-compose.yml`): added mounts for `/opt/monarch-mcp-server` (ro), `/root/.local/share/uv` (ro), `/root/.monarch-mcp-server` (token)
+
+### Fixed
+
+- **"Refresh from Monarch" returning 503** — `nwn-config-editor` Docker container couldn't reach Monarch MCP server. Fixed by adding bind mounts to docker-compose.
+- **Guide heading corruption** — 139 instances of `## HeadingSection titled "Heading"` fixed across 22 .mdx files
+- **JS-injected code blocks** — `<starlight-tabs>` component JS removed from 5 .mdx files
+- **Broken image references** — 4 missing `](path)` closures on image markdown
+- **15+ broken tables** converted to proper Markdown across CSV Import, Manual Entry, Event Types, Comparing Scenarios, Understanding Monte Carlo, Troubleshooting, Setup Panel, Project Structure, What Is a Scenario, and Updating pages
+
+## 2026-07-15 (v1.6.1 — Landing page restoration)
+
+### Fixed
+
+- **index.mdx was the default Starlight template** — "Welcome to Starlight" instead of "Welcome to Net Worth Navigator." Recovered original content from historic gh-pages commit `7a108fdc`.
+
 ## 2026-07-13 (v1.4.4 — Real-dollar inflation-adjusted display, Phase 1)
 
 **Branch:** `feature/real-dollar-display` (not yet merged to main)

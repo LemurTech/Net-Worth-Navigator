@@ -33,6 +33,7 @@ export default defineConfig({
 						{ label: 'Understanding Your Projection', slug: 'key-concepts/projection' },
 						{ label: 'Account Types Explained', slug: 'key-concepts/account-types' },
 						{ label: 'Events & the Event System', slug: 'key-concepts/events' },
+						{ label: 'Social Security Benefits', slug: 'key-concepts/social-security' },
 						{ label: 'Render Modes', slug: 'key-concepts/render-modes' },
 						{ label: 'Balance Updates & Start Year', slug: 'key-concepts/balance-updates' },
 					],

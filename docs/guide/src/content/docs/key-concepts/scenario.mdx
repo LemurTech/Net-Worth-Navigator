@@ -5,47 +5,25 @@ description: Scenarios are self-contained financial plans stored in TOML files
 
 A **scenario** is a complete set of assumptions about your household's finances, stored in a single TOML file inside the `scenarios/` directory. It's the central unit of work in Net Worth Navigator — everything revolves around scenarios.
 
-## What a Scenario ContainsSection titled "What a Scenario Contains"
+## What a Scenario Contains
 
 Each scenario TOML includes these sections:
 
-Section
-Purpose
+| Section | Purpose |
+|---|---|
+| `[scenario]` | Name, slug (ID), description, household type (single/couple) |
+| `[display]` | Chart title |
+| `[data_source]` | How starting balances are obtained (manual, Monarch, CSV) |
+| `[synthetic_start]` | Starting balances for manual entry mode |
+| `[person1]` / `[person2]` | Household members: name, DOB, income, retirement year, Social Security |
+| `[spending]` | Retirement and survivor spending targets |
+| `[withdrawal_policy]` | Cash reserve targets, withdrawal order, surplus routing |
+| `[assumptions]` | Investment returns, inflation, asset allocation |
+| `[accounts]` | Account classification and ownership (for Monarch/CSV mode) |
+| `[[liabilities]]` | Amortized loans: mortgage, auto, etc. |
+| `[[events]]` | Life events that change the projection |
 
-`[scenario]`
-Name, slug (ID), description, household type (single/couple)
-
-`[display]`
-Chart title
-
-`[data_source]`
-How starting balances are obtained (manual, Monarch, CSV)
-
-`[synthetic_start]`
-Starting balances for manual entry mode
-
-`[person1]` / `[person2]`
-Household members: name, DOB, income, retirement year, Social Security
-
-`[spending]`
-Retirement and survivor spending targets
-
-`[withdrawal_policy]`
-Cash reserve targets, withdrawal order, surplus routing
-
-`[assumptions]`
-Investment returns, inflation, asset allocation
-
-`[accounts]`
-Account classification and ownership (for Monarch/CSV mode)
-
-`[[liabilities]]`
-Amortized loans: mortgage, auto, etc.
-
-`[[events]]`
-Life events that change the projection
-
-## Creating ScenariosSection titled "Creating Scenarios"
+## Creating Scenarios
 
 You have two paths:
 
@@ -62,7 +40,7 @@ Edit the file, set every field marked `← YOUR VALUE`, then run:
 ```bash
 .venv/bin/python run.py --scenario myplan
 ```
-## Starter TemplatesSection titled "Starter Templates"
+## Starter Templates
 
 The project includes two blank-slate templates:
 
@@ -71,31 +49,18 @@ The project includes two blank-slate templates:
 
 Both are hidden from the projection shell dropdown — they're only available through the **New from Template** button in the Setup Panel.
 
-## Sample ScenariosSection titled "Sample Scenarios"
+## Sample Scenarios
 
 Four pre-built sample scenarios are included to help you explore the app before entering your own data. They use **fictional households** and **synthetic balances** — nothing real.
 
-Scenario
-Slug
-Description
+| Scenario | Slug | Description |
+|---|---|---|
+| Sample Plan (Single-Person) | `sample` | Fictional "Alex" (b. 1972), single professional, home owner with mortgage |
+| Sample Plan (Couples) | `sample-couples` | Fictional "Alex" and "Sam" — dual-income couple, two retirement dates |
+| Sample A | `sample-a` | Moderate assumptions, later retirement, lower spending |
+| Sample B | `sample-b` | Growth assumptions, earlier retirement, higher spending, delayed SS |
 
-Sample Plan (Single-Person)
-`sample`
-Fictional "Alex" (b. 1972), single professional, home owner with mortgage
-
-Sample Plan (Couples)
-`sample-couples`
-Fictional "Alex" and "Sam" — dual-income couple, two retirement dates
-
-Sample A
-`sample-a`
-Moderate assumptions, later retirement, lower spending
-
-Sample B
-`sample-b`
-Growth assumptions, earlier retirement, higher spending, delayed SS
-
-## Comparing ScenariosSection titled "Comparing Scenarios"
+## Comparing Scenarios
 
 Because each scenario is an independent TOML file, you can create multiple variants and compare them:
 

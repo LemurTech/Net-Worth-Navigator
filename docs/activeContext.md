@@ -1,7 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-14
-**Status:** v1.5.0 — Real-dollar display shipped, Starlight source now tracked in main repo.
+**Last updated:** 2026-07-15
+**Status:** v1.7.0 — Starlight User Guide fully restored after nested-repo data loss; 139 heading fixes, 15+ table repairs, 23 images recovered, Social Security page added, Docker sample deployed, Monarch MCP Docker mounts fixed.
 
 ---
 
@@ -50,90 +50,54 @@ cd /home/lemurtech/Net-Worth-Navigator
 
 ## What's New
 
-### Real-Dollar Display — Phase 1 (2026-07-14)
+### Starlight User Guide Restoration (2026-07-14–15)
 
-**Merged to main as v1.5.0**
+**Massive documentation overhaul** after the `docs/guide/` nested repo was accidentally deleted
+and all source content was reconstructed from live rendered HTML.
 
-Adds `[simulation].real_dollar_basis = true/false` (default `false`). When enabled, all chart and table monetary values are deflated to start-year purchasing power using the configured inflation rate. Applies to deterministic, historical, and Monte Carlo modes.
+**Corruption fixes:**
+- 139 malformed headings across 22 files — Starlight screen-reader "Section titled …" text
+  concatenated into markdown headings during HTML-to-markdown conversion
+- 5 files with `<starlight-tabs>` component JavaScript injected as literal code blocks
+  (`installation.mdx`, `quick-start.mdx`, `command-line-basics.mdx`, `running-the-web-ui.mdx`,
+  `monarch-money.mdx`) — rewritten using proper MDX `<Tabs>/<TabItem>` components
+- 4 broken image references with missing `](path)` on `manual-entry.mdx`, `projection.mdx`,
+  `render-modes.mdx`, `account-types.mdx`
+- 15+ flat key-value lists converted to proper Markdown tables across 10 pages
+- `index.mdx` restored from default Starlight template ("Welcome to Starlight") to real NWN
+  landing page (recovered from historic gh-pages commit `7a108fdc`)
+- `projection.mdx` reconstructed from 7 lines to full content (KPI strip, chart controls,
+  tabbed panels, year highlighting, data point semantics)
+- `render-modes.mdx` expanded from Deterministic-only to full Historical + Monte Carlo +
+  Success Metrics + Configuration + Choosing a Mode
+- 2 dead Starlight default `example.md` pages removed
 
-**Implementation:** A single `_apply_real_dollar_basis()` function in `model.py` applies cumulative deflation `(1+inflation)^{-(year-start)}` to 76 whitelisted monetary columns, liability balance columns (pattern-match), and percentile-suffixed band columns (pattern-match). Non-monetary columns (ratios, tax rates, flags, names) are untouched.
+**Content additions:**
+- New **Social Security Benefits** page (`key-concepts/social-security.mdx`) — SSA.gov
+  walkthrough, age 62–70 benefit entry, model semantics, starter template reference
+- `home-server.mdx` expanded with platform-specific Python server commands, IP-finding
+  instructions, fixed "Run Alongside" section
+- `installation.mdx` "Get the Code" rewritten with directory guidance, Git clone + ZIP
+  download paths, platform-specific `cd` targets
+- `monarch-money.mdx` "Automating Updates" expanded from 2 bullets to full platform tabs
+  (cron job with actual syntax, Windows Task Scheduler with 10 numbered steps)
+- `quick-start.mdx` list indentation fixed under Web UI section
+- `license.mdx` section ordering (Security first, License last)
 
-**Indicators:** When real-dollar mode is active, the chart subtitle shows "(in YYYY dollars)" and a value-basis note appears below the KPI strip. No indicators when nominal (default).
+**Assets recovered:**
+- 23 guide images (Git installer screenshots, projection screenshots, Manual Entry form,
+  CSV import preview, Gantt chart, render mode examples) recovered from gh-pages branch
+  into `docs/guide/public/`
+- **NWN favicon** restored — chart sparkline SVG replaces Starlight default compass
+- **ImagePreview lightbox** component (`src/components/ImagePreview.astro`) recreated
+  and wired into 6 pages
 
-**Bug fixes discovered during development:**
-- **Raw TOML edits lost on Save** — `saveEverything()` only read form fields, not the raw textarea. Server returned 200 with correct `toml_content` but didn't persist when form fields hadn't changed. Fixed by sending `_raw_toml_content` and always writing when present.
-- **Browser caching setup page** — Cache-control headers set on the wrong Response object (injected param vs returned TemplateResponse). Fixed by setting on the TemplateResponse.
-- **HTML entity corruption** — `{{ content }}` in Jinja2 auto-escaped `&` to `&amp;`, breaking tomlkit parsing. Fixed with `{{ content | safe }}`.
-- **Bind mount propagation delay** — Docker volume writes weren't immediately visible from the host. Added `os.fsync()` after every scenario file write.
-- **Tab row vertical scrollbar** — `overflow-x: auto` forced `overflow-y: auto`. Added `overflow-y: hidden` to `.tabs`.
-
-**Sample and personal scenarios updated** to enable `real_dollar_basis = true` by default.
-
-**Docs:** Config Reference and FAQ updated in Starlight User Guide.
-
-**Phase 2 (planned):** Client-side JS toggle to switch between nominal and real-dollar views in the same rendered page (both datasets embedded).
-
-### Windows Unicode Print Fix (2026-07-07)
-
-Replaced all non-ASCII characters (`→`, `–`, `❌`, `—`, `─`) in `print()` calls and validation error strings with ASCII-safe equivalents (`=>`, `-`, `ERROR`, `--`). These characters crashed Python on Windows (cp1252 code page) with `UnicodeEncodeError`, blocking scenario renders entirely.
-
-**Files patched:** `run.py` (8 sites), `src/monarch_bridge.py` (2 sites), `src/model.py` (1 site).
-
-### Accounts Tab — Manual Entry Fields Loading (2026-07-07)
-
-When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the synthetic input fields (investable balances, property values, liability balances) remained empty because `loadSyntheticTab()` was never called — only the radio change handler triggered it, which never fires on initial page load.
-
-**Fix:** Added `loadSyntheticTab()` call in `initAccountsTab()` after `applyAccountsTabModeState()` for synthetic mode.
-
-### State Tax System — Full Coverage (2026-07-07)
-
-**Engine:** Generalized `resolve_state_tax_system()` to dispatch by mode instead of hardcoded Oregon-only check. Four-path dispatch: no-tax → named engine → bracket table → disabled. `STATE_TAX_ENGINES` registry, `KNOWN_NO_INCOME_TAX_STATES` set.
-
-**50 state TOML files** under `config/tax_tables/`:
-- 9 no-income-tax: AK, FL, NV, NH, SD, TN, TX, WA, WY
-- 17 flat-rate: AZ 2.5%, AR 4.9%, CO 4.25%, GA 5.39%, IA 3.8%, ID 5.8%, IL 4.95%, IN 3.05%, KY 4%, MA 5%, MI 4.25%, MS 4.7%, NC 4.5%, OH 3.5%, PA 3.07%, RI 3.75%, UT 4.65%
-- 1 special engine: OR (table+charts in `oregon_tax_2025.py`)
-- 21 progressive: AL, CA, CT, DE, HI, KS, LA, ME, MD, MN, MO, MT, ND, NE, NJ, NM, NY, OK, SC, VT, VA, WI, WV
-- Montana and Alabama flagged `tax_social_security = true`
-
-**Source registry:** `docs/references/state-tax-data-sources.md` tracks every state's source URL, access date, notes, and standard deduction amounts.
-
-**Setup Panel:** State Tax dropdown in Metadata → Assumptions & Years section. Fetches available states via `GET /api/tax-states`. Saves `table_set` to `[taxes].table_set` in scenario TOML.
-
-### README Rewrite (2026-07-06)
-
-- GUI-first onboarding (Web UI as Option A everywhere)
-- Creator's note: vibe coded, no finance background, PowerShell > Python
-- Novice Python install instructions
-- Feature overview table, expanded sample scenarios table
-- Data source comparison (Manual / Monarch / CSV)
-- Security notes (no auth, homelab use)
-- Support section with donation links
-- Monarch referral link
-
-### README + GitHub Pages (2026-07-08)
-
-### Bug Fixes — Setup Panel Clone & Delete (2026-07-10)
-
-**Clone via Setup Panel silently failed** — `initCloneScenario()` sent `FormData` (multipart) but the backend `_parse_form()` only decodes URL-encoded form bodies. The form fields were silently lost; the JS redirected to the new slug where no file existed, showing the "scenarios/ directory is empty" error.
-
-**Fix:** Switched to `URLSearchParams` with `Content-Type: application/x-www-form-urlencoded`, matching the Save/Render/Validate pattern used elsewhere.
-
-**Clone warning false positive** — The Monarch warning when cloning synthetic-mode scenarios read `_accountsData.source_mode`, which is only populated after the Accounts tab loads. If the user cloned without opening Accounts, the fallback defaulted to `'monarch'`.
-
-**Fix:** Now parses `data_source.mode` directly from the TOML textarea content, which is always authoritative regardless of UI state.
-
-**Clone auto-render delay** — After creating a clone, the backend ran `_render_projection_offline()` (all 3 modes) before responding. This made the clone appear to hang.
-
-**Fix:** Removed auto-render from the clone flow. Clones are instant; the user renders via Save + Re-render when ready.
-
-**Delete modal stuck** — After deleting a scenario, the endpoint called `_render_projection_offline(None)` which re-projects all scenarios just to rebuild the shell pages, blocking the response.
-
-**Fix:** Replaced with lightweight shell rebuild: `write_scenarios_index()` + `build_scenario_shell()` + `build_compare_page()` — no projection, instant response.
-
-**Nightly scenario backup** — Nightly cron (`4d0e4e6f1a35`) backs up gitignored personal .toml files to `/home/lemurtech/.nwn-backups/` with 30-day rolling retention.
-
-**Git hooks** — `post-checkout` warns if personal scenarios go missing; `pre-rebase` + `post-rewrite` auto-snapshot and restore; `pre-commit` blocks committing personal scenarios.
+**Docker deployment (v1.5.1 / v1.6.0):**
+- `docker-compose.yml` and `nginx-default.conf` added to repo as sample Docker deployment
+- Monarch MCP bind mounts documented with platform-specific Linux/Windows instructions
+- Docker "All-in-One" section added to `home-server.mdx`
+- Monarch MCP Docker mounts added to `docker-compose.yml` — container now reaches
+  `/opt/monarch-mcp-server`, uv Python binary, and token directory
 
 - **Badge cleanup:** Replaced CI and Docs badges (no pipeline/docs site yet) with last-commit and GPL license badges.
 - **Banner image:** Projection chart screenshot added below the badge row.
@@ -143,10 +107,6 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 - **GitHub Pages:** Orphan `gh-pages` branch created with `index.html` landing page and sample projection. Serve from branch root. URL: `https://lemurtech.github.io/Net-Worth-Navigator/`
 
 ### Open Items
-
-### Docs source tracking
-
-- **Starlight source now tracked in main repo** (2026-07-14). `docs/guide/` was previously a nested git repo with no remote — source content lived only locally. After accidental deletion during gh-pages deploy, all 30 content pages were restored from live HTML output and `docs/guide/.git` was removed. Future edits to the guide should be made to `docs/guide/src/content/docs/` and committed to main, then re-deployed to gh-pages via `git worktree add`.
 
 ### Feature gaps
 

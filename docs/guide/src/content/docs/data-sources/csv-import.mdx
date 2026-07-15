@@ -3,39 +3,32 @@ title: CSV Import
 description: Upload a CSV export of your accounts
 ---
 
+import ImagePreview from '../../../components/ImagePreview.astro';
+
+
 CSV Import lets you load account balances from a CSV file. The importer reads your export, groups rows by account name, keeps the latest balance for each account, and presents them for classification in the Setup Panel.
 
 **Best for:** users who want a one-time Monarch data snapshot without running the MCP server, who use other apps with compatible exports, or who want full control over account classification.
 
-## Getting the CSVSection titled "Getting the CSV"
+## Getting the CSV
 
 **Monarch Money users:** Open the **Accounts** page and click **Download CSV**. The export contains a day-by-day historical record of every account's balance — from the earliest data Monarch has for you through today.
 
 **Other apps:** If your app can export to CSV with columns named `Date`, `Account`, and `Balance`, you can import it directly. If the column names differ, rename them in a spreadsheet before importing.
 
-## Required FormatSection titled "Required Format"
+## Required Format
 
 Your CSV must have these three columns in the header row:
 
-Column
-Description
-Example
-
-`Date`
-Balance snapshot date (YYYY-MM-DD)
-`2026-01-15`
-
-`Account`
-Name of the account
-`Vanguard Roth IRA`
-
-`Balance`
-Account balance — positive for assets, negative for debts
-`45230.50`
+| Column | Description | Example |
+|---|---|---|
+| `Date` | Balance snapshot date (YYYY-MM-DD) | `2026-01-15` |
+| `Account` | Name of the account | `Vanguard Roth IRA` |
+| `Balance` | Account balance — positive for assets, negative for debts | `45230.50` |
 
 A sample CSV is available at [docs/assets/sample-accounts.csv](https://github.com/LemurTech/Net-Worth-Navigator/blob/main/docs/assets/sample-accounts.csv) in the repository.
 
-## How It WorksSection titled "How It Works"
+## How It Works
 
 The importer:
 
@@ -46,7 +39,7 @@ The importer:
 
 **How it works:** The importer reads the CSV, groups rows by `Account` name, and keeps the latest `Date`'s `Balance` for each account. A sample CSV is available at [docs/assets/sample-accounts.csv](https://github.com/LemurTech/Net-Worth-Navigator/blob/main/docs/assets/sample-accounts.csv).
 
-![CSV import preview in the Setup Panel showing the file upload, parsed account list with category and owner dropdowns, and Source column](/Net-Worth-Navigator/nwn-csv-import-preview.png)
+<ImagePreview src="/Net-Worth-Navigator/nwn-csv-import-preview.png" alt="CSV import preview in the Setup Panel showing the file upload, parsed account list with category and owner dropdowns, and Source column" />
 
 To use: In the Setup Panel's **Accounts** tab, select **CSV Import** as your data source, upload your CSV file, review the parsed accounts, and click **Import & Save**.
 

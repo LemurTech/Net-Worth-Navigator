@@ -47,34 +47,16 @@ Net-Worth-Navigator/
 │   └── plans/                    ← Design plans
 └── config.toml                   ← Legacy compatibility
 ```
-## Key FilesSection titled "Key Files"
+## Key Files
 
-File
-Purpose
-
-`run.py`
-CLI entry point. Run with `--scenario ` for single scenarios, `--offline` for cache-only
-
-`admin_app.py`
-FastAPI server for the Setup Panel and raw TOML editor
-
-`Dockerfile.config-editor`
-Builds the Docker image to containerize the Web UI editor
-
-`docker-compose.yml`
-Sample Docker Compose file — runs the editor + nginx in containers
-
-`src/model.py`
-Core simulation engine — year-by-year cash flow, events, taxes, growth
-
-`src/charts.py`
-Generates the interactive Plotly HTML output with all tabs
-
-`src/tax_model.py`
-Bracket-based federal tax, state tax (all 50 states), SS taxation, RMD
-
-`src/monarch_bridge.py`
-Live Monarch Money integration and account classification
-
-`src/csv_importer.py`
-CSV parsing, account merging, and classification
+| File | Purpose |
+|---|---|
+| `run.py` | CLI entry point. Run with `--scenario` for single scenarios, `--offline` for cache-only |
+| `admin_app.py` | FastAPI server for the Setup Panel and raw TOML editor |
+| `Dockerfile.config-editor` | Builds the Docker image to containerize the Web UI editor |
+| `docker-compose.yml` | Sample Docker Compose file — runs the editor + nginx in containers |
+| `src/model.py` | Core simulation engine — year-by-year cash flow, events, taxes, growth |
+| `src/charts.py` | Generates the interactive Plotly HTML output with all tabs |
+| `src/tax_model.py` | Bracket-based federal tax, state tax (all 50 states), SS taxation, RMD |
+| `src/monarch_bridge.py` | Live Monarch Money integration and account classification |
+| `src/csv_importer.py` | CSV parsing, account merging, and classification |

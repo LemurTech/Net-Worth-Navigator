@@ -5,7 +5,9 @@ description: Serve the projection pages from a local web server for access on an
 
 Net Worth Navigator generates static HTML files — no backend server needed after rendering. You can serve these files from any web server on your local network, making them accessible from tablets, phones, and other computers in your home.
 
-## Why Run a Web Server?Section titled "Why Run a Web Server?"
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Why Run a Web Server?
 
 The generated projection pages work when opened as local files (`file://`), but serving them from a web server gives you:
 
@@ -13,28 +15,53 @@ The generated projection pages work when opened as local files (`file://`), but 
 - **Scenario switching** — the shell page loads the scenario manifest from the server, giving you access to all scenarios without re-rendering
 - **Compare page** — the comparison feature reads sidecar data files, which require HTTP serving to work correctly
 
-## Quick Start: Python's Built-in ServerSection titled "Quick Start: Python's Built-in Server"
+## Quick Start: Python's Built-in Server
 
-The simplest approach — no additional software needed:
+The simplest approach — no additional software needed. Open a terminal in your Net Worth Navigator directory and run:
 
-```bash
-cd output
-python3 -m http.server 8010
-```
+<Tabs>
+  <TabItem label="Windows (PowerShell)">
+    ```powershell
+    cd output
+    python -m http.server 8010
+    ```
+  </TabItem>
+  <TabItem label="Linux / macOS">
+    ```bash
+    cd output
+    python3 -m http.server 8010
+    ```
+  </TabItem>
+</Tabs>
 
 Then visit **[http://localhost:8010/projection.html](http://localhost:8010/projection.html)** from the same machine, or **http://YOUR_IP:8010/projection.html** from another device on your network.
 
-Find your local IP with `ip addr` (Linux), `ipconfig` (Windows), or `ifconfig` (macOS).
+Find your local IP:
 
-## Option: Run Alongside the Web UI EditorSection titled "Option: Run Alongside the Web UI Editor"
+- **Windows:** Run `ipconfig` and look for the **IPv4 Address** under your active network adapter
+- **Linux:** Run `ip addr` and look for `inet` under your network interface (usually `eth0` or `wlan0`)
+- **macOS:** Run `ifconfig` and look for `inet` under `en0` or `en1`
+
+## Option: Run Alongside the Web UI Editor
 
 When you run `admin_app.py`, it starts a FastAPI server on port 8010 that serves both the configuration editor **and** the static output files. So if you're already using the Setup Panel, your projections are already being served:
 
-```bash
-.venv/bin/python admin_app.py
-# → Serves projection at http://localhost:8010/projection.html
-```
-## Option: Dedicated Web Server (nginx)Section titled "Option: Dedicated Web Server (nginx)"
+<Tabs>
+  <TabItem label="Windows (PowerShell)">
+    ```powershell
+    .venv\Scripts\python.exe admin_app.py
+    ```
+    Serves the projection at http://localhost:8010/projection.html
+  </TabItem>
+  <TabItem label="Linux / macOS">
+    ```bash
+    .venv/bin/python admin_app.py
+    ```
+    Serves the projection at http://localhost:8010/projection.html
+  </TabItem>
+</Tabs>
+
+## Option: Dedicated Web Server (nginx)
 
 For a more permanent setup, you can serve the output directory with a dedicated web server like nginx. A minimal configuration:
 
@@ -49,7 +76,8 @@ server {
     }
 }
 ```
-## Option: Docker (All-in-One)Section titled "Option: Docker (All-in-One)"
+
+## Option: Docker (All-in-One)
 
 If you're comfortable with Docker, the repo includes a sample `docker-compose.yml` that runs the Web UI editor and nginx in containers:
 
@@ -71,12 +99,21 @@ If you use Monarch Money for live balance sync, the config-editor container need
 
 Without Monarch, Manual Entry and CSV Import modes work fine with no extra configuration.
 
-## Security NoteSection titled "Security Note"
+## Security Note
 
 The built-in Python server and the web UI editor listen on **localhost** by default — only accessible from the machine running them. To access from other devices on your network, you need to bind to `0.0.0.0`:
 
-```bash
-python3 -m http.server 8010 --bind 0.0.0.0
-```
+<Tabs>
+  <TabItem label="Windows (PowerShell)">
+    ```powershell
+    python -m http.server 8010 --bind 0.0.0.0
+    ```
+  </TabItem>
+  <TabItem label="Linux / macOS">
+    ```bash
+    python3 -m http.server 8010 --bind 0.0.0.0
+    ```
+  </TabItem>
+</Tabs>
 
 **Important:** Only do this on a trusted local network. There is no authentication. See the [Security Notes](/Net-Worth-Navigator/reference/license/) for more details.

@@ -5,20 +5,16 @@ description: How to update the project using Git or by downloading a new release
 
 Net Worth Navigator is actively developed, with new features and fixes released regularly. This page explains how to update your local installation.
 
-## Quick AnswerSection titled "Quick Answer"
+## Quick Answer
 
-How you installed
-How to update
-
-**Git clone**
-`git pull` (see [Using Git](#using-git) below)
-
-**ZIP download**
-Download the latest ZIP and re-apply your scenarios (see [ZIP update](#zip-download-update) below)
+| How you installed | How to update |
+|---|---|
+| **Git clone** | `git pull` (see [Using Git](#using-git) below) |
+| **ZIP download** | Download the latest ZIP and re-apply your scenarios (see [ZIP update](#zip-download-update) below) |
 
 **Before updating:** Make a backup of your `scenarios/` directory. Your scenario files contain your personal financial data and are not part of the project code.
 
-## Using GitSection titled "Using Git"
+## Using Git
 
 If you cloned the repository with Git, updating is straightforward:
 
@@ -36,7 +32,7 @@ This downloads the latest changes from the repository. After pulling, re-install
 
 Your personal scenario files (in `scenarios/`) are preserved — they are not tracked by Git by default, so `git pull` won't touch them.
 
-### What if Git reports a conflict?Section titled "What if Git reports a conflict?"
+### What if Git reports a conflict?
 
 If you have made local changes to files that are also tracked by Git (such as `run.py` or `README.md`), `git pull` may report a conflict. The safest approach is to stash your changes, pull, then re-apply:
 
@@ -48,7 +44,7 @@ git stash pop
 
 If the stash pop causes conflicts, review the changes and keep yours or the upstream version as appropriate.
 
-### After updatingSection titled "After updating"
+### After updating
 
 - Verify the installation:
 
@@ -62,7 +58,7 @@ If the stash pop causes conflicts, review the changes and keep yours or the upst
 ```
 - Check the [release notes](https://github.com/LemurTech/Net-Worth-Navigator/releases) for any breaking changes to your scenario configuration.
 
-## ZIP Download UpdateSection titled "ZIP Download Update"
+## ZIP Download Update
 
 If you originally downloaded the project as a ZIP file:
 
@@ -82,7 +78,7 @@ python -m venv .venv
 
 **Tip:** If you find yourself updating frequently, consider cloning with Git instead. It makes updates much simpler.
 
-## Checking Your VersionSection titled "Checking Your Version"
+## Checking Your Version
 
 To see which version you have:
 
@@ -92,7 +88,7 @@ To see which version you have:
 
 The version number follows [SemVer](https://semver.org/) (`MAJOR.MINOR.PATCH`). A MAJOR bump means your scenario TOML files may need changes. MINOR and PATCH bumps are backward-compatible.
 
-## Release NotesSection titled "Release Notes"
+## Release Notes
 
 All releases are documented on the [GitHub Releases page](https://github.com/LemurTech/Net-Worth-Navigator/releases). Key things to look for in release notes:
 

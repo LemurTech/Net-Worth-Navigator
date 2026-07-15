@@ -5,7 +5,7 @@ description: How the model handles balance data and aligns your start year
 
 A common point of confusion is how the model handles balance data that's newer than your configured start year. This page explains the relationship and how the system keeps things aligned automatically.
 
-## How Balance Data and Start Year InteractSection titled "How Balance Data and Start Year Interact"
+## How Balance Data and Start Year Interact
 
 The model always starts its projection at your scenario's configured `start_year` and uses your balance data as the starting point at that year.
 
@@ -22,13 +22,13 @@ CSV imported with latest data from: 2027
 
 This means: if you've been running NWN since 2026 and in 2027 you import a fresh CSV or enter new manual balances, the projection starts at 2027 — using your actual current balances as the year-0 starting point. You never need to manually bump `start_year`.
 
-## What This Means Per Data SourceSection titled "What This Means Per Data Source"
+## What This Means Per Data Source
 
 - **Manual Entry:** Enter your latest balances. The system uses them at `start_year`. If your data is from a later year, `start_year` clamps to match.
 - **CSV Import:** The `Date` column in the CSV picks the latest snapshot per account. If that date is later than `start_year`, the system auto-adjusts.
 - **Monarch Sync:** Live-fetched (or cached) balances are used at `start_year`. The fetch date determines the as-of year for clamping.
 
-## Updating Balances Over TimeSection titled "Updating Balances Over Time"
+## Updating Balances Over Time
 
 You don't need to rebuild your scenario from scratch each time you update balances. Simply:
 
@@ -38,6 +38,6 @@ You don't need to rebuild your scenario from scratch each time you update balanc
 
 Your scenario's original `start_year` in the TOML file is **not** changed — the clamping happens at render time only. If you want to keep your original start year for a historical comparison, that scenario configuration is preserved.
 
-## Historical SnapshotsSection titled "Historical Snapshots"
+## Historical Snapshots
 
 The model does **not** store a history of balance snapshots. Each run starts from whatever balances you provide at that moment. If you want to see how your net worth evolved from a past starting point, keep the original scenario (with original balances and start year) and create a copy for forward-looking projections.

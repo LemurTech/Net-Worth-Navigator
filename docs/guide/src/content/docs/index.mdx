@@ -3,6 +3,8 @@ title: Welcome to Net Worth Navigator
 description: A local net worth projection and financial event modeling tool
 ---
 
+Net Worth Navigator is a local net worth projection tool that models your financial trajectory across multiple scenarios.
+
 Net Worth Navigator projects your household net worth forward
 **year by year**, modeling compound growth, income, spending, taxes,
 loans, and life events. It answers questions like:
@@ -20,7 +22,7 @@ rendering.
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-<CardGrid stagger>
+<CardGrid>
   <Card icon="link-alt" title="View the Live Demo">
     Try the pre-rendered sample projection — no installation needed.
 
@@ -42,36 +44,6 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
     [Browse FAQ →](/guides/faq/)
   </Card>
 </CardGrid>
-
-## How to Use This Guide
-
-This guide is organized into chapters:
-
-- **Getting Started** — installation, quick start, web UI, command line
-- **Key Concepts** — scenarios, projections, account types, events, render modes
-- **Data Sources** — manual entry, CSV import, Monarch Money
-- **Guides** — walkthroughs for common tasks
-- **Reference** — configuration schema, event types, license
-
-## Who This Is For
-
-Net Worth Navigator is a good fit if you:
-
-- want a strategic, year-by-year planning model rather than a monthly budgeting app
-- want to test scenario changes — retirement timing, spending, home sale plans, etc.
-- are comfortable with simplified tax modeling (bracket-based federal, state tax, RMD)
-- want to run everything locally with no ongoing subscription fees
-- want interactive charts you can share with a partner or advisor
-
-## Who This Is Not For
-
-It is not a full-fidelity financial planning system. It is a poor fit if you need:
-
-- Tax-return accuracy (NIIT, AMT, Medicare IRMAA, state-specific edge cases)
-- Retirement withdrawal optimization (see [OWL](https://github.com/mdlacasse/Owl))
-- Precise Social Security analysis across all benefit rules
-- Estate planning or trust flows
-- Monthly cash flow budgeting
 
 ## License
 

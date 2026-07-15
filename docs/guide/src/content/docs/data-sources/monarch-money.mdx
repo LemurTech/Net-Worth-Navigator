@@ -9,24 +9,34 @@ If you have a [Monarch Money](https://www.monarchmoney.com/) subscription, Net W
 
 **Don't have Monarch yet?** Use my referral link for [50% off your first year](https://monarch.com/referral/9pw7upznv4?r_source=copy). It helps offset the token costs of building this thing.
 
-## SetupSection titled "Setup"
-### 1. Install the Monarch MCP ServerSection titled "1. Install the Monarch MCP Server"
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Setup
+
+### 1. Install the Monarch MCP Server
 
 The Monarch MCP Server is a Python program that connects to Monarch's API and provides your account data. It's called **directly by Net Worth Navigator as a subprocess** — no AI agent, local LLM, or orchestrator is needed.
 
 The MCP server runs on **Windows, Linux, and macOS** — anywhere Python runs.
 
-Linux / macOSWindows```bash
-git clone https://github.com/robcerda/monarch-mcp-server.git /opt/monarch-mcp-server
-cd /opt/monarch-mcp-server
-uv run python login_setup.py   # sends OTP to your email
-``````powershell
-git clone https://github.com/robcerda/monarch-mcp-server.git C:\monarch-mcp-server
-cd C:\monarch-mcp-server
-uv run python login_setup.py   # sends OTP to your email
-```
-You may see a harmless warning about `Failed to hardlink files` — that's just `uv` adjusting its caching strategy for Windows. The install completed successfully.
-var e=class e extends HTMLElement{static#e=new Map;tabs;panels;#t;#n=`starlight-synced-tabs__`;constructor(){super();let t=this.querySelector(`[role="tablist"]`);if(this.tabs=[...t.querySelectorAll(`[role="tab"]`)],this.panels=[...this.querySelectorAll(`:scope > [role="tabpanel"]`)],this.#t=this.dataset.syncKey,this.#t){let t=e.#e.get(this.#t)??[];t.push(this),e.#e.set(this.#t,t)}this.tabs.forEach((e,n)=>{e.addEventListener(`click`,e=>{e.preventDefault();let r=t.querySelector(`[aria-selected="true"]`);e.currentTarget!==r&&this.switchTab(e.currentTarget,n)}),e.addEventListener(`keydown`,e=>{let t=this.tabs.indexOf(e.currentTarget),n=e.key===`ArrowLeft`?t-1:e.key===`ArrowRight`?t+1:e.key===`Home`?0:e.key===`End`?this.tabs.length-1:null;n!==null&&this.tabs[n]&&(e.preventDefault(),this.switchTab(this.tabs[n],n))})})}switchTab(t,n,r=!0){if(!t)return;let i=r?this.getBoundingClientRect().top:0;this.tabs.forEach(e=>{e.setAttribute(`aria-selected`,`false`),e.setAttribute(`tabindex`,`-1`)}),this.panels.forEach(e=>{e.hidden=!0});let a=this.panels[n];a&&(a.hidden=!1),t.removeAttribute(`tabindex`),t.setAttribute(`aria-selected`,`true`),r&&(t.focus(),e.#i(this,t),window.scrollTo({top:window.scrollY+(this.getBoundingClientRect().top-i),behavior:`instant`}))}#r(e){!this.#t||typeof localStorage>`u`||localStorage.setItem(this.#n+this.#t,e)}static#i(t,n){let r=t.#t,i=e.#a(n);if(!r||!i)return;let a=e.#e.get(r);if(a){for(let n of a){if(n===t)continue;let r=n.tabs.findIndex(t=>e.#a(t)===i);r!==-1&&n.switchTab(n.tabs[r],r,!1)}t.#r(i)}}static#a(e){return e.textContent?.trim()}};customElements.define(`starlight-tabs`,e);
+<Tabs>
+  <TabItem label="Linux / macOS">
+    ```bash
+    git clone https://github.com/robcerda/monarch-mcp-server.git /opt/monarch-mcp-server
+    cd /opt/monarch-mcp-server
+    uv run python login_setup.py   # sends OTP to your email
+    ```
+  </TabItem>
+  <TabItem label="Windows">
+    ```powershell
+    git clone https://github.com/robcerda/monarch-mcp-server.git C:\monarch-mcp-server
+    cd C:\monarch-mcp-server
+    uv run python login_setup.py   # sends OTP to your email
+    ```
+
+    You may see a harmless warning about `Failed to hardlink files` — that's just `uv` adjusting its caching strategy for Windows. The install completed successfully.
+  </TabItem>
+</Tabs>
 
 **Option 1 (Session cookies)** is the recommended choice. After you select it, the script shows instructions for manually copying the cookie string from your browser's DevTools:
 
@@ -38,57 +48,120 @@ var e=class e extends HTMLElement{static#e=new Map;tabs;panels;#t;#n=`starlight-
 
 Paste the cookie value when prompted. The script validates the session against Monarch's API, then saves it securely to your system keyring. You should see `✅ Cookie login successful` and a count of your accounts.
 
-**Option 2 (Email and password)** is a fallback if the cookie method doesn't work. It will prompt you for your Monarch email address and password. If you have multi-factor authentication (MFA) enabled, you'll then be asked for a one-time code. After successful authentication, the script saves the session to your system keyring.
+**Option 2 (Email and password)** is an alternative if the cookie method doesn't work. It will prompt you for your Monarch email address and password. If you have multi-factor authentication (MFA) enabled, you'll then be asked for a one-time code. After successful authentication, the script saves the session to your system keyring.
 
 Follow the authentication flow (one-time step).
 
 **Don't want to set up the MCP server?** You can use [CSV Import](/Net-Worth-Navigator/data-sources/csv-import/) instead. Monarch lets you download your accounts as a CSV file from the **Accounts** page. The import method is simpler and doesn't require any additional software. See [CSV Import](/Net-Worth-Navigator/data-sources/csv-import/) for details.
 
-### 2. Set the MCP PathSection titled "2. Set the MCP Path"
+### 2. Set the MCP Path
 
 The project looks for the MCP server at the path you cloned it to. If you used the default path above (`/opt/monarch-mcp-server` on Linux/macOS or `C:\monarch-mcp-server` on Windows), the project finds it automatically. Otherwise, set the `MONARCH_MCP_PATH` environment variable:
 
-Linux / macOSWindows```bash
-export MONARCH_MCP_PATH=/path/to/your/monarch-mcp-server
-```
-Set as a user environment variable via System Properties → Environment Variables:
+<Tabs>
+  <TabItem label="Linux / macOS">
+    ```bash
+    export MONARCH_MCP_PATH=/path/to/your/monarch-mcp-server
+    ```
+  </TabItem>
+  <TabItem label="Windows">
+    Set as a user environment variable via System Properties → Environment Variables:
 
-- Name: `MONARCH_MCP_PATH`
-- Value: `C:\path\to\monarch-mcp-server`
+    - Name: `MONARCH_MCP_PATH`
+    - Value: `C:\path\to\monarch-mcp-server`
+  </TabItem>
+</Tabs>
 
-### 3. Configure Your ScenarioSection titled "3. Configure Your Scenario"
+### 3. Configure Your Scenario
 
 In the Setup Panel's **Accounts** tab, select **Monarch (live/cached)** as your data source. The system will fetch your account list and present them for classification.
 
-## RunningSection titled "Running"
-### With Live BalancesSection titled "With Live Balances"
-```bash
-.venv/bin/python run.py --scenario myplan
-.venv\Scripts\python.exe run.py --scenario myplan
-```
+## Running
+
+### With Live Balances
+
+<Tabs>
+  <TabItem label="Linux / macOS">
+    ```bash
+    .venv/bin/python run.py --scenario myplan
+    ```
+  </TabItem>
+  <TabItem label="Windows">
+    ```powershell
+    .venv\Scripts\python.exe run.py --scenario myplan
+    ```
+  </TabItem>
+</Tabs>
 
 This fetches live balances from Monarch on each run.
 
-### With Cached Balances (Faster)Section titled "With Cached Balances (Faster)"
-```bash
-.venv/bin/python run.py --scenario myplan --offline
-.venv\Scripts\python.exe run.py --scenario myplan --offline
-```
+### With Cached Balances (Faster)
+
+<Tabs>
+  <TabItem label="Linux / macOS">
+    ```bash
+    .venv/bin/python run.py --scenario myplan --offline
+    ```
+  </TabItem>
+  <TabItem label="Windows">
+    ```powershell
+    .venv\Scripts\python.exe run.py --scenario myplan --offline
+    ```
+  </TabItem>
+</Tabs>
 
 Uses the cached balance file (`output/balances_cache.json`). No Monarch call needed.
 
-## Automating UpdatesSection titled "Automating Updates"
+## Automating Updates
 
-Because Monarch pulls live data on each run, you can set up a scheduled task to run `run.py --offline` once a month or once a quarter:
+Because Monarch pulls live data on each run, you can set up a scheduled task to run the projection once a month or once a quarter. The `--offline` flag uses cached Monarch balances, so no re-authentication is needed for routine runs.
 
-- **Linux/macOS:** cron job
-- **Windows:** Task Scheduler
+<Tabs>
+  <TabItem label="Linux / macOS">
+    Use a **cron job** to run the projection on a schedule. Open your crontab:
 
-The `--offline` flag uses cached Monarch balances, so no re-authentication is needed for routine runs.
+    ```bash
+    crontab -e
+    ```
+
+    Add a line to run on the 1st of each month at 6 AM (adjust the path to match your installation):
+
+    ```bash
+    0 6 1 * * cd /path/to/Net-Worth-Navigator && .venv/bin/python run.py --offline
+    ```
+
+    This runs all scenarios using cached balances. To run a single scenario, add `--scenario myplan`.
+  </TabItem>
+  <TabItem label="Windows">
+    Use **Task Scheduler** to run the projection on a schedule:
+
+    1. Open **Task Scheduler** (search for it in the Start menu)
+    2. Click **Create Basic Task** in the right panel
+    3. Name it "NWN Monthly Projection" and click Next
+    4. Select **Monthly** as the trigger, click Next
+    5. Choose a day (e.g., 1st) and time (e.g., 6:00 AM), click Next
+    6. Select **Start a program**, click Next
+    7. Set the program/script to the path of your Python executable, e.g.:
+       ```
+       C:\Users\yourname\Projects\Net-Worth-Navigator\.venv\Scripts\python.exe
+       ```
+    8. Set the arguments to:
+       ```
+       run.py --offline
+       ```
+    9. Set the "Start in" folder to your NWN directory, e.g.:
+       ```
+       C:\Users\yourname\Projects\Net-Worth-Navigator
+       ```
+    10. Click **Finish**, then find your task in the list, right-click it, and choose **Run** to test it
+
+    The task will now run automatically on the schedule you chose.
+  </TabItem>
+</Tabs>
 
 **How balance updates work:** Live or cached Monarch balances are used as the starting point at your scenario's configured `start_year`, regardless of when they were fetched. For best accuracy, set `start_year` close to the current date so the projection starts from where you actually are.
 
-## Account ClassificationSection titled "Account Classification"
+## Account Classification
 
 When you first connect Monarch, the system loads your accounts and presents them in the Setup Panel for classification. Each account needs:
 
@@ -98,6 +171,6 @@ When you first connect Monarch, the system loads your accounts and presents them
 
 The disabled accounts list (`disabled = [...]`) keeps excluded accounts visible in case you want to re-enable them later.
 
-## Switching Away from MonarchSection titled "Switching Away from Monarch"
+## Switching Away from Monarch
 
 If you stop using Monarch, switch your scenario's data source to **Manual entry** or **CSV Import** in the Setup Panel. Your account classifications and scenario configuration are preserved.

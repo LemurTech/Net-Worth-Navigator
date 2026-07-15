@@ -7,24 +7,24 @@ If you're new to Git and development tools, installing Git for Windows can feel 
 
 **Do I need Git?** You can skip this if you downloaded the project as a ZIP from GitHub. Git gives you an easy way to update the project later (`git pull`), but it's not required to use Net Worth Navigator.
 
-## DownloadSection titled "Download"
+## Download
 
 Go to [git-scm.com](https://git-scm.com/) and click the **Download for Windows** button. The download should start automatically.
 
-## Run the InstallerSection titled "Run the Installer"
+## Run the Installer
 
 Find the downloaded file (it will be named something like `Git-2.x.x-64-bit.exe`) and double-click it.
 
 **Run as Administrator?** The installer will work whether you run it as Administrator or as a regular user. Running as Administrator makes Git available to all user accounts on the machine, which is useful if multiple people use the same computer. For NWN, either choice works.
 
-## Step-by-Step WalkthroughSection titled "Step-by-Step Walkthrough"
-### 1. Welcome & LicenseSection titled "1. Welcome & License"
+## Step-by-Step Walkthrough
+### 1. Welcome & License
 
 Click **Next** to accept the license and proceed.
 
 ![Git for Windows installer — Setup wizard license page](/Net-Worth-Navigator/git-license.png)
 
-### 2. Installation PathSection titled "2. Installation Path"
+### 2. Installation Path
 
 If you installed as Administrator, the path should read `C:\Program Files\Git\`. If you installed as a regular user, it will be in your user profile directory (`C:\Users\YourUsername\...`). Either is fine.
 
@@ -32,7 +32,7 @@ If you installed as Administrator, the path should read `C:\Program Files\Git\`.
 
 If the path looks reasonable, click **Next**.
 
-### 3. Select ComponentsSection titled "3. Select Components"
+### 3. Select Components
 
 The defaults are fine. Uncheck **Check daily for Git for Windows updates** unless you want to be notified of new Git releases — most users don't need this.
 
@@ -40,7 +40,7 @@ The defaults are fine. Uncheck **Check daily for Git for Windows updates** unles
 
 Click **Next**.
 
-### 4. Select Start Menu FolderSection titled "4. Select Start Menu Folder"
+### 4. Select Start Menu Folder
 
 Unless you have a preference, keep the defaults. You can also choose to skip creating a Start Menu folder entirely.
 
@@ -48,7 +48,7 @@ Unless you have a preference, keep the defaults. You can also choose to skip cre
 
 Click **Next**.
 
-### 5. Choosing the Default EditorSection titled "5. Choosing the Default Editor"
+### 5. Choosing the Default Editor
 
 Leave the default selection unless you see an editor you already use and plan to use Git beyond NWN.
 
@@ -56,7 +56,7 @@ Leave the default selection unless you see an editor you already use and plan to
 
 Click **Next**.
 
-### 6. Initial Branch NameSection titled "6. Initial Branch Name"
+### 6. Initial Branch Name
 
 In the *Initial branch name for new repos* step, type `main` in the field.
 
@@ -64,7 +64,7 @@ In the *Initial branch name for new repos* step, type `main` in the field.
 
 Click **Next**.
 
-### 7. Adjusting Your PATH EnvironmentSection titled "7. Adjusting Your PATH Environment"
+### 7. Adjusting Your PATH Environment
 
 **Keep the default:** *Git from the command line and also from 3rd-party software*. This is important — it makes `git` available in PowerShell and Command Prompt.
 
@@ -72,7 +72,7 @@ Click **Next**.
 
 Click **Next**.
 
-### 8. Choosing the SSH ExecutableSection titled "8. Choosing the SSH Executable"
+### 8. Choosing the SSH Executable
 
 Keep the default: **Use bundled OpenSSH**.
 
@@ -80,13 +80,13 @@ Keep the default: **Use bundled OpenSSH**.
 
 Click **Next**.
 
-### 9. Choosing HTTPS Transport BackendSection titled "9. Choosing HTTPS Transport Backend"
+### 9. Choosing HTTPS Transport Backend
 
 Select **Use the native Windows Secure Channel Library** and click **Next**. This lets Git use Windows' built-in certificate handling.
 
 ![Git for Windows installer — Choosing HTTPS transport backend](/Net-Worth-Navigator/git-transport.png)
 
-### 10. Line Ending ConversionsSection titled "10. Line Ending Conversions"
+### 10. Line Ending Conversions
 
 Keep the default: **Checkout Windows-style, commit Unix-style line endings**. This is the correct choice for Windows.
 
@@ -94,13 +94,13 @@ Keep the default: **Checkout Windows-style, commit Unix-style line endings**. Th
 
 Click **Next**.
 
-### 11. Configuring the Terminal EmulatorSection titled "11. Configuring the Terminal Emulator"
+### 11. Configuring the Terminal Emulator
 
 Select **Use Windows' default console window** (instead of MinTTY). This makes Git use the standard Windows terminal, which works better with PowerShell.
 
 ![Git for Windows installer — Configuring the terminal emulator](/Net-Worth-Navigator/git-console.png)
 
-### 12. Remaining OptionsSection titled "12. Remaining Options"
+### 12. Remaining Options
 
 Leave the remaining defaults through the next few screens:
 
@@ -111,7 +111,7 @@ Leave the remaining defaults through the next few screens:
 
 Click **Next** through each screen until you reach **Install**, then click **Install**.
 
-## Verify the InstallationSection titled "Verify the Installation"
+## Verify the Installation
 
 Open a PowerShell window and type:
 
@@ -123,6 +123,6 @@ You should see something like `git version 2.x.x.windows.1`. If you see this, Gi
 
 **If the command is not recognized:** The installation may not have added Git to your PATH correctly. Try closing and reopening PowerShell, or restart your computer. If it still doesn't work, re-run the installer and make sure you selected *Git from the command line and also from 3rd-party software* in step 7.
 
-## Next StepsSection titled "Next Steps"
+## Next Steps
 
 Once Git is installed, return to the [Installation guide](/Net-Worth-Navigator/getting-started/installation/) to clone the repository and set up Net Worth Navigator.

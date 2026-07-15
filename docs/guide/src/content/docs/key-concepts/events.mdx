@@ -3,9 +3,12 @@ title: Events &amp; the Event System
 description: Model life events that change your financial trajectory
 ---
 
+import ImagePreview from '../../../components/ImagePreview.astro';
+
+
 Events are how you tell the model about things that will happen in the future — a planned expense, a career change, a home purchase, or retirement. They're declared in your scenario TOML under `[[events]]`.
 
-## How Events WorkSection titled "How Events Work"
+## How Events Work
 
 Each event has:
 
@@ -16,59 +19,25 @@ Each event has:
 
 Events can be singular (one year) or span multiple years. They can apply to one person or the household.
 
-## Event TypesSection titled "Event Types"
+## Event Types
 
-Type
-Duration
-What It Does
+| Type | Duration | What It Does |
+|---|---|---|
+| `Retire` | Permanent from year | Stops earned income for the specified person |
+| `SocialSecurity` | Permanent from year | Adds Social Security income for the specified person |
+| `Expense` | Singular or recurring | One-time cash outflow (medical, car, vacation) |
+| `Income` | Singular or bounded | Adds income for a period (side gig, rental) |
+| `BuyHome` | Singular (down payment) + ongoing | Adds a property with optional mortgage |
+| `SellHome` | Singular | Converts a named property to cash proceeds |
+| `NewJob` | Permanent from year | Replaces a person's income from that year |
+| `CareerBreak` | Bounded | Zeroes a person's earned income for a period |
+| `Education` | Bounded | Subtracts annual cost for a period |
+| `Marriage` | Singular | Informational (future: tax filing status change) |
+| `SpendingShift` | Singular or bounded | Changes baseline spending (replace mode) |
 
-`Retire`
-Permanent from year
-Stops earned income for the specified person
+<ImagePreview src="/Net-Worth-Navigator/nwn-gantt.png" alt="Gantt timeline showing events across the projection years" />
 
-`SocialSecurity`
-Permanent from year
-Adds Social Security income for the specified person
-
-`Expense`
-Singular or recurring
-One-time cash outflow (medical, car, vacation)
-
-`Income`
-Singular or bounded
-Adds income for a period (side gig, rental)
-
-`BuyHome`
-Singular (down payment) + ongoing
-Adds a property with optional mortgage
-
-`SellHome`
-Singular
-Converts a named property to cash proceeds
-
-`NewJob`
-Permanent from year
-Replaces a person's income from that year
-
-`CareerBreak`
-Bounded
-Zeroes a person's earned income for a period
-
-`Education`
-Bounded
-Subtracts annual cost for a period
-
-`Marriage`
-Singular
-Informational (future: tax filing status change)
-
-`SpendingShift`
-Singular or bounded
-Changes baseline spending (replace mode)
-
-*(Screenshot suggestion: the Gantt timeline showing events across the projection years)*
-
-### RetireSection titled "Retire"
+### Retire
 ```toml
 [[events]]
 enabled = true
@@ -79,7 +48,7 @@ year = 2038
 
 Sets that person's earned income to zero from the specified year onward. Also triggers retirement-phase spending and withdrawal policies.
 
-### SocialSecuritySection titled "SocialSecurity"
+### SocialSecurity
 ```toml
 [[events]]
 enabled = true
@@ -91,7 +60,9 @@ monthly_benefit = 2400
 
 Adds monthly income from the specified year onward. Retirement and SS events are now **auto-synthesized** from the per-person settings in your TOML — you usually don't need to write them manually. If you do add them, your metadata overrides (like label or enabled flag) are preserved.
 
-### ExpenseSection titled "Expense"
+See **[Social Security Benefits](/Net-Worth-Navigator/key-concepts/social-security/)** for how to get your benefit estimates from ssa.gov and enter them in your scenario.
+
+### Expense
 ```toml
 [[events]]
 enabled = true
@@ -103,7 +74,7 @@ amount = -45000
 
 A one-time cash outflow. Negative amounts reduce liquid assets. Optional `funding = "cash_reserve_first"` lets that expense draw from cash below target before touching retirement buckets.
 
-### Recurring EventsSection titled "Recurring Events"
+### Recurring Events
 
 Events can repeat using three fields:
 
@@ -118,21 +89,15 @@ repeat_every_years = 1
 repeat_until_year = 2045
 ```
 
-Field
-What It Does
-
-`repeat_every_years`
-How many years between repeats
-
-`repeat_until_year`
-The last year the event repeats
-
-`repeat_count`
-Alternative: repeat exactly N times (ignored if `repeat_until_year` is set)
+| Field | What It Does |
+|---|---|
+| `repeat_every_years` | How many years between repeats |
+| `repeat_until_year` | The last year the event repeats |
+| `repeat_count` | Alternative: repeat exactly N times (ignored if `repeat_until_year` is set) |
 
 For readability on the chart, set `chart_first_occurrence_only = true` to show annotations only for the first occurrence.
 
-### IncomeSection titled "Income"
+### Income
 ```toml
 [[events]]
 enabled = true
@@ -145,7 +110,7 @@ end_year = 2029
 
 Adds annual income for the specified period. Positive amounts increase cash flow.
 
-### BuyHome / SellHomeSection titled "BuyHome / SellHome"
+### BuyHome / SellHome
 ```toml
 [[events]]
 enabled = true
@@ -166,7 +131,7 @@ sale_fee_rate = 0.06
 
 `BuyHome` records a new property and subtracts the down payment. `SellHome` converts a named property to cash, net of sale fees and any linked mortgage payoff. Reinvestment into a specific bucket is supported via `reinvest_to`.
 
-### NewJob / CareerBreakSection titled "NewJob / CareerBreak"
+### NewJob / CareerBreak
 ```toml
 [[events]]
 enabled = true
@@ -185,7 +150,7 @@ end_year = 2031
 
 `NewJob` replaces a person's income from that year. `CareerBreak` zeroes income for the specified period.
 
-### SpendingShiftSection titled "SpendingShift"
+### SpendingShift
 ```toml
 [[events]]
 enabled = true
@@ -199,10 +164,10 @@ survivor_percent_of_retirement = 0.70
 
 Changes the baseline retirement spending from the specified year. Currently supports `mode = "replace"` which replaces the scenario's spending parameters.
 
-## Organizing Events in the Gantt TimelineSection titled "Organizing Events in the Gantt Timeline"
+## Organizing Events in the Gantt Timeline
 
 The [Gantt tab](/Net-Worth-Navigator/key-concepts/projection/) shows all enabled events across the projection timeline. Milestone events (retirement, SS start, singular expenses) appear as single markers. Span events (career breaks, education periods) appear as horizontal bars. Survivor periods are shown as a shaded band.
 
-## Toggling EventsSection titled "Toggling Events"
+## Toggling Events
 
 Every event can be toggled on and off by changing `enabled = true` to `enabled = false`. No need to delete entries — just disable them. This is useful for comparing the impact of a specific event (e.g., "what if we don't buy the vacation home?") without creating a separate scenario.
