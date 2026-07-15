@@ -272,3 +272,36 @@ Once a tooltip is switched from `position: absolute` (anchor-relative) to `posit
 1. **The tooltip box itself becomes part of the hover/hit-testing surface**, and because fixed tooltips can visually overlap *other* elements near the anchor (e.g. the next tab over, when tabs sit close together), hovering that visual overlap counts as hovering the *original* anchor's DOM ancestor — making the previous tooltip appear "stuck open" until the cursor clears the overlap entirely. **Fix**: `pointer-events: none` on the fixed tooltip content so it's visually present but never intercepts hover/click.
 2. **The position is a snapshot computed once when the tooltip opens** — nothing recalculates it as the page scrolls, so the tooltip visibly detaches from its anchor and floats in place. **Fix**: track which fixed tooltip is currently visible (`:hover` or a tap-toggle class) and add `scroll`/`resize` listeners (capture phase, to also catch scrollable ancestors, not just the window) that recompute its position on every scroll event.
 
+## Promoted Learning — Real-dollar / nominal dual-view pattern (2026-07-15)
+
+The real-dollar JS toggle required embedding two complete views (inflation-adjusted and nominal) in a single HTML page, switchable without re-render. Several hard-won lessons:
+
+### Plotly cannot render inside `display:none`
+
+This is the single biggest pitfall of the feature. `Plotly.newPlot()` called on an element whose container is `display:none` creates SVGs at 0×0 dimensions. Neither `Plotly.Plots.resize()` nor `Plotly.react()` can recover the chart — only a fresh `Plotly.newPlot()` when the container has proper dimensions works. **Fix**: lazy initialization — store chart data as JSON (for clean `newPlot()` calls) or as a stored script string (for `eval()` of inline scripts), and only render the chart when the user first toggles to that mode.
+
+### Duplicate DOM IDs break Plotly
+
+When both real and nominal versions of a chart exist in the DOM, `fig.to_html()` hardcodes the chart's `div_id` in both the `<div>` and the inline `<script>`. Two charts with the same ID means `Plotly.newPlot()` targets the first match. **Fix**: post-process nominal HTML to suffix chart IDs with `-nominal`, replacing both double-quoted and single-quoted occurrences (Plotly uses different quoting styles for different chart types).
+
+### CSS body-class toggling beats JS element iteration
+
+With 10+ dual-view elements across multiple tabs, iterating each one in JS is fragile and verbose. **Pattern**: add `nwn-real` or `nwn-nominal` to `<body>`, then use CSS selectors:
+
+```css
+body.nwn-nominal .nwn-view-real { display: none !important; }
+body.nwn-nominal .nwn-view-nominal { display: block !important; }
+```
+
+This handles div containers, inline spans, and badge text in one cascade. The only JS-driven swap is table cell `innerHTML` ↔ `data-nominal` (because CSS can't read attributes into content).
+
+### ScrollHeight stability requires zero-layout hidden elements
+
+`display:none` removes elements from layout, but Plotly's inline `<script>` block (~50KB) creates DOM nodes that can affect `document.body.scrollHeight` during page load. **Fix**: use `position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden` for hidden chart wrappers, which keeps them out of flow without the Plotly initialization overhead that `display:none` can trigger.
+
+### `_fmt()` data-attribute pattern for table cells
+
+Only ~25% of table cells are monetary (the rest are years, rates, flags, strings). Rather than doubling table HTML, add `data-nominal="$X"` to each monetary `<td>`. Toggle JS stores the current `innerHTML` in `data-real` and swaps. **Pitfall**: cells with value `0` display `—` (em-dash) and must not get a `data-nominal` attribute, or the toggle would overwrite the dash with a dollar value.
+
+
+

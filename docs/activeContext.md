@@ -1,7 +1,39 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-07-15
-**Status:** v1.8.0 — Real-dollar JS toggle on `feat/real-dollar-toggle` branch; dual chart divs, data-nominal table cells, segmented pill in badge bar.
+**Status:** v1.8.0 — Real-dollar JS toggle complete on `feat/real-dollar-toggle`; all dual-view elements built, 18 commits, awaiting code review before merge to main.
+
+---
+
+## Real-Dollar JS Toggle (Phase 2) — Feature Summary
+
+**Branch:** `feat/real-dollar-toggle` (18 commits)
+**Approach:** Dual-data embedding with CSS-driven toggle
+
+When `[simulation].real_dollar_basis = true`, the projection page embeds both nominal and real-dollar data. A segmented pill (`💰 Real | 📊 Nominal`) in the value-basis badge bar switches all monetary values instantly via CSS body-class toggling. No page reload, no re-render. Preference persists in localStorage.
+
+### Architecture
+
+| Layer | How |
+|---|---|
+| **Model** (`model.py`) | `ProjectionResult.nominal_yearly_df` captures pre-deflation DataFrame before `_apply_real_dollar_basis()` runs. Both deterministic and stochastic paths supported. |
+| **Main chart** (`charts.py`) | Nominal figure serialized to JSON via `fig.to_plotly_json()`, stored as `<script>var NWN_NOMINAL_FIGURE = {...};</script>`. Lazy `Plotly.newPlot()` on first toggle — avoids Plotly's `display:none` 0×0 initialization bug. |
+| **Subsidiary charts** (portfolio, liabilities, cash reserve) | Same lazy-init pattern but using script extraction: nominal `fig.to_html()` output has its `Plotly.newPlot()` script stripped and stored as a JS string variable, `eval()`'d on first toggle. Chart IDs suffixed with `-nominal` to avoid duplicate DOM IDs. |
+| **KPI strip** | Dual `<span class='nwn-view-real'>` / `<span class='nwn-view-nominal'>` per monetary value. |
+| **Data tables** (5 tables) | `_fmt()` extended with optional `nominal_val` → `data-nominal` attribute on each monetary `<td>`. Toggle JS swaps `innerHTML` ↔ `data-nominal`. Non-monetary cells (years, rates, flags) unchanged. |
+| **Cash reserve summary** | Dual `<span>` for minimum cash values per phase. |
+| **Tax cumulative summary** | Dual `<span>` for total taxes, federal total, state total. |
+| **CSS** | Body-class-driven: `body.nwn-real .nwn-view-nominal { display: none }` etc. No JS iteration of individual elements — CSS cascade handles chart divs, KPI spans, badge text, and pill highlight. |
+| **Zoom** | Clamping added to both charts; `_visibleNwnChartId()` helper routes zoom preset buttons to the active chart; x-axis range synced on toggle via save/restore. |
+
+### Verified
+
+- scrollHeight stable at 1664px (baseline, no iframe scrollbar regression)
+- All 4 charts (main + 3 subsidiary) render 3 SVGs after toggle
+- 999+ `data-nominal` cells across all tables
+- localStorage persistence across reloads
+- Zero console errors
+- No toggle artifacts when `real_dollar_basis=false`
 
 ---
 
