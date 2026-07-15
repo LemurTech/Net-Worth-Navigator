@@ -2471,74 +2471,64 @@ def build_chart(
         if projection_result.mode in {"monte_carlo", "historical"}
         else ""
     )
-    # ── Portfolio tab ─────────────────────────────────────────────────────────
-    portfolio_html = ""
-    if nominal_df is not None:
-        real_portfolio = _build_portfolio_chart(df, config=config, projection_result=projection_result)
-        nom_portfolio = _build_portfolio_chart(nominal_df, config=config, projection_result=projection_result)
-        # Extract Plotly.newPlot call from nominal HTML, give it a unique ID,
-        # and store as a JS variable for lazy execution.
-        # Replace all occurrences of the chart ID in both the div and the script
-        nom_portfolio = nom_portfolio.replace('"nwn-portfolio"', '"nwn-portfolio-nominal"')
-        nom_portfolio = nom_portfolio.replace("'nwn-portfolio'", "'nwn-portfolio-nominal'")
-        # Extract the full script content (Plotly.newPlot with nested parens)
-        _sm = _re.search(r'<script>(.*?Plotly\.newPlot.*?)</script>', nom_portfolio, _re.DOTALL)
-        if _sm:
-            nom_script = _sm.group(1).strip()
-            nom_portfolio = f"<script>var NWN_PORTFOLIO_SCRIPT = {nom_script!r};</script>" + nom_portfolio[:_sm.start()] + nom_portfolio[_sm.end():]
-        else:
-            nom_script = ""
-        portfolio_html = (
-            f"<div class='nwn-view-real'>{real_portfolio}</div>"
-            f"<div class='nwn-view-nominal' style='display:none'>{nom_portfolio}</div>"
+    # ── Helper for dual-view chart wrapping ─────────────────────────────────
+    def _wrap_dual_chart(real_html, chart_id, script_var_name, builder_fn, **kwargs):
+        """Wrap real chart HTML and generate a lazy-init nominal counterpart.
+
+        When nominal_df is None, returns real_html unchanged (no dual view).
+        When nominal_df is present, generates a nominal chart, rewrites its
+        div ID, extracts its Plotly.newPlot script for lazy evaluation, and
+        returns both wrapped in CSS-classed toggle divs.
+        """
+        if nominal_df is None:
+            return real_html
+        nom_html = builder_fn(nominal_df, **kwargs)
+        nom_id = f"{chart_id}-nominal"
+        nom_html = nom_html.replace(f'"{chart_id}"', f'"{nom_id}"')
+        nom_html = nom_html.replace(f"'{chart_id}'", f"'{nom_id}'")
+        nom_html = nom_html.replace(f'\\"{chart_id}\\"', f'\\"{nom_id}\\"')
+        _match = _re.search(
+            r'<script>(.*?Plotly\.newPlot.*?)</script>', nom_html, _re.DOTALL
         )
-    else:
-        portfolio_html = _build_portfolio_chart(df, config=config, projection_result=projection_result)
+        if _match:
+            _script = _match.group(1).strip()
+            nom_html = (
+                f"<script>var {script_var_name} = {_script!r};</script>"
+                + nom_html[:_match.start()]
+                + nom_html[_match.end():]
+            )
+        return (
+            f"<div class='nwn-view-real'>{real_html}</div>"
+            f"<div class='nwn-view-nominal' style='display:none'>{nom_html}</div>"
+        )
+
+    # ── Portfolio tab ─────────────────────────────────────────────────────────
+    portfolio_html = _wrap_dual_chart(
+        _build_portfolio_chart(df, config=config, projection_result=projection_result),
+        "nwn-portfolio", "NWN_PORTFOLIO_SCRIPT",
+        _build_portfolio_chart, config=config, projection_result=projection_result,
+    )
 
     # ── Gantt tab ─────────────────────────────────────────────────────────────
     gantt_html = _build_gantt_chart(config, df)
 
     # ── Liabilities tab ───────────────────────────────────────────────────────
-    liabilities_chart_html = _build_liabilities_chart(df, config=config)
-    liabilities_chart_nom = ""
-    if nominal_df is not None:
-        liabilities_chart_nom = _build_liabilities_chart(nominal_df, config=config)
-        liabilities_chart_nom = liabilities_chart_nom.replace('"nwn-liabilities"', '"nwn-liabilities-nominal"')
-        liabilities_chart_nom = liabilities_chart_nom.replace("'nwn-liabilities'", "'nwn-liabilities-nominal'")
-        _sm2 = _re.search(r'<script>(.*?Plotly\.newPlot.*?)</script>', liabilities_chart_nom, _re.DOTALL)
-        if _sm2:
-            nom_script2 = _sm2.group(1).strip()
-            liabilities_chart_nom = f"<script>var NWN_LIABILITIES_SCRIPT = {nom_script2!r};</script>" + liabilities_chart_nom[:_sm2.start()] + liabilities_chart_nom[_sm2.end():]
-    liabilities_chart_wrapped = (
-        f"<div class='nwn-view-real'><div class='gantt-wrap'>{liabilities_chart_html}</div></div>"
-        f"<div class='nwn-view-nominal' style='display:none'><div class='gantt-wrap'>{liabilities_chart_nom}</div></div>"
-        if nominal_df is not None
-        else f"<div class='gantt-wrap'>{liabilities_chart_html}</div>"
+    liabilities_chart_html = _wrap_dual_chart(
+        f"<div class='gantt-wrap'>{_build_liabilities_chart(df, config=config)}</div>",
+        "nwn-liabilities", "NWN_LIABILITIES_SCRIPT",
+        _build_liabilities_chart, config=config,
     )
     liabilities_table_html = build_liabilities_table(df, config=config, nominal_df=nominal_df)
-    liabilities_html = liabilities_chart_wrapped + liabilities_table_html
+    liabilities_html = liabilities_chart_html + liabilities_table_html
 
     # ── Cash Reserve tab ──────────────────────────────────────────────────────
-    cash_reserve_chart_html = _build_cash_reserve_chart(df, config=config)
-    cash_reserve_chart_nom = ""
-    if nominal_df is not None:
-        cash_reserve_chart_nom = _build_cash_reserve_chart(nominal_df, config=config)
-        # Replace all forms of the chart ID (double-quoted, single-quoted, and escaped)
-        cash_reserve_chart_nom = cash_reserve_chart_nom.replace('"nwn-cash-reserve"', '"nwn-cash-reserve-nominal"')
-        cash_reserve_chart_nom = cash_reserve_chart_nom.replace("'nwn-cash-reserve'", "'nwn-cash-reserve-nominal'")
-        cash_reserve_chart_nom = cash_reserve_chart_nom.replace('\\"nwn-cash-reserve\\"', '\\"nwn-cash-reserve-nominal\\"')
-        _sm3 = _re.search(r'<script>(.*?Plotly\.newPlot.*?)</script>', cash_reserve_chart_nom, _re.DOTALL)
-        if _sm3:
-            nom_script3 = _sm3.group(1).strip()
-            cash_reserve_chart_nom = f"<script>var NWN_CASH_RESERVE_SCRIPT = {nom_script3!r};</script>" + cash_reserve_chart_nom[:_sm3.start()] + cash_reserve_chart_nom[_sm3.end():]
-    cash_reserve_chart_wrapped = (
-        f"<div class='nwn-view-real'><div class='gantt-wrap'>{cash_reserve_chart_html}</div></div>"
-        f"<div class='nwn-view-nominal' style='display:none'><div class='gantt-wrap'>{cash_reserve_chart_nom}</div></div>"
-        if nominal_df is not None
-        else f"<div class='gantt-wrap'>{cash_reserve_chart_html}</div>"
+    cash_reserve_chart_html = _wrap_dual_chart(
+        f"<div class='gantt-wrap'>{_build_cash_reserve_chart(df, config=config)}</div>",
+        "nwn-cash-reserve", "NWN_CASH_RESERVE_SCRIPT",
+        _build_cash_reserve_chart, config=config,
     )
     cash_reserve_summary_html = _build_cash_reserve_summary(df, config=config, nominal_df=nominal_df)
-    cash_reserve_html = cash_reserve_chart_wrapped + cash_reserve_summary_html
+    cash_reserve_html = cash_reserve_chart_html + cash_reserve_summary_html
 
     assumptions_html = build_assumptions_summary(
         config,
