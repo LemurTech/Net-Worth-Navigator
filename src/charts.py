@@ -1105,16 +1105,31 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function applyMode(mode) {
+    // Save zoom range from the currently visible chart before switching
+    var oldChartId = currentMode === 'real' || currentMode === undefined ? 'nwn-chart' : 'nwn-chart-nominal';
+    var newChartId = mode === 'real' ? 'nwn-chart' : 'nwn-chart-nominal';
+    var savedRange = null;
+    if (typeof Plotly !== 'undefined') {
+      var oldEl = document.getElementById(oldChartId);
+      if (oldEl && oldEl.layout && oldEl.layout.xaxis && oldEl.layout.xaxis.range) {
+        savedRange = oldEl.layout.xaxis.range.slice();
+      }
+    }
+
     document.body.classList.remove('nwn-real', 'nwn-nominal');
     document.body.classList.add('nwn-' + mode);
     swapTableCells(mode);
     localStorage.setItem(STORAGE_KEY, mode);
     currentMode = mode;
-    // Resize Plotly charts — the just-revealed chart was created in a
-    // display:none container and has zero dimensions until resized.
+
+    // Resize and sync zoom on the newly revealed chart
     if (typeof Plotly !== 'undefined') {
-      Plotly.Plots.resize(document.getElementById('nwn-chart'));
-      Plotly.Plots.resize(document.getElementById('nwn-chart-nominal'));
+      var newEl = document.getElementById(newChartId);
+      if (newEl) Plotly.Plots.resize(newEl);
+      // Sync x-axis range from the previous chart
+      if (savedRange && newEl) {
+        Plotly.relayout(newEl, {'xaxis.range': savedRange});
+      }
     }
   }
 
