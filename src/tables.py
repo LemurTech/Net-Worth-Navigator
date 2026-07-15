@@ -30,12 +30,13 @@ def _event_item_parts(item) -> tuple[str, float, str | None, str | None]:
     return str(label), float(amount), None, None
 
 
-def _fmt(value: float) -> str:
+def _fmt(value: float, nominal_val: float | None = None) -> str:
 
     if pd.isna(value) or value == 0:
         return "<td class='zero'>—</td>"
     color = "neg" if value < 0 else ""
-    return f"<td class='{color}'>${value:>12,.0f}</td>"
+    data_attr = f" data-nominal='${nominal_val:>12,.0f}'" if nominal_val is not None else ""
+    return f"<td class='{color}'{data_attr}>${value:>12,.0f}</td>"
 
 
 def _surplus_bar_cell(taxable: float, trad_ira: float, roth: float) -> str:
@@ -1045,7 +1046,8 @@ def _header_row(years: list[int]) -> str:
 
 
 def _data_row(label: str, values: list[float], indent: bool = False,
-              bold: bool = False, separator: bool = False) -> str:
+              bold: bool = False, separator: bool = False,
+              nominal_values: list[float] | None = None) -> str:
     cls_parts = []
     if indent:   cls_parts.append("indent")
     if bold:     cls_parts.append("total")
@@ -1053,7 +1055,10 @@ def _data_row(label: str, values: list[float], indent: bool = False,
     cls = " ".join(cls_parts)
     tag = "th" if bold else "td"
     cells = "".join(
-        _fmt(v).replace("<td", f"<td data-col='{i+1}'") for i, v in enumerate(values)
+        _fmt(v, nominal_val=(nominal_values[i] if nominal_values else None)).replace(
+            "<td", f"<td data-col='{i+1}'"
+        )
+        for i, v in enumerate(values)
     )
     return f"<tr class='{cls}'><{tag} class='rowlabel'>{label}</{tag}>{cells}</tr>"
 
