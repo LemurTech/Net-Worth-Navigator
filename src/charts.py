@@ -1793,7 +1793,8 @@ def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> s
                        config=dict(scrollZoom=True))
 
 
-def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) -> str:
+def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None,
+                                nominal_df: pd.DataFrame | None = None) -> str:
     """Compact summary card for Cash Reserve tab."""
     wp = config.get("withdrawal_policy", {}) if config else {}
     targets = {
@@ -1803,6 +1804,13 @@ def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) ->
     }
     phase_label_map = {"pre_retirement": "Accumulation", "retirement": "Retirement", "survivor": "Survivor"}
 
+    def _dual_currency(real_val, nominal_val):
+        """Wrap a monetary cell value in dual spans for toggle switching."""
+        if nominal_val is None:
+            return f"${real_val:,.0f}"
+        return (f"<span class='nwn-view-real'>${real_val:,.0f}</span>"
+                f"<span class='nwn-view-nominal' style='display:none'>${nominal_val:,.0f}</span>")
+
     rows_html = []
     for phase in ["pre_retirement", "retirement", "survivor"]:
         phase_df = df[df["tax_phase"].str.strip().str.lower() == phase]
@@ -1811,6 +1819,12 @@ def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) ->
         tgt = targets[phase]
         cash_vals = phase_df["cash"].fillna(0)
         min_cash = cash_vals.min()
+        # Compute nominal minimum cash if nominal_df is available
+        nominal_min_cash = None
+        if nominal_df is not None:
+            nom_phase_df = nominal_df[nominal_df["tax_phase"].str.strip().str.lower() == phase]
+            if not nom_phase_df.empty:
+                nominal_min_cash = nom_phase_df["cash"].fillna(0).min()
         years_below = int((cash_vals < tgt).sum())
         label = phase_label_map.get(phase, phase)
         yr_start = int(phase_df["year"].min())
@@ -1821,8 +1835,8 @@ def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) ->
         rows_html.append(
             f"<tr>"
             f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4)'><strong>{label}</strong><br><span style='font-size:11px;color:var(--muted)'>{yr_start}–{yr_end}</span></td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>${tgt:,.0f}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>${min_cash:,.0f}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_dual_currency(tgt, None)}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_dual_currency(min_cash, nominal_min_cash)}</td>"
             f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:center' class='{status_class}'>{status}</td>"
             f"</tr>"
         )
@@ -2523,7 +2537,7 @@ def build_chart(
         if nominal_df is not None
         else f"<div class='gantt-wrap'>{cash_reserve_chart_html}</div>"
     )
-    cash_reserve_summary_html = _build_cash_reserve_summary(df, config=config)
+    cash_reserve_summary_html = _build_cash_reserve_summary(df, config=config, nominal_df=nominal_df)
     cash_reserve_html = cash_reserve_chart_wrapped + cash_reserve_summary_html
 
     assumptions_html = build_assumptions_summary(
