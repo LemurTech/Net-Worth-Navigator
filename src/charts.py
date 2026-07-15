@@ -156,6 +156,42 @@ _TABS_CSS = """
                    border: 1px solid #243142; background: #0f1725; color: #cbd5e1;
                    font-size: 12px; line-height: 1.45; }
   .modeling-note strong { color: #f8fafc; }
+
+  /* ── Value-basis badge bar (flex row: text left, pill right) ── */
+  .value-basis-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .basis-text { flex: 1 1 auto; min-width: 0; }
+
+  /* ── Segmented pill toggle ── */
+  .value-toggle-pill {
+    display: inline-flex; flex-shrink: 0; border-radius: 5px; overflow: hidden;
+    border: 1px solid rgba(148,163,184,0.28); background: rgba(148,163,184,0.08);
+    font-size: 12px; line-height: 1;
+  }
+  .toggle-segment {
+    padding: 4px 10px; cursor: pointer; color: rgba(226,232,240,0.60);
+    transition: background 0.15s, color 0.15s; user-select: none; white-space: nowrap;
+  }
+  .toggle-segment:hover {
+    color: rgba(226,232,240,0.85); background: rgba(148,163,184,0.12);
+  }
+  /* Active segment highlight — driven by body class */
+  body.nwn-real .nwn-toggle-real,
+  body.nwn-nominal .nwn-toggle-nominal {
+    background: rgba(45,212,191,0.18); color: #e2e8f0; font-weight: 600;
+  }
+
+  /* ── Real/nominal view visibility (body-class driven) ── */
+  body.nwn-nominal .nwn-view-real { display: none !important; }
+  body.nwn-nominal .nwn-view-nominal { display: block !important; }
+  body.nwn-real .nwn-view-real { display: block !important; }
+  body.nwn-real .nwn-view-nominal { display: none !important; }
+  body.nwn-nominal span.nwn-view-real { display: none !important; }
+  body.nwn-nominal span.nwn-view-nominal { display: inline !important; }
+  body.nwn-real span.nwn-view-real { display: inline !important; }
+  body.nwn-real span.nwn-view-nominal { display: none !important; }
   .kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
                border: 1px solid #243142; border-radius: 10px;
                background: #0f1725; margin: 4px 4px 12px; position: relative; }
@@ -1032,6 +1068,54 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+// ── Real-dollar / nominal toggle ──────────────────────────────────────────
+(function() {
+  var STORAGE_KEY = 'nwn-value-basis';
+  var currentMode = localStorage.getItem(STORAGE_KEY) || 'real';
+
+  function swapTableCells(toMode) {
+    var cells = document.querySelectorAll('[data-nominal]');
+    cells.forEach(function(cell) {
+      if (toMode === 'nominal') {
+        cell.setAttribute('data-real', cell.innerHTML);
+        cell.innerHTML = cell.getAttribute('data-nominal');
+      } else {
+        var realVal = cell.getAttribute('data-real');
+        if (realVal) {
+          cell.innerHTML = realVal;
+          cell.removeAttribute('data-real');
+        }
+      }
+    });
+  }
+
+  function applyMode(mode) {
+    document.body.classList.remove('nwn-real', 'nwn-nominal');
+    document.body.classList.add('nwn-' + mode);
+    swapTableCells(mode);
+    localStorage.setItem(STORAGE_KEY, mode);
+    currentMode = mode;
+  }
+
+  // Apply stored preference on load
+  if (currentMode === 'nominal') {
+    applyMode('nominal');
+  }
+
+  // Segmented pill: click either segment to switch
+  var pill = document.getElementById('nwn-value-toggle');
+  if (pill) {
+    pill.addEventListener('click', function(e) {
+      var seg = e.target.closest('.toggle-segment');
+      if (!seg) return;
+      var mode = seg.getAttribute('data-mode');
+      if (mode && mode !== currentMode) {
+        applyMode(mode);
+      }
+    });
+  }
+})();
 </script>
 """
 
@@ -2281,13 +2365,27 @@ def build_chart(
     kpi_html = _build_kpi_summary(config, projection_result, nominal_df=nominal_df)
 
     # Value-basis badge — visible indicator when real-dollar deflation is active
+    # ── Value-basis bar with integrated segmented pill toggle ──
     value_basis_html = ""
     if projection_result.simulation.get("real_dollar_basis"):
         sim = config.get("simulation", {})
         start_year = int(sim.get("start_year", 2026))
         value_basis_html = (
-            "<div class='modeling-note'><strong>Value basis:</strong> "
-            f"All figures in {start_year} dollars (deflated by assumed inflation).</div>"
+            "<div class='modeling-note value-basis-bar'>"
+            # Real-dollar text (visible when mode=real)
+            "<span class='nwn-view-real basis-text'>"
+            f"<strong>Value basis:</strong> All figures in {start_year} dollars (deflated by assumed inflation)."
+            "</span>"
+            # Nominal text (visible when mode=nominal)
+            "<span class='nwn-view-nominal basis-text' style='display:none'>"
+            "<strong>Value basis:</strong> All figures in nominal (future-year) dollars. Inflation not adjusted."
+            "</span>"
+            # Segmented pill toggle
+            "<span class='value-toggle-pill' id='nwn-value-toggle'>"
+            "<span class='toggle-segment nwn-toggle-real' data-mode='real'>💰 Real</span>"
+            "<span class='toggle-segment nwn-toggle-nominal' data-mode='nominal'>📊 Nominal</span>"
+            "</span>"
+            "</div>"
         )
 
     tax_note_html = _build_tax_semantics_note()
