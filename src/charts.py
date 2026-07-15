@@ -1128,11 +1128,17 @@ document.addEventListener('DOMContentLoaded', function() {
       _nominalRendered = true;
       Plotly.newPlot('nwn-chart-nominal', NWN_NOMINAL_FIGURE.data, NWN_NOMINAL_FIGURE.layout,
         {scrollZoom: true, displaylogo: false, responsive: true});
-      // Also initialize nominal subsidiary charts from their stored scripts.
-      ['NWN_PORTFOLIO_SCRIPT', 'NWN_LIABILITIES_SCRIPT', 'NWN_CASH_RESERVE_SCRIPT'].forEach(function(varName) {
-        if (typeof window[varName] !== 'undefined') {
-          try { eval(window[varName]); } catch(e) {}
-          delete window[varName];
+      // Also initialize nominal subsidiary charts from stored JSON figures.
+      var _subChartDefs = [
+        {id: 'nwn-portfolio-nominal',   key: 'NWN_PORTFOLIO_FIGURE'},
+        {id: 'nwn-liabilities-nominal', key: 'NWN_LIABILITIES_FIGURE'},
+        {id: 'nwn-cash-reserve-nominal', key: 'NWN_CASH_RESERVE_FIGURE'},
+      ];
+      _subChartDefs.forEach(function(def) {
+        if (typeof window[def.key] !== 'undefined') {
+          Plotly.newPlot(def.id, window[def.key].data, window[def.key].layout,
+            {scrollZoom: true, displaylogo: false, responsive: true});
+          delete window[def.key];
         }
       });
       if (savedRange) {
@@ -2476,36 +2482,29 @@ def build_chart(
         """Wrap real chart HTML and generate a lazy-init nominal counterpart.
 
         When nominal_df is None, returns real_html unchanged (no dual view).
-        When nominal_df is present, generates a nominal chart, rewrites its
-        div ID, extracts its Plotly.newPlot script for lazy evaluation, and
-        returns both wrapped in CSS-classed toggle divs.
+        When nominal_df is present, generates a nominal chart figure, serializes
+        it as JSON, and wraps both in CSS-classed toggle divs.  The nominal
+        chart is initialized via Plotly.newPlot() from the stored JSON on first
+        toggle — no eval(), no regex script extraction.
         """
         if nominal_df is None:
             return real_html
-        nom_html = builder_fn(nominal_df, **kwargs)
+        nominal_fig = builder_fn(nominal_df, **kwargs)
+        figure_json = json.dumps(nominal_fig.to_plotly_json(), default=str)
         nom_id = f"{chart_id}-nominal"
-        nom_html = nom_html.replace(f'"{chart_id}"', f'"{nom_id}"')
-        nom_html = nom_html.replace(f"'{chart_id}'", f"'{nom_id}'")
-        nom_html = nom_html.replace(f'\\"{chart_id}\\"', f'\\"{nom_id}\\"')
-        _match = _re.search(
-            r'<script>(.*?Plotly\.newPlot.*?)</script>', nom_html, _re.DOTALL
-        )
-        if _match:
-            _script = _match.group(1).strip()
-            nom_html = (
-                f"<script>var {script_var_name} = {_script!r};</script>"
-                + nom_html[:_match.start()]
-                + nom_html[_match.end():]
-            )
         return (
             f"<div class='nwn-view-real'>{real_html}</div>"
-            f"<div class='nwn-view-nominal' style='display:none'>{nom_html}</div>"
+            f"<div class='nwn-view-nominal' style='display:none'>"
+            f"<div id=\"{nom_id}\" class=\"plotly-graph-div\""
+            f" style=\"height:100%; width:100%;\"></div>"
+            f"<script>var {script_var_name} = {figure_json};</script>"
+            f"</div>"
         )
 
     # ── Portfolio tab ─────────────────────────────────────────────────────────
     portfolio_html = _wrap_dual_chart(
         _build_portfolio_chart(df, config=config, projection_result=projection_result),
-        "nwn-portfolio", "NWN_PORTFOLIO_SCRIPT",
+        "nwn-portfolio", "NWN_PORTFOLIO_FIGURE",
         _build_portfolio_chart, config=config, projection_result=projection_result,
     )
 
@@ -2515,7 +2514,7 @@ def build_chart(
     # ── Liabilities tab ───────────────────────────────────────────────────────
     liabilities_chart_html = _wrap_dual_chart(
         f"<div class='gantt-wrap'>{_build_liabilities_chart(df, config=config)}</div>",
-        "nwn-liabilities", "NWN_LIABILITIES_SCRIPT",
+        "nwn-liabilities", "NWN_LIABILITIES_FIGURE",
         _build_liabilities_chart, config=config,
     )
     liabilities_table_html = build_liabilities_table(df, config=config, nominal_df=nominal_df)
@@ -2524,7 +2523,7 @@ def build_chart(
     # ── Cash Reserve tab ──────────────────────────────────────────────────────
     cash_reserve_chart_html = _wrap_dual_chart(
         f"<div class='gantt-wrap'>{_build_cash_reserve_chart(df, config=config)}</div>",
-        "nwn-cash-reserve", "NWN_CASH_RESERVE_SCRIPT",
+        "nwn-cash-reserve", "NWN_CASH_RESERVE_FIGURE",
         _build_cash_reserve_chart, config=config,
     )
     cash_reserve_summary_html = _build_cash_reserve_summary(df, config=config, nominal_df=nominal_df)
