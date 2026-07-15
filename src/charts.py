@@ -1049,24 +1049,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Clamp zoom-out to full data range ────────────────────────────
   var _nwnChart = document.getElementById('nwn-chart');
-  if (_nwnChart && typeof Plotly !== 'undefined') {
-    _nwnChart.on('plotly_relayout', function(eventData) {
-      // Skip events that don't have a manual range (autorange, full reset)
+  var _nwnChartNominal = document.getElementById('nwn-chart-nominal');
+  // Attach zoom clamping to whichever chart is present (real always, nominal
+  // only when real-dollar toggle is active).  Clamping prevents the user from
+  // zooming beyond the data range on either chart.
+  function _addZoomClamp(chartEl) {
+    if (!chartEl || typeof Plotly === 'undefined') return;
+    chartEl.on('plotly_relayout', function(eventData) {
       if (_fullYearRange === null) return;
-      if (!_nwnChart.layout || !_nwnChart.layout.xaxis) return;
-      if (_nwnChart.layout.xaxis.autorange) return;
-      var r = _nwnChart.layout.xaxis.range;
+      if (!chartEl.layout || !chartEl.layout.xaxis) return;
+      if (chartEl.layout.xaxis.autorange) return;
+      var r = chartEl.layout.xaxis.range;
       if (!r || r.length < 2) return;
       var clamped = false;
       var lo = r[0], hi = r[1];
       if (lo < _fullYearRange[0]) { lo = _fullYearRange[0]; clamped = true; }
       if (hi > _fullYearRange[1]) { hi = _fullYearRange[1]; clamped = true; }
       if (clamped) {
-        _nwnChart._halClamping = true;
-        Plotly.relayout(_nwnChart, {'xaxis.range': [lo, hi]});
+        chartEl._halClamping = true;
+        Plotly.relayout(chartEl, {'xaxis.range': [lo, hi]});
       }
     });
   }
+  _addZoomClamp(_nwnChart);
+  _addZoomClamp(_nwnChartNominal);
+
+  // ── Helper: find the currently visible chart for zoom presets ──
+  window._visibleNwnChartId = function() {
+    if (document.body.classList.contains('nwn-nominal') && _nwnChartNominal) {
+      return 'nwn-chart-nominal';
+    }
+    return 'nwn-chart';
+  };
 });
 
 // ── Real-dollar / nominal toggle ──────────────────────────────────────────
@@ -2554,10 +2568,10 @@ def build_chart(
     </div>
     <div class="zoom-presets" id="zoom-presets">
       <span class="zoom-preset-label">Zoom:</span>
-      <button class="zoom-preset-btn active" data-range="full" onclick="zoomToYears('nwn-chart', this, null)">Full</button>
-      <button class="zoom-preset-btn" data-range="10" onclick="zoomToYears('nwn-chart', this, 10)">10yr</button>
-      <button class="zoom-preset-btn" data-range="25" onclick="zoomToYears('nwn-chart', this, 25)">25yr</button>
-      <button class="zoom-preset-btn" data-range="50" onclick="zoomToYears('nwn-chart', this, 50)">50yr</button>
+      <button class="zoom-preset-btn active" data-range="full" onclick="zoomToYears(_visibleNwnChartId(), this, null)">Full</button>
+      <button class="zoom-preset-btn" data-range="10" onclick="zoomToYears(_visibleNwnChartId(), this, 10)">10yr</button>
+      <button class="zoom-preset-btn" data-range="25" onclick="zoomToYears(_visibleNwnChartId(), this, 25)">25yr</button>
+      <button class="zoom-preset-btn" data-range="50" onclick="zoomToYears(_visibleNwnChartId(), this, 50)">50yr</button>
     </div>
     {tax_note_html}
   </div>
