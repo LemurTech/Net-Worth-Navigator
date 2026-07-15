@@ -1554,7 +1554,10 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
                        config=dict(scrollZoom=True))
 
 
-def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+def _build_liabilities_chart(
+    df: pd.DataFrame, config: dict | None = None, *,
+    return_fig: bool = False,
+) -> str | go.Figure:
     """Debt payoff trajectory chart: one line per liability, declining to zero."""
     paper_bg = "#111827"
     plot_bg = "#0f1725"
@@ -1665,11 +1668,17 @@ def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> st
         margin=dict(l=76, r=24, t=78, b=48),
     )
 
+    if return_fig:
+        return fig
+
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-liabilities",
                        config=dict(scrollZoom=True))
 
 
-def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+def _build_cash_reserve_chart(
+    df: pd.DataFrame, config: dict | None = None, *,
+    return_fig: bool = False,
+) -> str | go.Figure:
     """Cash balance vs phase-appropriate target chart."""
     paper_bg = "#111827"
     plot_bg = "#0f1725"
@@ -1797,6 +1806,9 @@ def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> s
         margin=dict(l=76, r=24, t=78, b=48),
     )
 
+    if return_fig:
+        return fig
+
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cash-reserve",
                        config=dict(scrollZoom=True))
 
@@ -1875,7 +1887,9 @@ def _build_portfolio_chart(
     df: pd.DataFrame,
     config: dict | None = None,
     projection_result: ProjectionResult | None = None,
-) -> str:
+    *,
+    return_fig: bool = False,
+) -> str | go.Figure:
     paper_bg = "#111827"
     plot_bg = "#0f1725"
     grid = "rgba(148,163,184,0.14)"
@@ -1965,6 +1979,8 @@ def _build_portfolio_chart(
             div_id="nwn-portfolio",
             config=dict(scrollZoom=True),
         )
+        if return_fig:
+            return fig
         portfolio_note = (
             "<div class='modeling-note'><strong>Portfolio range note:</strong> "
             "Bands show stochastic portfolio ranges by year. The table below reflects the median simulated path.</div>"
@@ -2052,6 +2068,8 @@ def _build_portfolio_chart(
         div_id="nwn-portfolio",
         config=dict(scrollZoom=True),
     )
+    if return_fig:
+        return fig
 
     portfolio_note = (
         "<div class='modeling-note'><strong>What this chart shows:</strong> "
@@ -2483,6 +2501,7 @@ def build_chart(
         """
         if nominal_df is None:
             return real_html
+        kwargs["return_fig"] = True
         nominal_fig = builder_fn(nominal_df, **kwargs)
         figure_json = json.dumps(nominal_fig.to_plotly_json(), default=str)
         nom_id = f"{chart_id}-nominal"
