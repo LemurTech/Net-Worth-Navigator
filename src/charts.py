@@ -29,6 +29,7 @@ from src.model import (
     load_config,
     resolve_runtime_config,
 )
+import json
 
 # Inline SVG info icon — avoids relying on an emoji font (ℹ️ / U+2139) being
 # installed, which was rendering as a fallback glyph ("?") on some Windows
@@ -2422,7 +2423,7 @@ def build_chart(
             nominal_df, config, projection_result=projection_result,
             force_real_dollar_basis=False,
         )
-        import json as _json
+        _json = json
         nominal_figure_json = _json.dumps(
             nominal_fig.to_plotly_json(), default=str
         )
@@ -2480,7 +2481,6 @@ def build_chart(
         # Replace all occurrences of the chart ID in both the div and the script
         nom_portfolio = nom_portfolio.replace('"nwn-portfolio"', '"nwn-portfolio-nominal"')
         nom_portfolio = nom_portfolio.replace("'nwn-portfolio'", "'nwn-portfolio-nominal'")
-        import re as _re
         # Extract the full script content (Plotly.newPlot with nested parens)
         _sm = _re.search(r'<script>(.*?Plotly\.newPlot.*?)</script>', nom_portfolio, _re.DOTALL)
         if _sm:
