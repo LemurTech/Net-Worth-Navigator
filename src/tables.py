@@ -75,6 +75,21 @@ def _fmt_currency(value) -> str:
     return f"{sign}${abs(amount):,.0f}"
 
 
+def _fmt_dual_value(real_val: float, nominal_val: float | None = None) -> str:
+    """Format a monetary value with dual spans for real/nominal toggle.
+
+    When nominal_val is None, returns a plain formatted string (no dual view).
+    When provided, wraps real and nominal in CSS-classed spans for the
+    client-side toggle.
+    """
+    if nominal_val is None:
+        return f"${real_val:,.0f}"
+    return (
+        f"<span class='nwn-view-real'>${real_val:,.0f}</span>"
+        f"<span class='nwn-view-nominal' style='display:none'>${nominal_val:,.0f}</span>"
+    )
+
+
 def _fmt_percent(value) -> str:
     try:
         pct = float(value) * 100.0
@@ -1548,14 +1563,6 @@ def build_tax_table(df: pd.DataFrame, nominal_df: pd.DataFrame | None = None) ->
             for y in years
         )
 
-    def _dual_currency_str(real_val, nominal_val):
-        """Format a monetary value with dual spans for toggle switching."""
-        if nominal_val is None:
-            return _fmt_currency(real_val)
-        r = _fmt_currency(real_val)
-        n = _fmt_currency(nominal_val)
-        return (f"<span class='nwn-view-real'>{r}</span>"
-                f"<span class='nwn-view-nominal' style='display:none'>{n}</span>")
     cum_income = sum(
         float(subset.loc[y, "taxable_income"]) if (y in subset.index and "taxable_income" in subset.columns and pd.notna(subset.loc[y, "taxable_income"])) else 0.0
         for y in years
@@ -1581,9 +1588,9 @@ def build_tax_table(df: pd.DataFrame, nominal_df: pd.DataFrame | None = None) ->
     combined_rate = (cum_taxes / cum_income * 100.0) if cum_income > 0 else 0.0
 
     summary_rows = [
-        ("Total taxes paid (all years)", _dual_currency_str(cum_taxes, nom_cum_taxes), True),
-        ("Federal total", _dual_currency_str(cum_fed, nom_cum_fed), False),
-        ("State total", _dual_currency_str(cum_state, nom_cum_state), False),
+        ("Total taxes paid (all years)", _fmt_dual_value(cum_taxes, nom_cum_taxes), True),
+        ("Federal total", _fmt_dual_value(cum_fed, nom_cum_fed), False),
+        ("State total", _fmt_dual_value(cum_state, nom_cum_state), False),
         ("Average federal effective rate", _fmt_percent(avg_fed / 100.0), False),
         ("Average state effective rate", _fmt_percent(avg_state / 100.0), False),
         ("Combined lifetime effective rate", _fmt_percent(combined_rate / 100.0), True),

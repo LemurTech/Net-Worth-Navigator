@@ -20,6 +20,7 @@ from src.tables import (
     build_portfolio_table,
     build_assumptions_summary,
     build_scenario_parameters_summary,
+    _fmt_dual_value,
 )
 from src.model import (
     EVENT_ICONS,
@@ -1811,13 +1812,6 @@ def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None,
     }
     phase_label_map = {"pre_retirement": "Accumulation", "retirement": "Retirement", "survivor": "Survivor"}
 
-    def _dual_currency(real_val, nominal_val):
-        """Wrap a monetary cell value in dual spans for toggle switching."""
-        if nominal_val is None:
-            return f"${real_val:,.0f}"
-        return (f"<span class='nwn-view-real'>${real_val:,.0f}</span>"
-                f"<span class='nwn-view-nominal' style='display:none'>${nominal_val:,.0f}</span>")
-
     rows_html = []
     for phase in ["pre_retirement", "retirement", "survivor"]:
         phase_df = df[df["tax_phase"].str.strip().str.lower() == phase]
@@ -1842,8 +1836,8 @@ def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None,
         rows_html.append(
             f"<tr>"
             f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4)'><strong>{label}</strong><br><span style='font-size:11px;color:var(--muted)'>{yr_start}–{yr_end}</span></td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_dual_currency(tgt, None)}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_dual_currency(min_cash, nominal_min_cash)}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_fmt_dual_value(tgt, None)}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_fmt_dual_value(min_cash, nominal_min_cash)}</td>"
             f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:center' class='{status_class}'>{status}</td>"
             f"</tr>"
         )
