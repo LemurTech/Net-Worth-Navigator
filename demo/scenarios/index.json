@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-14T18:15:46.490368",
+  "generated_at": "2026-07-14T19:34:38.535795",
   "cache_timestamp": null,
   "default_slug": "default",
   "scenarios": [
@@ -9,26 +9,26 @@
       "description": "Conservative: longer careers, lower spending, SS at 67, trad-heavy contributions.",
       "config_path": "scenarios/sample-a.toml",
       "projection_path": "scenarios/sample-a/deterministic/projection.html",
-      "rendered_at": "2026-07-14T18:12:36.641300",
+      "rendered_at": "2026-07-14T19:31:26.240228",
       "default_mode": "deterministic",
       "modes": [
         {
           "mode": "deterministic",
           "label": "Deterministic",
           "projection_path": "scenarios/sample-a/deterministic/projection.html",
-          "rendered_at": "2026-07-14T18:12:36.641300"
+          "rendered_at": "2026-07-14T19:31:26.240228"
         },
         {
           "mode": "historical",
           "label": "Historical",
           "projection_path": "scenarios/sample-a/historical/projection.html",
-          "rendered_at": "2026-07-14T18:12:41.630253"
+          "rendered_at": "2026-07-14T19:31:31.206181"
         },
         {
           "mode": "monte_carlo",
           "label": "Monte Carlo",
           "projection_path": "scenarios/sample-a/monte_carlo/projection.html",
-          "rendered_at": "2026-07-14T18:13:35.826742"
+          "rendered_at": "2026-07-14T19:32:24.464673"
         }
       ],
       "data_source_mode": "synthetic",
@@ -40,26 +40,26 @@
       "description": "Optimistic: early retirement, higher spending, SS at 70, Roth-heavy contributions.",
       "config_path": "scenarios/sample-b.toml",
       "projection_path": "scenarios/sample-b/deterministic/projection.html",
-      "rendered_at": "2026-07-14T18:13:38.760715",
+      "rendered_at": "2026-07-14T19:32:27.247646",
       "default_mode": "deterministic",
       "modes": [
         {
           "mode": "deterministic",
           "label": "Deterministic",
           "projection_path": "scenarios/sample-b/deterministic/projection.html",
-          "rendered_at": "2026-07-14T18:13:38.760715"
+          "rendered_at": "2026-07-14T19:32:27.247646"
         },
         {
           "mode": "historical",
           "label": "Historical",
           "projection_path": "scenarios/sample-b/historical/projection.html",
-          "rendered_at": "2026-07-14T18:13:44.280663"
+          "rendered_at": "2026-07-14T19:32:32.214599"
         },
         {
           "mode": "monte_carlo",
           "label": "Monte Carlo",
           "projection_path": "scenarios/sample-b/monte_carlo/projection.html",
-          "rendered_at": "2026-07-14T18:14:41.035128"
+          "rendered_at": "2026-07-14T19:33:28.723060"
         }
       ],
       "data_source_mode": "synthetic",
@@ -71,26 +71,26 @@
       "description": "Share-safe couples reference scenario with full inline documentation.",
       "config_path": "scenarios/sample-couples.toml",
       "projection_path": "scenarios/sample-couples/deterministic/projection.html",
-      "rendered_at": "2026-07-14T18:14:43.878101",
+      "rendered_at": "2026-07-14T19:33:31.672032",
       "default_mode": "deterministic",
       "modes": [
         {
           "mode": "deterministic",
           "label": "Deterministic",
           "projection_path": "scenarios/sample-couples/deterministic/projection.html",
-          "rendered_at": "2026-07-14T18:14:43.878101"
+          "rendered_at": "2026-07-14T19:33:31.672032"
         },
         {
           "mode": "historical",
           "label": "Historical",
           "projection_path": "scenarios/sample-couples/historical/projection.html",
-          "rendered_at": "2026-07-14T18:14:49.083052"
+          "rendered_at": "2026-07-14T19:33:37.027981"
         },
         {
           "mode": "monte_carlo",
           "label": "Monte Carlo",
           "projection_path": "scenarios/sample-couples/monte_carlo/projection.html",
-          "rendered_at": "2026-07-14T18:15:46.405511"
+          "rendered_at": "2026-07-14T19:34:38.447396"
         }
       ],
       "data_source_mode": "synthetic",
@@ -102,26 +102,26 @@
       "description": "Single-person share-safe reference scenario with full inline documentation.",
       "config_path": "scenarios/sample.toml",
       "projection_path": "scenarios/sample/deterministic/projection.html",
-      "rendered_at": "2026-07-14T18:11:37.208859",
+      "rendered_at": "2026-07-14T19:30:24.307817",
       "default_mode": "deterministic",
       "modes": [
         {
           "mode": "deterministic",
           "label": "Deterministic",
           "projection_path": "scenarios/sample/deterministic/projection.html",
-          "rendered_at": "2026-07-14T18:11:37.208859"
+          "rendered_at": "2026-07-14T19:30:24.307817"
         },
         {
           "mode": "historical",
           "label": "Historical",
           "projection_path": "scenarios/sample/historical/projection.html",
-          "rendered_at": "2026-07-14T18:11:42.779807"
+          "rendered_at": "2026-07-14T19:30:30.171761"
         },
         {
           "mode": "monte_carlo",
           "label": "Monte Carlo",
           "projection_path": "scenarios/sample/monte_carlo/projection.html",
-          "rendered_at": "2026-07-14T18:12:34.057324"
+          "rendered_at": "2026-07-14T19:31:23.725252"
         }
       ],
       "data_source_mode": "synthetic",
