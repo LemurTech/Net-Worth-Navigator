@@ -184,13 +184,9 @@ _TABS_CSS = """
   }
 
   /* ── Real/nominal view visibility (body-class driven) ── */
-  /* Wrappers use display:contents by default so they don't affect layout
-     (adding a wrapper div around the chart must not cause scrollbars). */
-  .nwn-view-real { display: contents; }
-  .nwn-view-nominal { display: none; }
   body.nwn-nominal .nwn-view-real { display: none !important; }
-  body.nwn-nominal .nwn-view-nominal { display: contents !important; }
-  body.nwn-real .nwn-view-real { display: contents !important; }
+  body.nwn-nominal .nwn-view-nominal { display: block !important; }
+  body.nwn-real .nwn-view-real { display: block !important; }
   body.nwn-real .nwn-view-nominal { display: none !important; }
   body.nwn-nominal span.nwn-view-real { display: none !important; }
   body.nwn-nominal span.nwn-view-nominal { display: inline !important; }
