@@ -184,9 +184,13 @@ _TABS_CSS = """
   }
 
   /* ── Real/nominal view visibility (body-class driven) ── */
+  /* Wrappers use display:contents by default so they don't affect layout
+     (adding a wrapper div around the chart must not cause scrollbars). */
+  .nwn-view-real { display: contents; }
+  .nwn-view-nominal { display: none; }
   body.nwn-nominal .nwn-view-real { display: none !important; }
-  body.nwn-nominal .nwn-view-nominal { display: block !important; }
-  body.nwn-real .nwn-view-real { display: block !important; }
+  body.nwn-nominal .nwn-view-nominal { display: contents !important; }
+  body.nwn-real .nwn-view-real { display: contents !important; }
   body.nwn-real .nwn-view-nominal { display: none !important; }
   body.nwn-nominal span.nwn-view-real { display: none !important; }
   body.nwn-nominal span.nwn-view-nominal { display: inline !important; }
@@ -1096,12 +1100,17 @@ document.addEventListener('DOMContentLoaded', function() {
     swapTableCells(mode);
     localStorage.setItem(STORAGE_KEY, mode);
     currentMode = mode;
+    // Resize Plotly charts — the just-revealed chart was created in a
+    // display:none container and has zero dimensions until resized.
+    if (typeof Plotly !== 'undefined') {
+      Plotly.Plots.resize(document.getElementById('nwn-chart'));
+      Plotly.Plots.resize(document.getElementById('nwn-chart-nominal'));
+    }
   }
 
-  // Apply stored preference on load
-  if (currentMode === 'nominal') {
-    applyMode('nominal');
-  }
+  // Always apply mode on load so the body class is set and the pill
+  // highlight activates (bug: was only applying when stored mode was 'nominal')
+  applyMode(currentMode);
 
   // Segmented pill: click either segment to switch
   var pill = document.getElementById('nwn-value-toggle');
