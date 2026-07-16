@@ -131,6 +131,16 @@
       <div class="field"><span class="field-label">Take-Home Pay</span><div class="field-value">$62,000</div></div>
       <div class="field"><span class="field-label">Gross Income</span><div class="field-value">$90,000</div></div>
       <div class="field"><span class="field-label">Contribution</span><div class="field-value">20.0%</div></div>
+    </div><hr style="border:none;border-top:1px solid #243142;margin:8px 0">
+    <div class="field-row">
+      <div class="field"><span class="field-label">Name</span><div class="field-value">Person 2</div></div>
+      <div class="field"><span class="field-label">Birth Year</span><div class="field-value">0</div></div>
+      <div class="field"><span class="field-label">Life Expectancy</span><div class="field-value"></div></div>
+      <div class="field"><span class="field-label">Retirement Year</span><div class="field-value"></div></div>
+      <div class="field"><span class="field-label">SS Start Age</span><div class="field-value"></div></div>
+      <div class="field"><span class="field-label">Take-Home Pay</span><div class="field-value"></div></div>
+      <div class="field"><span class="field-label">Gross Income</span><div class="field-value"></div></div>
+      <div class="field"><span class="field-label">Contribution</span><div class="field-value"></div></div>
     </div>
 </div>
 
@@ -146,7 +156,7 @@
     <div class="field"><span class="field-label">Projection Window</span><div class="field-value">2026 – 2062</div></div>
     <div class="field"><span class="field-label">Render Modes</span><div class="field-value">deterministic, historical, monte_carlo</div></div>
     <div class="field"><span class="field-label">State Tax</span><div class="field-value">2025_us_federal_oregon</div></div>
-    <div class="field"><span class="field-label">Real-Dollar Display</span><div class="field-value">Enabled (start-year dollars)</div></div>
+    <div class="field"><span class="field-label">Value Basis</span><div class="field-value">Both (toggle)</div></div>
   </div>
 </div>
 
@@ -223,6 +233,7 @@ is_default  = false
 # To explicitly set:  household_type = &quot;single&quot;
 
 # ─── Data Source (synthetic → no Monarch call, no cache) ───────────────────────
+household_type = &quot;single&quot;
 
 [data_source]
 mode = &quot;synthetic&quot;   # synthetic | monarch
@@ -265,9 +276,9 @@ mode = &quot;deterministic&quot;   # compatibility/default single-run mode
 # seed = 12345                            # reproducibility seed
 # portfolio_return_volatility = 0.15      # annual stdev for blended investable return
 # historical_returns_path = &quot;config/return_sequences/us_balanced_returns.csv&quot;
-real_dollar_basis = true      # show all values in start-year purchasing power
 
 # ─── Display Settings ──────────────────────────────────────────────────────────
+value_basis = &quot;both&quot;
 
 [display]
 projection_title = &quot;Single-Person Sample (Synthetic Demo)&quot;
@@ -367,6 +378,8 @@ retirement_surplus_order   = [&quot;taxable&quot;, &quot;roth&quot;, &quot;trad_
 # ═══════════════════════════════════════════════════════════════════════════════
 # ─── Market Assumptions ────────────────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════════════════════
+survivor_withdrawal_order = [&quot;cash_above_target&quot;, &quot;trad_ira&quot;, &quot;taxable&quot;, &quot;roth&quot;, &quot;cash_below_target&quot;]
+survivor_surplus_order = [&quot;roth&quot;, &quot;taxable&quot;]
 
 [assumptions]
 stock_return  = 0.07   # annual nominal return on equities
@@ -577,6 +590,10 @@ amount  = -25000
 expense_kind = &quot;mandatory&quot;
 repeat_every_years = 1
 chart_first_occurrence_only = true
+
+[person2]
+name = &quot;Person 2&quot;
+dob = &quot;0-01-01&quot;
 </div>
   <div class="field-note">This is a read-only demo. Configuration is for reference only.</div>
 </div>

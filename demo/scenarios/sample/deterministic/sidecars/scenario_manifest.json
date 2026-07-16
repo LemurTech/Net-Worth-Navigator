@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T19:30:24.309378",
+  "generated_at": "2026-07-15T21:13:09.143998",
   "mode": "synthetic",
   "cache_timestamp": null,
   "scenario": {
@@ -26,7 +26,7 @@
       "monte_carlo"
     ],
     "mode": "deterministic",
-    "real_dollar_basis": true,
+    "value_basis": "both",
     "result_mode": "deterministic",
     "run_count": 1,
     "display_path_kind": "deterministic"
@@ -45,6 +45,13 @@
       "life_expectancy": 90,
       "retirement_year": 2040,
       "annual_take_home": 62000
+    },
+    "person2": {
+      "name": "Person 2",
+      "dob": "0-01-01",
+      "life_expectancy": null,
+      "retirement_year": null,
+      "annual_take_home": null
     }
   },
   "assumptions": {
@@ -86,6 +93,17 @@
       "taxable",
       "roth",
       "trad_ira"
+    ],
+    "survivor_withdrawal_order": [
+      "cash_above_target",
+      "trad_ira",
+      "taxable",
+      "roth",
+      "cash_below_target"
+    ],
+    "survivor_surplus_order": [
+      "roth",
+      "taxable"
     ]
   },
   "enabled_events_config": [

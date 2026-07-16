@@ -156,7 +156,7 @@
     <div class="field"><span class="field-label">Projection Window</span><div class="field-value">2026 – 2066</div></div>
     <div class="field"><span class="field-label">Render Modes</span><div class="field-value">deterministic, historical, monte_carlo</div></div>
     <div class="field"><span class="field-label">State Tax</span><div class="field-value">2025_us_federal_oregon</div></div>
-    <div class="field"><span class="field-label">Real-Dollar Display</span><div class="field-value">Enabled (start-year dollars)</div></div>
+    <div class="field"><span class="field-label">Value Basis</span><div class="field-value">Both (toggle)</div></div>
   </div>
 </div>
 
@@ -223,6 +223,7 @@ name        = &quot;Sample A Plan&quot;
 slug        = &quot;sample-a&quot;
 description = &quot;Conservative: longer careers, lower spending, SS at 67, trad-heavy contributions.&quot;
 is_default  = false
+household_type = &quot;couple&quot;
 
 [data_source]
 mode = &quot;synthetic&quot;
@@ -255,7 +256,7 @@ mode         = &quot;deterministic&quot;
 num_runs     = 250
 seed         = 42
 portfolio_return_volatility = 0.15
-real_dollar_basis = true      # show all values in start-year purchasing power
+value_basis = &quot;both&quot;
 
 [display]
 projection_title = &quot;Sample A — Conservative Plan (Synthetic Demo)&quot;

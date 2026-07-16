@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T19:33:31.674063",
+  "generated_at": "2026-07-15T21:16:33.021964",
   "mode": "synthetic",
   "cache_timestamp": null,
   "scenario": {
@@ -26,7 +26,7 @@
       "monte_carlo"
     ],
     "mode": "deterministic",
-    "real_dollar_basis": true,
+    "value_basis": "both",
     "result_mode": "deterministic",
     "run_count": 1,
     "display_path_kind": "deterministic"

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T19:32:24.466659",
+  "generated_at": "2026-07-15T21:15:22.389651",
   "mode": "synthetic",
   "cache_timestamp": null,
   "scenario": {
@@ -31,7 +31,7 @@
     "num_runs": 250,
     "seed": 42,
     "portfolio_return_volatility": 0.15,
-    "real_dollar_basis": true,
+    "value_basis": "both",
     "result_mode": "monte_carlo",
     "run_count": 250,
     "display_path_kind": "median"

@@ -182,9 +182,10 @@
     iframe {
       display: block;
       width: 100%;
-      height: 195vh;
+      height: 9999px;
       border: none;
       background: transparent;
+      overflow: hidden;
     }
     .empty-state {
       display: none;
@@ -222,8 +223,7 @@
         flex: 0 0 auto;
       }
       .frame-wrap, iframe {
-        min-height: 175vh;
-        height: 175vh;
+        height: 9999px;
       }
     }
     /* Plan Name / Plan Type stay on one line at virtually all widths — select
@@ -270,8 +270,7 @@
     }
     @media (max-width: 520px) {
       .frame-wrap, iframe {
-        min-height: 150vh;
-        height: 150vh;
+        height: 9999px;
       }
     }
     /* Data freshness indicator — hidden by default, shown by JS only when cache exists */
@@ -323,7 +322,7 @@
 <body>
   <div class="page">
     <section class="topbar">
-      <div class="topbar-title">Net Worth Navigator<span class="version-tag">v1.6.1</span></div>
+      <div class="topbar-title">Net Worth Navigator<span class="version-tag">v1.7.0</span></div>
       <div class="freshness-bar" id="freshness-bar">
         <span class="dot missing" id="freshness-dot"></span>
         <span class="label" id="freshness-label">Syncing data…</span>
@@ -367,7 +366,7 @@
   </div>
 
   <script>
-    const inlineManifest = {"generated_at": "2026-07-14T19:34:38.535795", "cache_timestamp": null, "default_slug": "default", "scenarios": [{"slug": "sample-a", "name": "Sample A Plan", "description": "Conservative: longer careers, lower spending, SS at 67, trad-heavy contributions.", "config_path": "scenarios/sample-a.toml", "projection_path": "scenarios/sample-a/deterministic/projection.html", "rendered_at": "2026-07-14T19:31:26.240228", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-a/deterministic/projection.html", "rendered_at": "2026-07-14T19:31:26.240228"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-a/historical/projection.html", "rendered_at": "2026-07-14T19:31:31.206181"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-a/monte_carlo/projection.html", "rendered_at": "2026-07-14T19:32:24.464673"}], "data_source_mode": "synthetic", "is_default": false}, {"slug": "sample-b", "name": "Sample B Plan", "description": "Optimistic: early retirement, higher spending, SS at 70, Roth-heavy contributions.", "config_path": "scenarios/sample-b.toml", "projection_path": "scenarios/sample-b/deterministic/projection.html", "rendered_at": "2026-07-14T19:32:27.247646", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-b/deterministic/projection.html", "rendered_at": "2026-07-14T19:32:27.247646"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-b/historical/projection.html", "rendered_at": "2026-07-14T19:32:32.214599"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-b/monte_carlo/projection.html", "rendered_at": "2026-07-14T19:33:28.723060"}], "data_source_mode": "synthetic", "is_default": false}, {"slug": "sample-couples", "name": "Sample Couples Plan", "description": "Share-safe couples reference scenario with full inline documentation.", "config_path": "scenarios/sample-couples.toml", "projection_path": "scenarios/sample-couples/deterministic/projection.html", "rendered_at": "2026-07-14T19:33:31.672032", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-couples/deterministic/projection.html", "rendered_at": "2026-07-14T19:33:31.672032"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-couples/historical/projection.html", "rendered_at": "2026-07-14T19:33:37.027981"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-couples/monte_carlo/projection.html", "rendered_at": "2026-07-14T19:34:38.447396"}], "data_source_mode": "synthetic", "is_default": false}, {"slug": "sample", "name": "Sample Plan (Single-Person)", "description": "Single-person share-safe reference scenario with full inline documentation.", "config_path": "scenarios/sample.toml", "projection_path": "scenarios/sample/deterministic/projection.html", "rendered_at": "2026-07-14T19:30:24.307817", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample/deterministic/projection.html", "rendered_at": "2026-07-14T19:30:24.307817"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample/historical/projection.html", "rendered_at": "2026-07-14T19:30:30.171761"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample/monte_carlo/projection.html", "rendered_at": "2026-07-14T19:31:23.725252"}], "data_source_mode": "synthetic", "is_default": false}]};
+    const inlineManifest = {"generated_at": "2026-07-15T21:17:38.094935", "cache_timestamp": null, "default_slug": "default", "scenarios": [{"slug": "sample-a", "name": "Sample A Plan", "description": "Conservative: longer careers, lower spending, SS at 67, trad-heavy contributions.", "config_path": "scenarios/sample-a.toml", "projection_path": "scenarios/sample-a/deterministic/projection.html", "rendered_at": "2026-07-15T21:14:17.672034", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-a/deterministic/projection.html", "rendered_at": "2026-07-15T21:14:17.672034"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-a/historical/projection.html", "rendered_at": "2026-07-15T21:14:23.678978"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-a/monte_carlo/projection.html", "rendered_at": "2026-07-15T21:15:22.388426"}], "data_source_mode": "synthetic", "value_basis": "both", "is_default": false}, {"slug": "sample-b", "name": "Sample B Plan", "description": "Optimistic: early retirement, higher spending, SS at 70, Roth-heavy contributions.", "config_path": "scenarios/sample-b.toml", "projection_path": "scenarios/sample-b/deterministic/projection.html", "rendered_at": "2026-07-15T21:15:25.858393", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-b/deterministic/projection.html", "rendered_at": "2026-07-15T21:15:25.858393"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-b/historical/projection.html", "rendered_at": "2026-07-15T21:15:31.792337"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-b/monte_carlo/projection.html", "rendered_at": "2026-07-15T21:16:28.956800"}], "data_source_mode": "synthetic", "value_basis": "both", "is_default": false}, {"slug": "sample-couples", "name": "Sample Couples Plan", "description": "Share-safe couples reference scenario with full inline documentation.", "config_path": "scenarios/sample-couples.toml", "projection_path": "scenarios/sample-couples/deterministic/projection.html", "rendered_at": "2026-07-15T21:16:33.019762", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample-couples/deterministic/projection.html", "rendered_at": "2026-07-15T21:16:33.019762"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample-couples/historical/projection.html", "rendered_at": "2026-07-15T21:16:39.702699"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample-couples/monte_carlo/projection.html", "rendered_at": "2026-07-15T21:17:38.008152"}], "data_source_mode": "synthetic", "value_basis": "both", "is_default": false}, {"slug": "sample", "name": "Sample Plan (Single-Person)", "description": "Single-person share-safe reference scenario with full inline documentation.", "config_path": "scenarios/sample.toml", "projection_path": "scenarios/sample/deterministic/projection.html", "rendered_at": "2026-07-15T21:13:09.141679", "default_mode": "deterministic", "modes": [{"mode": "deterministic", "label": "Deterministic", "projection_path": "scenarios/sample/deterministic/projection.html", "rendered_at": "2026-07-15T21:13:09.141679"}, {"mode": "historical", "label": "Historical", "projection_path": "scenarios/sample/historical/projection.html", "rendered_at": "2026-07-15T21:13:16.217612"}, {"mode": "monte_carlo", "label": "Monte Carlo", "projection_path": "scenarios/sample/monte_carlo/projection.html", "rendered_at": "2026-07-15T21:14:14.236067"}], "data_source_mode": "synthetic", "value_basis": "both", "is_default": false}]};
     const manifestUrl = "scenarios/index.json";
     const initialDefaultSlug = "default";
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T19:33:37.030037",
+  "generated_at": "2026-07-15T21:16:39.704296",
   "mode": "synthetic",
   "cache_timestamp": null,
   "scenario": {
@@ -28,7 +28,7 @@
       "monte_carlo"
     ],
     "mode": "historical",
-    "real_dollar_basis": true,
+    "value_basis": "both",
     "historical_returns_path": "config/return_sequences/us_balanced_returns.csv",
     "result_mode": "historical",
     "run_count": 16,
