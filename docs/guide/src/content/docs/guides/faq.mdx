@@ -16,7 +16,13 @@ description: Frequently asked questions about Net Worth Navigator
 
 The net effect is equivalent to using real returns, but more granular — spending, income, cash returns, and home appreciation each inflate at their own rate.
 
-**Real-dollar display:** Set `[simulation].real_dollar_basis = true` in your scenario to see all chart and table figures deflated to start-year purchasing power (for example, values in 2026 dollars when your scenario starts in 2026). When enabled, a segmented toggle pill (💰 Real | 📊 Nominal) appears in the value-basis bar below the KPI numbers, allowing instant switching between inflation-adjusted and nominal views. Your preference is remembered across page reloads. Default is `false` (nominal future-dollar display).
+**Value basis:** By default all figures are shown in nominal (future-year) dollars — projected dollar values with inflation baked in. Set `[simulation].value_basis` to control the display:
+
+- **`"nominal"`** (default) — Future-year dollars, single chart pass, fastest render.
+- **`"real"`** — All values deflated to start-year purchasing power (e.g. 2026 dollars). Single chart pass.
+- **`"both"`** — Dual rendering with a toggle pill (💰 Real | 📊 Nominal) below the KPI numbers. Your preference is remembered across page reloads. Two chart passes.
+
+For backward compatibility, `[simulation].real_dollar_basis = true` maps to `value_basis = "both"`.
 </details>
 
 <details>
