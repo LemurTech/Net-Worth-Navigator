@@ -71,9 +71,9 @@ mode = "deterministic"   # compatibility/default single-run mode
 # seed = 12345                            # reproducibility seed
 # portfolio_return_volatility = 0.15      # annual stdev for blended investable return
 # historical_returns_path = "config/return_sequences/us_balanced_returns.csv"
-real_dollar_basis = true      # show all values in start-year purchasing power
 
 # ─── Display Settings ──────────────────────────────────────────────────────────
+value_basis = "nominal"
 
 [display]
 projection_title = "Single-Person Sample (Synthetic Demo)"

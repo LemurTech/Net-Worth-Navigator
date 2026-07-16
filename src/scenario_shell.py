@@ -778,27 +778,6 @@ def build_compare_page(
     select.mode-select:focus {{ outline: none; border-color: rgba(125,211,252,.55); }}
     select.mode-select option {{ background: #101a2a; }}
 
-    .basis-filter {{
-      display: flex; align-items: center; gap: 6px;
-      font-size: 11px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .06em;
-    }}
-    .basis-filter .basis-pill {{
-      display: inline-block; padding: 4px 10px; border-radius: 12px;
-      font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
-      border: 1px solid rgba(148,163,184,0.25);
-      background: transparent; color: rgba(226,232,240,0.55);
-      transition: background .15s, color .15s;
-      text-transform: none; letter-spacing: 0;
-    }}
-    .basis-filter .basis-pill:hover {{
-      background: rgba(148,163,184,0.10); color: rgba(226,232,240,0.80);
-    }}
-    .basis-filter .basis-pill.active {{
-      background: rgba(45,212,191,0.15); color: #e2e8f0; font-weight: 700;
-      border-color: rgba(45,212,191,0.35);
-    }}
-
     /* ── Chart card ─────────────────────────────────────────────── */
     .card {{
       background: var(--panel-2); border: 1px solid var(--border);
@@ -865,12 +844,11 @@ def build_compare_page(
       </select>
     </div>
     <div class="control-group">
-      <div class="basis-filter" id="basis-filter">
-        <span>Basis:</span>
-        <span class="basis-pill active" data-basis="all">All</span>
-        <span class="basis-pill" data-basis="real">Real</span>
-        <span class="basis-pill" data-basis="nominal">Future</span>
-      </div>
+      <div class="control-label">Value Basis</div>
+      <select class="mode-select" id="basis-select">
+        <option value="real">Real</option>
+        <option value="nominal">Future</option>
+      </select>
     </div>
   </div>
 
@@ -919,7 +897,7 @@ def build_compare_page(
   // ── State ────────────────────────────────────────────────────────
   let activeMode = 'deterministic';
   let activeSlugs = new Set();
-  let activeBasis = 'all';
+  let activeBasis = 'real';
 
   // Boot selection: honour ?a=slug&b=slug URL params, else default + first other
   (function initSelection() {{
@@ -938,6 +916,13 @@ def build_compare_page(
     if (activeSlugs.size === 1 && DEFAULT_SLUG && !activeSlugs.has(DEFAULT_SLUG)) {{
       activeSlugs.add(DEFAULT_SLUG);
     }}
+    // Default basis selector to the origin scenario's value_basis
+    var originSlug = paramA || (activeSlugs.size > 0 ? Array.from(activeSlugs)[0] : null);
+    var origin = originSlug ? SCENARIO_LIST.find(function(s) {{ return s.slug === originSlug; }}) : null;
+    var originVb = (origin && origin.value_basis) || 'nominal';
+    // 'both' maps to 'real' as the comparison basis
+    if (originVb === 'both') originVb = 'real';
+    activeBasis = originVb;
   }})();
 
   // ── Chip rendering ───────────────────────────────────────────────
@@ -945,11 +930,9 @@ def build_compare_page(
     const row = document.getElementById('scenario-chips');
     row.innerHTML = '';
     const filtered = SCENARIO_LIST.filter(function(s) {{
-      if (activeBasis === 'all') return true;
       const vb = s.value_basis || 'nominal';
       if (activeBasis === 'real') return vb === 'real' || vb === 'both';
-      if (activeBasis === 'nominal') return vb === 'nominal' || vb === 'both';
-      return true;
+      return vb === 'nominal' || vb === 'both';  // activeBasis is 'nominal' or default
     }});
     // If no scenarios match the filter, show a message
     if (filtered.length === 0) {{
@@ -961,12 +944,6 @@ def build_compare_page(
     activeSlugs.forEach(function(slug) {{
       if (!filteredSlugs.has(slug)) activeSlugs.delete(slug);
     }});
-    // Ensure at least 2 scenarios are selected
-    if (activeSlugs.size < 2 && filtered.length >= 2) {{
-      filtered.forEach(function(s) {{
-        if (activeSlugs.size < 2) activeSlugs.add(s.slug);
-      }});
-    }}
     filtered.forEach(function(s) {{
       const color = COLOR_MAP[s.slug];
       const active = activeSlugs.has(s.slug);
@@ -984,7 +961,6 @@ def build_compare_page(
         (s.slug === DEFAULT_SLUG ? '<span style="font-size:10px;opacity:.7"> ★</span>' : '');
       chip.addEventListener('click', function() {{
         if (activeSlugs.has(s.slug)) {{
-          if (activeSlugs.size <= 2) return; // keep at least 2
           activeSlugs.delete(s.slug);
         }} else {{
           activeSlugs.add(s.slug);
@@ -1143,9 +1119,11 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
     }}
   }}
 
@@ -1186,9 +1164,11 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
     }}
   }}
 
@@ -1255,9 +1235,11 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
     }}
   }}
 
@@ -1320,9 +1302,39 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
+    }}
+  }}
+
+  // ── Zoom clamp for compare charts ──────────────────────────────
+  function _initCompareZoomClamp(el, traces) {{
+    if (!el || typeof Plotly === 'undefined') return;
+    // Compute full year range from all trace x-values
+    var allX = [];
+    traces.forEach(function(t) {{
+      if (Array.isArray(t.x)) allX = allX.concat(t.x);
+    }});
+    if (allX.length < 2) return;
+    var lo = Math.min.apply(null, allX) - 0.5;
+    var hi = Math.max.apply(null, allX) + 0.5;
+    el._fullYearRange = [lo, hi];
+    // Attach the clamp listener (idempotent across .react())
+    if (!el._zoomClamped) {{
+      el._zoomClamped = true;
+      el.on('plotly_relayout', function() {{
+        if (!el._fullYearRange || !el.layout || !el.layout.xaxis) return;
+        var r = el.layout.xaxis.range;
+        if (!r || r.length < 2) return;
+        var clamped = false;
+        var xlo = r[0], xhi = r[1];
+        if (xlo < el._fullYearRange[0]) {{ xlo = el._fullYearRange[0]; clamped = true; }}
+        if (xhi > el._fullYearRange[1]) {{ xhi = el._fullYearRange[1]; clamped = true; }}
+        if (clamped) Plotly.relayout(el, {{'xaxis.range': [xlo, xhi]}});
+      }});
     }}
   }}
 
@@ -1449,17 +1461,16 @@ def build_compare_page(
       activeMode = this.value;
       refresh();
     }});
-    // Basis filter pills
-    document.querySelectorAll('#basis-filter .basis-pill').forEach(function(pill) {{
-      pill.addEventListener('click', function() {{
-        if (this.classList.contains('active')) return;
-        document.querySelectorAll('#basis-filter .basis-pill').forEach(function(p) {{ p.classList.remove('active'); }});
-        this.classList.add('active');
-        activeBasis = this.getAttribute('data-basis');
+    // Basis selector — default to origin scenario's value_basis
+    var basisSel = document.getElementById('basis-select');
+    if (basisSel) {{
+      basisSel.value = activeBasis;
+      basisSel.addEventListener('change', function() {{
+        activeBasis = this.value;
         renderChips();
         refresh();
       }});
-    }});
+    }}
     renderChips();
     refresh();
   }});

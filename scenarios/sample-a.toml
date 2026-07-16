@@ -18,6 +18,7 @@ name        = "Sample A Plan"
 slug        = "sample-a"
 description = "Conservative: longer careers, lower spending, SS at 67, trad-heavy contributions."
 is_default  = false
+household_type = "couple"
 
 [data_source]
 mode = "synthetic"
@@ -50,7 +51,7 @@ mode         = "deterministic"
 num_runs     = 250
 seed         = 42
 portfolio_return_volatility = 0.15
-real_dollar_basis = true      # show all values in start-year purchasing power
+value_basis = "nominal"
 
 [display]
 projection_title = "Sample A — Conservative Plan (Synthetic Demo)"
