@@ -73,7 +73,7 @@ mode = "deterministic"   # compatibility/default single-run mode
 # historical_returns_path = "config/return_sequences/us_balanced_returns.csv"
 
 # ─── Display Settings ──────────────────────────────────────────────────────────
-value_basis = "nominal"
+value_basis = "both"
 
 [display]
 projection_title = "Single-Person Sample (Synthetic Demo)"
