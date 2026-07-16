@@ -32,10 +32,10 @@ num_runs = 1000                     # Monte Carlo simulation count
 seed = 42                           # Random seed for reproducible MC results
 portfolio_return_volatility = 0.12  # Annual return volatility for MC sampling
 historical_returns_path = "config/return_sequences/us_balanced_returns.csv"
-real_dollar_basis = true            # Show values in start-year purchasing power (default false)
+value_basis = "both"                 # "nominal" (default), "real", or "both"
 ```
 
-**`real_dollar_basis`** — When `true`, all chart and table monetary figures are deflated to start-year purchasing power (for example, in 2026 dollars when `start_year = 2026`). The chart subtitle shows a "(in YYYY dollars)" tag and a value-basis note appears on the page. Default `false` (nominal future-dollar display).
+**`value_basis`** — Controls how monetary figures are displayed. `"nominal"` (default) shows projected future-year dollars, single chart pass. `"real"` deflates all values to start-year purchasing power (e.g. 2026 dollars), single chart pass. `"both"` renders both views with a toggle pill (💰 Real | 📊 Nominal) below the KPI strip — your preference is saved across page reloads — but uses two chart passes. For backward compatibility, the old `real_dollar_basis = true` maps to `value_basis = "both"`.
 
 ### `[data_source]`
 

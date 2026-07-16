@@ -219,9 +219,10 @@ def build_scenario_shell(
     iframe {{
       display: block;
       width: 100%;
-      height: 195vh;
+      height: 9999px;
       border: none;
       background: transparent;
+      overflow: hidden;
     }}
     .empty-state {{
       display: none;
@@ -259,8 +260,7 @@ def build_scenario_shell(
         flex: 0 0 auto;
       }}
       .frame-wrap, iframe {{
-        min-height: 175vh;
-        height: 175vh;
+        height: 9999px;
       }}
     }}
     /* Plan Name / Plan Type stay on one line at virtually all widths — select
@@ -307,8 +307,7 @@ def build_scenario_shell(
     }}
     @media (max-width: 520px) {{
       .frame-wrap, iframe {{
-        min-height: 150vh;
-        height: 150vh;
+        height: 9999px;
       }}
     }}
     /* Data freshness indicator — hidden by default, shown by JS only when cache exists */
@@ -844,6 +843,13 @@ def build_compare_page(
         <option value="monte_carlo">Monte Carlo</option>
       </select>
     </div>
+    <div class="control-group">
+      <div class="control-label">Value Basis</div>
+      <select class="mode-select" id="basis-select">
+        <option value="real">Real</option>
+        <option value="nominal">Future</option>
+      </select>
+    </div>
   </div>
 
   <div class="card">
@@ -891,6 +897,7 @@ def build_compare_page(
   // ── State ────────────────────────────────────────────────────────
   let activeMode = 'deterministic';
   let activeSlugs = new Set();
+  let activeBasis = 'real';
 
   // Boot selection: honour ?a=slug&b=slug URL params, else default + first other
   (function initSelection() {{
@@ -909,13 +916,35 @@ def build_compare_page(
     if (activeSlugs.size === 1 && DEFAULT_SLUG && !activeSlugs.has(DEFAULT_SLUG)) {{
       activeSlugs.add(DEFAULT_SLUG);
     }}
+    // Default basis selector to the origin scenario's value_basis
+    var originSlug = paramA || (activeSlugs.size > 0 ? Array.from(activeSlugs)[0] : null);
+    var origin = originSlug ? SCENARIO_LIST.find(function(s) {{ return s.slug === originSlug; }}) : null;
+    var originVb = (origin && origin.value_basis) || 'nominal';
+    // 'both' maps to 'real' as the comparison basis
+    if (originVb === 'both') originVb = 'real';
+    activeBasis = originVb;
   }})();
 
   // ── Chip rendering ───────────────────────────────────────────────
   function renderChips() {{
     const row = document.getElementById('scenario-chips');
     row.innerHTML = '';
-    SCENARIO_LIST.forEach(function(s) {{
+    const filtered = SCENARIO_LIST.filter(function(s) {{
+      const vb = s.value_basis || 'nominal';
+      if (activeBasis === 'real') return vb === 'real' || vb === 'both';
+      return vb === 'nominal' || vb === 'both';  // activeBasis is 'nominal' or default
+    }});
+    // If no scenarios match the filter, show a message
+    if (filtered.length === 0) {{
+      row.innerHTML = '<span style="font-size:13px;color:var(--muted);padding:4px 0">No scenarios with this value basis.</span>';
+      return;
+    }}
+    // Remove any selected slugs that no longer exist in the filtered list
+    var filteredSlugs = new Set(filtered.map(function(s) {{ return s.slug; }}));
+    activeSlugs.forEach(function(slug) {{
+      if (!filteredSlugs.has(slug)) activeSlugs.delete(slug);
+    }});
+    filtered.forEach(function(s) {{
       const color = COLOR_MAP[s.slug];
       const active = activeSlugs.has(s.slug);
       const chip = document.createElement('div');
@@ -932,7 +961,6 @@ def build_compare_page(
         (s.slug === DEFAULT_SLUG ? '<span style="font-size:10px;opacity:.7"> ★</span>' : '');
       chip.addEventListener('click', function() {{
         if (activeSlugs.has(s.slug)) {{
-          if (activeSlugs.size <= 2) return; // keep at least 2
           activeSlugs.delete(s.slug);
         }} else {{
           activeSlugs.add(s.slug);
@@ -1091,9 +1119,11 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
     }}
   }}
 
@@ -1134,9 +1164,11 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
     }}
   }}
 
@@ -1203,9 +1235,11 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false, scrollZoom: true }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
     }}
   }}
 
@@ -1268,9 +1302,39 @@ def build_compare_page(
     if (!el) return;
     if (el._hasPlot) {{
       Plotly.react(el, traces, layout);
+      el._fullYearRange = null;
     }} else {{
-      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: false }});
+      Plotly.newPlot(el, traces, layout, {{ responsive: true, displayModeBar: 'hover', scrollZoom: false }});
       el._hasPlot = true;
+      _initCompareZoomClamp(el, traces);
+    }}
+  }}
+
+  // ── Zoom clamp for compare charts ──────────────────────────────
+  function _initCompareZoomClamp(el, traces) {{
+    if (!el || typeof Plotly === 'undefined') return;
+    // Compute full year range from all trace x-values
+    var allX = [];
+    traces.forEach(function(t) {{
+      if (Array.isArray(t.x)) allX = allX.concat(t.x);
+    }});
+    if (allX.length < 2) return;
+    var lo = Math.min.apply(null, allX) - 0.5;
+    var hi = Math.max.apply(null, allX) + 0.5;
+    el._fullYearRange = [lo, hi];
+    // Attach the clamp listener (idempotent across .react())
+    if (!el._zoomClamped) {{
+      el._zoomClamped = true;
+      el.on('plotly_relayout', function() {{
+        if (!el._fullYearRange || !el.layout || !el.layout.xaxis) return;
+        var r = el.layout.xaxis.range;
+        if (!r || r.length < 2) return;
+        var clamped = false;
+        var xlo = r[0], xhi = r[1];
+        if (xlo < el._fullYearRange[0]) {{ xlo = el._fullYearRange[0]; clamped = true; }}
+        if (xhi > el._fullYearRange[1]) {{ xhi = el._fullYearRange[1]; clamped = true; }}
+        if (clamped) Plotly.relayout(el, {{'xaxis.range': [xlo, xhi]}});
+      }});
     }}
   }}
 
@@ -1397,6 +1461,16 @@ def build_compare_page(
       activeMode = this.value;
       refresh();
     }});
+    // Basis selector — default to origin scenario's value_basis
+    var basisSel = document.getElementById('basis-select');
+    if (basisSel) {{
+      basisSel.value = activeBasis;
+      basisSel.addEventListener('change', function() {{
+        activeBasis = this.value;
+        renderChips();
+        refresh();
+      }});
+    }}
     renderChips();
     refresh();
   }});

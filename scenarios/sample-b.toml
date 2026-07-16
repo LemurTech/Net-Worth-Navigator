@@ -23,6 +23,7 @@ name        = "Sample B Plan"
 slug        = "sample-b"
 description = "Optimistic: early retirement, higher spending, SS at 70, Roth-heavy contributions."
 is_default  = false
+household_type = "couple"
 
 [data_source]
 mode = "synthetic"
@@ -55,7 +56,7 @@ mode         = "deterministic"
 num_runs     = 250
 seed         = 42
 portfolio_return_volatility = 0.17   # Slightly higher vol: growth-tilted portfolio
-real_dollar_basis = true      # show all values in start-year purchasing power
+value_basis = "both"
 
 [display]
 projection_title = "Sample B — Optimistic Plan (Synthetic Demo)"

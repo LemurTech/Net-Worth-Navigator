@@ -92,6 +92,11 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "options": ["`false` (default) — nominal dollars", "`true` — deflated to start-year dollars"],
             },
             {
+                "key": "[simulation].value_basis",
+                "summary": "Controls how values are displayed on the projection page. `nominal` (default) shows projected future-year values without deflation — one chart pass, fastest render. `real` shows start-year purchasing power. `both` renders both views with a client-side toggle pill.",
+                "options": ["`nominal` (default) — future-year values", "`real` — today's dollars", "`both` — toggle between modes"],
+            },
+            {
                 "key": "[simulation].render_modes",
                 "summary": "Which pre-rendered modes the scenario shell should build and expose.",
                 "options": ["`deterministic`", "`historical`", "`monte_carlo`"],

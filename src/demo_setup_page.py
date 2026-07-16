@@ -212,6 +212,11 @@ def build_demo_setup_page(
         selector_html = f'<select class="scenario-select" onchange="window.location.href=this.value">{opts}</select>'
 
     real_dollar_text = "Enabled (start-year dollars)" if real_dollar else "Disabled (nominal dollars)"
+    # value_basis takes precedence over legacy real_dollar_basis
+    value_basis_raw = sim.get("value_basis")
+    if value_basis_raw in ("nominal", "real", "both"):
+        basis_labels = {"nominal": "Future dollars", "real": "Today's dollars", "both": "Both (toggle)"}
+        real_dollar_text = basis_labels[value_basis_raw]
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -279,7 +284,7 @@ def build_demo_setup_page(
     <div class="field"><span class="field-label">Projection Window</span><div class="field-value">{start_year} – {end_year}</div></div>
     <div class="field"><span class="field-label">Render Modes</span><div class="field-value">{render_modes}</div></div>
     <div class="field"><span class="field-label">State Tax</span><div class="field-value">{state_tax}</div></div>
-    <div class="field"><span class="field-label">Real-Dollar Display</span><div class="field-value">{real_dollar_text}</div></div>
+    <div class="field"><span class="field-label">Value Basis</span><div class="field-value">{real_dollar_text}</div></div>
   </div>
 </div>
 

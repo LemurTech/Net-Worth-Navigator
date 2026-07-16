@@ -891,6 +891,15 @@ class RecurringEventsTests(unittest.TestCase):
                 "contribution_trad_ira_person2": 1000.0,
                 "contribution_roth_person1": 2500.0,
                 "contribution_roth_person2": 2500.0,
+                "contribution_employee_trad_ira": 7000.0,
+                "contribution_employee_roth": 2000.0,
+                "contribution_employee_trad_ira_person1": 3500.0,
+                "contribution_employee_trad_ira_person2": 3500.0,
+                "contribution_employee_roth_person1": 1000.0,
+                "contribution_employee_roth_person2": 1000.0,
+                "employer_match_total": 2000.0,
+                "employer_match_person1": 1000.0,
+                "employer_match_person2": 1000.0,
             }
         ])
         config = {
@@ -902,10 +911,13 @@ class RecurringEventsTests(unittest.TestCase):
 
         self.assertIn("Person 1 earned income", html)
         self.assertIn("Person 2 earned income", html)
-        self.assertIn("Traditional IRA / 401k contributions — Person 1", html)
-        self.assertIn("Traditional IRA / 401k contributions — Person 2", html)
+        self.assertIn("Employee 401k/IRA — Person 1", html)
+        self.assertIn("Employee 401k/IRA — Person 2", html)
         self.assertIn("Roth contributions — Person 1", html)
         self.assertIn("Roth contributions — Person 2", html)
+        self.assertIn("Employer match — Person 1", html)
+        self.assertIn("Employer match (total, prefunded)", html)
+        self.assertIn("Total Retirement Contributions", html)
 
     def test_build_accounts_table_shows_owner_split_rows_for_retirement_buckets(self):
         df = pd.DataFrame([
@@ -1022,13 +1034,13 @@ class RecurringEventsTests(unittest.TestCase):
         df = pd.DataFrame([
             {"year": 2026, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
              "total_net_worth": 305000.0, "survivor": False, "events_active": "", "person1_income": 0.0, "person2_income": 0.0,
-             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": [], "tax_phase": "pre_retirement"},
             {"year": 2035, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
              "total_net_worth": 1040000.0, "survivor": False, "events_active": "🎉 Retirement (M)", "person1_income": 0.0, "person2_income": 0.0,
-             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": [], "tax_phase": "retirement"},
             {"year": 2063, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 100.0, "trad_ira": 100.0, "roth": 100.0,
              "total_net_worth": 1610000.0, "survivor": False, "events_active": "", "person1_income": 0.0, "person2_income": 0.0,
-             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": []},
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": [], "tax_phase": "retirement"},
         ])
 
         with patch("src.charts.load_config", return_value=config):
@@ -1313,6 +1325,7 @@ class RecurringEventsTests(unittest.TestCase):
             retirement_owner_balances=None,
             basis_seeds=None,
             config=None,
+            **kwargs,
         ):
             captured["balances"] = balances
             captured["home_value"] = home_value
@@ -1372,7 +1385,7 @@ class RecurringEventsTests(unittest.TestCase):
             "roth": {"person1": 0.0, "person2": 0.0},
         })
 
-    def test_xaxis_tick_spec_includes_age_labels(self):
+    def test_xaxis_tick_spec_labels_years_only(self):
         config = {
             "person1": {"dob": "1967-04-23"},
             "person2": {"dob": "1976-10-02"},
@@ -1381,7 +1394,7 @@ class RecurringEventsTests(unittest.TestCase):
         tickvals, ticktext = charts._xaxis_tick_spec(config, [2026, 2027, 2028, 2029])
 
         self.assertEqual(tickvals, [2026, 2028])
-        self.assertEqual(ticktext, ["2026<br>(59/50)", "2028<br>(61/52)"])
+        self.assertEqual(ticktext, ["2026", "2028"])
 
     def test_build_figure_keeps_negative_cash_trace_visible(self):
         config = {
@@ -1418,7 +1431,15 @@ class RecurringEventsTests(unittest.TestCase):
         trace_names = [trace.name for trace in fig.data]
 
         self.assertIn("Cash", trace_names)
-        self.assertEqual(list(fig.layout.xaxis.ticktext), ["2026<br>(59/50)"])
+        self.assertEqual(list(fig.layout.xaxis.ticktext), ["2026"])
+        # Age labels rendered as Plotly annotations (not in ticktext)
+        age_annotations = [
+            a for a in (fig.layout.annotations or [])
+            if hasattr(a, "text") and "(" in str(a.text)
+        ]
+        self.assertEqual(len(age_annotations), 1,
+                         "expected one age-label annotation below 2026")
+        self.assertIn("59/50", str(age_annotations[0].text))
 
     def test_wrap_event_annotation_groups_every_two_items(self):
         label = "💸 One, 💸 Two, 💸 Three, 💸 Four, 💸 Five"

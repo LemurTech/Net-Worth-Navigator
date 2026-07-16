@@ -20,6 +20,7 @@ from src.tables import (
     build_portfolio_table,
     build_assumptions_summary,
     build_scenario_parameters_summary,
+    _fmt_dual_value,
 )
 from src.model import (
     EVENT_ICONS,
@@ -29,6 +30,7 @@ from src.model import (
     load_config,
     resolve_runtime_config,
 )
+import json
 
 # Inline SVG info icon — avoids relying on an emoji font (ℹ️ / U+2139) being
 # installed, which was rendering as a fallback glyph ("?") on some Windows
@@ -156,6 +158,42 @@ _TABS_CSS = """
                    border: 1px solid #243142; background: #0f1725; color: #cbd5e1;
                    font-size: 12px; line-height: 1.45; }
   .modeling-note strong { color: #f8fafc; }
+
+  /* ── Value-basis badge bar (flex row: text left, pill right) ── */
+  .value-basis-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .basis-text { flex: 1 1 auto; min-width: 0; }
+
+  /* ── Segmented pill toggle ── */
+  .value-toggle-pill {
+    display: inline-flex; flex-shrink: 0; border-radius: 5px; overflow: hidden;
+    border: 1px solid rgba(148,163,184,0.28); background: rgba(148,163,184,0.08);
+    font-size: 12px; line-height: 1;
+  }
+  .toggle-segment {
+    padding: 4px 10px; cursor: pointer; color: rgba(226,232,240,0.60);
+    transition: background 0.15s, color 0.15s; user-select: none; white-space: nowrap;
+  }
+  .toggle-segment:hover {
+    color: rgba(226,232,240,0.85); background: rgba(148,163,184,0.12);
+  }
+  /* Active segment highlight — driven by body class */
+  body.nwn-real .nwn-toggle-real,
+  body.nwn-nominal .nwn-toggle-nominal {
+    background: rgba(45,212,191,0.18); color: #e2e8f0; font-weight: 600;
+  }
+
+  /* ── Real/nominal view visibility (body-class driven) ── */
+  body.nwn-nominal .nwn-view-real { display: none !important; }
+  body.nwn-nominal .nwn-view-nominal { display: block !important; }
+  body.nwn-real .nwn-view-nominal { display: none !important; }
+  /* Span rules (KPI values, badge text) */
+  body.nwn-nominal span.nwn-view-real { display: none !important; }
+  body.nwn-nominal span.nwn-view-nominal { display: inline !important; }
+  body.nwn-real span.nwn-view-real { display: inline !important; }
+  body.nwn-real span.nwn-view-nominal { display: none !important; }
   .kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
                border: 1px solid #243142; border-radius: 10px;
                background: #0f1725; margin: 4px 4px 12px; position: relative; }
@@ -986,6 +1024,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   _captureFullRange();
+  window._fullYearRange = _fullYearRange;
   window.zoomToYears = function zoomToYears(chartId, btn, rangeYears) {
     var chart = document.getElementById(chartId);
     if (!chart || !chart.layout || !chart.layout.xaxis || typeof Plotly === 'undefined') return;
@@ -1013,25 +1052,136 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Clamp zoom-out to full data range ────────────────────────────
   var _nwnChart = document.getElementById('nwn-chart');
-  if (_nwnChart && typeof Plotly !== 'undefined') {
-    _nwnChart.on('plotly_relayout', function(eventData) {
-      // Skip events that don't have a manual range (autorange, full reset)
+  var _nwnChartNominal = document.getElementById('nwn-chart-nominal');
+  // Attach zoom clamping to whichever chart is present (real always, nominal
+  // only when real-dollar toggle is active).  Clamping prevents the user from
+  // zooming beyond the data range on either chart.
+  function _addZoomClamp(chartEl) {
+    if (!chartEl || typeof Plotly === 'undefined' || typeof chartEl.on !== 'function') return;
+    chartEl.on('plotly_relayout', function(eventData) {
       if (_fullYearRange === null) return;
-      if (!_nwnChart.layout || !_nwnChart.layout.xaxis) return;
-      if (_nwnChart.layout.xaxis.autorange) return;
-      var r = _nwnChart.layout.xaxis.range;
+      if (!chartEl.layout || !chartEl.layout.xaxis) return;
+      if (chartEl.layout.xaxis.autorange) return;
+      var r = chartEl.layout.xaxis.range;
       if (!r || r.length < 2) return;
       var clamped = false;
       var lo = r[0], hi = r[1];
       if (lo < _fullYearRange[0]) { lo = _fullYearRange[0]; clamped = true; }
       if (hi > _fullYearRange[1]) { hi = _fullYearRange[1]; clamped = true; }
       if (clamped) {
-        _nwnChart._halClamping = true;
-        Plotly.relayout(_nwnChart, {'xaxis.range': [lo, hi]});
+        chartEl._halClamping = true;
+        Plotly.relayout(chartEl, {'xaxis.range': [lo, hi]});
       }
     });
   }
+  _addZoomClamp(_nwnChart);
+  _addZoomClamp(_nwnChartNominal);
+  window._addZoomClamp = _addZoomClamp;
+
+  // ── Helper: find the currently visible chart for zoom presets ──
+  window._visibleNwnChartId = function() {
+    if (document.body.classList.contains('nwn-nominal') && _nwnChartNominal) {
+      return 'nwn-chart-nominal';
+    }
+    return 'nwn-chart';
+  };
 });
+
+// ── Real-dollar / nominal toggle ──────────────────────────────────────────
+(function() {
+  var STORAGE_KEY = 'nwn-value-basis';
+  var currentMode = localStorage.getItem(STORAGE_KEY) || 'real';
+  var _nominalRendered = false;
+
+  function swapTableCells(toMode) {
+    var cells = document.querySelectorAll('[data-nominal]');
+    cells.forEach(function(cell) {
+      if (toMode === 'nominal') {
+        cell.setAttribute('data-real', cell.innerHTML);
+        cell.innerHTML = cell.getAttribute('data-nominal');
+      } else {
+        var realVal = cell.getAttribute('data-real');
+        if (realVal) {
+          cell.innerHTML = realVal;
+          cell.removeAttribute('data-real');
+        }
+      }
+    });
+  }
+
+  function applyMode(mode) {
+    var oldChartId = currentMode === 'real' ? 'nwn-chart' : 'nwn-chart-nominal';
+    var savedRange = null;
+    if (typeof Plotly !== 'undefined') {
+      var oldEl = document.getElementById(oldChartId);
+      if (oldEl && oldEl.layout && oldEl.layout.xaxis && oldEl.layout.xaxis.range) {
+        savedRange = oldEl.layout.xaxis.range.slice();
+      }
+    }
+
+    document.body.classList.remove('nwn-real', 'nwn-nominal');
+    document.body.classList.add('nwn-' + mode);
+    swapTableCells(mode);
+    localStorage.setItem(STORAGE_KEY, mode);
+    currentMode = mode;
+
+    // Lazy-initialize the nominal chart on first toggle (Plotly can't
+    // render correctly inside a display:none container at page load).
+    if (mode === 'nominal' && !_nominalRendered && typeof NWN_NOMINAL_FIGURE !== 'undefined') {
+      _nominalRendered = true;
+      Plotly.newPlot('nwn-chart-nominal', NWN_NOMINAL_FIGURE.data, NWN_NOMINAL_FIGURE.layout,
+        {scrollZoom: false, displaylogo: false, responsive: true, displayModeBar: 'hover'});
+      // Attach zoom clamp to the now-initialized nominal chart (was skipped
+      // at page load because Plotly wasn't initialized on the empty div).
+      if (typeof window._addZoomClamp === 'function') {
+        window._addZoomClamp(document.getElementById('nwn-chart-nominal'));
+      }
+      // Also initialize nominal subsidiary charts from stored JSON figures.
+      var _subChartDefs = [
+        {id: 'nwn-portfolio-nominal',   key: 'NWN_PORTFOLIO_FIGURE'},
+        {id: 'nwn-liabilities-nominal', key: 'NWN_LIABILITIES_FIGURE'},
+        {id: 'nwn-cash-reserve-nominal', key: 'NWN_CASH_RESERVE_FIGURE'},
+      ];
+      _subChartDefs.forEach(function(def) {
+        if (typeof window[def.key] !== 'undefined') {
+          Plotly.newPlot(def.id, window[def.key].data, window[def.key].layout,
+            {scrollZoom: false, displaylogo: false, responsive: true, displayModeBar: 'hover'});
+          delete window[def.key];
+        }
+      });
+      if (savedRange) {
+        Plotly.relayout('nwn-chart-nominal', {'xaxis.range': savedRange});
+      }
+    } else if (typeof Plotly !== 'undefined') {
+      var newEl = document.getElementById(mode === 'real' ? 'nwn-chart' : 'nwn-chart-nominal');
+      if (newEl) {
+        requestAnimationFrame(function() {
+          Plotly.Plots.resize(newEl);
+          if (savedRange) {
+            Plotly.relayout(newEl, {'xaxis.range': savedRange});
+          }
+        });
+      }
+    }
+  }
+
+  // Always apply mode on load so the body class is set and the pill
+  // highlight activates (bug: was only applying when stored mode was 'nominal')
+  applyMode(currentMode);
+
+  // Segmented pill: click either segment to switch
+  var pill = document.getElementById('nwn-value-toggle');
+  if (pill) {
+    pill.addEventListener('click', function(e) {
+      var seg = e.target.closest('.toggle-segment');
+      if (!seg) return;
+      var mode = seg.getAttribute('data-mode');
+      if (mode && mode !== currentMode) {
+        applyMode(mode);
+      }
+    });
+  }
+})();
 </script>
 """
 
@@ -1240,6 +1390,7 @@ def _xaxis_tick_spec(config: dict, years: list[int]) -> tuple[list[int], list[st
 def _build_kpi_summary(
     config: dict,
     projection: pd.DataFrame | ProjectionResult,
+    nominal_df: pd.DataFrame | None = None,
 ) -> str:
     projection_result = _coerce_projection_result(projection)
     df = projection_result.yearly_df
@@ -1252,53 +1403,71 @@ def _build_kpi_summary(
         match = df[df["year"] == retirement_year]
         if not match.empty:
             retirement_row = match.iloc[0]
+    # Nominal KPI rows (for dual-view when real-dollar deflation is active)
+    nominal_first_row = nominal_df.iloc[0] if nominal_df is not None else None
+    nominal_last_row = nominal_df.iloc[-1] if nominal_df is not None else None
+    nominal_retirement_row = None
+    if nominal_df is not None and retirement_year is not None:
+        match_nom = nominal_df[nominal_df["year"] == retirement_year]
+        if not match_nom.empty:
+            nominal_retirement_row = match_nom.iloc[0]
 
     if projection_result.mode == "monte_carlo":
         summary = projection_result.summary
         cards = [
-            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0))))),
+            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0)))), None),
             (
                 "Probability of Spending Shortfall",
                 _format_percent(float(summary.get("probability_of_spending_shortfall", 0.0))),
+                None,
             ),
             (
                 "Median Terminal Net Worth",
                 _format_compact_currency(float(summary.get("median_terminal_net_worth", summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"])))),
+                None,
             ),
             (
                 "Worst-Decile Terminal Net Worth",
                 _format_compact_currency(float(summary.get("worst_decile_terminal_net_worth", summary.get("terminal_total_net_worth_p10", last_row["total_net_worth"])))),
+                None,
             ),
         ]
     elif projection_result.mode == "historical":
         summary = projection_result.summary
         cards = [
-            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0))))),
+            ("Probability of Success", _format_percent(float(summary.get("probability_of_success", summary.get("success_rate", 0.0)))), None),
             (
                 "Probability of Spending Shortfall",
                 _format_percent(float(summary.get("probability_of_spending_shortfall", 0.0))),
+                None,
             ),
             (
                 "Median Terminal Net Worth",
                 _format_compact_currency(float(summary.get("median_terminal_net_worth", summary.get("terminal_total_net_worth_p50", last_row["total_net_worth"])))),
+                None,
             ),
             (
                 "Worst-Decile Terminal Net Worth",
                 _format_compact_currency(float(summary.get("worst_decile_terminal_net_worth", summary.get("terminal_total_net_worth_p10", last_row["total_net_worth"])))),
+                None,
             ),
         ]
     else:
         cards = [
-            ("Net Worth (EOY)", _format_compact_currency(first_row["total_net_worth"])),
+            ("Net Worth (EOY)", _format_compact_currency(first_row["total_net_worth"]),
+             _format_compact_currency(nominal_first_row["total_net_worth"]) if nominal_first_row is not None else None),
             (
                 "Net Worth at Retirement",
                 _format_compact_currency(retirement_row["total_net_worth"]) if retirement_row is not None else "—",
+                _format_compact_currency(nominal_retirement_row["total_net_worth"]) if nominal_retirement_row is not None else None,
             ),
             (
                 "Retirement Age",
                 str(_retirement_age(config, first_retire)) if _retirement_age(config, first_retire) is not None else "—",
+                None,
             ),
-            ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"])),
+            ("Net Worth at End", _format_compact_currency(last_row["total_net_worth"]),
+             _format_compact_currency(nominal_last_row["total_net_worth"]) if nominal_last_row is not None else None),
         ]
 
     # Build tooltip tuples: (label, value, tooltip_text)
@@ -1322,9 +1491,12 @@ def _build_kpi_summary(
         f"{info_icon_svg}"
         f"<span class='tooltip-content'>{tooltip_map.get(label, '')}</span>"
         f"</div>"
-        f"<div class='kpi-value'>{value}</div>"
+        f"<div class='kpi-value'>"
+        + (f"<span class='nwn-view-real'>{value}</span><span class='nwn-view-nominal' style='display:none'>{nom}</span>"
+           if nom is not None else f"{value}")
+        + f"</div>"
         f"</div>"
-        for label, value in cards
+        for label, value, nom in cards
     )
     return f"<div class='kpi-strip'>{boxes}</div>"
 
@@ -1386,10 +1558,13 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
     )
 
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cashflow",
-                       config=dict(scrollZoom=True))
+                       config=dict(scrollZoom=False, displayModeBar='hover'))
 
 
-def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+def _build_liabilities_chart(
+    df: pd.DataFrame, config: dict | None = None, *,
+    return_fig: bool = False,
+) -> str | go.Figure:
     """Debt payoff trajectory chart: one line per liability, declining to zero."""
     paper_bg = "#111827"
     plot_bg = "#0f1725"
@@ -1500,11 +1675,17 @@ def _build_liabilities_chart(df: pd.DataFrame, config: dict | None = None) -> st
         margin=dict(l=76, r=24, t=78, b=48),
     )
 
+    if return_fig:
+        return fig
+
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-liabilities",
-                       config=dict(scrollZoom=True))
+                       config=dict(scrollZoom=False, displayModeBar='hover'))
 
 
-def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> str:
+def _build_cash_reserve_chart(
+    df: pd.DataFrame, config: dict | None = None, *,
+    return_fig: bool = False,
+) -> str | go.Figure:
     """Cash balance vs phase-appropriate target chart."""
     paper_bg = "#111827"
     plot_bg = "#0f1725"
@@ -1632,11 +1813,15 @@ def _build_cash_reserve_chart(df: pd.DataFrame, config: dict | None = None) -> s
         margin=dict(l=76, r=24, t=78, b=48),
     )
 
+    if return_fig:
+        return fig
+
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cash-reserve",
-                       config=dict(scrollZoom=True))
+                       config=dict(scrollZoom=False, displayModeBar='hover'))
 
 
-def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) -> str:
+def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None,
+                                nominal_df: pd.DataFrame | None = None) -> str:
     """Compact summary card for Cash Reserve tab."""
     wp = config.get("withdrawal_policy", {}) if config else {}
     targets = {
@@ -1654,6 +1839,12 @@ def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) ->
         tgt = targets[phase]
         cash_vals = phase_df["cash"].fillna(0)
         min_cash = cash_vals.min()
+        # Compute nominal minimum cash if nominal_df is available
+        nominal_min_cash = None
+        if nominal_df is not None:
+            nom_phase_df = nominal_df[nominal_df["tax_phase"].str.strip().str.lower() == phase]
+            if not nom_phase_df.empty:
+                nominal_min_cash = nom_phase_df["cash"].fillna(0).min()
         years_below = int((cash_vals < tgt).sum())
         label = phase_label_map.get(phase, phase)
         yr_start = int(phase_df["year"].min())
@@ -1664,8 +1855,8 @@ def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None) ->
         rows_html.append(
             f"<tr>"
             f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4)'><strong>{label}</strong><br><span style='font-size:11px;color:var(--muted)'>{yr_start}–{yr_end}</span></td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>${tgt:,.0f}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>${min_cash:,.0f}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_fmt_dual_value(tgt, None)}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:right;font-variant-numeric:tabular-nums'>{_fmt_dual_value(min_cash, nominal_min_cash)}</td>"
             f"<td style='padding:8px 12px;border-bottom:1px solid rgba(36,49,66,0.4);text-align:center' class='{status_class}'>{status}</td>"
             f"</tr>"
         )
@@ -1703,7 +1894,9 @@ def _build_portfolio_chart(
     df: pd.DataFrame,
     config: dict | None = None,
     projection_result: ProjectionResult | None = None,
-) -> str:
+    *,
+    return_fig: bool = False,
+) -> str | go.Figure:
     paper_bg = "#111827"
     plot_bg = "#0f1725"
     grid = "rgba(148,163,184,0.14)"
@@ -1791,8 +1984,10 @@ def _build_portfolio_chart(
             full_html=False,
             include_plotlyjs=False,
             div_id="nwn-portfolio",
-            config=dict(scrollZoom=True),
+            config=dict(scrollZoom=False, displayModeBar='hover'),
         )
+        if return_fig:
+            return fig
         portfolio_note = (
             "<div class='modeling-note'><strong>Portfolio range note:</strong> "
             "Bands show stochastic portfolio ranges by year. The table below reflects the median simulated path.</div>"
@@ -1878,8 +2073,10 @@ def _build_portfolio_chart(
         full_html=False,
         include_plotlyjs=False,
         div_id="nwn-portfolio",
-        config=dict(scrollZoom=True),
+        config=dict(scrollZoom=False, displayModeBar='hover'),
     )
+    if return_fig:
+        return fig
 
     portfolio_note = (
         "<div class='modeling-note'><strong>What this chart shows:</strong> "
@@ -2120,7 +2317,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         full_html=False,
         include_plotlyjs=False,
         div_id="nwn-gantt",
-        config=dict(scrollZoom=True),
+        config=dict(scrollZoom=False, displayModeBar='hover'),
     )
     return f"<div class='gantt-wrap'>{gantt_div}</div>"
 
@@ -2194,7 +2391,7 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
         margin=dict(l=64, r=24, t=70, b=56),
     )
     chart_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-simulation",
-                             config=dict(scrollZoom=True))
+                             config=dict(scrollZoom=False, displayModeBar='hover'))
     table_html = _wrap_table_with_sticky_header(build_simulation_outcomes_table(outcomes_df, summary=summary))
     summary_html = (
         "<div class='assumptions-note'>"
@@ -2228,6 +2425,7 @@ def build_chart(
     """
     projection_result = _coerce_projection_result(projection)
     df = projection_result.yearly_df
+    nominal_df = projection_result.nominal_yearly_df
     config = resolve_runtime_config(config or load_config())
     baseline_config = resolve_runtime_config(baseline_config) if baseline_config is not None else None
     fig = _build_figure(df, config, projection_result=projection_result)
@@ -2237,34 +2435,130 @@ def build_chart(
         full_html=False,
         include_plotlyjs="cdn",
         div_id="nwn-chart",
-        config=dict(scrollZoom=True, displaylogo=False),
+        config=dict(scrollZoom=False, displaylogo=False, displayModeBar='hover'),
     )
-    kpi_html = _build_kpi_summary(config, projection_result)
 
-    # Value-basis badge — visible indicator when real-dollar deflation is active
+    # ── Nominal chart (when real-dollar deflation is active) ──
+    # Store as JSON for lazy initialization — Plotly can't render correctly
+    # inside a hidden container.  The chart is created fresh on first toggle.
+    nominal_chart_html = ""
+    nominal_figure_json = ""
+    if nominal_df is not None:
+        nominal_fig = _build_figure(
+            nominal_df, config, projection_result=projection_result,
+            force_real_dollar_basis=False,
+        )
+        _json = json
+        nominal_figure_json = _json.dumps(
+            nominal_fig.to_plotly_json(), default=str
+        )
+        nominal_chart_html = (
+            f"<div id=\"nwn-chart-nominal\" class=\"plotly-graph-div\""
+            f" style=\"height:100%; width:100%;\"></div>\n"
+            f"<script>var NWN_NOMINAL_FIGURE = {nominal_figure_json};</script>"
+        )
+
+    kpi_html = _build_kpi_summary(config, projection_result, nominal_df=nominal_df)
+
+    # Value-basis badge — visible indicator of the display-value mode
+    # ── Value-basis bar with integrated segmented pill toggle ──
     value_basis_html = ""
-    if projection_result.simulation.get("real_dollar_basis"):
+    vb = projection_result.simulation.get("value_basis", "nominal")
+    if vb != "nominal":
         sim = config.get("simulation", {})
         start_year = int(sim.get("start_year", 2026))
-        value_basis_html = (
-            "<div class='modeling-note'><strong>Value basis:</strong> "
-            f"All figures in {start_year} dollars (deflated by assumed inflation).</div>"
-        )
+        if vb == "both":
+            # Dual view with toggle pill
+            value_basis_html = (
+                "<div class='modeling-note value-basis-bar'>"
+                # Real-dollar text (visible when mode=real)
+                "<span class='nwn-view-real basis-text'>"
+                f"<strong>Value basis:</strong> All figures in {start_year} dollars (deflated by assumed inflation)."
+                "</span>"
+                # Nominal text (visible when mode=nominal)
+                "<span class='nwn-view-nominal basis-text' style='display:none'>"
+                "<strong>Value basis:</strong> All figures in nominal (future-year) dollars, inclusive of projected inflation."
+                "</span>"
+                # Segmented pill toggle
+                "<span class='value-toggle-pill' id='nwn-value-toggle'>"
+                "<span class='toggle-segment nwn-toggle-real' data-mode='real'>💰 Real</span>"
+                "<span class='toggle-segment nwn-toggle-nominal' data-mode='nominal'>📊 Nominal</span>"
+                "</span>"
+                "</div>"
+            )
+        else:
+            # Real-only mode — badge text, no toggle
+            value_basis_html = (
+                "<div class='modeling-note'>"
+                f"<strong>Value basis:</strong> All figures in {start_year} dollars (deflated by assumed inflation)."
+                "</div>"
+            )
 
     tax_note_html = _build_tax_semantics_note()
 
     # Build table HTML
-    accounts_html  = _wrap_table_with_sticky_header(build_accounts_table(df, config=config))
-    cashflow_html  = _wrap_table_with_sticky_header(build_cashflow_table(df, config=config))
+    accounts_html  = _wrap_table_with_sticky_header(build_accounts_table(df, config=config, nominal_df=nominal_df))
+    cashflow_html  = _wrap_table_with_sticky_header(build_cashflow_table(df, config=config, nominal_df=nominal_df))
     cashflow_chart_html = _build_cashflow_chart(df, config=config)
-    tax_html       = _wrap_table_with_sticky_header(build_tax_table(df))
+    tax_html       = _wrap_table_with_sticky_header(build_tax_table(df, nominal_df=nominal_df))
     simulation_html = (
         _build_simulation_results_panel(projection_result)
         if projection_result.mode in {"monte_carlo", "historical"}
         else ""
     )
-    portfolio_html = _build_portfolio_chart(df, config=config, projection_result=projection_result)
-    gantt_html     = _build_gantt_chart(config, df)
+    # ── Helper for dual-view chart wrapping ─────────────────────────────────
+    def _wrap_dual_chart(real_html, chart_id, script_var_name, builder_fn, **kwargs):
+        """Wrap real chart HTML and generate a lazy-init nominal counterpart.
+
+        When nominal_df is None, returns real_html unchanged (no dual view).
+        When nominal_df is present, generates a nominal chart figure, serializes
+        it as JSON, and wraps both in CSS-classed toggle divs.  The nominal
+        chart is initialized via Plotly.newPlot() from the stored JSON on first
+        toggle — no eval(), no regex script extraction.
+        """
+        if nominal_df is None:
+            return real_html
+        kwargs["return_fig"] = True
+        nominal_fig = builder_fn(nominal_df, **kwargs)
+        figure_json = json.dumps(nominal_fig.to_plotly_json(), default=str)
+        nom_id = f"{chart_id}-nominal"
+        return (
+            f"<div class='nwn-view-real'>{real_html}</div>"
+            f"<div class='nwn-view-nominal' style='display:none'>"
+            f"<div id=\"{nom_id}\" class=\"plotly-graph-div\""
+            f" style=\"height:100%; width:100%;\"></div>"
+            f"<script>var {script_var_name} = {figure_json};</script>"
+            f"</div>"
+        )
+
+    # ── Portfolio tab ─────────────────────────────────────────────────────────
+    portfolio_html = _wrap_dual_chart(
+        _build_portfolio_chart(df, config=config, projection_result=projection_result),
+        "nwn-portfolio", "NWN_PORTFOLIO_FIGURE",
+        _build_portfolio_chart, config=config, projection_result=projection_result,
+    )
+
+    # ── Gantt tab ─────────────────────────────────────────────────────────────
+    gantt_html = _build_gantt_chart(config, df)
+
+    # ── Liabilities tab ───────────────────────────────────────────────────────
+    liabilities_chart_html = _wrap_dual_chart(
+        f"<div class='gantt-wrap'>{_build_liabilities_chart(df, config=config)}</div>",
+        "nwn-liabilities", "NWN_LIABILITIES_FIGURE",
+        _build_liabilities_chart, config=config,
+    )
+    liabilities_table_html = build_liabilities_table(df, config=config, nominal_df=nominal_df)
+    liabilities_html = liabilities_chart_html + liabilities_table_html
+
+    # ── Cash Reserve tab ──────────────────────────────────────────────────────
+    cash_reserve_chart_html = _wrap_dual_chart(
+        f"<div class='gantt-wrap'>{_build_cash_reserve_chart(df, config=config)}</div>",
+        "nwn-cash-reserve", "NWN_CASH_RESERVE_FIGURE",
+        _build_cash_reserve_chart, config=config,
+    )
+    cash_reserve_summary_html = _build_cash_reserve_summary(df, config=config, nominal_df=nominal_df)
+    cash_reserve_html = cash_reserve_chart_html + cash_reserve_summary_html
+
     assumptions_html = build_assumptions_summary(
         config,
         scenario=scenario,
@@ -2276,22 +2570,6 @@ def build_chart(
         baseline_config=baseline_config,
         projection_df=df,
         projection_result=projection_result,
-    )
-
-    # Liabilities tab: debt payoff chart + amortization table
-    liabilities_chart_html = _build_liabilities_chart(df, config=config)
-    liabilities_table_html = build_liabilities_table(df, config=config)
-    liabilities_html = (
-        "<div class='gantt-wrap'>" + liabilities_chart_html + "</div>"
-        + liabilities_table_html
-    )
-
-    # Cash Reserve tab: cash balance vs target chart + summary card
-    cash_reserve_chart_html = _build_cash_reserve_chart(df, config=config)
-    cash_reserve_summary_html = _build_cash_reserve_summary(df, config=config)
-    cash_reserve_html = (
-        "<div class='gantt-wrap'>" + cash_reserve_chart_html + "</div>"
-        + cash_reserve_summary_html
     )
 
     scenario_slug = getattr(scenario, "slug", None)
@@ -2404,17 +2682,18 @@ def build_chart(
     {sample_guide_html}
     {kpi_html}
     {value_basis_html}
-    {chart_div}
+    <div class="nwn-view-real">{chart_div}</div>
+    <div class="nwn-view-nominal" style="display:none">{nominal_chart_html}</div>
     <div class="event-label-controls" id="event-label-controls">
       <label><input type="checkbox" id="event-labels-show-all" checked> Show all event labels</label>
       <label><input type="checkbox" id="event-labels-keep-key" checked> Keep key labels when hidden</label>
     </div>
     <div class="zoom-presets" id="zoom-presets">
       <span class="zoom-preset-label">Zoom:</span>
-      <button class="zoom-preset-btn active" data-range="full" onclick="zoomToYears('nwn-chart', this, null)">Full</button>
-      <button class="zoom-preset-btn" data-range="10" onclick="zoomToYears('nwn-chart', this, 10)">10yr</button>
-      <button class="zoom-preset-btn" data-range="25" onclick="zoomToYears('nwn-chart', this, 25)">25yr</button>
-      <button class="zoom-preset-btn" data-range="50" onclick="zoomToYears('nwn-chart', this, 50)">50yr</button>
+      <button class="zoom-preset-btn active" data-range="full" onclick="zoomToYears(_visibleNwnChartId(), this, null)">Full</button>
+      <button class="zoom-preset-btn" data-range="10" onclick="zoomToYears(_visibleNwnChartId(), this, 10)">10yr</button>
+      <button class="zoom-preset-btn" data-range="25" onclick="zoomToYears(_visibleNwnChartId(), this, 25)">25yr</button>
+      <button class="zoom-preset-btn" data-range="50" onclick="zoomToYears(_visibleNwnChartId(), this, 50)">50yr</button>
     </div>
     {tax_note_html}
   </div>
@@ -2479,6 +2758,7 @@ def _build_figure(
     df: pd.DataFrame,
     config: dict,
     projection_result: ProjectionResult | None = None,
+    force_real_dollar_basis: bool | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     paper_bg = "#111827"
@@ -2613,8 +2893,12 @@ def _build_figure(
     # ── Build subtitle with real-dollar indicator ──────────────────────────
     subtitle = "Values shown are end-of-year estimates, anchored to live Monarch balances"
     real_dollar_basis = (
-        projection_result is not None
-        and projection_result.simulation.get("real_dollar_basis", False)
+        force_real_dollar_basis
+        if force_real_dollar_basis is not None
+        else (
+            projection_result is not None
+            and projection_result.simulation.get("real_dollar_basis", False)
+        )
     )
     if real_dollar_basis:
         sim = config.get("simulation", {})

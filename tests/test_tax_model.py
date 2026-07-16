@@ -479,7 +479,8 @@ class TaxModelTests(unittest.TestCase):
         df = pd.DataFrame([
             {"year": 2026, "home_value": 0.0, "mortgage": 0.0, "home_equity": 0.0, "cash": 100.0, "taxable": 0.0, "trad_ira": 0.0, "roth": 0.0,
              "total_net_worth": 100.0, "survivor": False, "events_active": "", "person1_income": 0.0, "person2_income": 0.0,
-             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": [], "taxable_income": 0.0},
+             "freed_payments": 0.0, "annual_spend": 0.0, "annual_taxes": 0.0, "net_flow": 0.0, "event_items": [], "taxable_income": 0.0,
+             "tax_phase": "pre_retirement"},
         ])
 
         with patch("src.charts.load_config", return_value=config):

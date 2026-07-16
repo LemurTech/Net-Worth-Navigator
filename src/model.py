@@ -199,6 +199,7 @@ class ProjectionResult:
     run_count: int = 1
     display_path_kind: str = "deterministic"
     clamped_start_year: int | None = None
+    nominal_yearly_df: pd.DataFrame | None = None  # pre-deflation copy for dual-view render
 
 
 def _clamp_amount(value: object, *, default: float = 0.0) -> float:
@@ -2357,13 +2358,22 @@ def _normalize_simulation_settings(config: dict) -> dict[str, object]:
         else None
     )
 
+    # Resolve value_basis: explicit string takes precedence; fall back to
+    # legacy real_dollar_basis boolean for backward compatibility.
+    raw_vb = sim.get("value_basis")
+    if raw_vb in ("real", "nominal", "both"):
+        value_basis = str(raw_vb)
+    else:
+        value_basis = "both" if sim.get("real_dollar_basis", False) else "nominal"
+
     return {
         "mode": mode,
         "num_runs": num_runs,
         "seed": seed,
         "portfolio_return_volatility": return_volatility,
         "historical_returns_path": historical_returns_path,
-        "real_dollar_basis": bool(sim.get("real_dollar_basis", False)),
+        "real_dollar_basis": value_basis in ("real", "both"),
+        "value_basis": value_basis,
     }
 
 
@@ -3038,7 +3048,12 @@ def run_projection_result(
             basis_seeds=basis_seeds,
             config=config,
         )
-        if simulation_settings.get("real_dollar_basis"):
+        nominal_yearly_df = None
+        vb = simulation_settings.get("value_basis", "nominal")
+        if vb == "both":
+            nominal_yearly_df = yearly_df.copy()
+            yearly_df = _apply_real_dollar_basis(yearly_df, config)
+        elif vb == "real":
             yearly_df = _apply_real_dollar_basis(yearly_df, config)
         summary = _projection_summary(
             config=config,
@@ -3062,6 +3077,7 @@ def run_projection_result(
             display_path_kind="deterministic",
             clamped_start_year=clamped_start_year
                 if clamped_start_year != start_year else None,
+            nominal_yearly_df=nominal_yearly_df,
         )
 
     run_frames: list[pd.DataFrame] = []
@@ -3120,10 +3136,17 @@ def run_projection_result(
             )
             run_labels.append(label)
 
-    if simulation_settings.get("real_dollar_basis"):
+    nominal_run_frames = None
+    vb = simulation_settings.get("value_basis", "nominal")
+    if vb == "both":
+        nominal_run_frames = [f.copy() for f in run_frames]
+    if vb in ("both", "real"):
         run_frames = [_apply_real_dollar_basis(f, config) for f in run_frames]
 
     primary_df = _build_primary_path_from_runs(run_frames)
+    nominal_yearly_df = None
+    if nominal_run_frames is not None:
+        nominal_yearly_df = _build_primary_path_from_runs(nominal_run_frames)
     band_df = _build_band_frame(run_frames)
     outcomes_df = _build_stochastic_outcomes_frame(run_frames, success_settings)
     summary = _projection_summary(
@@ -3149,6 +3172,7 @@ def run_projection_result(
         display_path_kind="median",
         clamped_start_year=clamped_start_year
             if clamped_start_year != start_year else None,
+        nominal_yearly_df=nominal_yearly_df,
     )
 
 

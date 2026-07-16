@@ -234,11 +234,18 @@ def write_scenarios_index(*, output_root: Path | None = None, cache_timestamp: s
 
         # Determine data_source_mode from the scenario's own TOML
         data_source_mode = "monarch"
+        value_basis = "nominal"
         try:
             with open(scenario.config_path, "rb") as fh:
                 raw = tomllib.load(fh)
             raw_ds = raw.get("data_source", {}) or {}
             data_source_mode = str(raw_ds.get("mode", "monarch")).strip().lower()
+            raw_sim = raw.get("simulation", {}) or {}
+            raw_vb = raw_sim.get("value_basis")
+            if raw_vb in ("real", "nominal", "both"):
+                value_basis = str(raw_vb)
+            else:
+                value_basis = "both" if raw_sim.get("real_dollar_basis", False) else "nominal"
         except Exception:
             pass
 
@@ -267,6 +274,7 @@ def write_scenarios_index(*, output_root: Path | None = None, cache_timestamp: s
             "default_mode": default_mode,
             "modes": mode_entries,
             "data_source_mode": data_source_mode,
+            "value_basis": value_basis,
             "is_default": scenario.is_default,
         }
         name_lower = (scenario.name or "").strip().lower()

@@ -30,12 +30,13 @@ def _event_item_parts(item) -> tuple[str, float, str | None, str | None]:
     return str(label), float(amount), None, None
 
 
-def _fmt(value: float) -> str:
+def _fmt(value: float, nominal_val: float | None = None) -> str:
 
     if pd.isna(value) or value == 0:
         return "<td class='zero'>—</td>"
     color = "neg" if value < 0 else ""
-    return f"<td class='{color}'>${value:>12,.0f}</td>"
+    data_attr = f" data-nominal='${nominal_val:>12,.0f}'" if nominal_val is not None else ""
+    return f"<td class='{color}'{data_attr}>${value:>12,.0f}</td>"
 
 
 def _surplus_bar_cell(taxable: float, trad_ira: float, roth: float) -> str:
@@ -72,6 +73,21 @@ def _fmt_currency(value) -> str:
         return "—"
     sign = "-" if amount < 0 else ""
     return f"{sign}${abs(amount):,.0f}"
+
+
+def _fmt_dual_value(real_val: float, nominal_val: float | None = None) -> str:
+    """Format a monetary value with dual spans for real/nominal toggle.
+
+    When nominal_val is None, returns a plain formatted string (no dual view).
+    When provided, wraps real and nominal in CSS-classed spans for the
+    client-side toggle.
+    """
+    if nominal_val is None:
+        return f"${real_val:,.0f}"
+    return (
+        f"<span class='nwn-view-real'>${real_val:,.0f}</span>"
+        f"<span class='nwn-view-nominal' style='display:none'>${nominal_val:,.0f}</span>"
+    )
 
 
 def _fmt_percent(value) -> str:
@@ -1045,7 +1061,8 @@ def _header_row(years: list[int]) -> str:
 
 
 def _data_row(label: str, values: list[float], indent: bool = False,
-              bold: bool = False, separator: bool = False) -> str:
+              bold: bool = False, separator: bool = False,
+              nominal_values: list[float] | None = None) -> str:
     cls_parts = []
     if indent:   cls_parts.append("indent")
     if bold:     cls_parts.append("total")
@@ -1053,14 +1070,17 @@ def _data_row(label: str, values: list[float], indent: bool = False,
     cls = " ".join(cls_parts)
     tag = "th" if bold else "td"
     cells = "".join(
-        _fmt(v).replace("<td", f"<td data-col='{i+1}'") for i, v in enumerate(values)
+        _fmt(v, nominal_val=(nominal_values[i] if nominal_values else None)).replace(
+            "<td", f"<td data-col='{i+1}'"
+        )
+        for i, v in enumerate(values)
     )
     return f"<tr class='{cls}'><{tag} class='rowlabel'>{label}</{tag}>{cells}</tr>"
 
 
 # ── Accounts table ─────────────────────────────────────────────────────────────
 
-def build_accounts_table(df: pd.DataFrame, config: dict | None = None) -> str:
+def build_accounts_table(df: pd.DataFrame, config: dict | None = None, nominal_df: pd.DataFrame | None = None) -> str:
     """
     Net Worth table: assets at top, liabilities below, home equity and
     total net worth at the bottom.
@@ -1070,38 +1090,53 @@ def build_accounts_table(df: pd.DataFrame, config: dict | None = None) -> str:
 
     def col(field: str) -> list[float]:
         return [subset.loc[y, field] if y in subset.index else 0.0 for y in years]
+    nom_subset = nominal_df[nominal_df["year"].isin(years)].set_index("year") if nominal_df is not None else None
+    def col_nominal(field: str) -> list[float] | None:
+        if nom_subset is None:
+            return None
+        return [nom_subset.loc[y, field] if y in nom_subset.index else 0.0 for y in years]
 
     rows = []
     person1_name = _person_display_name(config, "person1")
     person2_name = _person_display_name(config, "person2")
     rows.append("<tr class='section'><th colspan='100'>Assets</th></tr>")
-    rows.append(_data_row("Traditional IRA / 401k", col("trad_ira"),  indent=True))
+    rows.append(_data_row("Traditional IRA / 401k", col("trad_ira"),  indent=True, nominal_values=col_nominal("trad_ira")))
     if "trad_ira_person1" in subset.columns:
         rows.append(_data_row(f"Traditional IRA / 401k — {person1_name}", col("trad_ira_person1"), indent=True))
     if "trad_ira_person2" in subset.columns:
         rows.append(_data_row(f"Traditional IRA / 401k — {person2_name}", col("trad_ira_person2"), indent=True))
-    rows.append(_data_row("Roth",                    col("roth"),      indent=True))
+    rows.append(_data_row("Roth",                    col("roth"),      indent=True, nominal_values=col_nominal("roth")))
     if "roth_person1" in subset.columns:
         rows.append(_data_row(f"Roth — {person1_name}", col("roth_person1"), indent=True))
     if "roth_person2" in subset.columns:
         rows.append(_data_row(f"Roth — {person2_name}", col("roth_person2"), indent=True))
-    rows.append(_data_row("Taxable",                 col("taxable"),   indent=True))
-    rows.append(_data_row("Cash",                    col("cash"),      indent=True))
+    rows.append(_data_row("Taxable",                 col("taxable"),   indent=True, nominal_values=col_nominal("taxable")))
+    rows.append(_data_row("Cash",                    col("cash"),      indent=True, nominal_values=col_nominal("cash")))
     rows.append(_data_row("Investable Portfolio",
                           [sum(subset.loc[y, c] for c in ["trad_ira","roth","taxable","cash"])
                            if y in subset.index else 0.0 for y in years],
-                          bold=True))
+                          bold=True,
+                          nominal_values=(
+                              [sum(nom_subset.loc[y, c] for c in ["trad_ira","roth","taxable","cash"])
+                               if y in nom_subset.index else 0.0 for y in years]
+                              if nom_subset is not None else None
+                          )))
 
     rows.append("<tr class='section'><th colspan='100'>Home</th></tr>")
-    rows.append(_data_row("Home Value",   col("home_value"), indent=True))
+    rows.append(_data_row("Home Value",   col("home_value"), indent=True, nominal_values=col_nominal("home_value")))
     rows.append(_data_row("Mortgage",
                           [-subset.loc[y, "mortgage"] if y in subset.index else 0.0
                            for y in years],
-                          indent=True))
-    rows.append(_data_row("Home Equity",  col("home_equity"), bold=True))
+                          indent=True,
+                          nominal_values=(
+                              [-nom_subset.loc[y, "mortgage"] if y in nom_subset.index else 0.0
+                               for y in years]
+                              if nom_subset is not None else None
+                          )))
+    rows.append(_data_row("Home Equity",  col("home_equity"), bold=True, nominal_values=col_nominal("home_equity")))
 
     rows.append("<tr class='section sep'><th colspan='100'>Net Worth</th></tr>")
-    rows.append(_data_row("Total Net Worth", col("total_net_worth"), bold=True))
+    rows.append(_data_row("Total Net Worth", col("total_net_worth"), bold=True, nominal_values=col_nominal("total_net_worth")))
 
     header = _header_row(years)
     body   = "\n".join(rows)
@@ -1110,7 +1145,7 @@ def build_accounts_table(df: pd.DataFrame, config: dict | None = None) -> str:
 
 # ── Cash Flow table ────────────────────────────────────────────────────────────
 
-def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
+def build_cashflow_table(df: pd.DataFrame, config: dict | None = None, nominal_df: pd.DataFrame | None = None) -> str:
     """
     Cash flow table: income sources at top, expenses below.
     Shows all modeled income and expense streams per year.
@@ -1123,6 +1158,12 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
             subset.loc[y, field] if (y in subset.index and field in subset.columns) else 0.0
             for y in years
         ]
+    nom_subset = nominal_df[nominal_df["year"].isin(years)].set_index("year") if nominal_df is not None else None
+    def col_nominal(field: str) -> list[float] | None:
+        if nom_subset is None:
+            return None
+        return [nom_subset.loc[y, field] if (y in nom_subset.index and field in nom_subset.columns) else 0.0
+                for y in years]
 
     # Collect all unique event labels that appear across the displayed years
     event_map: dict[str, dict] = {}
@@ -1165,7 +1206,7 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
         else:
             person_name = _person_display_name(config, person_key)
         label = f"{person_name} earned income"
-        rows.append(_data_row(label, col(field), indent=True))
+        rows.append(_data_row(label, col(field), indent=True, nominal_values=col_nominal(field)))
 
     for label, meta in event_map.items():
         amounts = meta["amounts"]
@@ -1187,25 +1228,25 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
     # is zero in retirement years (active P&I is added to the spending baseline).
     freed = col("freed_payments")
     if any(v != 0 for v in freed):
-        rows.append(_data_row("Debt service freed", freed))
+        rows.append(_data_row("Debt service freed", freed, nominal_values=col_nominal("freed_payments")))
 
     # ── Portfolio funding / withdrawals ───────────────────────────────────────
     portfolio_funding_rows = [
-        ("Cash reserve drawdown", col("withdrawal_cash")),
-        ("Taxable withdrawals", col("withdrawal_taxable")),
-        ("Traditional IRA / 401k withdrawals", col("withdrawal_trad_ira")),
-        ("Required minimum distributions (RMD)", col("rmd_withdrawn")),
-        ("Roth withdrawals", col("withdrawal_roth")),
+        ("Cash reserve drawdown", col("withdrawal_cash"), "withdrawal_cash"),
+        ("Taxable withdrawals", col("withdrawal_taxable"), "withdrawal_taxable"),
+        ("Traditional IRA / 401k withdrawals", col("withdrawal_trad_ira"), "withdrawal_trad_ira"),
+        ("Required minimum distributions (RMD)", col("rmd_withdrawn"), "rmd_withdrawn"),
+        ("Roth withdrawals", col("withdrawal_roth"), "withdrawal_roth"),
     ]
     shown_portfolio_rows = [
-        (label, amounts)
-        for label, amounts in portfolio_funding_rows
+        (label, amounts, field)
+        for label, amounts, field in portfolio_funding_rows
         if any(v != 0 for v in amounts)
     ]
     if shown_portfolio_rows:
         rows.append("<tr class='section sep'><th colspan='100'>Portfolio Funding / Withdrawals</th></tr>")
-        for label, amounts in shown_portfolio_rows:
-            rows.append(_data_row(label, amounts, indent=True))
+        for label, amounts, field in shown_portfolio_rows:
+            rows.append(_data_row(label, amounts, indent=True, nominal_values=col_nominal(field)))
         total_portfolio_funding = [
             (
                 subset.loc[y, "withdrawal_cash"]
@@ -1220,19 +1261,19 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
 
     # ── Portfolio funding — surplus routing ────────────────────────────────────
     surplus_routing_rows = [
-        ("Surplus to taxable brokerage", col("surplus_to_taxable")),
-        ("Surplus to traditional IRA / 401k", col("surplus_to_trad_ira")),
-        ("Surplus to Roth", col("surplus_to_roth")),
+        ("Surplus to taxable brokerage", col("surplus_to_taxable"), "surplus_to_taxable"),
+        ("Surplus to traditional IRA / 401k", col("surplus_to_trad_ira"), "surplus_to_trad_ira"),
+        ("Surplus to Roth", col("surplus_to_roth"), "surplus_to_roth"),
     ]
     shown_surplus_rows = [
-        (label, amounts)
-        for label, amounts in surplus_routing_rows
+        (label, amounts, field)
+        for label, amounts, field in surplus_routing_rows
         if any(v != 0 for v in amounts)
     ]
     if shown_surplus_rows:
         rows.append("""<tr class='section sep'><th colspan='100'>Surplus Routing</th></tr>""")
-        for label, amounts in shown_surplus_rows:
-            rows.append(_data_row(label, amounts, indent=True))
+        for label, amounts, field in shown_surplus_rows:
+            rows.append(_data_row(label, amounts, indent=True, nominal_values=col_nominal(field)))
         total_surplus_routed = [
             sum(
                 subset.loc[y, c] if (y in subset.index and c in subset.columns) else 0.0
@@ -1245,16 +1286,16 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
 
     # ── Retirement contributions (owner split when available) ─────────────────
     contribution_rows = [
-        ("Traditional IRA / 401k contributions", col("contribution_employee_trad_ira")),
-        ("Roth contributions", col("contribution_employee_roth")),
-        (f"Employee 401k/IRA — {person1_name}", col("contribution_employee_trad_ira_person1")),
-        (f"Employee 401k/IRA — {person2_name}", col("contribution_employee_trad_ira_person2")),
-        (f"Roth contributions — {person1_name}", col("contribution_employee_roth_person1")),
-        (f"Roth contributions — {person2_name}", col("contribution_employee_roth_person2")),
+        ("Traditional IRA / 401k contributions", col("contribution_employee_trad_ira"), "contribution_employee_trad_ira"),
+        ("Roth contributions", col("contribution_employee_roth"), "contribution_employee_roth"),
+        (f"Employee 401k/IRA — {person1_name}", col("contribution_employee_trad_ira_person1"), "contribution_employee_trad_ira_person1"),
+        (f"Employee 401k/IRA — {person2_name}", col("contribution_employee_trad_ira_person2"), "contribution_employee_trad_ira_person2"),
+        (f"Roth contributions — {person1_name}", col("contribution_employee_roth_person1"), "contribution_employee_roth_person1"),
+        (f"Roth contributions — {person2_name}", col("contribution_employee_roth_person2"), "contribution_employee_roth_person2"),
     ]
     shown_contribution_rows = [
-        (label, amounts)
-        for label, amounts in contribution_rows
+        (label, amounts, field)
+        for label, amounts, field in contribution_rows
         if any(v != 0 for v in amounts)
     ]
 
@@ -1266,15 +1307,15 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
 
     if shown_contribution_rows or has_match:
         rows.append("<tr class='section sep'><th colspan='100'>Retirement Contributions</th></tr>")
-        for label, amounts in shown_contribution_rows:
-            rows.append(_data_row(label, amounts, indent=True))
+        for label, amounts, field in shown_contribution_rows:
+            rows.append(_data_row(label, amounts, indent=True, nominal_values=col_nominal(field)))
         if has_match:
             if any(v != 0 for v in employer_match_p1):
-                rows.append(_data_row(f"Employer match — {person1_name}", employer_match_p1, indent=True))
+                rows.append(_data_row(f"Employer match — {person1_name}", employer_match_p1, indent=True, nominal_values=col_nominal("employer_match_person1")))
             if any(v != 0 for v in employer_match_p2):
-                rows.append(_data_row(f"Employer match — {person2_name}", employer_match_p2, indent=True))
-            rows.append(_data_row("Employer match (total, prefunded)", employer_match_total, indent=True))
-        rows.append(_data_row("Total Retirement Contributions", col("contribution_total"), bold=True))
+                rows.append(_data_row(f"Employer match — {person2_name}", employer_match_p2, indent=True, nominal_values=col_nominal("employer_match_person2")))
+            rows.append(_data_row("Employer match (total, prefunded)", employer_match_total, indent=True, nominal_values=col_nominal("employer_match_total")))
+        rows.append(_data_row("Total Retirement Contributions", col("contribution_total"), bold=True, nominal_values=col_nominal("contribution_total")))
 
     # IRS cap warnings — emit a note row when any year exceeds the cap
     cap_p1_col = col("person1_401k_over_irs_cap") if "person1_401k_over_irs_cap" in df.columns else []
@@ -1379,14 +1420,14 @@ def build_cashflow_table(df: pd.DataFrame, config: dict | None = None) -> str:
 
     # ── Net ───────────────────────────────────────────────────────────────────
     rows.append("<tr class='section sep'><th colspan='100'>Net</th></tr>")
-    rows.append(_data_row("Net Cash Flow", col("net_flow"), bold=True))
+    rows.append(_data_row("Net Cash Flow", col("net_flow"), bold=True, nominal_values=col_nominal("net_flow")))
 
     header = _header_row(years)
     body   = "\n".join(rows)
     return f"<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
 
 
-def build_tax_table(df: pd.DataFrame) -> str:
+def build_tax_table(df: pd.DataFrame, nominal_df: pd.DataFrame | None = None) -> str:
     """Yearly tax-audit table for the Tax tab."""
     years = _display_years(df)
     subset = df[df["year"].isin(years)].set_index("year")
@@ -1394,6 +1435,14 @@ def build_tax_table(df: pd.DataFrame) -> str:
     def num_col(field: str) -> list[float]:
         return [
             float(subset.loc[y, field]) if (y in subset.index and field in subset.columns and pd.notna(subset.loc[y, field])) else 0.0
+            for y in years
+        ]
+    nom_subset_tax = nominal_df[nominal_df["year"].isin(years)].set_index("year") if nominal_df is not None else None
+    def num_col_nominal(field: str) -> list[float] | None:
+        if nom_subset_tax is None:
+            return None
+        return [
+            float(nom_subset_tax.loc[y, field]) if (y in nom_subset_tax.index and field in nom_subset_tax.columns and pd.notna(nom_subset_tax.loc[y, field])) else 0.0
             for y in years
         ]
 
@@ -1432,54 +1481,54 @@ def build_tax_table(df: pd.DataFrame) -> str:
 
     rows.append("<tr class='section sep'><th colspan='100'>Taxable Income Components</th></tr>")
     if "taxable_wage_income" in subset.columns:
-        rows.append(_data_row("Taxable wage income", num_col("taxable_wage_income"), indent=True))
+        rows.append(_data_row("Taxable wage income", num_col("taxable_wage_income"), nominal_values=num_col_nominal("taxable_wage_income"), indent=True))
     if "non_ss_taxable_income" in subset.columns:
-        rows.append(_data_row("Non-SS taxable income", num_col("non_ss_taxable_income"), indent=True))
+        rows.append(_data_row("Non-SS taxable income", num_col("non_ss_taxable_income"), nominal_values=num_col_nominal("non_ss_taxable_income"), indent=True))
     if "withdrawal_taxable_income" in subset.columns:
-        rows.append(_data_row("Withdrawal taxable income", num_col("withdrawal_taxable_income"), indent=True))
+        rows.append(_data_row("Withdrawal taxable income", num_col("withdrawal_taxable_income"), nominal_values=num_col_nominal("withdrawal_taxable_income"), indent=True))
     if "taxable_withdrawal_basis_portion" in subset.columns:
-        rows.append(_data_row("Taxable withdrawal basis return", num_col("taxable_withdrawal_basis_portion"), indent=True))
+        rows.append(_data_row("Taxable withdrawal basis return", num_col("taxable_withdrawal_basis_portion"), nominal_values=num_col_nominal("taxable_withdrawal_basis_portion"), indent=True))
     if "taxable_withdrawal_gain_portion" in subset.columns:
-        rows.append(_data_row("Taxable withdrawal realized gains", num_col("taxable_withdrawal_gain_portion"), indent=True))
+        rows.append(_data_row("Taxable withdrawal realized gains", num_col("taxable_withdrawal_gain_portion"), nominal_values=num_col_nominal("taxable_withdrawal_gain_portion"), indent=True))
     if "roth_withdrawal_basis_portion" in subset.columns:
-        rows.append(_data_row("Roth withdrawal contribution basis", num_col("roth_withdrawal_basis_portion"), indent=True))
+        rows.append(_data_row("Roth withdrawal contribution basis", num_col("roth_withdrawal_basis_portion"), nominal_values=num_col_nominal("roth_withdrawal_basis_portion"), indent=True))
     if "roth_withdrawal_earnings_portion" in subset.columns:
-        rows.append(_data_row("Roth withdrawal earnings", num_col("roth_withdrawal_earnings_portion"), indent=True))
+        rows.append(_data_row("Roth withdrawal earnings", num_col("roth_withdrawal_earnings_portion"), nominal_values=num_col_nominal("roth_withdrawal_earnings_portion"), indent=True))
     if "other_taxable_income" in subset.columns:
-        rows.append(_data_row("Other taxable income", num_col("other_taxable_income"), indent=True))
+        rows.append(_data_row("Other taxable income", num_col("other_taxable_income"), nominal_values=num_col_nominal("other_taxable_income"), indent=True))
     if "social_security_provisional_income" in subset.columns:
-        rows.append(_data_row("Social Security provisional income", num_col("social_security_provisional_income"), indent=True))
+        rows.append(_data_row("Social Security provisional income", num_col("social_security_provisional_income"), nominal_values=num_col_nominal("social_security_provisional_income"), indent=True))
     if "taxable_social_security_income" in subset.columns:
-        rows.append(_data_row("Taxable Social Security", num_col("taxable_social_security_income"), indent=True))
+        rows.append(_data_row("Taxable Social Security", num_col("taxable_social_security_income"), nominal_values=num_col_nominal("taxable_social_security_income"), indent=True))
     if "social_security_taxable_fraction" in subset.columns:
         rows.append(percent_row("Social Security taxable fraction", "social_security_taxable_fraction"))
-    rows.append(_data_row("Total taxable income", num_col("taxable_income"), bold=True))
+    rows.append(_data_row("Total taxable income", num_col("taxable_income"), nominal_values=num_col_nominal("taxable_income"), bold=True))
 
     rows.append("<tr class='section sep'><th colspan='100'>Federal Tax</th></tr>")
     if "federal_standard_deduction" in subset.columns:
-        rows.append(_data_row("Federal standard deduction", num_col("federal_standard_deduction"), indent=True))
+        rows.append(_data_row("Federal standard deduction", num_col("federal_standard_deduction"), nominal_values=num_col_nominal("federal_standard_deduction"), indent=True))
     if "federal_taxable_after_deduction" in subset.columns:
-        rows.append(_data_row("Federal taxable after deduction", num_col("federal_taxable_after_deduction"), indent=True))
+        rows.append(_data_row("Federal taxable after deduction", num_col("federal_taxable_after_deduction"), nominal_values=num_col_nominal("federal_taxable_after_deduction"), indent=True))
     if "annual_federal_taxes" in subset.columns:
-        rows.append(_data_row("Federal tax", num_col("annual_federal_taxes"), bold=True))
+        rows.append(_data_row("Federal tax", num_col("annual_federal_taxes"), nominal_values=num_col_nominal("annual_federal_taxes"), bold=True))
     if "federal_effective_rate" in subset.columns:
         rows.append(percent_row("Federal effective rate", "federal_effective_rate"))
 
     if any(col in subset.columns for col in ("state_standard_deduction", "state_taxable_before_deduction", "state_taxable_income", "annual_state_taxes", "state_effective_rate")):
         rows.append("<tr class='section sep'><th colspan='100'>State Tax</th></tr>")
         if "state_standard_deduction" in subset.columns:
-            rows.append(_data_row("State standard deduction", num_col("state_standard_deduction"), indent=True))
+            rows.append(_data_row("State standard deduction", num_col("state_standard_deduction"), nominal_values=num_col_nominal("state_standard_deduction"), indent=True))
         if "state_taxable_before_deduction" in subset.columns:
-            rows.append(_data_row("State taxable before deduction", num_col("state_taxable_before_deduction"), indent=True))
+            rows.append(_data_row("State taxable before deduction", num_col("state_taxable_before_deduction"), nominal_values=num_col_nominal("state_taxable_before_deduction"), indent=True))
         if "state_taxable_income" in subset.columns:
-            rows.append(_data_row("State taxable income", num_col("state_taxable_income"), indent=True))
+            rows.append(_data_row("State taxable income", num_col("state_taxable_income"), nominal_values=num_col_nominal("state_taxable_income"), indent=True))
         if "annual_state_taxes" in subset.columns:
-            rows.append(_data_row("State tax", num_col("annual_state_taxes"), bold=True))
+            rows.append(_data_row("State tax", num_col("annual_state_taxes"), nominal_values=num_col_nominal("annual_state_taxes"), bold=True))
         if "state_effective_rate" in subset.columns:
             rows.append(percent_row("State effective rate", "state_effective_rate"))
 
     rows.append("<tr class='section sep'><th colspan='100'>Combined Output</th></tr>")
-    rows.append(_data_row("Total modeled taxes", num_col("annual_taxes"), bold=True))
+    rows.append(_data_row("Total modeled taxes", num_col("annual_taxes"), nominal_values=num_col_nominal("annual_taxes"), bold=True))
 
     header = _header_row(years).replace("Account", "Tax Item", 1)
     body = "\n".join(rows)
@@ -1498,6 +1547,22 @@ def build_tax_table(df: pd.DataFrame) -> str:
         float(subset.loc[y, "annual_state_taxes"]) if (y in subset.index and "annual_state_taxes" in subset.columns and pd.notna(subset.loc[y, "annual_state_taxes"])) else 0.0
         for y in years
     )
+    # Compute nominal cumulative totals when nominal_df is available
+    nom_cum_taxes = nom_cum_fed = nom_cum_state = None
+    if nom_subset_tax is not None:
+        nom_cum_taxes = sum(
+            float(nom_subset_tax.loc[y, "annual_taxes"]) if (y in nom_subset_tax.index and "annual_taxes" in nom_subset_tax.columns and pd.notna(nom_subset_tax.loc[y, "annual_taxes"])) else 0.0
+            for y in years
+        )
+        nom_cum_fed = sum(
+            float(nom_subset_tax.loc[y, "annual_federal_taxes"]) if (y in nom_subset_tax.index and "annual_federal_taxes" in nom_subset_tax.columns and pd.notna(nom_subset_tax.loc[y, "annual_federal_taxes"])) else 0.0
+            for y in years
+        )
+        nom_cum_state = sum(
+            float(nom_subset_tax.loc[y, "annual_state_taxes"]) if (y in nom_subset_tax.index and "annual_state_taxes" in nom_subset_tax.columns and pd.notna(nom_subset_tax.loc[y, "annual_state_taxes"])) else 0.0
+            for y in years
+        )
+
     cum_income = sum(
         float(subset.loc[y, "taxable_income"]) if (y in subset.index and "taxable_income" in subset.columns and pd.notna(subset.loc[y, "taxable_income"])) else 0.0
         for y in years
@@ -1523,9 +1588,9 @@ def build_tax_table(df: pd.DataFrame) -> str:
     combined_rate = (cum_taxes / cum_income * 100.0) if cum_income > 0 else 0.0
 
     summary_rows = [
-        ("Total taxes paid (all years)", _fmt_currency(cum_taxes), True),
-        ("Federal total", _fmt_currency(cum_fed), False),
-        ("State total", _fmt_currency(cum_state), False),
+        ("Total taxes paid (all years)", _fmt_dual_value(cum_taxes, nom_cum_taxes), True),
+        ("Federal total", _fmt_dual_value(cum_fed, nom_cum_fed), False),
+        ("State total", _fmt_dual_value(cum_state, nom_cum_state), False),
         ("Average federal effective rate", _fmt_percent(avg_fed / 100.0), False),
         ("Average state effective rate", _fmt_percent(avg_state / 100.0), False),
         ("Combined lifetime effective rate", _fmt_percent(combined_rate / 100.0), True),
@@ -1600,7 +1665,7 @@ def build_simulation_outcomes_table(
     return f"{note}<table class='datatable'><thead>{header}</thead><tbody>{body}</tbody></table>"
 
 
-def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
+def build_portfolio_table(df: pd.DataFrame, config: dict | None = None, nominal_df: pd.DataFrame | None = None) -> str:
     """Projected investable-portfolio balances for the Portfolio tab."""
     years = _display_years(df)
     subset = df[df["year"].isin(years)].set_index("year")
@@ -1610,6 +1675,12 @@ def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
             subset.loc[y, field] if (y in subset.index and field in subset.columns) else 0.0
             for y in years
         ]
+    nom_subset_pt = nominal_df[nominal_df["year"].isin(years)].set_index("year") if nominal_df is not None else None
+    def col_nominal_pt(field: str) -> list[float] | None:
+        if nom_subset_pt is None:
+            return None
+        return [nom_subset_pt.loc[y, field] if (y in nom_subset_pt.index and field in nom_subset_pt.columns) else 0.0
+                for y in years]
 
     rows = []
     person1_name = _person_display_name(config, "person1")
@@ -1652,7 +1723,7 @@ def build_portfolio_table(df: pd.DataFrame, config: dict | None = None) -> str:
 # ── Liabilities Payoff Calendar ─────────────────────────────────────────────────
 
 
-def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str:
+def build_liabilities_table(df: pd.DataFrame, config: dict | None = None, nominal_df: pd.DataFrame | None = None) -> str:
     """
     Amortization table showing each liability's remaining balance year-by-year
     with payoff-year callout.  The UI idea is documented in docs/plans/ui-ideas.md.
@@ -1682,6 +1753,7 @@ def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str
             continue
 
         balances: list[float] = []
+        nominal_balances: list[float] | None = None
         payoff_year: int | None = None
         for y in years:
             if y in subset.index:
@@ -1691,6 +1763,15 @@ def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str
                     payoff_year = y
             else:
                 balances.append(0.0)
+        # Extract nominal balances from nominal_df if provided
+        if nominal_df is not None:
+            nom_subset_liab = nominal_df[nominal_df["year"].isin(years)].set_index("year")
+            nominal_balances = []
+            for y in years:
+                if y in nom_subset_liab.index and col in nom_subset_liab.columns:
+                    nominal_balances.append(float(nom_subset_liab.loc[y, col]))
+                else:
+                    nominal_balances.append(0.0)
         if payoff_year is None and balances:
             payoff_year = years[-1] if balances[-1] <= 0 else None
 
@@ -1703,6 +1784,7 @@ def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str
             "monthly_total": monthly_total,
             "payoff_year": payoff_year,
             "balances": balances,
+            "nominal_balances": nominal_balances,
         })
 
     if not liabilities_data:
@@ -1716,9 +1798,10 @@ def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str
 
     # Helper: uniform-width span so dollar, "—", and "✓ Paid off" cells
     # all share the same column width (matching the _fmt() min-width pattern)
-    def _cell(content: str, cls: str = "") -> str:
+    def _cell(content: str, cls: str = "", data_nominal: str | None = None) -> str:
         cls_attr = f" class='{cls}'" if cls else ""
-        return f"<td{cls_attr}><span style='display:inline-block;min-width:90px;text-align:right'>{content}</span></td>"
+        data_attr = f" data-nominal='{data_nominal}'" if data_nominal else ""
+        return f"<td{cls_attr}{data_attr}><span style='display:inline-block;min-width:90px;text-align:right'>{content}</span></td>"
 
     for ld in liabilities_data:
         name = escape(ld["name"])
@@ -1728,6 +1811,7 @@ def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str
         payoff_year = ld["payoff_year"]
 
         cells: list[str] = []
+        nom_bals = ld.get("nominal_balances")
         for i, bal in enumerate(ld["balances"]):
             bal_yr = years[i]
             if bal <= 0:
@@ -1736,7 +1820,8 @@ def build_liabilities_table(df: pd.DataFrame, config: dict | None = None) -> str
                 else:
                     cells.append(_cell("—", "zero"))
             else:
-                cells.append(_cell(f"${bal:>12,.0f}", "neg"))
+                nom_data = f"${nom_bals[i]:>12,.0f}" if nom_bals else None
+                cells.append(_cell(f"${bal:>12,.0f}", "neg", data_nominal=nom_data))
 
         row_class = f"liability-type-{escape(ld['type'])}"
         rows_html.append(

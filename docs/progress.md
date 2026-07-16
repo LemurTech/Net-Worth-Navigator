@@ -3,6 +3,41 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-07-15 (v1.8.0 — Real-dollar JS toggle, Phase 2)
+
+**Branch:** `feat/real-dollar-toggle` (18 commits, not yet merged to main)
+
+### Added
+
+- **Real-dollar JS toggle** — When `[simulation].real_dollar_basis = true`, a segmented pill (`💰 Real | 📊 Nominal`) appears in the value-basis badge bar. Toggling switches all monetary values (charts, KPI, tables, summaries) between inflation-adjusted and nominal dollars without re-rendering.
+- **`nominal_yearly_df` on `ProjectionResult`** — Captures pre-deflation DataFrame in both deterministic and stochastic paths. Stored alongside the deflated `yearly_df`.
+- **Lazy chart initialization pattern** — Main chart stores nominal figure as JSON (`fig.to_plotly_json()`); subsidiary charts strip and store `Plotly.newPlot()` scripts as JS string variables. All nominal charts created via `Plotly.newPlot()` or `eval()` on first toggle to avoid Plotly's `display:none` 0×0 initialization bug.
+- **`data-nominal` table cell attributes** — `_fmt()` and `_data_row()` extended with optional `nominal_val`. All 5 table builders accept `nominal_df` and pass nominal values through. Toggle JS swaps `innerHTML` ↔ `data-nominal`.
+- **Dual KPI spans** — Monetary KPI values wrapped in `<span class='nwn-view-real'>/<span class='nwn-view-nominal'>` pairs.
+- **Dual summary values** — Cash reserve minimum cash and tax cumulative totals use dual spans.
+- **Zoom clamping on both charts** — `_addZoomClamp()` attached to both `#nwn-chart` and `#nwn-chart-nominal`. Zoom preset buttons use `_visibleNwnChartId()` to target the active chart. X-axis range synced on toggle.
+- **localStorage persistence** — User's mode preference (`nwn-value-basis`) survives page reloads.
+
+### Changed
+
+- **`build_chart()`** — Wires `nominal_df` to KPI, all table builders, and subsidiary chart wrappers. Dual-view rendering for portfolio, liabilities, and cash reserve applied at the call site via wrapper divs.
+- **`build_tax_table()`** — Accepts `nominal_df`; cumulative summary uses dual currency values.
+- **`_build_cash_reserve_summary()`** — Accepts `nominal_df`; minimum cash values use dual spans.
+- **Value-basis badge** — Replaced static server-rendered badge with interactive flex row containing dual-span description text and segmented pill toggle.
+
+### Fixed
+
+- **Chart compression in nominal mode** — `Plotly.Plots.resize()` with `requestAnimationFrame` after toggle.
+- **No initial pill highlight** — `applyMode()` now always runs on load, setting body class.
+- **Zoom empty-space beyond data** — Clamping added to nominal chart.
+- **ScrollHeight +498px regression** — Hidden nominal chart wrapper uses zero-size positioning; lazy init avoids Plotly inline script overhead.
+
+### Decisions
+
+- **Lazy init over `display:none` render** — Plotly charts initialized inside `display:none` containers get 0×0 dimensions and cannot recover via `resize()` or `react()`. Only `newPlot()` with proper container dimensions produces correct SVGs. Adopted 2026-07-15.
+- **Script extraction for subsidiary charts** — Extracting `Plotly.newPlot()` calls from `fig.to_html()` output and `eval()`'ing them is less clean than JSON serialization but avoids refactoring 200+ line chart-builder functions. Accepted as pragmatic trade-off. 2026-07-15.
+- **CSS body-class visibility over JS iteration** — `body.nwn-nominal .nwn-view-real { display: none }` handles all element visibility in one cascade. Only table cell `innerHTML` swap needs JS. Adopted 2026-07-15.
+
 ## 2026-07-15 (v1.6.0–v1.7.0 — Starlight User Guide restoration + Docker sample + Monarch MCP mounts)
 
 ### Added

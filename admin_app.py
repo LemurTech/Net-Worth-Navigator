@@ -1650,6 +1650,7 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "scenario_description": ("scenario.description", str),
     "household_type": ("scenario.household_type", str),
     "table_set": ("taxes.table_set", str),
+    "value_basis": ("simulation.value_basis", str),
 }
 
 _QUICK_ARRAY_MAP: dict[str, str] = {
@@ -1719,6 +1720,12 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         if _value_differs(parent, key, typed):
             parent[key] = typed
             changed_keys.append(toml_path)
+
+    # When value_basis is explicitly set, remove legacy real_dollar_basis
+    # to avoid confusion (both fields should not coexist in the file).
+    if "value_basis" in body and "real_dollar_basis" in doc.get("simulation", {}):
+        del doc["simulation"]["real_dollar_basis"]
+        changed_keys.append("simulation.real_dollar_basis_removed")
 
     # Array fields
     for field_name, toml_path in _QUICK_ARRAY_MAP.items():
