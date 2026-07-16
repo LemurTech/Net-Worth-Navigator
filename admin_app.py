@@ -1721,6 +1721,12 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
             parent[key] = typed
             changed_keys.append(toml_path)
 
+    # When value_basis is explicitly set, remove legacy real_dollar_basis
+    # to avoid confusion (both fields should not coexist in the file).
+    if "value_basis" in body and "real_dollar_basis" in doc.get("simulation", {}):
+        del doc["simulation"]["real_dollar_basis"]
+        changed_keys.append("simulation.real_dollar_basis_removed")
+
     # Array fields
     for field_name, toml_path in _QUICK_ARRAY_MAP.items():
         raw = body.get(field_name)

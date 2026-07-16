@@ -778,6 +778,27 @@ def build_compare_page(
     select.mode-select:focus {{ outline: none; border-color: rgba(125,211,252,.55); }}
     select.mode-select option {{ background: #101a2a; }}
 
+    .basis-filter {{
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+    }}
+    .basis-filter .basis-pill {{
+      display: inline-block; padding: 4px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
+      border: 1px solid rgba(148,163,184,0.25);
+      background: transparent; color: rgba(226,232,240,0.55);
+      transition: background .15s, color .15s;
+      text-transform: none; letter-spacing: 0;
+    }}
+    .basis-filter .basis-pill:hover {{
+      background: rgba(148,163,184,0.10); color: rgba(226,232,240,0.80);
+    }}
+    .basis-filter .basis-pill.active {{
+      background: rgba(45,212,191,0.15); color: #e2e8f0; font-weight: 700;
+      border-color: rgba(45,212,191,0.35);
+    }}
+
     /* ── Chart card ─────────────────────────────────────────────── */
     .card {{
       background: var(--panel-2); border: 1px solid var(--border);
@@ -843,6 +864,14 @@ def build_compare_page(
         <option value="monte_carlo">Monte Carlo</option>
       </select>
     </div>
+    <div class="control-group">
+      <div class="basis-filter" id="basis-filter">
+        <span>Basis:</span>
+        <span class="basis-pill active" data-basis="all">All</span>
+        <span class="basis-pill" data-basis="real">Real</span>
+        <span class="basis-pill" data-basis="nominal">Future</span>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -890,6 +919,7 @@ def build_compare_page(
   // ── State ────────────────────────────────────────────────────────
   let activeMode = 'deterministic';
   let activeSlugs = new Set();
+  let activeBasis = 'all';
 
   // Boot selection: honour ?a=slug&b=slug URL params, else default + first other
   (function initSelection() {{
@@ -914,7 +944,30 @@ def build_compare_page(
   function renderChips() {{
     const row = document.getElementById('scenario-chips');
     row.innerHTML = '';
-    SCENARIO_LIST.forEach(function(s) {{
+    const filtered = SCENARIO_LIST.filter(function(s) {{
+      if (activeBasis === 'all') return true;
+      const vb = s.value_basis || 'nominal';
+      if (activeBasis === 'real') return vb === 'real' || vb === 'both';
+      if (activeBasis === 'nominal') return vb === 'nominal' || vb === 'both';
+      return true;
+    }});
+    // If no scenarios match the filter, show a message
+    if (filtered.length === 0) {{
+      row.innerHTML = '<span style="font-size:13px;color:var(--muted);padding:4px 0">No scenarios with this value basis.</span>';
+      return;
+    }}
+    // Remove any selected slugs that no longer exist in the filtered list
+    var filteredSlugs = new Set(filtered.map(function(s) {{ return s.slug; }}));
+    activeSlugs.forEach(function(slug) {{
+      if (!filteredSlugs.has(slug)) activeSlugs.delete(slug);
+    }});
+    // Ensure at least 2 scenarios are selected
+    if (activeSlugs.size < 2 && filtered.length >= 2) {{
+      filtered.forEach(function(s) {{
+        if (activeSlugs.size < 2) activeSlugs.add(s.slug);
+      }});
+    }}
+    filtered.forEach(function(s) {{
       const color = COLOR_MAP[s.slug];
       const active = activeSlugs.has(s.slug);
       const chip = document.createElement('div');
@@ -1395,6 +1448,17 @@ def build_compare_page(
     document.getElementById('mode-select').addEventListener('change', function() {{
       activeMode = this.value;
       refresh();
+    }});
+    // Basis filter pills
+    document.querySelectorAll('#basis-filter .basis-pill').forEach(function(pill) {{
+      pill.addEventListener('click', function() {{
+        if (this.classList.contains('active')) return;
+        document.querySelectorAll('#basis-filter .basis-pill').forEach(function(p) {{ p.classList.remove('active'); }});
+        this.classList.add('active');
+        activeBasis = this.getAttribute('data-basis');
+        renderChips();
+        refresh();
+      }});
     }});
     renderChips();
     refresh();
