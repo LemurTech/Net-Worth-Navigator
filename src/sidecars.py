@@ -14,6 +14,7 @@ from src.scenarios import ScenarioRef
 
 
 PROJECTION_CSV = "projection_yearly.csv"
+PROJECTION_NOMINAL_CSV = "projection_yearly_nominal.csv"
 EVENT_FLOWS_CSV = "event_flows.csv"
 SCENARIO_MANIFEST_JSON = "scenario_manifest.json"
 ACCOUNTS_SNAPSHOT_JSON = "accounts_snapshot.json"
@@ -79,6 +80,12 @@ def write_sidecars(
 
     projection_df = _projection_sidecar_frame(df)
     projection_df.to_csv(projection_path, index=False)
+
+    # Also write a nominal copy when dual-basis data was captured
+    nominal_df = projection_result.nominal_yearly_df
+    if nominal_df is not None and not nominal_df.empty:
+        nominal_proj_path = output_dir / PROJECTION_NOMINAL_CSV
+        _projection_sidecar_frame(nominal_df).to_csv(nominal_proj_path, index=False)
 
     event_flows_df = _event_flows_frame(df)
     event_flows_df.to_csv(event_flows_path, index=False)

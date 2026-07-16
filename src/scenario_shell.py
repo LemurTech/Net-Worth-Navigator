@@ -831,7 +831,7 @@ def build_compare_page(
   </div>
 
   <div class="controls">
-    <div class="control-group">
+    <div class="control-group" style="flex:1 1 100%">
       <div class="control-label">Scenarios</div>
       <div class="chip-row" id="scenario-chips"></div>
     </div>
@@ -977,6 +977,11 @@ def build_compare_page(
     return 'scenarios/' + slug + '/' + mode + '/sidecars/';
   }}
 
+  function projCSVPath(slug, mode) {{
+    var suffix = activeBasis === 'nominal' ? '_nominal' : '';
+    return sidecarBase(slug, mode) + 'projection_yearly' + suffix + '.csv';
+  }}
+
   // ── CSV line parser (handles quoted fields) ───────────────────────
   function parseCSVLine(line) {{
     const result = [];
@@ -1064,7 +1069,7 @@ def build_compare_page(
 
     // Build sidecar fetch promises for each active scenario
     const projPromises = slugs.map(function(slug) {{
-      const url = sidecarBase(slug, activeMode) + 'projection_yearly.csv';
+      const url = projCSVPath(slug, activeMode);
       return fetchCSV(url).then(function(rows) {{ return {{ slug, rows }}; }}).catch(function() {{ return {{ slug, rows: null }}; }});
     }});
     const summPromises = slugs.map(function(slug) {{
