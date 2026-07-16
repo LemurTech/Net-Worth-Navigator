@@ -125,7 +125,7 @@ class TestRealDollarModelLayer:
             mode="deterministic",
             yearly_df=df,
             summary={},
-            simulation={"real_dollar_basis": True},
+            simulation={"real_dollar_basis": True, "value_basis": "both"},
             nominal_yearly_df=nominal_df,
         )
         with patch("src.charts.load_config", return_value=config):

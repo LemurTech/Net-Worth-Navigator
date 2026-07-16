@@ -551,6 +551,22 @@
         <div class="inline-field"><label>State Tax</label><select id="tax_state" style="width:180px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">Loading…</option></select></div>
       </div>
 
+      <div class="quick-section-title">Value Basis</div>
+      <div class="inline-row">
+        <div class="inline-field" style="flex:1 1 auto">
+          <select id="value_basis" style="width:200px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px">
+            <option value="nominal">Future dollars only</option>
+            <option value="both">Both — toggle between modes</option>
+            <option value="real">Today's dollars only</option>
+          </select>
+        </div>
+      </div>
+      <div id="value-basis-help" style="font-size:12px;color:var(--muted);line-height:1.5;margin:-4px 0 2px">
+        <span id="vb-nominal-help">Values shown in projected future-year dollars, inclusive of projected inflation. Fastest render — single chart pass.</span>
+        <span id="vb-both-help" style="display:none">Dual rendering with a toggle to switch between real (deflated) and nominal (future-year) dollars. Two chart passes — may take longer.</span>
+        <span id="vb-real-help" style="display:none">All values adjusted to today's (start-year) purchasing power using assumed inflation. Single chart pass.</span>
+      </div>
+
       <div class="quick-section-title">Withdrawal Priority</div>
       <div class="inline-row" style="margin-bottom:6px">
         <span style="font-size:12px;color:var(--muted);margin-right:8px">Retirement:</span>
@@ -1167,6 +1183,27 @@
         // State tax dropdown (populate once from API and select current)
         populateStateDropdown(tableSet);
 
+        // Value basis
+        var valueBasis = 'nominal';
+        m = configContent.match(/^\s*value_basis\s*=\s*"(nominal|both|real)"/m);
+        if (m && m[1]) valueBasis = m[1];
+        setField('value_basis', valueBasis);
+
+        // Help text wiring for value basis
+        function updateValueBasisHelp() {
+          var sel = document.getElementById('value_basis');
+          if (!sel) return;
+          ['vb-nominal-help', 'vb-both-help', 'vb-real-help'].forEach(function(id) {
+            document.getElementById(id).style.display = 'none';
+          });
+          var helpId = 'vb-' + sel.value + '-help';
+          var helpEl = document.getElementById(helpId);
+          if (helpEl) helpEl.style.display = '';
+        }
+        var vbSelect = document.getElementById('value_basis');
+        if (vbSelect) vbSelect.addEventListener('change', updateValueBasisHelp);
+        updateValueBasisHelp();
+
         // Chip groups
         makeChips('retirement-order-chips', orders.retirement);
         makeChips('accumulation-order-chips', orders.accumulation);
@@ -1292,6 +1329,10 @@
         var by2 = getField('person2_birth_year');
         if (by1) body.person1_birth_year = parseInt(by1, 10);
         if (by2) body.person2_birth_year = parseInt(by2, 10);
+
+        // Value basis
+        var vb = getField('value_basis');
+        if (vb && ['nominal', 'both', 'real'].indexOf(vb) >= 0) body.value_basis = vb;
 
         // Scenario metadata
         var sn = getField('scenario_name');

@@ -2460,29 +2460,39 @@ def build_chart(
 
     kpi_html = _build_kpi_summary(config, projection_result, nominal_df=nominal_df)
 
-    # Value-basis badge — visible indicator when real-dollar deflation is active
+    # Value-basis badge — visible indicator of the display-value mode
     # ── Value-basis bar with integrated segmented pill toggle ──
     value_basis_html = ""
-    if projection_result.simulation.get("real_dollar_basis"):
+    vb = projection_result.simulation.get("value_basis", "nominal")
+    if vb != "nominal":
         sim = config.get("simulation", {})
         start_year = int(sim.get("start_year", 2026))
-        value_basis_html = (
-            "<div class='modeling-note value-basis-bar'>"
-            # Real-dollar text (visible when mode=real)
-            "<span class='nwn-view-real basis-text'>"
-            f"<strong>Value basis:</strong> All figures in {start_year} dollars (deflated by assumed inflation)."
-            "</span>"
-            # Nominal text (visible when mode=nominal)
-            "<span class='nwn-view-nominal basis-text' style='display:none'>"
-            "<strong>Value basis:</strong> All figures in nominal (future-year) dollars, inclusive of projected inflation."
-            "</span>"
-            # Segmented pill toggle
-            "<span class='value-toggle-pill' id='nwn-value-toggle'>"
-            "<span class='toggle-segment nwn-toggle-real' data-mode='real'>💰 Real</span>"
-            "<span class='toggle-segment nwn-toggle-nominal' data-mode='nominal'>📊 Nominal</span>"
-            "</span>"
-            "</div>"
-        )
+        if vb == "both":
+            # Dual view with toggle pill
+            value_basis_html = (
+                "<div class='modeling-note value-basis-bar'>"
+                # Real-dollar text (visible when mode=real)
+                "<span class='nwn-view-real basis-text'>"
+                f"<strong>Value basis:</strong> All figures in {start_year} dollars (deflated by assumed inflation)."
+                "</span>"
+                # Nominal text (visible when mode=nominal)
+                "<span class='nwn-view-nominal basis-text' style='display:none'>"
+                "<strong>Value basis:</strong> All figures in nominal (future-year) dollars, inclusive of projected inflation."
+                "</span>"
+                # Segmented pill toggle
+                "<span class='value-toggle-pill' id='nwn-value-toggle'>"
+                "<span class='toggle-segment nwn-toggle-real' data-mode='real'>💰 Real</span>"
+                "<span class='toggle-segment nwn-toggle-nominal' data-mode='nominal'>📊 Nominal</span>"
+                "</span>"
+                "</div>"
+            )
+        else:
+            # Real-only mode — badge text, no toggle
+            value_basis_html = (
+                "<div class='modeling-note'>"
+                f"<strong>Value basis:</strong> All figures in {start_year} dollars (deflated by assumed inflation)."
+                "</div>"
+            )
 
     tax_note_html = _build_tax_semantics_note()
 

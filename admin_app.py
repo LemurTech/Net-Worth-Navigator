@@ -1650,6 +1650,7 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "scenario_description": ("scenario.description", str),
     "household_type": ("scenario.household_type", str),
     "table_set": ("taxes.table_set", str),
+    "value_basis": ("simulation.value_basis", str),
 }
 
 _QUICK_ARRAY_MAP: dict[str, str] = {
