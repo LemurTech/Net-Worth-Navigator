@@ -2474,7 +2474,7 @@ def build_chart(
             "</span>"
             # Nominal text (visible when mode=nominal)
             "<span class='nwn-view-nominal basis-text' style='display:none'>"
-            "<strong>Value basis:</strong> All figures in nominal (future-year) dollars. Inflation not adjusted."
+            "<strong>Value basis:</strong> All figures in nominal (future-year) dollars, inclusive of projected inflation."
             "</span>"
             # Segmented pill toggle
             "<span class='value-toggle-pill' id='nwn-value-toggle'>"
