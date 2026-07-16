@@ -44,17 +44,19 @@ So it took me a while to get my bearings.
 
 As I got closer to my 60s, the vague anxiety started turning into specific questions. What kind of retirement could my wife and I reasonably plan for? Could we stay in the U.S. in the house we loved? Would we need to move overseas for a lower-cost life? What would happen if we retired earlier, later, spent more, spent less, downsized, or changed course?
 
-The frustrating part was not that the questions were complicated. The frustrating part was that I could not easily model them.
+The frustrating part was not that the questions were complicated. It was that I could not easily model them.
 
-I wanted a retirement planner I could actually tune: change an assumption, add a planned expense, shift a retirement date, adjust income, compare scenarios, and see the impact quickly. I did not want to fight a spreadsheet. I did not want to re-enter the same numbers into a dozen calculators. And I did not want another monthly subscription for something I might only use a few times a year.
+I tried several existing forecasting tools. Some were useful, but they tended to be one-size-fits-all, too limited, or locked behind another subscription. I already use and genuinely like Monarch Money, so I was particularly interested in its forecasting features. After trying them, however, I still found myself wanting more flexibility than I could justify paying extra for.
+
+I wanted a retirement planner I could really tune: change an assumption, add a planned expense, shift a retirement date, adjust income, compare scenarios, and see the impact quickly. I did not want to fight a spreadsheet, re-enter the same numbers into a dozen calculators, or pay an ongoing subscription for something I might only use a few times a year.
 
 So I started building **Net Worth Navigator**.
 
 It began as a way to answer my own questions with more clarity and less guesswork. The goal is not to predict the future perfectly. The goal is to make the tradeoffs visible, test assumptions quickly, and turn retirement planning from a fog bank into something you can actually navigate.
 
-I do **not** have a background in accounting or financial planning. I'm way more comfortable in PowerShell than in Python and JavaScript — which is what this project is made of. This project is **vibe coded**. AI lets me focus on the creative work and the architecture side without getting bogged down in every implementation detail. If that bothers you, that's fine — this project may not be for you. Somewhere in here there's probably code that would make a senior developer wince.
+I am not an accountant, financial planner, or professional software developer. Net Worth Navigator has therefore been developed with heavy AI assistance from Claude, GPT, and DeepSeek—but not without direction. I have spent a great deal of time defining the architecture, refining the behavior, troubleshooting problems, challenging assumptions, and reviewing the results. The project has been through multiple rounds of code and logic review, and I have made a serious effort to ensure that the calculations behave as intended. Even so, it should not be treated as professional financial advice, and I fully expect that people with deeper financial expertise may find areas that can be improved.
 
-But despite being built this way, a ton of time, care, and **actual token cost** has gone into making something that actually works. If you find it useful, please consider [buying me a coffee](#support-the-project).
+That caveat aside, if you find Net Work Navigator useful, please consider [buying me a coffee](#support-the-project) to help offset the token costs my wife has been politely choosing not to ask about.
 
 ---
 
