@@ -551,20 +551,20 @@
         <div class="inline-field"><label>State Tax</label><select id="tax_state" style="width:180px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">Loading…</option></select></div>
       </div>
 
-      <div class="quick-section-title">Value Basis</div>
+      <div class="quick-section-title">Value Basis Options</div>
       <div class="inline-row">
         <div class="inline-field" style="flex:1 1 auto">
-          <select id="value_basis" style="width:200px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px">
-            <option value="nominal">Future dollars only</option>
-            <option value="both">Both — toggle between modes</option>
-            <option value="real">Today's dollars only</option>
+          <select id="value_basis" style="width:230px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px">
+            <option value="real">Today's Dollars</option>
+            <option value="nominal">Future Dollars</option>
+            <option value="both">Both</option>
           </select>
         </div>
       </div>
-      <div id="value-basis-help" style="font-size:12px;color:var(--muted);line-height:1.5;margin:-4px 0 2px">
-        <span id="vb-nominal-help">Values shown in projected future-year dollars, inclusive of projected inflation. Fastest render — single chart pass.</span>
-        <span id="vb-both-help" style="display:none">Dual rendering with a toggle to switch between real (deflated) and nominal (future-year) dollars. Two chart passes — may take longer.</span>
-        <span id="vb-real-help" style="display:none">All values adjusted to today's (start-year) purchasing power using assumed inflation. Single chart pass.</span>
+      <div id="value-basis-help" style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px">
+        <span id="vb-real-help">All values adjusted to today's (start-year) purchasing power using assumed inflation. Single chart pass.</span>
+        <span id="vb-nominal-help" style="display:none">Values shown in projected future-year dollars, inclusive of inflation. Single chart pass, fastest render time.</span>
+        <span id="vb-both-help" style="display:none">Dual rendering with a toggle to switch between real (deflated) and nominal (future-year) dollars. Two chart passes, longest render time.</span>
       </div>
 
       <div class="quick-section-title">Withdrawal Priority</div>
@@ -1183,10 +1183,17 @@
         // State tax dropdown (populate once from API and select current)
         populateStateDropdown(tableSet);
 
-        // Value basis
+        // Value basis — explicit value_basis takes precedence; fall back to
+        // legacy real_dollar_basis for backward compatibility.
         var valueBasis = 'nominal';
         m = configContent.match(/^\s*value_basis\s*=\s*"(nominal|both|real)"/m);
-        if (m && m[1]) valueBasis = m[1];
+        if (m && m[1]) {
+            valueBasis = m[1];
+        } else {
+            // Check legacy real_dollar_basis bool
+            m = configContent.match(/^\s*real_dollar_basis\s*=\s*(true|false)/m);
+            if (m && m[1] === 'true') valueBasis = 'both';
+        }
         setField('value_basis', valueBasis);
 
         // Help text wiring for value basis
