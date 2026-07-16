@@ -219,9 +219,10 @@ def build_scenario_shell(
     iframe {{
       display: block;
       width: 100%;
-      height: 195vh;
+      height: 9999px;
       border: none;
       background: transparent;
+      overflow: hidden;
     }}
     .empty-state {{
       display: none;
@@ -259,8 +260,7 @@ def build_scenario_shell(
         flex: 0 0 auto;
       }}
       .frame-wrap, iframe {{
-        min-height: 175vh;
-        height: 175vh;
+        height: 9999px;
       }}
     }}
     /* Plan Name / Plan Type stay on one line at virtually all widths — select
@@ -307,8 +307,7 @@ def build_scenario_shell(
     }}
     @media (max-width: 520px) {{
       .frame-wrap, iframe {{
-        min-height: 150vh;
-        height: 150vh;
+        height: 9999px;
       }}
     }}
     /* Data freshness indicator — hidden by default, shown by JS only when cache exists */

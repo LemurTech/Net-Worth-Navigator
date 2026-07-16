@@ -28,6 +28,7 @@ is_default  = false
 # To explicitly set:  household_type = "single"
 
 # ─── Data Source (synthetic → no Monarch call, no cache) ───────────────────────
+household_type = "single"
 
 [data_source]
 mode = "synthetic"   # synthetic | monarch
@@ -172,6 +173,8 @@ retirement_surplus_order   = ["taxable", "roth", "trad_ira"]
 # ═══════════════════════════════════════════════════════════════════════════════
 # ─── Market Assumptions ────────────────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════════════════════
+survivor_withdrawal_order = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+survivor_surplus_order = ["roth", "taxable"]
 
 [assumptions]
 stock_return  = 0.07   # annual nominal return on equities
@@ -382,3 +385,7 @@ amount  = -25000
 expense_kind = "mandatory"
 repeat_every_years = 1
 chart_first_occurrence_only = true
+
+[person2]
+name = "Person 2"
+dob = "0-01-01"

@@ -1024,6 +1024,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   _captureFullRange();
+  window._fullYearRange = _fullYearRange;
   window.zoomToYears = function zoomToYears(chartId, btn, rangeYears) {
     var chart = document.getElementById(chartId);
     if (!chart || !chart.layout || !chart.layout.xaxis || typeof Plotly === 'undefined') return;
@@ -1075,6 +1076,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   _addZoomClamp(_nwnChart);
   _addZoomClamp(_nwnChartNominal);
+  window._addZoomClamp = _addZoomClamp;
 
   // ── Helper: find the currently visible chart for zoom presets ──
   window._visibleNwnChartId = function() {
@@ -1128,7 +1130,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mode === 'nominal' && !_nominalRendered && typeof NWN_NOMINAL_FIGURE !== 'undefined') {
       _nominalRendered = true;
       Plotly.newPlot('nwn-chart-nominal', NWN_NOMINAL_FIGURE.data, NWN_NOMINAL_FIGURE.layout,
-        {scrollZoom: true, displaylogo: false, responsive: true});
+        {scrollZoom: false, displaylogo: false, responsive: true, displayModeBar: 'hover'});
+      // Attach zoom clamp to the now-initialized nominal chart (was skipped
+      // at page load because Plotly wasn't initialized on the empty div).
+      if (typeof window._addZoomClamp === 'function') {
+        window._addZoomClamp(document.getElementById('nwn-chart-nominal'));
+      }
       // Also initialize nominal subsidiary charts from stored JSON figures.
       var _subChartDefs = [
         {id: 'nwn-portfolio-nominal',   key: 'NWN_PORTFOLIO_FIGURE'},
@@ -1138,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', function() {
       _subChartDefs.forEach(function(def) {
         if (typeof window[def.key] !== 'undefined') {
           Plotly.newPlot(def.id, window[def.key].data, window[def.key].layout,
-            {scrollZoom: true, displaylogo: false, responsive: true});
+            {scrollZoom: false, displaylogo: false, responsive: true, displayModeBar: 'hover'});
           delete window[def.key];
         }
       });
@@ -1551,7 +1558,7 @@ def _build_cashflow_chart(df: pd.DataFrame, config: dict | None = None) -> str:
     )
 
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cashflow",
-                       config=dict(scrollZoom=True))
+                       config=dict(scrollZoom=False, displayModeBar='hover'))
 
 
 def _build_liabilities_chart(
@@ -1672,7 +1679,7 @@ def _build_liabilities_chart(
         return fig
 
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-liabilities",
-                       config=dict(scrollZoom=True))
+                       config=dict(scrollZoom=False, displayModeBar='hover'))
 
 
 def _build_cash_reserve_chart(
@@ -1810,7 +1817,7 @@ def _build_cash_reserve_chart(
         return fig
 
     return fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-cash-reserve",
-                       config=dict(scrollZoom=True))
+                       config=dict(scrollZoom=False, displayModeBar='hover'))
 
 
 def _build_cash_reserve_summary(df: pd.DataFrame, config: dict | None = None,
@@ -1977,7 +1984,7 @@ def _build_portfolio_chart(
             full_html=False,
             include_plotlyjs=False,
             div_id="nwn-portfolio",
-            config=dict(scrollZoom=True),
+            config=dict(scrollZoom=False, displayModeBar='hover'),
         )
         if return_fig:
             return fig
@@ -2066,7 +2073,7 @@ def _build_portfolio_chart(
         full_html=False,
         include_plotlyjs=False,
         div_id="nwn-portfolio",
-        config=dict(scrollZoom=True),
+        config=dict(scrollZoom=False, displayModeBar='hover'),
     )
     if return_fig:
         return fig
@@ -2310,7 +2317,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         full_html=False,
         include_plotlyjs=False,
         div_id="nwn-gantt",
-        config=dict(scrollZoom=True),
+        config=dict(scrollZoom=False, displayModeBar='hover'),
     )
     return f"<div class='gantt-wrap'>{gantt_div}</div>"
 
@@ -2384,7 +2391,7 @@ def _build_simulation_results_panel(projection_result: ProjectionResult) -> str:
         margin=dict(l=64, r=24, t=70, b=56),
     )
     chart_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id="nwn-simulation",
-                             config=dict(scrollZoom=True))
+                             config=dict(scrollZoom=False, displayModeBar='hover'))
     table_html = _wrap_table_with_sticky_header(build_simulation_outcomes_table(outcomes_df, summary=summary))
     summary_html = (
         "<div class='assumptions-note'>"
@@ -2428,7 +2435,7 @@ def build_chart(
         full_html=False,
         include_plotlyjs="cdn",
         div_id="nwn-chart",
-        config=dict(scrollZoom=True, displaylogo=False),
+        config=dict(scrollZoom=False, displaylogo=False, displayModeBar='hover'),
     )
 
     # ── Nominal chart (when real-dollar deflation is active) ──
