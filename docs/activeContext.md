@@ -1,39 +1,7 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-15
-**Status:** v1.8.0 — Real-dollar JS toggle complete on `feat/real-dollar-toggle`; all dual-view elements built, 18 commits, awaiting code review before merge to main.
-
----
-
-## Real-Dollar JS Toggle (Phase 2) — Feature Summary
-
-**Branch:** `feat/real-dollar-toggle` (18 commits)
-**Approach:** Dual-data embedding with CSS-driven toggle
-
-When `[simulation].real_dollar_basis = true`, the projection page embeds both nominal and real-dollar data. A segmented pill (`💰 Real | 📊 Nominal`) in the value-basis badge bar switches all monetary values instantly via CSS body-class toggling. No page reload, no re-render. Preference persists in localStorage.
-
-### Architecture
-
-| Layer | How |
-|---|---|
-| **Model** (`model.py`) | `ProjectionResult.nominal_yearly_df` captures pre-deflation DataFrame before `_apply_real_dollar_basis()` runs. Both deterministic and stochastic paths supported. |
-| **Main chart** (`charts.py`) | Nominal figure serialized to JSON via `fig.to_plotly_json()`, stored as `<script>var NWN_NOMINAL_FIGURE = {...};</script>`. Lazy `Plotly.newPlot()` on first toggle — avoids Plotly's `display:none` 0×0 initialization bug. |
-| **Subsidiary charts** (portfolio, liabilities, cash reserve) | Same lazy-init pattern but using script extraction: nominal `fig.to_html()` output has its `Plotly.newPlot()` script stripped and stored as a JS string variable, `eval()`'d on first toggle. Chart IDs suffixed with `-nominal` to avoid duplicate DOM IDs. |
-| **KPI strip** | Dual `<span class='nwn-view-real'>` / `<span class='nwn-view-nominal'>` per monetary value. |
-| **Data tables** (5 tables) | `_fmt()` extended with optional `nominal_val` → `data-nominal` attribute on each monetary `<td>`. Toggle JS swaps `innerHTML` ↔ `data-nominal`. Non-monetary cells (years, rates, flags) unchanged. |
-| **Cash reserve summary** | Dual `<span>` for minimum cash values per phase. |
-| **Tax cumulative summary** | Dual `<span>` for total taxes, federal total, state total. |
-| **CSS** | Body-class-driven: `body.nwn-real .nwn-view-nominal { display: none }` etc. No JS iteration of individual elements — CSS cascade handles chart divs, KPI spans, badge text, and pill highlight. |
-| **Zoom** | Clamping added to both charts; `_visibleNwnChartId()` helper routes zoom preset buttons to the active chart; x-axis range synced on toggle via save/restore. |
-
-### Verified
-
-- scrollHeight stable at 1664px (baseline, no iframe scrollbar regression)
-- All 4 charts (main + 3 subsidiary) render 3 SVGs after toggle
-- 999+ `data-nominal` cells across all tables
-- localStorage persistence across reloads
-- Zero console errors
-- No toggle artifacts when `real_dollar_basis=false`
+**Last updated:** 2026-07-13
+**Status:** v1.4.2 — Shell page JS syntax error fix (f-string quote escaping).
 
 ---
 
@@ -82,54 +50,67 @@ cd /home/lemurtech/Net-Worth-Navigator
 
 ## What's New
 
-### Starlight User Guide Restoration (2026-07-14–15)
+### Windows Unicode Print Fix (2026-07-07)
 
-**Massive documentation overhaul** after the `docs/guide/` nested repo was accidentally deleted
-and all source content was reconstructed from live rendered HTML.
+Replaced all non-ASCII characters (`→`, `–`, `❌`, `—`, `─`) in `print()` calls and validation error strings with ASCII-safe equivalents (`=>`, `-`, `ERROR`, `--`). These characters crashed Python on Windows (cp1252 code page) with `UnicodeEncodeError`, blocking scenario renders entirely.
 
-**Corruption fixes:**
-- 139 malformed headings across 22 files — Starlight screen-reader "Section titled …" text
-  concatenated into markdown headings during HTML-to-markdown conversion
-- 5 files with `<starlight-tabs>` component JavaScript injected as literal code blocks
-  (`installation.mdx`, `quick-start.mdx`, `command-line-basics.mdx`, `running-the-web-ui.mdx`,
-  `monarch-money.mdx`) — rewritten using proper MDX `<Tabs>/<TabItem>` components
-- 4 broken image references with missing `](path)` on `manual-entry.mdx`, `projection.mdx`,
-  `render-modes.mdx`, `account-types.mdx`
-- 15+ flat key-value lists converted to proper Markdown tables across 10 pages
-- `index.mdx` restored from default Starlight template ("Welcome to Starlight") to real NWN
-  landing page (recovered from historic gh-pages commit `7a108fdc`)
-- `projection.mdx` reconstructed from 7 lines to full content (KPI strip, chart controls,
-  tabbed panels, year highlighting, data point semantics)
-- `render-modes.mdx` expanded from Deterministic-only to full Historical + Monte Carlo +
-  Success Metrics + Configuration + Choosing a Mode
-- 2 dead Starlight default `example.md` pages removed
+**Files patched:** `run.py` (8 sites), `src/monarch_bridge.py` (2 sites), `src/model.py` (1 site).
 
-**Content additions:**
-- New **Social Security Benefits** page (`key-concepts/social-security.mdx`) — SSA.gov
-  walkthrough, age 62–70 benefit entry, model semantics, starter template reference
-- `home-server.mdx` expanded with platform-specific Python server commands, IP-finding
-  instructions, fixed "Run Alongside" section
-- `installation.mdx` "Get the Code" rewritten with directory guidance, Git clone + ZIP
-  download paths, platform-specific `cd` targets
-- `monarch-money.mdx` "Automating Updates" expanded from 2 bullets to full platform tabs
-  (cron job with actual syntax, Windows Task Scheduler with 10 numbered steps)
-- `quick-start.mdx` list indentation fixed under Web UI section
-- `license.mdx` section ordering (Security first, License last)
+### Accounts Tab — Manual Entry Fields Loading (2026-07-07)
 
-**Assets recovered:**
-- 23 guide images (Git installer screenshots, projection screenshots, Manual Entry form,
-  CSV import preview, Gantt chart, render mode examples) recovered from gh-pages branch
-  into `docs/guide/public/`
-- **NWN favicon** restored — chart sparkline SVG replaces Starlight default compass
-- **ImagePreview lightbox** component (`src/components/ImagePreview.astro`) recreated
-  and wired into 6 pages
+When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the synthetic input fields (investable balances, property values, liability balances) remained empty because `loadSyntheticTab()` was never called — only the radio change handler triggered it, which never fires on initial page load.
 
-**Docker deployment (v1.5.1 / v1.6.0):**
-- `docker-compose.yml` and `nginx-default.conf` added to repo as sample Docker deployment
-- Monarch MCP bind mounts documented with platform-specific Linux/Windows instructions
-- Docker "All-in-One" section added to `home-server.mdx`
-- Monarch MCP Docker mounts added to `docker-compose.yml` — container now reaches
-  `/opt/monarch-mcp-server`, uv Python binary, and token directory
+**Fix:** Added `loadSyntheticTab()` call in `initAccountsTab()` after `applyAccountsTabModeState()` for synthetic mode.
+
+### State Tax System — Full Coverage (2026-07-07)
+
+**Engine:** Generalized `resolve_state_tax_system()` to dispatch by mode instead of hardcoded Oregon-only check. Four-path dispatch: no-tax → named engine → bracket table → disabled. `STATE_TAX_ENGINES` registry, `KNOWN_NO_INCOME_TAX_STATES` set.
+
+**50 state TOML files** under `config/tax_tables/`:
+- 9 no-income-tax: AK, FL, NV, NH, SD, TN, TX, WA, WY
+- 17 flat-rate: AZ 2.5%, AR 4.9%, CO 4.25%, GA 5.39%, IA 3.8%, ID 5.8%, IL 4.95%, IN 3.05%, KY 4%, MA 5%, MI 4.25%, MS 4.7%, NC 4.5%, OH 3.5%, PA 3.07%, RI 3.75%, UT 4.65%
+- 1 special engine: OR (table+charts in `oregon_tax_2025.py`)
+- 21 progressive: AL, CA, CT, DE, HI, KS, LA, ME, MD, MN, MO, MT, ND, NE, NJ, NM, NY, OK, SC, VT, VA, WI, WV
+- Montana and Alabama flagged `tax_social_security = true`
+
+**Source registry:** `docs/references/state-tax-data-sources.md` tracks every state's source URL, access date, notes, and standard deduction amounts.
+
+**Setup Panel:** State Tax dropdown in Metadata → Assumptions & Years section. Fetches available states via `GET /api/tax-states`. Saves `table_set` to `[taxes].table_set` in scenario TOML.
+
+### README Rewrite (2026-07-06)
+
+- GUI-first onboarding (Web UI as Option A everywhere)
+- Creator's note: vibe coded, no finance background, PowerShell > Python
+- Novice Python install instructions
+- Feature overview table, expanded sample scenarios table
+- Data source comparison (Manual / Monarch / CSV)
+- Security notes (no auth, homelab use)
+- Support section with donation links
+- Monarch referral link
+
+### README + GitHub Pages (2026-07-08)
+
+### Bug Fixes — Setup Panel Clone & Delete (2026-07-10)
+
+**Clone via Setup Panel silently failed** — `initCloneScenario()` sent `FormData` (multipart) but the backend `_parse_form()` only decodes URL-encoded form bodies. The form fields were silently lost; the JS redirected to the new slug where no file existed, showing the "scenarios/ directory is empty" error.
+
+**Fix:** Switched to `URLSearchParams` with `Content-Type: application/x-www-form-urlencoded`, matching the Save/Render/Validate pattern used elsewhere.
+
+**Clone warning false positive** — The Monarch warning when cloning synthetic-mode scenarios read `_accountsData.source_mode`, which is only populated after the Accounts tab loads. If the user cloned without opening Accounts, the fallback defaulted to `'monarch'`.
+
+**Fix:** Now parses `data_source.mode` directly from the TOML textarea content, which is always authoritative regardless of UI state.
+
+**Clone auto-render delay** — After creating a clone, the backend ran `_render_projection_offline()` (all 3 modes) before responding. This made the clone appear to hang.
+
+**Fix:** Removed auto-render from the clone flow. Clones are instant; the user renders via Save + Re-render when ready.
+
+**Delete modal stuck** — After deleting a scenario, the endpoint called `_render_projection_offline(None)` which re-projects all scenarios just to rebuild the shell pages, blocking the response.
+
+**Fix:** Replaced with lightweight shell rebuild: `write_scenarios_index()` + `build_scenario_shell()` + `build_compare_page()` — no projection, instant response.
+
+**Nightly scenario backup** — Nightly cron (`4d0e4e6f1a35`) backs up gitignored personal .toml files to `/home/lemurtech/.nwn-backups/` with 30-day rolling retention.
+
+**Git hooks** — `post-checkout` warns if personal scenarios go missing; `pre-rebase` + `post-rewrite` auto-snapshot and restore; `pre-commit` blocks committing personal scenarios.
 
 - **Badge cleanup:** Replaced CI and Docs badges (no pipeline/docs site yet) with last-commit and GPL license badges.
 - **Banner image:** Projection chart screenshot added below the badge row.
@@ -140,6 +121,12 @@ and all source content was reconstructed from live rendered HTML.
 
 ### Open Items
 
+## Features Under Consideration
+
+| Feature | Priority | Notes |
+|---------|----------|-------|
+| **Real-dollar display toggle** | Low | Show all chart and table figures in today's purchasing power (deflated by CPI). A live client-side toggle would be ideal but requires dynamic JS on static pages; a config switch (render-mode option in TOML) is a simpler starting point. See `[assumptions].inflation` for the underlying rate. |
+
 ### Feature gaps
 
 - `resolve_state_tax_system()` in `src/tax_model.py` — Maryland's county-level income tax (1.75%-3.2%) is not modeled. State-only brackets provide a useful approximation.
@@ -149,6 +136,12 @@ and all source content was reconstructed from live rendered HTML.
 ### Streamlining candidates
 
 - **`[simulation].clamp_start_year`** — The opt-out exists in code (`default: true`) but is undocumented in user-facing README by design. There's no clear use case for disabling it. Consider removing the option entirely in a future version if no one asks for it.
+
+### Confirmation needed
+
+- Confirm survivor spending percentage (currently 70% of retirement spending).
+- Confirm Person 2 SS estimate ($1,200/mo) once SSA.gov is available.
+- Validate `[withdrawal_policy]` cash targets match intent: Accumulation $40K, Retirement $50K, Survivor $30K.
 
 ### Safeguards in place
 
@@ -177,11 +170,8 @@ docs/references/
 - **Monarch not installed:** Set `[data_source].mode = "synthetic"` or select Manual Entry in Setup Panel.
 - **Monarch auth expires:** Re-auth via `cd /opt/monarch-mcp-server && uv run python login_setup.py`
 - **`nwn-config-editor` must be restarted after `admin_app.py` changes.** `cd /opt/hal-pages && docker compose restart nwn-config-editor`.
-- **Docker container needs Monarch MCP mounts.** The `nwn-config-editor` container cannot access `/opt/monarch-mcp-server`, the uv Python binary, or the token directory unless they are explicitly mounted in `docker-compose.yml`. Required mounts: `/opt/monarch-mcp-server` (ro), `/root/.local/share/uv` (ro), `/root/.monarch-mcp-server`. Without these, the "Refresh from Monarch" button returns a 503 with "not installed on this system."
 - **`output/` is gitignored.** Generated HTML and sidecar data not tracked.
 - **`POST /api/save-classification` replaces entire `[accounts]` section.** Send ALL accounts.
 - **`table_set` in `_QUICK_CONTROL_MAP`** writes to `[taxes].table_set`. Selector defaults to None if no `table_set` is set.
 - **Maryland county tax** is not modeled. State-only brackets approximate state liability.
 - **Montana and Alabama tax Social Security** (`tax_social_security = true` in TOML).
-- **`docs/guide/` was a nested git repo** (fixed 2026-07-14). The Starlight site source was initialized as a standalone git repo inside `docs/guide/` with no remote, so none of the source content was tracked by the main NWN repo. This was discovered when it was accidentally deleted during a gh-pages deploy. Fix: `docs/guide/.git` was removed and all files are now tracked by the main NWN repo. Do NOT re-initialize a nested repo there. To deploy: run `python scripts/build_demo.py --deploy` from the repo root — this handles everything: re-rendering samples, building the static read-only setup pages, building the Starlight guide, and pushing to gh-pages.
-- **`src/demo_setup_page.py`** — generates static read-only setup pages for the gh-pages demo. No server-side dependencies. Versioned in the main repo alongside `scripts/build_demo.py`. To update the demo setup page, edit this file and re-deploy.
