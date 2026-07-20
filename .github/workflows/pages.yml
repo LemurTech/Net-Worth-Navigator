@@ -49,6 +49,8 @@ jobs:
 
       - name: Build demo (sample scenarios + Starlight guide)
         run: python scripts/build_demo.py
+        env:
+          NWN_DEPLOY_DIR: output/deploy
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

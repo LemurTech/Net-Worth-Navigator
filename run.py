@@ -7,6 +7,7 @@ Usage:
 """
 
 import json
+import os
 import shutil
 import sys
 from copy import deepcopy
@@ -39,7 +40,7 @@ from src.scenario_shell import build_scenario_shell, build_compare_page
 from src.sidecars import write_sidecars
 
 OUTPUT_DIR  = Path("output")
-DEPLOY_DIR  = Path("/srv/web-projects/finances")
+DEPLOY_DIR  = Path(os.environ.get("NWN_DEPLOY_DIR", "/srv/web-projects/finances"))
 CACHE_FILE  = OUTPUT_DIR / "balances_cache.json"
 OFFLINE     = "--offline" in sys.argv
 BUNDLED_HISTORICAL_RETURNS_PATH = "config/return_sequences/us_balanced_returns.csv"
