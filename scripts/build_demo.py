@@ -53,7 +53,8 @@ def main():
             capture_output=True, text=True, timeout=600,
         )
         if result.returncode != 0:
-            print(f"  ERROR rendering {slug}: {result.stderr[:200]}")
+            print(f"  ERROR rendering {slug}: exit={result.returncode}", flush=True)
+            print(f"  stderr:\n{result.stderr}", flush=True)
             sys.exit(1)
         print(f"  {slug}: OK")
 

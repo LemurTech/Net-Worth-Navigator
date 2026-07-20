@@ -1218,9 +1218,11 @@ def build_compare_page(
       traces.push({{
         x: years, y: net, mode: 'lines', name: name + ' net',
         fill: 'tozeroy',
-        fillcolor: color.replace('rgb', 'rgba').replace(')', ',0.12)').replace('#', 'rgba(').replace(/rgba\(([0-9a-f]{{2}})([0-9a-f]{{2}})([0-9a-f]{{2}}),0\.12\)/, function(_, r, g, b) {{
-          return 'rgba(' + parseInt(r, 16) + ',' + parseInt(g, 16) + ',' + parseInt(b, 16) + ',0.12)';
-        }}),
+        fillcolor: (function() {{
+          var v = parseInt(color.replace('#',''), 16);
+          var r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;
+          return 'rgba(' + r + ',' + g + ',' + b + ',0.12)';
+        }})(),
         line: {{ color: color, width: 2.2, dash: isDash ? 'dashdot' : 'solid' }},
         hovertemplate: '<b>%{{x}}</b><br>' + name + ' net flow: %{{y:$,.3f}}M<extra></extra>',
       }});

@@ -44,6 +44,9 @@ jobs:
         working-directory: docs/guide
         run: npm ci
 
+      - name: Validate Python source (no syntax warnings)
+        run: python -W error::SyntaxWarning -m compileall src/ scripts/
+
       - name: Build demo (sample scenarios + Starlight guide)
         run: python scripts/build_demo.py
 
