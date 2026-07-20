@@ -52,13 +52,17 @@ jobs:
         env:
           NWN_DEPLOY_DIR: output/deploy
 
-      - name: Assemble artifact (demo + Starlight guide)
-        run: cp -r docs/guide/dist/* output/demo/
+      - name: Assemble artifact (guide at root, demo under /demo/)
+        run: |
+          mkdir -p artifact/demo
+          cp -r docs/guide/dist/* artifact/
+          cp -r output/demo/* artifact/demo/
+          touch artifact/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: output/demo
+          path: artifact
 
       - name: Deploy to GitHub Pages
         id: deployment
