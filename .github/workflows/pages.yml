@@ -52,6 +52,9 @@ jobs:
         env:
           NWN_DEPLOY_DIR: output/deploy
 
+      - name: Assemble artifact (demo + Starlight guide)
+        run: cp -r docs/guide/dist/* output/demo/
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
