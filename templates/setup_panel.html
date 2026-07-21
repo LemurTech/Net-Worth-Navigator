@@ -818,7 +818,16 @@
 
       function apiGet(path) {
         return fetch(apiUrl(path), { headers: { Accept: 'application/json' } })
-          .then(function (r) { return r.json(); });
+          .then(function (r) {
+            if (!r.ok) throw new Error('API GET returned ' + r.status + ' ' + r.statusText);
+            var ct = (r.headers.get('content-type') || '').toLowerCase();
+            if (ct.indexOf('application/json') < 0) {
+              return r.text().then(function (text) {
+                throw new Error('API GET: non-JSON response (' + ct + '): ' + text.substring(0, 120));
+              });
+            }
+            return r.json();
+          });
       }
 
       function apiPost(path, body) {
@@ -826,7 +835,16 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify(body),
-        }).then(function (r) { return r.json(); });
+        }).then(function (r) {
+          if (!r.ok) throw new Error('API POST returned ' + r.status + ' ' + r.statusText);
+          var ct = (r.headers.get('content-type') || '').toLowerCase();
+          if (ct.indexOf('application/json') < 0) {
+            return r.text().then(function (text) {
+              throw new Error('API POST: non-JSON response (' + ct + '): ' + text.substring(0, 120));
+            });
+          }
+          return r.json();
+        });
       }
 
       function apiPostForm(path, formData) {

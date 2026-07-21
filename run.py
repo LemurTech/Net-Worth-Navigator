@@ -41,6 +41,7 @@ from src.sidecars import write_sidecars
 
 OUTPUT_DIR  = Path("output")
 DEPLOY_DIR  = Path(os.environ.get("NWN_DEPLOY_DIR", "/srv/web-projects/finances"))
+PUBLIC_PATH_PREFIX = os.environ.get("NWN_PUBLIC_PATH_PREFIX", "/finances")
 CACHE_FILE  = OUTPUT_DIR / "balances_cache.json"
 OFFLINE     = "--offline" in sys.argv
 BUNDLED_HISTORICAL_RETURNS_PATH = "config/return_sequences/us_balanced_returns.csv"
@@ -388,19 +389,32 @@ def main():
     print(f"  scenarios_index_json: {index_path}")
     shell_manifest = json.loads(index_path.read_text(encoding="utf-8"))
     shell_output_path = OUTPUT_DIR / "projection.html"
+    pfx = PUBLIC_PATH_PREFIX.rstrip("/")
+    if pfx:
+        setup_url = f"{pfx}/config/setup"
+        definitions_url = f"{pfx}/definitions.html"
+        projection_url = f"{pfx}/projection.html"
+        shell_url = f"{pfx}/projection.html"
+        editor_url = f"{pfx}/config/setup"
+    else:
+        setup_url = "/setup"
+        definitions_url = "/definitions.html"
+        projection_url = "/projection.html"
+        shell_url = "/projection.html"
+        editor_url = "/setup"
     build_scenario_shell(
         manifest=shell_manifest,
         output_path=shell_output_path,
         manifest_relpath="scenarios/index.json",
-        setup_url="/finances/config/setup",
-        definitions_url="/finances/definitions.html",
+        setup_url=setup_url,
+        definitions_url=definitions_url,
     )
     print(f"  scenario_shell_html: {shell_output_path}")
     definitions_output_path = OUTPUT_DIR / "definitions.html"
     write_definitions_page(
         definitions_output_path,
-        editor_url="/finances/config/setup",
-        projection_url="/finances/projection.html",
+        editor_url=editor_url,
+        projection_url=projection_url,
     )
     print(f"  definitions_html: {definitions_output_path}")
 
@@ -409,8 +423,8 @@ def main():
         manifest=shell_manifest,
         output_path=compare_output_path,
         manifest_relpath="scenarios/index.json",
-        shell_url="/finances/projection.html",
-        definitions_url="/finances/definitions.html",
+        shell_url=shell_url,
+        definitions_url=definitions_url,
     )
     print(f"  compare_html: {compare_output_path}")
 
@@ -431,7 +445,7 @@ def main():
     deploy_definitions_path.chmod(0o644)
     deploy_compare_path.chmod(0o644)
     print(f"=> Deployed => {deploy_path}")
-    print(f"  View at: http://casalemuria.lan/finances/projection.html")
+    print(f"  View at: {deploy_path.absolute()}")
     print("Done.")
 
 

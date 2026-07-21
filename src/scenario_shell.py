@@ -577,13 +577,12 @@ def build_scenario_shell(
       function projectionUrlFor(selectedScenario, selectedMode, {{ embed = false, force = false }} = {{}}) {{
         const selected = modeEntryFor(selectedScenario, selectedMode);
         if (!selected) return "";
-        const base = selected.projection_path;
+        const url = new URL(selected.projection_path, window.location.href);
         const version = selected.rendered_at || manifest.generated_at || new Date().toISOString();
-        const params = new URLSearchParams();
-        if (embed) params.set("embed", "1");
-        params.set("v", version);
-        if (force) params.set("refresh", Date.now().toString());
-        return `${{base}}?${{params.toString()}}`;
+        url.searchParams.set("v", version);
+        if (embed) url.searchParams.set("embed", "1");
+        if (force) url.searchParams.set("refresh", Date.now().toString());
+        return url.toString();
       }}
 
       function setupUrlFor(selected) {{
@@ -974,7 +973,8 @@ def build_compare_page(
 
   // ── Sidecar path helpers ─────────────────────────────────────────
   function sidecarBase(slug, mode) {{
-    return 'scenarios/' + slug + '/' + mode + '/sidecars/';
+    const url = new URL('scenarios/' + slug + '/' + mode + '/sidecars/', window.location.href);
+    return url.toString();
   }}
 
   function projCSVPath(slug, mode) {{

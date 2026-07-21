@@ -30,16 +30,31 @@ VENV_PYTHON = APP_ROOT / ".venv" / "bin" / "python"
 PYTHON_BIN = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
 RUN_SCRIPT = APP_ROOT / "run.py"
 
+# Public URL path prefix for reverse-proxy deployments (e.g. /finances).
+# When empty, paths use the actual FastAPI routes (/setup, /projection.html).
+# Set via NWN_PUBLIC_PATH_PREFIX env var.
+PUBLIC_PATH_PREFIX = os.environ.get("NWN_PUBLIC_PATH_PREFIX", "/finances")
+
 
 def _public_urls(base_url: str, scenario_slug: str = "") -> dict[str, str]:
-    """Derive public URLs from the incoming request's base URL."""
+    """Derive public URLs from the incoming request's base URL and path prefix."""
     base = base_url.rstrip("/")
     slug_qs = f"?scenario={scenario_slug}" if scenario_slug else ""
-    return {
-        "projection_url": f"{base}/projection.html{slug_qs}",
-        "editor_url": f"{base}/config/setup{slug_qs}",
-        "definitions_url": f"{base}/definitions.html",
-    }
+    pfx = PUBLIC_PATH_PREFIX.rstrip("/")
+    if pfx:
+        # Behind reverse proxy — use proxy-facing paths
+        return {
+            "projection_url": f"{base}{pfx}/projection.html{slug_qs}",
+            "editor_url": f"{base}{pfx}/config/setup{slug_qs}",
+            "definitions_url": f"{base}{pfx}/definitions.html",
+        }
+    else:
+        # Direct deployment (no proxy) — use FastAPI route paths
+        return {
+            "projection_url": f"{base}/projection.html{slug_qs}",
+            "editor_url": f"{base}/setup{slug_qs}",
+            "definitions_url": f"{base}/definitions.html",
+        }
 
 app = FastAPI(title="Net Worth Navigator Config Editor")
 
@@ -64,6 +79,13 @@ RENDER_JOBS_LOCK = threading.Lock()
 @app.get("/finances/projection.html", response_class=HTMLResponse)
 async def serve_projection(scenario: str | None = None):
     path = OUTPUT_DIR / "projection.html"
+    return HTMLResponse(path.read_text(encoding="utf-8")) if path.exists() else HTMLResponse("Not found", status_code=404)
+
+
+@app.get("/compare.html", response_class=HTMLResponse)
+@app.get("/finances/compare.html", response_class=HTMLResponse)
+async def serve_compare():
+    path = OUTPUT_DIR / "compare.html"
     return HTMLResponse(path.read_text(encoding="utf-8")) if path.exists() else HTMLResponse("Not found", status_code=404)
 
 
@@ -155,12 +177,16 @@ def _backup_and_write(content: str, scenario_slug: str | None = None) -> Path:
 
     _config_path(scenario_slug).write_text(content, encoding="utf-8")
     # fsync to flush through bind-mount / Docker storage delay
+    # Best-effort: some filesystems (overlay2, NFS) reject fsync on O_RDONLY fds.
     config_path = _config_path(scenario_slug)
-    fd = os.open(str(config_path), os.O_RDONLY)
     try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+        fd = os.open(str(config_path), os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
     _prune_backups(backup_dir)
     return backup_path
 
@@ -805,10 +831,17 @@ async def setup_panel(request: Request, response: Response) -> HTMLResponse:
 @app.get("/definitions", response_class=HTMLResponse)
 @app.get("/finances/config/definitions", response_class=HTMLResponse)
 async def definitions_page() -> HTMLResponse:
+    pfx = PUBLIC_PATH_PREFIX.rstrip("/")
+    if pfx:
+        editor_url = f"{pfx}/config/"
+        projection_url = f"{pfx}/projection.html"
+    else:
+        editor_url = "/setup"
+        projection_url = "/projection.html"
     return HTMLResponse(
         build_definitions_page_html(
-            editor_url="/finances/config/",
-            projection_url="/finances/projection.html",
+            editor_url=editor_url,
+            projection_url=projection_url,
         )
     )
 
@@ -1235,13 +1268,16 @@ def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None 
         backup_path.write_text(current_content, encoding="utf-8")
 
     config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
-    # fsync to flush the write through any bind-mount / Docker storage delay
-    # so the file is immediately visible from the host side.
-    fd = os.open(str(config_path), os.O_RDONLY)
+    # fsync to flush the write through any bind-mount / Docker storage delay.
+    # Best-effort: some filesystems (overlay2, NFS) reject fsync on O_RDONLY fds.
     try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+        fd = os.open(str(config_path), os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
     _prune_backups(backup_dir)
     return backup_path
 
@@ -1718,131 +1754,138 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
     except Exception:
         return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
 
-    doc, _ = _toml_open(scenario_slug)
-    
-    # If the client included the raw TOML textarea content, use that as the
-    # base document instead of re-reading the file.  This preserves any raw
-    # edits the user made (e.g. uncommenting real_dollar_basis) that would
-    # otherwise be lost when the file is re-read and overwritten.
-    raw_content = body.get("_raw_toml_content")
-    if raw_content and isinstance(raw_content, str) and raw_content.strip():
-        doc = tomlkit.parse(raw_content)
-    
-    changed_keys: list[str] = []
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        
+        # If the client included the raw TOML textarea content, use that as the
+        # base document instead of re-reading the file.  This preserves any raw
+        # edits the user made (e.g. uncommenting real_dollar_basis) that would
+        # otherwise be lost when the file is re-read and overwritten.
+        raw_content = body.get("_raw_toml_content")
+        if raw_content and isinstance(raw_content, str) and raw_content.strip():
+            doc = tomlkit.parse(raw_content)
+        
+        changed_keys: list[str] = []
 
-    def _value_differs(parent: dict, key: str, typed) -> bool:
-        """Compare new value against existing. Treat str ↔ int/float as equal if numeric."""
-        existing = parent.get(key)
-        if existing is None:
-            return True
-        if type(existing) == type(typed):
-            return existing != typed
-        # Allow cross-type comparison: "1980" == 1980
-        try:
-            return float(existing) != float(typed)
-        except (TypeError, ValueError):
-            return str(existing) != str(typed)
-
-    # Scalar fields
-    for field_name, (toml_path, value_type) in _QUICK_CONTROL_MAP.items():
-        raw = body.get(field_name)
-        if raw is None:
-            continue
-        try:
-            typed = value_type(raw) if not isinstance(raw, str) or isinstance(raw, bool) else value_type(raw)
-        except (TypeError, ValueError):
-            continue
-        parent, key = _resolve_toml_path(doc, toml_path)
-        if _value_differs(parent, key, typed):
-            parent[key] = typed
-            changed_keys.append(toml_path)
-
-    # When value_basis is explicitly set, remove legacy real_dollar_basis
-    # to avoid confusion (both fields should not coexist in the file).
-    if "value_basis" in body and "real_dollar_basis" in doc.get("simulation", {}):
-        del doc["simulation"]["real_dollar_basis"]
-        changed_keys.append("simulation.real_dollar_basis_removed")
-
-    # Array fields
-    for field_name, toml_path in _QUICK_ARRAY_MAP.items():
-        raw = body.get(field_name)
-        if raw is None or not isinstance(raw, list):
-            continue
-        parent, key = _resolve_toml_path(doc, toml_path)
-        existing = parent.get(key)
-        if existing is None or list(existing) != raw:
-            parent[key] = raw
-            changed_keys.append(toml_path)
-
-    # data_source mode (special case — radio button)
-    ds_mode = body.get("data_source")
-    if ds_mode in ("monarch", "synthetic", "csv_import"):
-        if "data_source" not in doc or doc["data_source"] is None:
-            doc["data_source"] = tomlkit.table()
-        existing_mode = doc["data_source"].get("mode")
-        if existing_mode != ds_mode:
-            doc["data_source"]["mode"] = ds_mode
-            changed_keys.append("data_source.mode")
-
-    # Birth years (reconstruct dob string from year)
-    for person_key, field_name in [("person1", "person1_birth_year"), ("person2", "person2_birth_year")]:
-        raw_by = body.get(field_name)
-        if raw_by is not None:
+        def _value_differs(parent: dict, key: str, typed) -> bool:
+            """Compare new value against existing. Treat str ↔ int/float as equal if numeric."""
+            existing = parent.get(key)
+            if existing is None:
+                return True
+            if type(existing) == type(typed):
+                return existing != typed
+            # Allow cross-type comparison: "1980" == 1980
             try:
-                birth_year = int(raw_by)
+                return float(existing) != float(typed)
+            except (TypeError, ValueError):
+                return str(existing) != str(typed)
+
+        # Scalar fields
+        for field_name, (toml_path, value_type) in _QUICK_CONTROL_MAP.items():
+            raw = body.get(field_name)
+            if raw is None:
+                continue
+            try:
+                typed = value_type(raw) if not isinstance(raw, str) or isinstance(raw, bool) else value_type(raw)
             except (TypeError, ValueError):
                 continue
-            if person_key not in doc or doc[person_key] is None:
-                doc[person_key] = tomlkit.table()
-            current_dob = str(doc[person_key].get("dob", ""))
-            # Preserve existing month/day if present, else default to Jan 1
-            if current_dob and "-" in current_dob and len(current_dob.split("-")) == 3:
-                month_day = "-".join(current_dob.split("-")[1:])
-            else:
-                month_day = "01-01"
-            new_dob = f"{birth_year}-{month_day}"
-            if current_dob != new_dob:
-                doc[person_key]["dob"] = new_dob
-                changed_keys.append(f"{person_key}.dob")
+            parent, key = _resolve_toml_path(doc, toml_path)
+            if _value_differs(parent, key, typed):
+                parent[key] = typed
+                changed_keys.append(toml_path)
 
-    if not changed_keys:
-        # Check whether any recognized fields were present in the request body at all
-        any_recognized = any(
-            field in body
-            for field in list(_QUICK_CONTROL_MAP.keys())
-            + list(_QUICK_ARRAY_MAP.keys())
-            + ["data_source", "person1_birth_year", "person2_birth_year", "household_type"]
-        )
-        if not any_recognized:
-            return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)
-        # Recognized fields were sent but none changed — still a success
-        # BUT: if _raw_toml_content was provided, the user's raw edits need
-        # to be persisted even though the form fields didn't change.
-        if raw_content and isinstance(raw_content, str) and raw_content.strip():
-            backup_path = _backup_and_write_toml(doc, scenario_slug)
+        # When value_basis is explicitly set, remove legacy real_dollar_basis
+        # to avoid confusion (both fields should not coexist in the file).
+        if "value_basis" in body and "real_dollar_basis" in doc.get("simulation", {}):
+            del doc["simulation"]["real_dollar_basis"]
+            changed_keys.append("simulation.real_dollar_basis_removed")
+
+        # Array fields
+        for field_name, toml_path in _QUICK_ARRAY_MAP.items():
+            raw = body.get(field_name)
+            if raw is None or not isinstance(raw, list):
+                continue
+            parent, key = _resolve_toml_path(doc, toml_path)
+            existing = parent.get(key)
+            if existing is None or list(existing) != raw:
+                parent[key] = raw
+                changed_keys.append(toml_path)
+
+        # data_source mode (special case — radio button)
+        ds_mode = body.get("data_source")
+        if ds_mode in ("monarch", "synthetic", "csv_import"):
+            if "data_source" not in doc or doc["data_source"] is None:
+                doc["data_source"] = tomlkit.table()
+            existing_mode = doc["data_source"].get("mode")
+            if existing_mode != ds_mode:
+                doc["data_source"]["mode"] = ds_mode
+                changed_keys.append("data_source.mode")
+
+        # Birth years (reconstruct dob string from year)
+        for person_key, field_name in [("person1", "person1_birth_year"), ("person2", "person2_birth_year")]:
+            raw_by = body.get(field_name)
+            if raw_by is not None:
+                try:
+                    birth_year = int(raw_by)
+                except (TypeError, ValueError):
+                    continue
+                if person_key not in doc or doc[person_key] is None:
+                    doc[person_key] = tomlkit.table()
+                current_dob = str(doc[person_key].get("dob", ""))
+                # Preserve existing month/day if present, else default to Jan 1
+                if current_dob and "-" in current_dob and len(current_dob.split("-")) == 3:
+                    month_day = "-".join(current_dob.split("-")[1:])
+                else:
+                    month_day = "01-01"
+                new_dob = f"{birth_year}-{month_day}"
+                if current_dob != new_dob:
+                    doc[person_key]["dob"] = new_dob
+                    changed_keys.append(f"{person_key}.dob")
+
+        if not changed_keys:
+            # Check whether any recognized fields were present in the request body at all
+            any_recognized = any(
+                field in body
+                for field in list(_QUICK_CONTROL_MAP.keys())
+                + list(_QUICK_ARRAY_MAP.keys())
+                + ["data_source", "person1_birth_year", "person2_birth_year", "household_type"]
+            )
+            if not any_recognized:
+                return JSONResponse({"ok": False, "error": "No recognised fields in request."}, status_code=400)
+            # Recognized fields were sent but none changed — still a success
+            # BUT: if _raw_toml_content was provided, the user's raw edits need
+            # to be persisted even though the form fields didn't change.
+            if raw_content and isinstance(raw_content, str) and raw_content.strip():
+                backup_path = _backup_and_write_toml(doc, scenario_slug)
+                return JSONResponse({
+                    "ok": True,
+                    "message": "Raw TOML updated.",
+                    "changed_keys": [],
+                    "backup_path": str(backup_path),
+                    "toml_content": doc.as_string(),
+                })
             return JSONResponse({
                 "ok": True,
-                "message": "Raw TOML updated.",
+                "message": "No changes detected.",
                 "changed_keys": [],
-                "backup_path": str(backup_path),
+                "backup_path": None,
                 "toml_content": doc.as_string(),
             })
+
+        backup_path = _backup_and_write_toml(doc, scenario_slug)
         return JSONResponse({
             "ok": True,
-            "message": "No changes detected.",
-            "changed_keys": [],
-            "backup_path": None,
+            "message": f"Updated {len(changed_keys)} field(s).",
+            "changed_keys": changed_keys,
+            "backup_path": str(backup_path),
             "toml_content": doc.as_string(),
         })
-
-    backup_path = _backup_and_write_toml(doc, scenario_slug)
-    return JSONResponse({
-        "ok": True,
-        "message": f"Updated {len(changed_keys)} field(s).",
-        "changed_keys": changed_keys,
-        "backup_path": str(backup_path),
-        "toml_content": doc.as_string(),
-    })
+    except (FileNotFoundError, KeyError) as exc:
+        return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
+    except tomllib.TOMLDecodeError as exc:
+        return JSONResponse({"ok": False, "error": f"TOML parse error: {exc}"}, status_code=400)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
 @app.get("/api/validate-scenario")
@@ -2209,6 +2252,7 @@ from fastapi.staticfiles import StaticFiles
 scenarios_dir = OUTPUT_DIR / "scenarios"
 if scenarios_dir.exists():
     app.mount("/scenarios", StaticFiles(directory=str(scenarios_dir)), name="scenarios")
+    app.mount("/finances/scenarios", StaticFiles(directory=str(scenarios_dir)), name="scenarios_proxy_prefix")
 
 
 if __name__ == "__main__":
