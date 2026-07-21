@@ -29,14 +29,49 @@ OUTPUT_DIR = APP_ROOT / "output"
 VENV_PYTHON = APP_ROOT / ".venv" / "bin" / "python"
 PYTHON_BIN = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
 RUN_SCRIPT = APP_ROOT / "run.py"
-PUBLIC_PROJECTION_URL = "http://casalemuria.lan/finances/projection.html"
-PUBLIC_EDITOR_URL = "http://casalemuria.lan/finances/config/setup"
-PUBLIC_DEFINITIONS_URL = "http://casalemuria.lan/finances/definitions.html"
+
+
+def _public_urls(base_url: str, scenario_slug: str = "") -> dict[str, str]:
+    """Derive public URLs from the incoming request's base URL."""
+    base = base_url.rstrip("/")
+    slug_qs = f"?scenario={scenario_slug}" if scenario_slug else ""
+    return {
+        "projection_url": f"{base}/projection.html{slug_qs}",
+        "editor_url": f"{base}/config/setup{slug_qs}",
+        "definitions_url": f"{base}/definitions.html",
+    }
 
 app = FastAPI(title="Net Worth Navigator Config Editor")
+
+# ── Rewrite middleware for nginx proxy prefix ───────────────────────
+@app.middleware("http")
+async def _rewrite_prefix(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/finances/config/api/"):
+        # Rewrite /finances/config/api/* → /api/*
+        scope = request.scope
+        scope["path"] = "/api/" + path[len("/finances/config/api/"):]
+    response = await call_next(request)
+    return response
+
+
 templates = Jinja2Templates(directory=str(APP_ROOT / "templates"))
 RENDER_JOBS: dict[str, dict] = {}
 RENDER_JOBS_LOCK = threading.Lock()
+
+
+@app.get("/projection.html", response_class=HTMLResponse)
+@app.get("/finances/projection.html", response_class=HTMLResponse)
+async def serve_projection(scenario: str | None = None):
+    path = OUTPUT_DIR / "projection.html"
+    return HTMLResponse(path.read_text(encoding="utf-8")) if path.exists() else HTMLResponse("Not found", status_code=404)
+
+
+@app.get("/definitions.html", response_class=HTMLResponse)
+@app.get("/finances/definitions.html", response_class=HTMLResponse)
+async def serve_definitions():
+    path = OUTPUT_DIR / "definitions.html"
+    return HTMLResponse(path.read_text(encoding="utf-8")) if path.exists() else HTMLResponse("Not found", status_code=404)
 
 
 def _current_scenario(scenario_slug: str | None = None):
@@ -254,9 +289,7 @@ def _build_context(request: Request, *, content: str, status_kind: str = "info",
         "clone_slug": clone_slug,
         "clone_description": clone_description,
         "last_modified": last_modified,
-        "projection_url": f"{PUBLIC_PROJECTION_URL}?scenario={resolved_slug}",
-        "editor_url": f"{PUBLIC_EDITOR_URL}?scenario={resolved_slug}",
-        "definitions_url": PUBLIC_DEFINITIONS_URL,
+        **_public_urls(str(request.base_url), resolved_slug),
     }
 
 
@@ -339,11 +372,11 @@ def _update_render_job(job_id: str, **fields) -> dict | None:
         return dict(job)
 
 
-def _job_redirect_url(scenario_slug: str, job_id: str) -> str:
-    return f"{PUBLIC_EDITOR_URL}?scenario={scenario_slug}&job={job_id}"
+def _job_redirect_url(base_url: str, scenario_slug: str, job_id: str) -> str:
+    return _public_urls(base_url, scenario_slug)["editor_url"] + f"&job={job_id}"
 
 
-def _job_status_payload(job: dict) -> dict:
+def _job_status_payload(job: dict, base_url: str = "") -> dict:
     return {
         "job_id": job["id"],
         "action": job["action"],
@@ -366,7 +399,7 @@ def _job_status_payload(job: dict) -> dict:
         "failed_scenarios": job.get("failed_scenarios"),
         "backup_path": job.get("backup_path"),
         "last_action": job.get("last_action", ""),
-        "redirect_url": _job_redirect_url(job["scenario_slug"], job["id"]),
+        "redirect_url": _job_redirect_url(base_url, job["scenario_slug"], job["id"]),
         "started_at": job.get("started_at"),
         "completed_at": job.get("completed_at"),
     }
@@ -653,6 +686,7 @@ def _start_render_job_response(
     action: str,
     scenario_slug: str | None,
     backup_path: Path,
+    base_url: str = "",
 ) -> JSONResponse:
     scenario = _current_scenario(scenario_slug)
     if action == "save_render":
@@ -665,7 +699,7 @@ def _start_render_job_response(
             backup_path=str(backup_path),
         )
         _start_render_job_thread(job["id"], _run_save_render_job, scenario.slug)
-        return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
+        return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job, base_url))
 
     if action == "save_render_all":
         scenarios = discover_scenarios()
@@ -678,7 +712,7 @@ def _start_render_job_response(
             backup_path=str(backup_path),
         )
         _start_render_job_thread(job["id"], _run_save_render_all_job, scenario.slug)
-        return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job))
+        return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job, base_url))
 
     return JSONResponse({"ok": False, "error": f"Unsupported render action: {action}"}, status_code=400)
 
@@ -862,6 +896,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
                     action=action,
                     scenario_slug=scenario_slug,
                     backup_path=backup_path,
+                    base_url=str(request.base_url),
                 )
             result = _render_projection_offline(scenario_slug)
             if result.returncode == 0:
@@ -905,6 +940,7 @@ async def editor_submit(request: Request) -> HTMLResponse:
                     action=action,
                     scenario_slug=scenario_slug,
                     backup_path=backup_path,
+                    base_url=str(request.base_url),
                 )
             results = _render_all_scenarios()
             failures = [
@@ -989,14 +1025,13 @@ async def editor_submit(request: Request) -> HTMLResponse:
 
 
 @app.get("/health")
-async def health() -> JSONResponse:
+async def health(request: Request) -> JSONResponse:
     scenario = _current_scenario()
     return JSONResponse({
         "ok": True,
         "config_path": str(_config_path(scenario.slug)),
         "scenario_slug": scenario.slug,
-        "projection_url": f"{PUBLIC_PROJECTION_URL}?scenario={scenario.slug}",
-        "editor_url": f"{PUBLIC_EDITOR_URL}?scenario={scenario.slug}",
+        **_public_urls(str(request.base_url), scenario.slug),
     })
 
 
@@ -1054,7 +1089,7 @@ async def rename_scenario(request: Request) -> JSONResponse:
         "new_slug": new_slug,
         "new_name": new_name,
         "message": f"Scenario renamed to '{new_name}' ({new_slug}).",
-        "redirect_url": f"{PUBLIC_EDITOR_URL}?scenario={new_slug}",
+        "redirect_url": _public_urls(str(request.base_url), new_slug)["editor_url"],
     })
 
 
@@ -1137,11 +1172,11 @@ async def delete_scenario(request: Request) -> JSONResponse:
 
 @app.get("/jobs/{job_id}")
 @app.get("/finances/config/jobs/{job_id}")
-async def render_job_status(job_id: str) -> JSONResponse:
+async def render_job_status(job_id: str, request: Request) -> JSONResponse:
     job = _get_render_job(job_id)
     if job is None:
         return JSONResponse({"ok": False, "error": "Job not found."}, status_code=404)
-    return JSONResponse({"ok": True, **_job_status_payload(job)})
+    return JSONResponse({"ok": True, **_job_status_payload(job, str(request.base_url))})
 
 
 @app.post("/render-jobs")
@@ -1162,6 +1197,7 @@ async def start_render_job(request: Request) -> JSONResponse:
             action=action,
             scenario_slug=scenario_slug,
             backup_path=backup_path,
+            base_url=str(request.base_url),
         )
     except tomllib.TOMLDecodeError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
@@ -2165,6 +2201,14 @@ async def api_tax_states() -> JSONResponse:
                 "bracket_count": bracket_count,
             })
     return JSONResponse({"ok": True, "states": states})
+
+
+# ── Static file mounts (output/ directory) ──────────────────────────
+from fastapi.staticfiles import StaticFiles
+
+scenarios_dir = OUTPUT_DIR / "scenarios"
+if scenarios_dir.exists():
+    app.mount("/scenarios", StaticFiles(directory=str(scenarios_dir)), name="scenarios")
 
 
 if __name__ == "__main__":
