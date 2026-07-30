@@ -70,7 +70,7 @@ async def main():
     print(json.dumps(out))
 
 asyncio.run(main())
-""".format(src=str(MCP_SRC))
+""".format(src=MCP_SRC.as_posix())
 
 
 def load_config() -> dict:
