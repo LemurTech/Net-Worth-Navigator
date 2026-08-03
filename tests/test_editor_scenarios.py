@@ -1,6 +1,8 @@
+import os
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import admin_app
@@ -59,30 +61,35 @@ class EditorScenarioTests(unittest.TestCase):
         self.assertEqual(calls, ["default", "alt"])
         self.assertEqual(len(results), 2)
 
-    def test_prune_backups_keeps_newest_ten_per_scenario(self):
+    def test_prune_backups_removes_stale_backups_keeps_recent(self):
         from tempfile import TemporaryDirectory
 
         with TemporaryDirectory() as tmp:
             backup_dir = Path(tmp) / "config-backups" / "default"
             backup_dir.mkdir(parents=True, exist_ok=True)
-            base_time = datetime(2026, 6, 19, 12, 0, 0)
+            now = datetime.now()
 
-            created_paths = []
-            for index in range(12):
-                path = backup_dir / f"config-20260619-1200{index:02d}.toml"
-                path.write_text(f"backup {index}", encoding="utf-8")
-                timestamp = (base_time + timedelta(seconds=index)).timestamp()
-                created_paths.append(path)
-                path.touch()
-                import os
+            for index in range(10):
+                path = backup_dir / f"config-recent-{index:02d}.toml"
+                path.write_text(f"recent {index}", encoding="utf-8")
+                timestamp = (now - timedelta(minutes=10 - index)).timestamp()
                 os.utime(path, (timestamp, timestamp))
+
+            stale_paths = []
+            for index in range(2):
+                path = backup_dir / f"config-stale-{index:02d}.toml"
+                path.write_text(f"stale {index}", encoding="utf-8")
+                timestamp = (now - timedelta(days=30 + index)).timestamp()
+                os.utime(path, (timestamp, timestamp))
+                stale_paths.append(path)
 
             admin_app._prune_backups(backup_dir)
 
             remaining = sorted(path.name for path in backup_dir.glob("config-*.toml"))
+            # Time-based retention (14 days): stale backups removed, recent kept
             self.assertEqual(len(remaining), 10)
-            self.assertNotIn(created_paths[0].name, remaining)
-            self.assertNotIn(created_paths[1].name, remaining)
+            self.assertNotIn(stale_paths[0].name, remaining)
+            self.assertNotIn(stale_paths[1].name, remaining)
 
     def test_build_context_uses_scenario_specific_projection_and_editor_urls(self):
         from tempfile import TemporaryDirectory
@@ -112,7 +119,7 @@ class EditorScenarioTests(unittest.TestCase):
             with patch("admin_app._current_scenario", side_effect=lambda slug=None: alt if slug == "alt" else default), \
                  patch("admin_app.discover_scenarios", return_value=[default, alt]):
                 context = admin_app._build_context(
-                    object(),
+                    SimpleNamespace(base_url="http://testserver/"),
                     content="[scenario]\nname='Alt'\n",
                     scenario_slug="alt",
                     last_action="save",
