@@ -7,6 +7,7 @@ import pandas as pd
 
 import run
 from src import charts, model, monarch_bridge, tables
+from src.scenarios import ScenarioRef
 
 
 class RecurringEventsTests(unittest.TestCase):
@@ -1307,13 +1308,20 @@ class RecurringEventsTests(unittest.TestCase):
         }
         config = {
             "accounts": {
-                "disabled": ["Casa Lemuria"],
+                "disabled": [],
                 "Casa Lemuria": "real_estate",
                 "CO: Checking HHold (4412)": "cash",
                 "Mortgage (5156)": "liability",
             },
             "liabilities": [{"name": "Mortgage (5156)"}],
         }
+        scenario_ref = ScenarioRef(
+            slug="default",
+            name="Test Default",
+            description="",
+            config_path=Path("scenarios/default.toml"),
+            is_default=True,
+        )
 
         captured = {}
 
@@ -1374,7 +1382,10 @@ class RecurringEventsTests(unittest.TestCase):
                                     with patch("run.run_projection_result", side_effect=fake_run_projection_result):
                                         with patch("src.monarch_bridge.load_config", return_value=config):
                                             with patch("builtins.print"):
-                                                run.main()
+                                                with patch("run.get_scenario", return_value=scenario_ref):
+                                                    with patch("run.load_config", return_value=config):
+                                                        with patch("src.model.validate_scenario", return_value=(True, [])):
+                                                            run.main()
 
         self.assertEqual(captured["balances"]["cash"], 12000.0)
         self.assertEqual(captured["home_value"], 454500.0)
