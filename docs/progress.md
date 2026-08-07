@@ -35,7 +35,13 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 ### Tests
 
-- 161 passed, 1 skipped. 7 tests updated for v2 event pass-through behavior.
+- 161 passed, 1 skipped. 7 tests updated for v2 event pass-through behavior. 2 withdrawal policy tests updated for event-based retirement checks.
+
+### Fixes (continued 2026-08-07)
+
+- **Validation:** `retirement_year` and `life_expectancy` removed from `required_person_fields` in `validate_scenario()`. Contribution processing (`_compute_contribution_breakdown`) updated to use event-based retirement check with `_person_event_year()` plus `person.get()` fallback.
+- **TOML cleanup pipeline:** `scripts/migrate_v2.py --strip-comments` for production files. `_rewrite_events_section()` strips all `#` lines from header and events when the flag is set. `_normalize_toml_blank_lines()` adds blank lines between ALL TOML sections. `scripts/clean_toml.py` strips decorative section headers. `scripts/fix_data_source.py` repositions the data_source section.
+- **Release notes:** Breaking change warning in `docs/plans/2026-08-07-v2-event-driven-timeline.md` documents comment-stripping, migration instructions, and backup safety net.
 
 ### Plans
 

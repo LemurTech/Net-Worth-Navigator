@@ -1246,8 +1246,8 @@ def _toml_open(scenario_slug: str | None = None) -> tuple[tomlkit.TOMLDocument, 
 
 
 def _normalize_toml_blank_lines(toml_text: str) -> str:
-    """Add blank lines between consecutive [[events]] blocks for readability."""
-    text = re.sub(r'([^\n])\n\[\[events\]\]', r'\1\n\n[[events]]', toml_text)
+    """Add blank lines between all TOML sections for readability."""
+    text = re.sub(r'([^\n])\n(\[\[?[a-zA-Z_])', r'\1\n\n\2', toml_text)
     return re.sub(r'\n{3,}', '\n\n', text)
 
 

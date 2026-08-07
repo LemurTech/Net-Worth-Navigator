@@ -27,7 +27,7 @@ def _person_initial(person: dict, person_key: str) -> str:
     return person_key[:1].upper()
 
 
-def migrate_scenario(path: Path, dry_run: bool = False) -> list[str]:
+def migrate_scenario(path: Path, dry_run: bool = False, strip_comments: bool = False) -> list[str]:
     """Migrate one scenario file. Returns list of actions taken."""
     actions: list[str] = []
     slug = path.stem
@@ -144,28 +144,38 @@ def migrate_scenario(path: Path, dry_run: bool = False) -> list[str]:
 
     if actions and not dry_run:
         text = tomlkit.dumps(doc)
-        text = _rewrite_events_section(text)
+        text = _rewrite_events_section(text, strip_comments=strip_comments)
         path.write_text(text, encoding="utf-8")
 
     return actions
 
 
-def _rewrite_events_section(text: str) -> str:
-    """Replace the events section with clean, sorted event blocks."""
-    # Find the first uncommented [[events]] line
+def _rewrite_events_section(text: str, strip_comments: bool = False) -> str:
+    """Replace the events section with clean, sorted event blocks.
+    If strip_comments is True, also strip all #-comments from the header."""
     m = re.search(r'^\[\[events\]\]\n', text, re.MULTILINE)
     if not m:
         return text
     first_ev = m.start()
 
     header = text[:first_ev].rstrip() + "\n"
-    # Also strip decorative lines from the header
-    header_lines = header.split('\n')
-    header_lines = [
-        line for line in header_lines
-        if not re.match(r'^#\s*[─]{3,}', line)
-    ]
-    header = '\n'.join(header_lines).rstrip() + '\n'
+    if strip_comments:
+        # Production mode: strip ALL comments (full-line and inline) from header
+        header_lines = header.split('\n')
+        cleaned = []
+        for line in header_lines:
+            stripped = re.sub(r'(\s*#.*)$', '', line)
+            if stripped.strip() and not stripped.lstrip().startswith('#'):
+                cleaned.append(stripped.rstrip())
+        header = '\n'.join(cleaned).rstrip() + '\n'
+    else:
+        # Reference mode: strip only decorative separators, keep documentation
+        header_lines = header.split('\n')
+        header_lines = [
+            line for line in header_lines
+            if not re.match(r'^#\s*[─]{3,}', line)
+        ]
+        header = '\n'.join(header_lines).rstrip() + '\n'
 
     # Extract all event blocks: ^[[events]]$ (not commented, no inline comment)
     blocks = []
@@ -173,13 +183,14 @@ def _rewrite_events_section(text: str) -> str:
     for m in re.finditer(pattern, text[first_ev:], re.MULTILINE | re.DOTALL):
         # Skip if the [[events]] line has a # before it (commented out)
         block = m.group(0).strip()
-        # Strip decorative comment lines (section headers, separator bars)
+        # Strip ALL comment lines — keep only TOML key-value pairs
         lines = block.split('\n')
         cleaned_lines = [
-            line for line in lines
-            if not re.match(r'^#\s*[─]{3,}', line)  # any line starting with #─ or # ───
+            re.sub(r'(\s*#.*)$', '', line).rstrip()
+            for line in lines
+            if line.strip() and not line.lstrip().startswith('#')
         ]
-        block = '\n'.join(cleaned_lines).strip()
+        block = '\n'.join(line for line in cleaned_lines if line).strip()
         if block:
             blocks.append(block)
 
@@ -215,8 +226,9 @@ def _rewrite_events_section(text: str) -> str:
             if scenario_end:
                 result = result[:scenario_end.end()] + '\n\n' + ds_block + result[scenario_end.end():]
 
-    # Normalize blank lines: ensure blank before [[events]]
-    result = re.sub(r'([^\n])\n\[\[events\]\]', r'\1\n\n[[events]]', result)
+    # Normalize blank lines: ensure blank before every TOML section header
+    # Match any [section] or [[array]] header that follows a non-blank line
+    result = re.sub(r'([^\n])\n(\[\[?[a-zA-Z_])', r'\1\n\n\2', result)
     result = re.sub(r'\n{3,}', '\n\n', result)
 
     return result
@@ -224,7 +236,8 @@ def _rewrite_events_section(text: str) -> str:
 
 def main():
     dry_run = "--dry-run" in sys.argv
-    slugs = [a for a in sys.argv[1:] if not a.startswith("--") and a != "--dry-run"]
+    strip_comments = "--strip-comments" in sys.argv
+    slugs = [a for a in sys.argv[1:] if not a.startswith("--") and a != "--dry-run" and a != "--strip-comments"]
 
     if slugs:
         paths = [SCENARIOS_DIR / f"{slug}.toml" for slug in slugs]
@@ -236,7 +249,7 @@ def main():
         if not path.exists():
             print(f"  SKIP: {path} not found")
             continue
-        actions = migrate_scenario(path, dry_run=dry_run)
+        actions = migrate_scenario(path, dry_run=dry_run, strip_comments=strip_comments)
         for a in actions:
             print(a)
         total += len(actions)

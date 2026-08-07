@@ -253,6 +253,37 @@ Retire and EndOfPlan events sit among the existing events. Order matters (events
 
 ---
 
+---
+
+## ⚠️ Breaking Change: Comments Stripped from Production Files
+
+The migration script (`migrate_v2.py --strip-comments`) removes **all comments** from
+production scenario files. This includes:
+
+- File header banners (`# Net Worth Navigator — Default Scenario`)
+- Inline documentation (`# optional`, `# defaults to X`)
+- Decorative section headers (`# ─── Section Name ───`)
+- Block documentation between events
+
+**Why:** Once the GUI edits TOML files, comments become stale or misleading. The GUI
+carries help text (tooltips, field labels, form help). The TOML becomes a clean data
+artifact.
+
+**What survives:** TOML key-value pairs with clean spacing. Sample files
+(sample.toml, sample-a.toml, etc.) remain fully commented as read-only reference.
+
+**How to migrate:**
+```
+# Production files (strip all comments):
+python scripts/migrate_v2.py --strip-comments default comfortable optimistic ...
+
+# Sample files (keep documentation comments as reference):
+python scripts/migrate_v2.py sample sample-a sample-b sample-couples starter starter-couple
+```
+
+**Backups:** The migration script writes through tomlkit with backup. Nightly cron
+backups provide an additional safety net at `/home/lemurtech/.nwn-backups/`.
+
 ## Versioning
 
 This is a MAJOR version bump: v1.x → **v2.0**. Reason: TOML schema migration (`person.retirement_year`, `person.ss_start_age`, `person.life_expectancy` removed). MAJOR is for "your TOML files need updating."

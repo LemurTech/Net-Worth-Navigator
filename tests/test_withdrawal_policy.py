@@ -103,6 +103,10 @@ class WithdrawalPolicyTests(unittest.TestCase):
         config = self._base_config()
         config["person1"]["retirement_year"] = 2100
         config["person2"]["retirement_year"] = 2100
+        # v2: also update Retire events so the event-based retirement check works
+        for ev in config["events"]:
+            if ev.get("type") == "Retire":
+                ev["year"] = 2100
         config["withdrawal_policy"]["accumulation_cash_target"] = 64.0
         config["events"].append(
             {
@@ -133,6 +137,10 @@ class WithdrawalPolicyTests(unittest.TestCase):
         config = self._base_config()
         config["person1"]["retirement_year"] = 2100
         config["person2"]["retirement_year"] = 2100
+        # v2: also update Retire events so the event-based retirement check works
+        for ev in config["events"]:
+            if ev.get("type") == "Retire":
+                ev["year"] = 2100
         config["withdrawal_policy"]["accumulation_cash_target"] = 64.0
         config["events"].append(
             {

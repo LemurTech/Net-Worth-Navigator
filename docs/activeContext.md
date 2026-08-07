@@ -1,7 +1,8 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-08-07
-**Status:** v2.0 — Event-driven timeline: all key dates live in Events tab. Phase 3c complete: edit, delete, sort.
+**Status:** v2.0 — Event-driven timeline. Phase 3c complete: edit, delete, sort.
+           TOML cleanup complete: comment stripping, blank-line normalization, migration script.
 
 ---
 
@@ -9,19 +10,25 @@
 
 ### v2.0 Event-Driven Timeline (landed 2026-08-07)
 
-`retirement_year`, `ss_start_age`, and `life_expectancy` moved from person config into `[[events]]` blocks. Events tab is now the single place for all timeline decisions. Users enter ages, not years — the server computes years from `dob`.
+`retirement_year`, `ss_start_age`, and `life_expectancy` moved from person config into `[[events]]` blocks. Events tab is now the single place for all timeline decisions.
 
-- **Model:** `_person_event_year()`/`_person_event_age()` helpers. Income zeroing, NewJob guard, validation, and Gantt chart all read events instead of person config. Synthesis functions removed.
-- **Migration:** `scripts/migrate_v2.py` migrated all 13 scenario files. `GET /api/events` detects v1 config and returns `migration_needed`.
-- **Setup Panel:** Retires-year input + age slider removed from People. Event forms for Retire/SS/EndOfPlan use Age fields. SS benefit auto-looked up from `social_security_benefits` table.
+- **Model:** `_person_event_year()`/`_person_event_age()` helpers. Income zeroing, NewJob guard, validation, contribution processing, and Gantt chart all read events instead of person config.
+- **Migration:** `scripts/migrate_v2.py --strip-comments` for production files, no flag for sample files. Sorts events by `(disabled, year, type)`. Strips all comments from production files (header + events). Preserves documentation comments in sample files. Blank-line normalization between all TOML sections.
+- **Validation:** `retirement_year` and `life_expectancy` removed from `required_person_fields`. Contribution processing uses event-based retirement check with v1 `person.get()` fallback.
 
 ### Phase 3c — Edit, Delete, Sort (landed 2026-08-07)
 
 - **Sort dropdown:** Chronological (default) and By Type modes. Disabled events always at bottom. `localStorage` persistence.
-- **Edit:** Edit button on each card opens pre-populated form. Age-entry types compute `age = year - birth_year` for display. `POST /api/update-event`.
+- **Edit:** Edit button on each card opens pre-populated form. `POST /api/update-event`.
 - **Delete:** × button with confirm dialog. `POST /api/delete-event`.
 
-**Next:** SS benefits entry tab, or Phase 3d validation endpoint. Working on `dev` branch.
+### TOML Cleanup Pipeline (landed 2026-08-07)
+
+- **Migration script:** `--strip-comments` flag for production files. Strips all `#` lines (full + inline) from header and events. Reference mode preserves documentation for sample files.
+- **Blank-line normalization:** `_normalize_toml_blank_lines` in both the migration script and API. Adds blank lines between ALL TOML sections, not just `[[events]]`.
+- **Release notes:** `⚠️ Breaking Change` section in the v2 plan documents the comment-stripping behavior and migration instructions.
+
+**Next:** SS benefits entry tab, or Phase 3d validation endpoint. Matthew to enhance sample file documentation offline. Working on `dev` branch.
 
 ---
 

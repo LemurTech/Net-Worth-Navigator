@@ -606,12 +606,10 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
         person = config.get(person_key, {})
         person_display = f"[{person_key}]"
         
-        # Required person fields
+        # Required person fields (v2: retirement_year and life_expectancy now live in [[events]])
         required_person_fields = {
             "name": "Person's name",
             "dob": "Date of birth (YYYY-MM-DD format)",
-            "life_expectancy": "Life expectancy in years",
-            "retirement_year": "Planned retirement year",
         }
         
         for field, description in required_person_fields.items():
@@ -3600,8 +3598,15 @@ def _run_projection_yearly(
         total_income = person1_income + person2_income
 
         # ── Contributions (pre-retirement only) ────────────────────────────────
-        person1_retired = year >= person1["retirement_year"]
-        person2_retired = True if person2 is None else year >= person2["retirement_year"]
+        # v2: read retirement from events; v1 fallback: person.retirement_year
+        p1_retire_year = _person_event_year(events, "person1", "Retire")
+        if p1_retire_year is None:
+            p1_retire_year = person1.get("retirement_year", year + 1)
+        p2_retire_year = _person_event_year(events, "person2", "Retire") if person2 else None
+        if p2_retire_year is None and person2 is not None:
+            p2_retire_year = person2.get("retirement_year", year + 1)
+        person1_retired = year >= p1_retire_year
+        person2_retired = True if person2 is None else year >= p2_retire_year
 
         person1_contrib_buckets = (
             {"trad_ira": 0.0, "roth": 0.0,

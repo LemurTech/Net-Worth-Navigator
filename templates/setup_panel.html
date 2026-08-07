@@ -2911,9 +2911,11 @@
           { name: 'amount', type: 'number', label: 'Annual Amount', placeholder: '18000', required: true },
           { name: 'end_year', type: 'number', label: 'End Year', help: 'Leave blank for single-year' },
           { name: 'taxable', type: 'bool', label: 'Taxable', default: true },
+          { name: 'taxable_fraction', type: 'number', label: 'Taxable Fraction', placeholder: '1.0', help: 'Fraction of income subject to tax (0.0–1.0). Default: 1.0 if taxable' },
           '---recurring---',
           { name: 'repeat_every_years', type: 'number', label: 'Repeat every N years' },
           { name: 'repeat_until_year', type: 'number', label: 'Repeat until year' },
+          { name: 'chart_first_occurrence_only', type: 'bool', label: 'Show only first occurrence on chart', default: true },
         ],
         EndOfPlan: [
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. End of Plan (Alex)' },
@@ -2970,6 +2972,7 @@
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Sell Vacation Home' },
           { name: 'year', type: 'number', label: 'Year', required: true },
           { name: 'property', type: 'text', label: 'Property Name', placeholder: 'e.g. Beach House', required: true, help: 'Must match a property_values key or BuyHome property name' },
+          { name: 'liability_names', type: 'text', label: 'Liability Names', help: 'Comma-separated names of liabilities to pay off at sale. Optional when only one mortgaged property exists.' },
           '---section---Sale Details (optional)',
           { name: 'sale_fee_rate', type: 'number', label: 'Sale Fee Rate', placeholder: '0.06', help: 'Fraction of sale price (default: assumption.real_estate_sale_fee_rate)' },
           { name: 'reinvest_to', type: 'select', label: 'Reinvest Proceeds Into', options: ['', 'taxable', 'roth', 'trad_ira'], default: '' },
@@ -2983,7 +2986,7 @@
           { name: 'phase', type: 'select', label: 'Phase', options: ['retirement_and_survivor', 'retirement', 'survivor'], default: 'retirement_and_survivor' },
           { name: 'retirement_annual', type: 'number', label: 'Retirement Spending', placeholder: '50000', help: 'Annual spending during retirement phase' },
           { name: 'survivor_annual', type: 'number', label: 'Survivor Spending', placeholder: '35000' },
-          { name: 'survivor_percent_of_retirement', type: 'number', label: 'Survivor % of Retirement', placeholder: '0.70', help: 'Fraction of retirement spending for survivor' },
+          { name: 'survivor_percent_of_retirement', type: 'number', label: 'Survivor % of Retirement', placeholder: '0.70', help: 'Fraction of retirement spending for survivor. If both this and Survivor Spending are set, Survivor Spending takes precedence.' },
         ],
         ContributionChange: [
           '---section---Required',
