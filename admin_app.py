@@ -1892,13 +1892,13 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
 
 @app.get("/api/events")
 async def api_list_events(request: Request) -> JSONResponse:
-    """Return the scenario's [[events]] blocks as a JSON list."""
+    """Return the scenario's [[events]] blocks as a JSON list, plus synthesized events."""
     scenario_slug = request.query_params.get("scenario") or None
     try:
         doc, _ = _toml_open(scenario_slug)
         raw_events = doc.get("events")
         if not isinstance(raw_events, list):
-            return JSONResponse({"ok": True, "events": [], "count": 0})
+            raw_events = []
         parsed = []
         for i, ev in enumerate(raw_events):
             entry = {
@@ -1926,6 +1926,66 @@ async def api_list_events(request: Request) -> JSONResponse:
                     "until_year": ev.get("repeat_until_year"),
                 }
             parsed.append(entry)
+
+        # ── Synthesize events from person config ──────────────────────────
+        has_retire = any(e["type"] == "Retire" for e in parsed)
+        has_ss = any(e["type"] == "SocialSecurity" for e in parsed)
+
+        for person_key in ("person1", "person2"):
+            person = doc.get(person_key)
+            if not isinstance(person, dict):
+                continue
+            # Initial for label
+            name = str(person.get("name", "")).strip()
+            initial = name[0].upper() if name and name[0].isalpha() else person_key[:1].upper()
+
+            # ── Retire ────────────────────────────────────────────────────
+            if not has_retire:
+                retirement_year = person.get("retirement_year")
+                if retirement_year is not None:
+                    try:
+                        ry = int(retirement_year)
+                        parsed.append({
+                            "index": -1,
+                            "type": "Retire",
+                            "label": f"Retirement ({initial})",
+                            "enabled": True,
+                            "year": ry,
+                            "person": person_key,
+                            "synthesized": True,
+                        })
+                    except (TypeError, ValueError):
+                        pass
+
+            # ── SocialSecurity ────────────────────────────────────────────
+            if not has_ss:
+                dob = person.get("dob")
+                ss_age = person.get("ss_claim_age") or person.get("ss_start_age")
+                if dob and ss_age is not None:
+                    try:
+                        birth_year = int(str(dob).split("-", 1)[0])
+                        start_year = birth_year + int(ss_age)
+                        benefits = person.get("social_security_benefits")
+                        monthly = None
+                        if isinstance(benefits, dict):
+                            monthly = benefits.get(str(int(ss_age)))
+                            if monthly is None:
+                                # Try exact string key
+                                monthly = benefits.get(str(ss_age))
+                        if monthly is not None:
+                            parsed.append({
+                                "index": -1,
+                                "type": "SocialSecurity",
+                                "label": f"SS Begins ({initial})",
+                                "enabled": True,
+                                "year": start_year,
+                                "person": person_key,
+                                "amount": float(monthly),
+                                "synthesized": True,
+                            })
+                    except (TypeError, ValueError):
+                        pass
+
         return JSONResponse({"ok": True, "events": parsed, "count": len(parsed)})
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
@@ -1964,6 +2024,157 @@ async def api_toggle_event(request: Request) -> JSONResponse:
         _backup_and_write_toml(doc, scenario_slug)
         toml_text = tomlkit.dumps(doc)
         return JSONResponse({"ok": True, "enabled": new_state, "toml_content": toml_text})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+# ── API: add event ──────────────────────────────────────────────────────────────
+
+_VALID_EVENT_TYPES = {
+    "EndOfPlan", "Retire", "Marriage", "Income", "Expense", "Education",
+    "SocialSecurity", "NewJob", "CareerBreak", "BuyHome", "SellHome",
+    "SpendingShift", "ContributionChange",
+}
+
+_EVENT_REQUIRED_FIELDS: dict[str, list[str]] = {
+    "EndOfPlan":          ["person", "year"],
+    "Retire":             ["person", "year"],
+    "Marriage":           ["year"],
+    "Income":             ["year", "amount"],
+    "Expense":            ["year", "amount"],
+    "Education":          ["person", "start_year", "end_year", "annual_cost"],
+    "SocialSecurity":     ["person", "year", "monthly_benefit"],
+    "NewJob":             ["person", "year", "annual_income"],
+    "CareerBreak":        ["person", "start_year", "end_year"],
+    "BuyHome":            ["year", "down_payment"],
+    "SellHome":           ["year", "property"],
+    "SpendingShift":      ["start_year", "mode"],
+    "ContributionChange": ["year", "person"],
+}
+
+_INT_FIELDS = {"year", "start_year", "end_year", "repeat_every_years", "repeat_count", "repeat_until_year"}
+_FLOAT_FIELDS = {"amount", "annual_cost", "down_payment", "monthly_benefit", "annual_income",
+                 "retirement_annual", "survivor_annual", "survivor_percent_of_retirement",
+                 "price", "mortgage_rate", "term_years", "sale_fee_rate", "reinvest_fraction",
+                 "annual_401k_contribution", "annual_ira_contribution", "annual_401k_employer_match",
+                 "annual_401k_contribution_delta", "annual_ira_contribution_delta",
+                 "annual_401k_employer_match_delta", "annual_401k_employer_match_rate",
+                 "annual_401k_employer_match_max_percent", "gross_income",
+                 "gross_income_annual_increase_percent", "retirement_contribution_percent",
+                 "retirement_contribution_annual_increase_percent", "retirement_contribution_max_percent"}
+_BOOL_FIELDS = {"enabled", "taxable", "chart_first_occurrence_only"}
+
+
+def _validate_event_fields(ev_type: str, fields: dict) -> list[str]:
+    """Validate event fields for a given type. Returns list of error strings."""
+    errors: list[str] = []
+    # Check type
+    if ev_type not in _VALID_EVENT_TYPES:
+        errors.append(f"Unknown event type: {ev_type}")
+        return errors
+    # Required fields
+    required = _EVENT_REQUIRED_FIELDS.get(ev_type, [])
+    for r in required:
+        if r not in fields or fields[r] == "" or fields[r] is None:
+            errors.append(f"Missing required field: {r}")
+    # Integer fields
+    for f in _INT_FIELDS:
+        if f in fields and fields[f] != "" and fields[f] is not None:
+            try:
+                int(fields[f])
+            except (TypeError, ValueError):
+                errors.append(f"Field '{f}' must be an integer")
+    # Float fields
+    for f in _FLOAT_FIELDS:
+        if f in fields and fields[f] != "" and fields[f] is not None:
+            try:
+                float(fields[f])
+            except (TypeError, ValueError):
+                errors.append(f"Field '{f}' must be a number")
+    # expense_kind validation
+    if "expense_kind" in fields and fields["expense_kind"]:
+        v = str(fields["expense_kind"]).strip().lower()
+        if v not in ("mandatory", "discretionary"):
+            errors.append("expense_kind must be 'mandatory' or 'discretionary'")
+    # funding validation
+    if "funding" in fields and fields["funding"]:
+        v = str(fields["funding"]).strip().lower()
+        if v != "cash_reserve_first":
+            errors.append("funding must be 'cash_reserve_first' or omitted")
+    # person validation
+    if "person" in fields and fields["person"]:
+        v = str(fields["person"]).strip()
+        if v not in ("person1", "person2"):
+            errors.append("person must be 'person1' or 'person2'")
+    # mode validation for SpendingShift
+    if ev_type == "SpendingShift" and "mode" in fields:
+        v = str(fields.get("mode", "")).strip().lower()
+        if v not in ("replace",):
+            errors.append("SpendingShift mode must be 'replace'")
+    # repeat_every_years must be > 0
+    if "repeat_every_years" in fields and fields["repeat_every_years"] not in (None, ""):
+        try:
+            if int(fields["repeat_every_years"]) <= 0:
+                errors.append("repeat_every_years must be > 0")
+        except (TypeError, ValueError):
+            pass  # already caught by integer check
+    return errors
+
+
+@app.post("/api/add-event")
+async def api_add_event(request: Request) -> JSONResponse:
+    """Add a new [[events]] block to the scenario TOML."""
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+
+    ev_type = str(body.get("type", "")).strip()
+    if not ev_type:
+        return JSONResponse({"ok": False, "error": "Missing event type."}, status_code=400)
+
+    errors = _validate_event_fields(ev_type, body)
+    if errors:
+        return JSONResponse({"ok": False, "error": "; ".join(errors)}, status_code=400)
+
+    try:
+        doc, _ = _toml_open(scenario_slug)
+
+        # Build the tomlkit table from submitted fields (skip empty/None values)
+        table = tomlkit.table()
+        table["type"] = ev_type
+        table["enabled"] = body.get("enabled", True) if "enabled" in body else True
+
+        for key, val in body.items():
+            if key in ("type", "enabled"):
+                continue
+            if val is None or val == "":
+                continue
+            # Preserve types
+            if key in _INT_FIELDS:
+                table[key] = int(val)
+            elif key in _FLOAT_FIELDS:
+                table[key] = float(val)
+            elif key in _BOOL_FIELDS:
+                table[key] = bool(val) if not isinstance(val, bool) else val
+            else:
+                table[key] = str(val)
+
+        # Ensure events array exists
+        if "events" not in doc or not isinstance(doc["events"], list):
+            doc["events"] = tomlkit.aot()
+
+        doc["events"].append(table)
+        _backup_and_write_toml(doc, scenario_slug)
+        new_index = len(doc["events"]) - 1
+        toml_text = tomlkit.dumps(doc)
+
+        return JSONResponse({
+            "ok": True,
+            "index": new_index,
+            "toml_content": toml_text,
+        })
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 

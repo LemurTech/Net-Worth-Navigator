@@ -135,6 +135,13 @@
     }
     .event-card.disabled { opacity: 0.45; }
     .event-card-icon { font-size: 18px; flex-shrink: 0; }
+
+    .sys-badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      background: rgba(125, 211, 252, 0.12); color: var(--accent);
+      padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+      vertical-align: middle; text-transform: uppercase; letter-spacing: 0.04em;
+    }
     .event-card-body { flex: 1; min-width: 0; }
     .event-card-title { font-weight: 600; font-size: 13px; }
     .event-card-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
@@ -411,6 +418,61 @@
     .render-errors.visible { display: block; }
     .render-errors::-webkit-scrollbar { width: 6px; height: 6px; }
     .render-errors::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+    /* ── Modal overlays ────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(8, 13, 24, 0.72);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px 16px; overflow-y: auto; z-index: 10000; backdrop-filter: blur(1px);
+    }
+    .modal-card {
+      background: #0f1725; border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.24);
+      color: var(--text); width: min(520px, calc(100vw - 32px)); max-width: 100%;
+    }
+    .modal-header {
+      padding: 14px 18px; font-size: 16px; font-weight: 700;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-body { padding: 14px 18px; max-height: 60vh; overflow-y: auto; }
+    .modal-actions {
+      display: flex; gap: 10px; justify-content: flex-end;
+      padding: 12px 18px; border-top: 1px solid var(--border);
+    }
+
+    /* ── Event type grid in type-selector modal ────────────────────── */
+    .type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+    .type-card {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--panel-2); cursor: pointer; font-size: 13px;
+      transition: border-color 0.15s;
+    }
+    .type-card:hover { border-color: var(--accent); }
+    .type-card-icon { font-size: 18px; flex-shrink: 0; }
+
+    /* ── Event form fields ─────────────────────────────────────────── */
+    .form-field { margin-bottom: 12px; }
+    .form-field label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--muted); margin-bottom: 4px;
+    }
+    .form-field input, .form-field select {
+      width: 100%; padding: 7px 10px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--panel-2);
+      color: var(--text); font-size: 13px; font-family: inherit;
+    }
+    .form-field input:focus, .form-field select:focus {
+      border-color: var(--accent); outline: none;
+    }
+    .form-help {
+      font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.35;
+    }
+    .form-section-title {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .form-section-title:first-child { border-top: none; margin-top: 0; padding-top: 0; }
 
     @media (max-width: 900px) {
       .header { grid-template-columns: 1fr; }
@@ -780,9 +842,36 @@
 
       <!-- ── Tab: Events ──────────────────────────────────────────────── -->
       <div class="tab-content tab-card" id="tab-events">
-        <div class="quick-section-title">Events</div>
+        <div class="quick-section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span>Events</span>
+          <button type="button" class="linkbtn" id="add-event-btn" style="font-size:12px;padding:6px 12px">+ Add Event</button>
+        </div>
         <div id="events-list"></div>
         <div id="events-empty" style="font-size:13px;color:var(--muted);margin-top:4px">Loading events…</div>
+      </div>
+
+      <!-- ── Modal: Event Type Selector ──────────────────────────────── -->
+      <div class="modal-overlay" id="event-type-modal" style="display:none">
+        <div class="modal-card">
+          <div class="modal-header">Select Event Type</div>
+          <div class="modal-body" id="event-type-grid"></div>
+          <div class="modal-actions">
+            <button type="button" class="linkbtn" id="cancel-type-btn">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Modal: Event Form ───────────────────────────────────────── -->
+      <div class="modal-overlay" id="event-form-modal" style="display:none">
+        <div class="modal-card" style="max-width:600px">
+          <div class="modal-header" id="event-form-title">Add Event</div>
+          <div class="modal-body" id="event-form-body"></div>
+          <div id="event-form-errors" style="display:none;margin:0 20px 10px;padding:8px 12px;border-radius:6px;border:1px solid var(--error-border);background:var(--error-bg);color:#fca5a5;font-size:13px"></div>
+          <div class="modal-actions">
+            <button type="button" class="linkbtn" id="cancel-form-btn">Cancel</button>
+            <button type="button" class="linkbtn" id="save-event-btn" style="border-color:var(--accent);color:var(--accent)">Save Event</button>
+          </div>
+        </div>
       </div>
 
       <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
@@ -2598,6 +2687,7 @@
           if (data.ok) {
             _eventsData = data.events || [];
             renderEvents();
+            renderTypeGrid(); // refresh to hide synthesized types
           } else {
             if (emptyEl) emptyEl.textContent = 'Could not load events.';
             showError(data.error || 'Could not load events.');
@@ -2626,7 +2716,8 @@
         _eventsData.forEach(function (ev, i) {
           var icon = EVENT_ICONS[ev.type] || '•';
           var title = ev.label || (ev.type + ' (' + (ev.person || '') + ')');
-          var enabled = ev.enabled !== false; // treat missing as true
+          var enabled = ev.enabled !== false;
+          var isSynthesized = ev.synthesized === true;
 
           var metaParts = [ev.type];
           if (ev.year != null) {
@@ -2650,20 +2741,19 @@
           var meta = metaParts.join('  ·  ');
           var disabledClass = enabled ? '' : ' disabled';
           var checkedAttr = enabled ? ' checked' : '';
+          var sysBadge = isSynthesized ? ' <span class="sys-badge">System</span>' : '';
+          var toggleHtml = isSynthesized
+            ? '<span style="font-size:11px;color:var(--muted)">auto</span>'
+            : '<label><input type="checkbox"' + checkedAttr + ' onchange="toggleEvent(' + i + ', this.checked)"><span>On</span></label>';
 
           html +=
             '<div class="event-card' + disabledClass + '" data-index="' + i + '">' +
               '<span class="event-card-icon">' + icon + '</span>' +
               '<div class="event-card-body">' +
-                '<div class="event-card-title">' + htmlEscape(title) + '</div>' +
+                '<div class="event-card-title">' + htmlEscape(title) + sysBadge + '</div>' +
                 '<div class="event-card-meta">' + htmlEscape(meta) + '</div>' +
               '</div>' +
-              '<div class="event-card-toggle">' +
-                '<label>' +
-                  '<input type="checkbox"' + checkedAttr + ' onchange="toggleEvent(' + i + ', this.checked)">' +
-                  '<span>On</span>' +
-                '</label>' +
-              '</div>' +
+              '<div class="event-card-toggle">' + toggleHtml + '</div>' +
             '</div>';
         });
         listEl.innerHTML = html;
@@ -2676,6 +2766,7 @@
       }
 
       function toggleEvent(index, newEnabled) {
+        if (index < 0) return; // synthesized events cannot be toggled
         var card = document.querySelector('.event-card[data-index="' + index + '"]');
         if (card) card.classList.toggle('disabled', !newEnabled);
 
@@ -2704,6 +2795,289 @@
       }
       // Expose for inline onchange handler
       window.toggleEvent = toggleEvent;
+
+      /* ── Event form (add) ────────────────────────────────────────── */
+      var EVENT_FIELDS = {
+        Expense: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Travel', help: 'Human-readable name for charts and tables' },
+          { name: 'year', type: 'number', label: 'Year', required: true },
+          { name: 'amount', type: 'number', label: 'Amount', placeholder: '-8000', help: 'Negative for outflows, positive for inflows', required: true },
+          { name: 'expense_kind', type: 'select', label: 'Kind', options: ['discretionary', 'mandatory'], default: 'discretionary' },
+          { name: 'funding', type: 'select', label: 'Funding', options: ['', 'cash_reserve_first'], default: '', help: '"cash_reserve_first" draws from cash reserves first' },
+          '---recurring---',
+          { name: 'repeat_every_years', type: 'number', label: 'Repeat every N years', placeholder: 'e.g. 2' },
+          { name: 'repeat_until_year', type: 'number', label: 'Repeat until year' },
+          { name: 'chart_first_occurrence_only', type: 'bool', label: 'Show only first occurrence on chart', default: true },
+        ],
+        Income: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Part-time consulting' },
+          { name: 'year', type: 'number', label: 'Start Year', required: true },
+          { name: 'amount', type: 'number', label: 'Annual Amount', placeholder: '18000', required: true },
+          { name: 'end_year', type: 'number', label: 'End Year', help: 'Leave blank for single-year' },
+          { name: 'taxable', type: 'bool', label: 'Taxable', default: true },
+          '---recurring---',
+          { name: 'repeat_every_years', type: 'number', label: 'Repeat every N years' },
+          { name: 'repeat_until_year', type: 'number', label: 'Repeat until year' },
+        ],
+        EndOfPlan: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. End of Plan (Alex)' },
+          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true, help: 'Whose life expectancy this marks' },
+          { name: 'year', type: 'number', label: 'Year', required: true },
+        ],
+        Retire: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Alex Retires' },
+          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
+          { name: 'year', type: 'number', label: 'Year', required: true },
+        ],
+        Marriage: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Marriage' },
+          { name: 'year', type: 'number', label: 'Year', required: true },
+        ],
+        Education: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. College' },
+          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
+          { name: 'start_year', type: 'number', label: 'Start Year', required: true },
+          { name: 'end_year', type: 'number', label: 'End Year', required: true },
+          { name: 'annual_cost', type: 'number', label: 'Annual Cost', placeholder: '25000', required: true },
+        ],
+        SocialSecurity: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. SS — Person 1' },
+          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
+          { name: 'year', type: 'number', label: 'Start Year', required: true },
+          { name: 'monthly_benefit', type: 'number', label: 'Monthly Benefit', placeholder: '2000', required: true, help: 'Monthly benefit in current dollars' },
+          { name: 'taxable', type: 'bool', label: 'Taxable', default: true },
+        ],
+        NewJob: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. New Job' },
+          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
+          { name: 'year', type: 'number', label: 'Start Year', required: true },
+          { name: 'annual_income', type: 'number', label: 'Annual Take-Home', placeholder: '75000', required: true, help: 'Replaces wage income from this year onward' },
+        ],
+        CareerBreak: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Career Break' },
+          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
+          { name: 'start_year', type: 'number', label: 'Start Year', required: true },
+          { name: 'end_year', type: 'number', label: 'End Year', required: true, help: 'Income is zero for this period' },
+        ],
+        BuyHome: [
+          '---section---Required',
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Buy Vacation Home' },
+          { name: 'year', type: 'number', label: 'Year', required: true },
+          { name: 'down_payment', type: 'number', label: 'Down Payment', placeholder: '80000', required: true },
+          '---section---Property Details (optional)',
+          { name: 'property', type: 'text', label: 'Property Name', placeholder: 'e.g. Beach House', help: 'Name used to track this property for later SellHome events' },
+          { name: 'price', type: 'number', label: 'Purchase Price', placeholder: '400000', help: 'If set, the property value is tracked and appreciates with inflation' },
+          { name: 'mortgage_rate', type: 'number', label: 'Mortgage Rate', placeholder: '0.065', help: 'Annual rate (e.g. 0.065 for 6.5%)' },
+          { name: 'term_years', type: 'number', label: 'Term (years)', placeholder: '30' },
+        ],
+        SellHome: [
+          '---section---Required',
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Sell Vacation Home' },
+          { name: 'year', type: 'number', label: 'Year', required: true },
+          { name: 'property', type: 'text', label: 'Property Name', placeholder: 'e.g. Beach House', required: true, help: 'Must match a property_values key or BuyHome property name' },
+          '---section---Sale Details (optional)',
+          { name: 'sale_fee_rate', type: 'number', label: 'Sale Fee Rate', placeholder: '0.06', help: 'Fraction of sale price (default: assumption.real_estate_sale_fee_rate)' },
+          { name: 'reinvest_to', type: 'select', label: 'Reinvest Proceeds Into', options: ['', 'taxable', 'roth', 'trad_ira'], default: '' },
+          { name: 'reinvest_fraction', type: 'number', label: 'Reinvest Fraction', placeholder: '1.0', help: 'Fraction of net proceeds to reinvest (default: 1.0 if reinvest_to is set)' },
+        ],
+        SpendingShift: [
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Downsizing' },
+          { name: 'start_year', type: 'number', label: 'Start Year', required: true },
+          { name: 'end_year', type: 'number', label: 'End Year', help: 'Leave blank for permanent shift' },
+          { name: 'mode', type: 'select', label: 'Mode', options: ['replace'], default: 'replace', required: true, help: '"replace" sets spending to the exact values below' },
+          { name: 'phase', type: 'select', label: 'Phase', options: ['retirement_and_survivor', 'retirement', 'survivor'], default: 'retirement_and_survivor' },
+          { name: 'retirement_annual', type: 'number', label: 'Retirement Spending', placeholder: '50000', help: 'Annual spending during retirement phase' },
+          { name: 'survivor_annual', type: 'number', label: 'Survivor Spending', placeholder: '35000' },
+          { name: 'survivor_percent_of_retirement', type: 'number', label: 'Survivor % of Retirement', placeholder: '0.70', help: 'Fraction of retirement spending for survivor' },
+        ],
+        ContributionChange: [
+          '---section---Required',
+          { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. 401k step-up after mortgage payoff' },
+          { name: 'year', type: 'number', label: 'Start Year', required: true },
+          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
+          '---section---Override: Absolute Amounts',
+          { name: 'annual_401k_contribution', type: 'number', label: '401(k) Contribution ($)', help: 'Sets absolute annual contribution' },
+          { name: 'annual_ira_contribution', type: 'number', label: 'IRA Contribution ($)' },
+          { name: 'annual_401k_employer_match', type: 'number', label: 'Employer Match ($)', help: 'Flat-mode employer match amount' },
+          '---section---Override: Deltas (+/-)',
+          { name: 'annual_401k_contribution_delta', type: 'number', label: '401(k) Contribution Delta ($)', placeholder: '12000', help: 'Adds to current contribution' },
+          { name: 'annual_ira_contribution_delta', type: 'number', label: 'IRA Contribution Delta ($)' },
+          { name: 'annual_401k_employer_match_delta', type: 'number', label: 'Employer Match Delta ($)' },
+          '---section---Override: Percent-Mode',
+          { name: 'gross_income', type: 'number', label: 'Gross Income ($)' },
+          { name: 'gross_income_annual_increase_percent', type: 'number', label: 'Gross Income Increase %', placeholder: '0.04' },
+          { name: 'retirement_contribution_percent', type: 'number', label: 'Contribution %', placeholder: '0.20' },
+          { name: 'retirement_contribution_annual_increase_percent', type: 'number', label: 'Contribution Increase %' },
+          { name: 'retirement_contribution_max_percent', type: 'number', label: 'Contribution Max %', placeholder: '0.30' },
+          '---section---Override: Employer Match Settings',
+          { name: 'annual_401k_employer_match_mode', type: 'select', label: 'Match Mode', options: ['', 'flat', 'percent_of_gross'], default: '' },
+          { name: 'annual_401k_employer_match_rate', type: 'number', label: 'Match Rate', placeholder: '1.0', help: 'e.g. 1.0 = 100% match' },
+          { name: 'annual_401k_employer_match_max_percent', type: 'number', label: 'Match Max % of Salary', placeholder: '0.06' },
+        ],
+      };
+
+      var _currentFormType = null;
+
+      function initEventFormButtons() {
+        var addBtn = document.getElementById('add-event-btn');
+        var typeModal = document.getElementById('event-type-modal');
+        var formModal = document.getElementById('event-form-modal');
+        var cancelTypeBtn = document.getElementById('cancel-type-btn');
+        var cancelFormBtn = document.getElementById('cancel-form-btn');
+        var saveEventBtn = document.getElementById('save-event-btn');
+
+        if (!addBtn) return;
+
+        addBtn.addEventListener('click', function () { showTypeSelector(); });
+
+        cancelTypeBtn.addEventListener('click', function () { typeModal.style.display = 'none'; });
+        typeModal.addEventListener('click', function (e) { if (e.target === typeModal) typeModal.style.display = 'none'; });
+
+        cancelFormBtn.addEventListener('click', function () { formModal.style.display = 'none'; });
+        formModal.addEventListener('click', function (e) { if (e.target === formModal) formModal.style.display = 'none'; });
+
+        saveEventBtn.addEventListener('click', saveEvent);
+
+        // Render type grid once
+        renderTypeGrid();
+      }
+
+      function renderTypeGrid() {
+        var grid = document.getElementById('event-type-grid');
+        if (!grid) return;
+        // Hide types that are already synthesized in the current events list
+        var synthTypes = {};
+        (_eventsData || []).forEach(function (ev) {
+          if (ev.synthesized) synthTypes[ev.type] = true;
+        });
+        var types = Object.keys(EVENT_FIELDS).filter(function (t) { return !synthTypes[t]; });
+        var html = '<div class="type-grid">';
+        types.forEach(function (t) {
+          var icon = EVENT_ICONS[t] || '•';
+          html +=
+            '<div class="type-card" data-type="' + t + '" onclick="openEventForm(\'' + t + '\')">' +
+              '<span class="type-card-icon">' + icon + '</span>' +
+              '<span>' + t + '</span>' +
+            '</div>';
+        });
+        html += '</div>';
+        grid.innerHTML = html;
+      }
+
+      function showTypeSelector() {
+        var modal = document.getElementById('event-type-modal');
+        if (modal) modal.style.display = 'flex';
+      }
+
+      function openEventForm(evType) {
+        document.getElementById('event-type-modal').style.display = 'none';
+        _currentFormType = evType;
+        var fields = EVENT_FIELDS[evType] || [];
+        var titleEl = document.getElementById('event-form-title');
+        var bodyEl = document.getElementById('event-form-body');
+        var errEl = document.getElementById('event-form-errors');
+        if (titleEl) titleEl.textContent = 'Add ' + evType + ' Event';
+        if (errEl) errEl.style.display = 'none';
+
+        var html = '';
+        fields.forEach(function (f) {
+          if (typeof f === 'string') {
+            if (f.startsWith('---section---')) {
+              html += '<div class="form-section-title">' + htmlEscape(f.slice(13)) + '</div>';
+            } else if (f === '---recurring---') {
+              html += '<div class="form-section-title">Recurring (optional)</div>';
+            }
+            return;
+          }
+          var required = f.required ? ' <span style="color:var(--accent)">*</span>' : '';
+          html += '<div class="form-field">';
+          html += '<label>' + htmlEscape(f.label) + required + '</label>';
+          if (f.type === 'select') {
+            html += '<select id="evf-' + f.name + '">';
+            (f.options || []).forEach(function (o) {
+              var sel = (f.default === o) ? ' selected' : '';
+              html += '<option value="' + o + '"' + sel + '>' + (o || '(none)') + '</option>';
+            });
+            html += '</select>';
+          } else if (f.type === 'bool') {
+            var chk = f.default ? ' checked' : '';
+            html += '<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer">';
+            html += '<input type="checkbox" id="evf-' + f.name + '"' + chk + ' style="accent-color:var(--accent-2)">';
+            html += '<span>' + htmlEscape(f.label) + '</span>';
+            html += '</label>';
+          } else {
+            var ph = f.placeholder ? ' placeholder="' + f.placeholder.replace(/"/g, '&quot;') + '"' : '';
+            html += '<input type="' + f.type + '" id="evf-' + f.name + '"' + ph + '>';
+          }
+          if (f.help) html += '<div class="form-help">' + htmlEscape(f.help) + '</div>';
+          html += '</div>';
+        });
+        bodyEl.innerHTML = html;
+        document.getElementById('event-form-modal').style.display = 'flex';
+      }
+
+      function saveEvent() {
+        if (!_currentFormType) return;
+        var fields = EVENT_FIELDS[_currentFormType] || [];
+        var body = { type: _currentFormType };
+        var errEl = document.getElementById('event-form-errors');
+        var reqMissing = [];
+
+        fields.forEach(function (f) {
+          if (typeof f === 'string') return;
+          var el = document.getElementById('evf-' + f.name);
+          if (!el) return;
+          var val;
+          if (f.type === 'bool') {
+            val = el.checked;
+          } else {
+            val = el.value.trim();
+          }
+          if (f.required && (val === '' || val === false)) {
+            reqMissing.push(f.label);
+          }
+          if (val !== '' && val !== false) {
+            if (f.type === 'number') body[f.name] = Number(val);
+            else body[f.name] = val;
+          }
+        });
+
+        if (reqMissing.length > 0) {
+          errEl.style.display = 'block';
+          errEl.textContent = 'Missing required: ' + reqMissing.join(', ');
+          return;
+        }
+
+        var saveBtn = document.getElementById('save-event-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+
+        apiPost('api/add-event', body).then(function (data) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Event';
+          if (data.ok) {
+            document.getElementById('event-form-modal').style.display = 'none';
+            if (data.toml_content) {
+              var rawEl = document.getElementById('raw-toml-content');
+              if (rawEl) rawEl.value = data.toml_content;
+            }
+            // Refresh events list
+            _eventsLoaded = false;
+            initEventsTab();
+            renderTypeGrid();
+            showSuccess('Event added.');
+          } else {
+            if (errEl) { errEl.style.display = 'block'; errEl.textContent = data.error || 'Save failed.'; }
+          }
+        }).catch(function (err) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Event';
+          if (errEl) { errEl.style.display = 'block'; errEl.textContent = err.message; }
+        });
+      }
+
+      // Expose for inline onclick in type grid
+      window.openEventForm = openEventForm;
 
       /* ── Raw TOML actions ──────────────────────────────────────── */
       function initRawTomlActions() {
@@ -3269,6 +3643,7 @@
         }
 
         initTabs();
+        initEventFormButtons();
         initRefreshMonarch();
         initCsvUpload();
         initCsvSave();
