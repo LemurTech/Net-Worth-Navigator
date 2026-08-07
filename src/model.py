@@ -646,17 +646,20 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
                 errors.append(f"{person_display}.dob must be in YYYY-MM-DD format (got: {dob}){path_hint}")
         
         # Validate life expectancy creates a reasonable death year
-        if dob and person.get("life_expectancy") is not None:
+        # v2: read from EndOfPlan event; v1 fallback: person.life_expectancy
+        eop_year = _person_event_year(config.get("events", []), person_key, "EndOfPlan")
+        life_exp = None
+        if eop_year is not None and birth_year is not None:
+            life_exp = eop_year - birth_year
+        elif person.get("life_expectancy") is not None:
+            life_exp = int(person["life_expectancy"])
+        if life_exp is not None:
             try:
-                birth_year = int(str(dob).split("-")[0])
-                life_exp = int(person["life_expectancy"])
                 death_year = birth_year + life_exp
-                
                 if life_exp > 120:
                     errors.append(
                         f"{person_display}: life_expectancy of {life_exp} years exceeds reasonable maximum (120){path_hint}"
                     )
-                
                 # Allow a 10-year buffer beyond life expectancy for safety margin
                 if end_year and death_year + 10 < int(end_year):
                     age_at_end = int(end_year) - birth_year
@@ -669,28 +672,27 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
                 elif end_year and death_year + 10 >= int(end_year):
                     someone_survives_to_end = True
             except (TypeError, ValueError, KeyError):
-                pass  # Already flagged as format error above
-        
+                pass
+
         # Validate retirement year is sensible
-        retirement_year = person.get("retirement_year")
-        if retirement_year and dob:
+        # v2: read from Retire event; v1 fallback: person.retirement_year
+        retire_year = _person_event_year(config.get("events", []), person_key, "Retire")
+        if retire_year is None:
+            retire_year = person.get("retirement_year")
+        if retire_year is not None:
             try:
-                birth_year = int(str(dob).split("-")[0])
-                ret_year = int(retirement_year)
+                ret_year = int(retire_year)
                 age_at_retirement = ret_year - birth_year
-                
                 if age_at_retirement < 50:
                     errors.append(
                         f"{person_display}: retirement_year {ret_year} means retiring at age {age_at_retirement} "
                         f"(before age 50, is this intentional?){path_hint}"
                     )
-                
                 if age_at_retirement > 80:
                     errors.append(
                         f"{person_display}: retirement_year {ret_year} means retiring at age {age_at_retirement} "
                         f"(after age 80, check your dates){path_hint}"
                     )
-                
                 if start_year and ret_year < int(start_year):
                     errors.append(
                         f"{person_display}: retirement_year ({ret_year}) is before simulation start_year ({start_year}){path_hint}"
@@ -730,26 +732,35 @@ def resolve_runtime_config(config: dict) -> dict:
         runtime.get("simulation", {}),
     )
     runtime["events"] = _sync_end_of_plan_years(runtime)
-    runtime["events"] = _resolve_retirement_events(runtime)
-    runtime["events"] = _resolve_social_security_events(runtime)
     return runtime
 
 
 def _sync_end_of_plan_years(config: dict) -> list[dict]:
-    """Sync EndOfPlan event years to the household dob/life_expectancy settings."""
+    """Sync EndOfPlan event years from dob + age (v2) or life_expectancy (v1 fallback)."""
     synced: list[dict] = []
     for event in config.get("events", []):
         updated = dict(event)
         if updated.get("type") == "EndOfPlan" and updated.get("person"):
             person = config.get(str(updated["person"]), {})
             dob = person.get("dob")
-            life_expectancy = person.get("life_expectancy")
-            if dob and life_expectancy is not None:
+            if dob:
                 try:
                     birth_year = int(str(dob).split("-", 1)[0])
-                    updated["year"] = birth_year + int(life_expectancy)
                 except (TypeError, ValueError):
-                    pass
+                    birth_year = None
+                # v2: event carries an age field
+                age = updated.get("age")
+                if age is not None:
+                    try:
+                        updated["year"] = birth_year + int(age)
+                    except (TypeError, ValueError):
+                        pass
+                elif birth_year is not None and person.get("life_expectancy") is not None:
+                    # v1 fallback: person.life_expectancy
+                    try:
+                        updated["year"] = birth_year + int(person["life_expectancy"])
+                    except (TypeError, ValueError):
+                        pass
         synced.append(updated)
     return synced
 
@@ -2503,6 +2514,38 @@ def _first_retirement_year(config: dict) -> int | None:
         except (TypeError, ValueError, KeyError):
             continue
     return min(retirement_years) if retirement_years else None
+
+
+def _person_event_year(events: list[dict], person_key: str, event_type: str) -> int | None:
+    """Return the year of the first enabled event of `event_type` for `person_key`."""
+    for event in events:
+        if (event.get("type") == event_type
+                and str(event.get("person", "")).lower() == person_key.lower()
+                and event.get("enabled", True)):
+            try:
+                return int(event["year"])
+            except (TypeError, ValueError, KeyError):
+                return None
+    return None
+
+
+def _person_event_age(events: list[dict], person_key: str, event_type: str) -> int | None:
+    """Return the age encoded in an event's year, or from an explicit 'age' field."""
+    for event in events:
+        if (event.get("type") == event_type
+                and str(event.get("person", "")).lower() == person_key.lower()
+                and event.get("enabled", True)):
+            age = event.get("age")
+            if age is not None:
+                try:
+                    return int(age)
+                except (TypeError, ValueError):
+                    pass
+            try:
+                return int(event["year"])
+            except (TypeError, ValueError, KeyError):
+                return None
+    return None
 
 
 def _load_historical_returns(path_str: str) -> pd.DataFrame:
@@ -4318,8 +4361,11 @@ def _person_income_components(
     ss_income = 0.0
     ss_taxable_income = 0.0
 
-    # Stop income at retirement
-    if year >= person["retirement_year"]:
+    # Stop income at retirement (read from event, fall back to person field)
+    retire_year = _person_event_year(events, person_key, "Retire")
+    if retire_year is None:
+        retire_year = person.get("retirement_year")
+    if retire_year is not None and year >= retire_year:
         earned_income = 0.0
 
     # Add Social Security
@@ -4340,7 +4386,11 @@ def _person_income_components(
     # New job: replace base income
     for event in events:
         if event["type"] == "NewJob" and event.get("person") == person_key:
-            if year >= event["year"] and year < person["retirement_year"]:
+            ret_yr = _person_event_year(events, person_key, "Retire")
+            if ret_yr is None:
+                ret_yr = person.get("retirement_year")
+            still_working = ret_yr is None or year < ret_yr
+            if year >= event["year"] and still_working:
                 earned_income = _project_person_take_home(
                     person,
                     year=year,

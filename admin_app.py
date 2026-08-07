@@ -1710,8 +1710,6 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "cash_target_survivor": ("withdrawal_policy.survivor_cash_target", float),
     "stock_return": ("assumptions.stock_return", float),
     "bond_return": ("assumptions.bond_return", float),
-    "person1_retirement_year": ("person1.retirement_year", int),
-    "person2_retirement_year": ("person2.retirement_year", int),
     "person1_name": ("person1.name", str),
     "person2_name": ("person2.name", str),
     "inflation": ("assumptions.inflation", float),
@@ -1892,7 +1890,7 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
 
 @app.get("/api/events")
 async def api_list_events(request: Request) -> JSONResponse:
-    """Return the scenario's [[events]] blocks as a JSON list, plus synthesized events."""
+    """Return the scenario's [[events]] blocks as a JSON list with migration status."""
     scenario_slug = request.query_params.get("scenario") or None
     try:
         doc, _ = _toml_open(scenario_slug)
@@ -1907,7 +1905,6 @@ async def api_list_events(request: Request) -> JSONResponse:
                 "label": str(ev.get("label", "")),
                 "enabled": ev.get("enabled", True) if "enabled" in ev else True,
             }
-            # Extract year/amount for display summary
             year = ev.get("year") or ev.get("start_year")
             if year is not None:
                 entry["year"] = int(year)
@@ -1919,74 +1916,39 @@ async def api_list_events(request: Request) -> JSONResponse:
                 entry["amount"] = float(amount)
             entry["person"] = ev.get("person", "")
             entry["annual_cost"] = ev.get("annual_cost", ev.get("down_payment", ""))
-            # Recurring summary
             if ev.get("repeat_every_years") is not None:
                 entry["recurring"] = {
                     "every_years": int(ev["repeat_every_years"]),
                     "until_year": ev.get("repeat_until_year"),
                 }
+            # Flag events that carry an age field (v2 EndOfPlan, Retire, SS)
+            if ev.get("age") is not None:
+                entry["has_age"] = True
             parsed.append(entry)
 
-        # ── Synthesize events from person config ──────────────────────────
-        has_retire = any(e["type"] == "Retire" for e in parsed)
-        has_ss = any(e["type"] == "SocialSecurity" for e in parsed)
-
+        # ── Migration detection ───────────────────────────────────────────
+        migration_needed = []
         for person_key in ("person1", "person2"):
             person = doc.get(person_key)
             if not isinstance(person, dict):
                 continue
-            # Initial for label
-            name = str(person.get("name", "")).strip()
-            initial = name[0].upper() if name and name[0].isalpha() else person_key[:1].upper()
+            has_retire = any(e["type"] == "Retire" and e.get("person") == person_key for e in parsed)
+            has_ss = any(e["type"] == "SocialSecurity" and e.get("person") == person_key for e in parsed)
+            has_eop = any(e["type"] == "EndOfPlan" and e.get("person") == person_key for e in parsed)
 
-            # ── Retire ────────────────────────────────────────────────────
-            if not has_retire:
-                retirement_year = person.get("retirement_year")
-                if retirement_year is not None:
-                    try:
-                        ry = int(retirement_year)
-                        parsed.append({
-                            "index": -1,
-                            "type": "Retire",
-                            "label": f"Retirement ({initial})",
-                            "enabled": True,
-                            "year": ry,
-                            "person": person_key,
-                            "synthesized": True,
-                        })
-                    except (TypeError, ValueError):
-                        pass
+            if not has_retire and person.get("retirement_year") is not None:
+                migration_needed.append(f"{person_key} Retire")
+            if not has_ss and (person.get("ss_start_age") is not None
+                               or person.get("ss_claim_age") is not None):
+                migration_needed.append(f"{person_key} SocialSecurity")
+            if not has_eop and person.get("life_expectancy") is not None:
+                migration_needed.append(f"{person_key} EndOfPlan")
 
-            # ── SocialSecurity ────────────────────────────────────────────
-            if not has_ss:
-                dob = person.get("dob")
-                ss_age = person.get("ss_claim_age") or person.get("ss_start_age")
-                if dob and ss_age is not None:
-                    try:
-                        birth_year = int(str(dob).split("-", 1)[0])
-                        start_year = birth_year + int(ss_age)
-                        benefits = person.get("social_security_benefits")
-                        monthly = None
-                        if isinstance(benefits, dict):
-                            monthly = benefits.get(str(int(ss_age)))
-                            if monthly is None:
-                                # Try exact string key
-                                monthly = benefits.get(str(ss_age))
-                        if monthly is not None:
-                            parsed.append({
-                                "index": -1,
-                                "type": "SocialSecurity",
-                                "label": f"SS Begins ({initial})",
-                                "enabled": True,
-                                "year": start_year,
-                                "person": person_key,
-                                "amount": float(monthly),
-                                "synthesized": True,
-                            })
-                    except (TypeError, ValueError):
-                        pass
-
-        return JSONResponse({"ok": True, "events": parsed, "count": len(parsed)})
+        result = {"ok": True, "events": parsed, "count": len(parsed)}
+        if migration_needed:
+            result["migration_needed"] = True
+            result["migration_items"] = migration_needed
+        return JSONResponse(result)
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
@@ -2043,7 +2005,7 @@ _EVENT_REQUIRED_FIELDS: dict[str, list[str]] = {
     "Income":             ["year", "amount"],
     "Expense":            ["year", "amount"],
     "Education":          ["person", "start_year", "end_year", "annual_cost"],
-    "SocialSecurity":     ["person", "year", "monthly_benefit"],
+    "SocialSecurity":     ["person", "year"],
     "NewJob":             ["person", "year", "annual_income"],
     "CareerBreak":        ["person", "start_year", "end_year"],
     "BuyHome":            ["year", "down_payment"],
@@ -2052,7 +2014,7 @@ _EVENT_REQUIRED_FIELDS: dict[str, list[str]] = {
     "ContributionChange": ["year", "person"],
 }
 
-_INT_FIELDS = {"year", "start_year", "end_year", "repeat_every_years", "repeat_count", "repeat_until_year"}
+_INT_FIELDS = {"year", "start_year", "end_year", "repeat_every_years", "repeat_count", "repeat_until_year", "age"}
 _FLOAT_FIELDS = {"amount", "annual_cost", "down_payment", "monthly_benefit", "annual_income",
                  "retirement_annual", "survivor_annual", "survivor_percent_of_retirement",
                  "price", "mortgage_rate", "term_years", "sale_fee_rate", "reinvest_fraction",
@@ -2134,12 +2096,38 @@ async def api_add_event(request: Request) -> JSONResponse:
     if not ev_type:
         return JSONResponse({"ok": False, "error": "Missing event type."}, status_code=400)
 
-    errors = _validate_event_fields(ev_type, body)
-    if errors:
-        return JSONResponse({"ok": False, "error": "; ".join(errors)}, status_code=400)
-
     try:
         doc, _ = _toml_open(scenario_slug)
+
+        # Compute year from age for age-entry event types (must happen before validation)
+        if "age" in body and "year" not in body:
+            person_key = str(body.get("person", "person1")).strip()
+            person = doc.get(person_key, {}) if isinstance(doc.get(person_key), dict) else {}
+            dob = person.get("dob")
+            if dob:
+                try:
+                    birth_year = int(str(dob).split("-", 1)[0])
+                    age = int(body["age"])
+                    body["year"] = birth_year + age
+                    # For SocialSecurity, auto-lookup monthly benefit
+                    if ev_type == "SocialSecurity" and "monthly_benefit" not in body:
+                        benefits = person.get("social_security_benefits")
+                        if isinstance(benefits, dict):
+                            monthly = benefits.get(str(age))
+                            if monthly is not None:
+                                body["monthly_benefit"] = float(monthly)
+                            else:
+                                return JSONResponse({
+                                    "ok": False,
+                                    "error": f"No benefit amount found for age {age} in {person_key}.social_security_benefits. "
+                                             f"Available ages: {', '.join(sorted(benefits.keys()))}",
+                                }, status_code=400)
+                except (TypeError, ValueError):
+                    pass  # fall through — year will be missing, validation catches it
+
+        errors = _validate_event_fields(ev_type, body)
+        if errors:
+            return JSONResponse({"ok": False, "error": "; ".join(errors)}, status_code=400)
 
         # Build the tomlkit table from submitted fields (skip empty/None values)
         table = tomlkit.table()

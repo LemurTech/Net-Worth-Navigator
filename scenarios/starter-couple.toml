@@ -124,8 +124,6 @@ failure_grace_period_months     = 0
 [person1]
 name              = "Person 1"          # ← YOUR VALUE
 dob               = "1975-01-01"        # ← YOUR VALUE: YYYY-MM-DD
-life_expectancy   = 90                  # modeled terminal age (not a prediction)
-retirement_year   = 2040                # ← YOUR VALUE: first year wages stop
 
 # Employment income
 # annual_take_home is your net cash income after taxes.
@@ -150,7 +148,6 @@ retirement_contribution_max_percent      = 0.25
 # annual_401k_employer_match_max_percent = 0.06
 
 # Social Security
-ss_start_age = 67           # ← YOUR VALUE: age to claim Social Security (62–70)
 rmd_trad_ira_share = 0.5    # ← YOUR VALUE: this person's share of household traditional balance
 
 # Traditional / Roth split for 401(k) contributions (must sum to 1.0)
@@ -174,8 +171,6 @@ roth     = 0.30   # ← YOUR VALUE: fraction routed to Roth
 [person2]
 name              = "Person 2"          # ← YOUR VALUE
 dob               = "1978-01-01"        # ← YOUR VALUE: YYYY-MM-DD
-life_expectancy   = 90
-retirement_year   = 2043                # ← YOUR VALUE
 
 annual_take_home  = 0                   # ← YOUR VALUE
 annual_take_home_is_net_of_retirement_contributions = true
@@ -192,7 +187,6 @@ retirement_contribution_max_percent      = 0.25
 # annual_401k_employer_match_rate        = 0.50
 # annual_401k_employer_match_max_percent = 0.06
 
-ss_start_age       = 67   # ← YOUR VALUE
 rmd_trad_ira_share = 0.5
 
 [person2.annual_401k_contribution_split]
@@ -317,3 +311,48 @@ effective_tax_rate_post_retirement = 0.15  # ← YOUR VALUE: typically lower in 
 # label    = "Sell Primary Residence"
 # year     = 2045
 # property = "Primary Residence"   # must match [synthetic_start.property_values] key
+[[events]]
+enabled = true
+type = "Retire"
+label = "Retirement (P)"
+person = "person1"
+year = 2040
+
+[[events]]
+enabled = true
+type = "SocialSecurity"
+label = "SS Begins (P)"
+person = "person1"
+year = 2042
+monthly_benefit = 0.0
+
+[[events]]
+enabled = true
+type = "EndOfPlan"
+label = "End of Plan (P)"
+person = "person1"
+age = 90
+year = 2065
+
+[[events]]
+enabled = true
+type = "Retire"
+label = "Retirement (P)"
+person = "person2"
+year = 2043
+
+[[events]]
+enabled = true
+type = "SocialSecurity"
+label = "SS Begins (P)"
+person = "person2"
+year = 2045
+monthly_benefit = 0.0
+
+[[events]]
+enabled = true
+type = "EndOfPlan"
+label = "End of Plan (P)"
+person = "person2"
+age = 90
+year = 2068

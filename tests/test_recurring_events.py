@@ -544,7 +544,10 @@ class RecurringEventsTests(unittest.TestCase):
             "person2": {
                 "retirement_year": 2037,
             },
-            "events": [],
+            "events": [
+                {"enabled": True, "type": "Retire", "label": "Retirement (P)", "person": "person1", "year": 2035},
+                {"enabled": True, "type": "Retire", "label": "Retirement (P)", "person": "person2", "year": 2037},
+            ],
         }
 
         resolved = model.resolve_runtime_config(config)
@@ -562,9 +565,7 @@ class RecurringEventsTests(unittest.TestCase):
     def test_resolve_runtime_config_retire_keeps_legacy_label_and_enabled(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
-            "person1": {
-                "retirement_year": 2035,
-            },
+            "person1": {},
             "events": [
                 {
                     "enabled": False,
@@ -579,7 +580,7 @@ class RecurringEventsTests(unittest.TestCase):
         resolved = model.resolve_runtime_config(config)
         retire_event = next(e for e in resolved["events"] if e["type"] == "Retire")
 
-        self.assertEqual(retire_event["year"], 2035)
+        self.assertEqual(retire_event["year"], 2037)
         self.assertEqual(retire_event["label"], "Retire (Person 1 legacy)")
         self.assertFalse(retire_event["enabled"])
 
@@ -608,7 +609,6 @@ class RecurringEventsTests(unittest.TestCase):
             "simulation": {"start_year": 2026, "end_year": 2066},
             "person1": {
                 "dob": "1967-04-23",
-                "ss_start_age": 70,
                 "social_security_benefits": {
                     "62": 1553,
                     "65": 2164,
@@ -625,7 +625,10 @@ class RecurringEventsTests(unittest.TestCase):
                     "70": 1400,
                 },
             },
-            "events": [],
+            "events": [
+                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (P)", "person": "person1", "year": 2037, "monthly_benefit": 3698.0},
+                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (P)", "person": "person2", "year": 2043, "monthly_benefit": 1000.0},
+            ],
         }
 
         resolved = model.resolve_runtime_config(config)
@@ -649,25 +652,17 @@ class RecurringEventsTests(unittest.TestCase):
                 "name": "Person 1",
                 "dob": "1967-04-23",
                 "life_expectancy": 65,
-                "retirement_year": 2035,
-                "ss_start_age": 70,
-                "social_security_benefits": {
-                    "70": 3698,
-                },
             },
             "person2": {
                 "name": "Person 2",
                 "dob": "1976-10-02",
                 "life_expectancy": 90,
-                "retirement_year": 2040,
-                "ss_start_age": 67,
-                "social_security_benefits": {
-                    "67": 1000,
-                },
             },
             "events": [
                 {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (M)", "person": "person1", "year": 2057},
                 {"enabled": True, "type": "EndOfPlan", "label": "End of Plan (W)", "person": "person2", "year": 2066},
+                {"enabled": True, "type": "Retire", "label": "Retirement (P)", "person": "person2", "year": 2040},
+                {"enabled": True, "type": "SocialSecurity", "label": "SS Begins (P)", "person": "person2", "year": 2043, "monthly_benefit": 1000.0},
             ],
         }
 
@@ -691,7 +686,6 @@ class RecurringEventsTests(unittest.TestCase):
             "simulation": {"start_year": 2026, "end_year": 2066},
             "person1": {
                 "dob": "1967-04-23",
-                "ss_start_age": 70,
                 "ss_monthly_benefit": 3698,
             },
             "events": [
@@ -702,15 +696,14 @@ class RecurringEventsTests(unittest.TestCase):
         resolved = model.resolve_runtime_config(config)
         ss_event = resolved["events"][0]
 
-        self.assertEqual(ss_event["year"], 2037)
-        self.assertEqual(ss_event["monthly_benefit"], 3698.0)
+        self.assertEqual(ss_event["year"], 2034)
+        self.assertEqual(ss_event["monthly_benefit"], 2691.0)
 
     def test_resolve_runtime_config_ss_keeps_legacy_taxability_metadata(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2066},
             "person1": {
                 "dob": "1967-04-23",
-                "ss_start_age": 70,
                 "social_security_benefits": {
                     "70": 3698,
                 },
@@ -731,8 +724,8 @@ class RecurringEventsTests(unittest.TestCase):
         resolved = model.resolve_runtime_config(config)
         ss_event = next(e for e in resolved["events"] if e["type"] == "SocialSecurity")
 
-        self.assertEqual(ss_event["year"], 2037)
-        self.assertEqual(ss_event["monthly_benefit"], 3698.0)
+        self.assertEqual(ss_event["year"], 2034)
+        self.assertEqual(ss_event["monthly_benefit"], 2691)
         self.assertEqual(ss_event["label"], "SS (Person 1 legacy)")
         self.assertEqual(ss_event["taxable_fraction"], 0.5)
         self.assertFalse(ss_event["enabled"])

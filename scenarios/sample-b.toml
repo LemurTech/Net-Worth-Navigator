@@ -75,8 +75,6 @@ failure_grace_period_months     = 6   # One difficult year is not failure
 [person1]
 name             = "Alex"
 dob              = "1969-04-12"
-life_expectancy  = 90
-retirement_year  = 2034                 # Age 65 — early retirement goal
 
 annual_take_home = 78000
 annual_take_home_is_net_of_retirement_contributions = true
@@ -93,7 +91,6 @@ annual_401k_employer_match_mode        = "percent_of_gross"
 annual_401k_employer_match_rate        = 1.0
 annual_401k_employer_match_max_percent = 0.06
 
-ss_start_age       = 70                 # Delay SS: 8% per-year credit, max monthly benefit
 rmd_trad_ira_share = 0.50               # Closer to 50/50: more Roth concentration
 
 [person1.annual_401k_contribution_split]
@@ -115,8 +112,6 @@ roth     = 0.75
 [person2]
 name             = "Sam"
 dob              = "1974-10-03"
-life_expectancy  = 92
-retirement_year  = 2038                 # Age 64 — retires close to Alex
 
 annual_take_home = 52000
 annual_take_home_is_net_of_retirement_contributions = true
@@ -133,7 +128,6 @@ annual_401k_employer_match_mode        = "percent_of_gross"
 annual_401k_employer_match_rate        = 1.0
 annual_401k_employer_match_max_percent = 0.06
 
-ss_start_age       = 70                 # Both delay SS
 rmd_trad_ira_share = 0.50
 
 [person2.annual_401k_contribution_split]
@@ -335,3 +329,43 @@ expense_kind = "mandatory"
 funding = "cash_reserve_first"
 repeat_every_years = 1
 chart_first_occurrence_only = true
+[[events]]
+enabled = true
+type = "Retire"
+label = "Retirement (A)"
+person = "person1"
+year = 2034
+[[events]]
+enabled = true
+type = "SocialSecurity"
+label = "SS Begins (A)"
+person = "person1"
+year = 2039
+monthly_benefit = 3120.0
+[[events]]
+enabled = true
+type = "EndOfPlan"
+label = "End of Plan (A)"
+person = "person1"
+age = 90
+year = 2059
+[[events]]
+enabled = true
+type = "Retire"
+label = "Retirement (S)"
+person = "person2"
+year = 2038
+[[events]]
+enabled = true
+type = "SocialSecurity"
+label = "SS Begins (S)"
+person = "person2"
+year = 2044
+monthly_benefit = 2010.0
+[[events]]
+enabled = true
+type = "EndOfPlan"
+label = "End of Plan (S)"
+person = "person2"
+age = 92
+year = 2066

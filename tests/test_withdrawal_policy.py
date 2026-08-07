@@ -345,6 +345,10 @@ class WithdrawalPolicyTests(unittest.TestCase):
         config = self._base_config()
         config["person1"]["retirement_year"] = 2100
         config["person2"]["retirement_year"] = 2100
+        # v2: also update Retire events (income reads events first)
+        for e in config["events"]:
+            if e["type"] == "Retire":
+                e["year"] = 2100
         config["person1"]["annual_take_home"] = 100.0
         config["person1"]["annual_ira_contribution"] = 10.0
         config["person1"]["annual_take_home_is_net_of_retirement_contributions"] = True

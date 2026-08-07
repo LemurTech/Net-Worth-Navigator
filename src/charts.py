@@ -2141,10 +2141,15 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
         for e in events
         if e["type"] == "EndOfPlan" and e.get("person")
     }
-    retirement_years = {
-        person_key: config.get(person_key, {}).get("retirement_year", sim_end)
-        for person_key in _person_keys(config)
-    }
+    # v2: retirement years from Retire events; v1 fallback: person.retirement_year
+    retirement_years = {}
+    for person_key in _person_keys(config):
+        from src.model import _person_event_year
+        ry = _person_event_year(config.get("events", []), person_key, "Retire")
+        if ry is not None:
+            retirement_years[person_key] = ry
+        else:
+            retirement_years[person_key] = config.get(person_key, {}).get("retirement_year", sim_end)
 
     items: list[dict] = []
 

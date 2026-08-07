@@ -592,29 +592,13 @@
       <div class="inline-row person-row" style="margin-bottom:14px">
         <div class="inline-field" style="flex:1 1 160px;min-width:120px"><label id="label-person1-name">Person 1 Name</label><input type="text" id="person1_name" style="width:100%"></div>
         <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person1_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
-        <div class="inline-field" style="flex:0 0 auto"><label id="label-person1-retires">Retires (year)</label><input type="number" id="person1_retirement_year" step="1" style="width:100px"></div>
-        <div class="inline-field" style="flex:1 1 200px;min-width:180px">
-          <label style="visibility:hidden">or age</label>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
-            <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;letter-spacing:0.04em">or age</span>
-            <span id="person1-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
-            <input type="range" id="person1-retire-slider" min="40" max="80" step="1" style="flex:1;min-width:60px">
-          </div>
-        </div>
+
       </div>
       <div id="person2-section">
       <div class="inline-row person-row" style="margin-bottom:14px">
         <div class="inline-field" style="flex:1 1 160px;min-width:120px"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:100%"></div>
         <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
-        <div class="inline-field" style="flex:0 0 auto"><label id="label-person2-retires">Retires (year)</label><input type="number" id="person2_retirement_year" step="1" style="width:100px"></div>
-        <div class="inline-field" style="flex:1 1 200px;min-width:180px">
-          <label style="visibility:hidden">or age</label>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
-            <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;letter-spacing:0.04em">or age</span>
-            <span id="person2-age-label" style="font-size:13px;color:var(--text);min-width:24px;text-align:right;font-variant-numeric:tabular-nums">60</span>
-            <input type="range" id="person2-retire-slider" min="40" max="80" step="1" style="flex:1;min-width:60px">
-          </div>
-        </div>
+
       </div>
       </div>
 
@@ -1131,11 +1115,6 @@
         m = configContent.match(/^\s*end_year\s*=\s*(\d+)/m);
         if (m && m[1]) c.sim_end = parseInt(m[1], 10);
 
-        m = configContent.match(/^\[person1\]\s*[\s\S]*?^\s*retirement_year\s*=\s*(\d+)/m);
-        if (m && m[1]) c.person1_retirement = parseInt(m[1], 10);
-        m = configContent.match(/^\[person2\]\s*[\s\S]*?^\s*retirement_year\s*=\s*(\d+)/m);
-        if (m && m[1]) c.person2_retirement = parseInt(m[1], 10);
-
         // Person display names (for dynamic labels + inputs)
         var person1Name = 'Person 1';
         var person2Name = 'Person 2';
@@ -1178,63 +1157,6 @@
           return el ? (parseInt(el.value, 10) || 0) : 0;
         }
 
-        function wireSlider(sliderId, yearInputId, ageLabelId, birthYearInputId, retYear) {
-          var slider = document.getElementById(sliderId);
-          var yearInput = document.getElementById(yearInputId);
-          var ageLabel = document.getElementById(ageLabelId);
-          if (!slider || !yearInput || !ageLabel) return;
-
-          function currentBirthYear() { return getBirthYear(birthYearInputId); }
-
-          function sliderToYear(age) {
-            var by = currentBirthYear();
-            return by ? by + parseInt(age, 10) : 0;
-          }
-
-          function yearToSlider(yr) {
-            var by = currentBirthYear();
-            return by ? Math.max(40, Math.min(80, parseInt(yr, 10) - by)) : 40;
-          }
-
-          function syncFromSlider() {
-            var age = parseInt(slider.value, 10);
-            ageLabel.textContent = age;
-            var yr = sliderToYear(age);
-            if (yr) yearInput.value = yr;
-          }
-
-          function syncFromYear() {
-            var yr = parseInt(yearInput.value, 10);
-            if (!yr) return;
-            var by = currentBirthYear();
-            if (!by) return;
-            var age = yearToSlider(yr);
-            slider.value = age;
-            ageLabel.textContent = age;
-          }
-
-          // Set initial slider position from retirement year
-          if (retYear && currentBirthYear()) {
-            slider.value = yearToSlider(retYear);
-            ageLabel.textContent = slider.value;
-          }
-
-          slider.addEventListener('input', syncFromSlider);
-          yearInput.addEventListener('change', syncFromYear);
-
-          // When birth year changes, refresh slider from year input
-          var byInput = document.getElementById(birthYearInputId);
-          if (byInput) {
-            byInput.addEventListener('change', function () {
-              syncFromYear();
-              // If year input is empty, sync from slider
-              if (!yearInput.value) syncFromSlider();
-            });
-          }
-        }
-
-        wireSlider('person1-retire-slider', 'person1_retirement_year', 'person1-age-label', 'person1_birth_year', c.person1_retirement);
-        wireSlider('person2-retire-slider', 'person2_retirement_year', 'person2-age-label', 'person2_birth_year', c.person2_retirement);
 
         var dsMode = 'monarch';
         m = configContent.match(/^\s*mode\s*=\s*\"(monarch|synthetic|csv_import)\"/m);
@@ -1294,9 +1216,7 @@
         setField('bond_return', c.bond_return != null ? (c.bond_return * 100).toFixed(1) : '');
         setField('inflation', c.inflation != null ? (c.inflation * 100).toFixed(1) : '');
         setField('equity_allocation', c.equity_allocation != null ? (c.equity_allocation * 100).toFixed(1) : '');
-        setField('person1_retirement_year', c.person1_retirement);
-        setField('person2_retirement_year', c.person2_retirement);
-        setField('simulation_start_year', c.sim_start);
+                        setField('simulation_start_year', c.sim_start);
         setField('simulation_end_year', c.sim_end);
 
         // Data source radio
@@ -1458,10 +1378,6 @@
         if (inf) body.inflation = parseFloat(inf) / 100;
         if (eq) body.equity_allocation = parseFloat(eq) / 100;
 
-        var mr = getField('person1_retirement_year');
-        var wr = getField('person2_retirement_year');
-        if (mr) body.person1_retirement_year = parseInt(mr, 10);
-        if (wr) body.person2_retirement_year = parseInt(wr, 10);
 
         // Person names
         var p1n = getField('person1_name');
@@ -2717,7 +2633,6 @@
           var icon = EVENT_ICONS[ev.type] || '•';
           var title = ev.label || (ev.type + ' (' + (ev.person || '') + ')');
           var enabled = ev.enabled !== false;
-          var isSynthesized = ev.synthesized === true;
 
           var metaParts = [ev.type];
           if (ev.year != null) {
@@ -2741,16 +2656,13 @@
           var meta = metaParts.join('  ·  ');
           var disabledClass = enabled ? '' : ' disabled';
           var checkedAttr = enabled ? ' checked' : '';
-          var sysBadge = isSynthesized ? ' <span class="sys-badge">System</span>' : '';
-          var toggleHtml = isSynthesized
-            ? '<span style="font-size:11px;color:var(--muted)">auto</span>'
-            : '<label><input type="checkbox"' + checkedAttr + ' onchange="toggleEvent(' + i + ', this.checked)"><span>On</span></label>';
+          var toggleHtml = '<label><input type="checkbox"' + checkedAttr + ' onchange="toggleEvent(' + i + ', this.checked)"><span>On</span></label>';
 
           html +=
             '<div class="event-card' + disabledClass + '" data-index="' + i + '">' +
               '<span class="event-card-icon">' + icon + '</span>' +
               '<div class="event-card-body">' +
-                '<div class="event-card-title">' + htmlEscape(title) + sysBadge + '</div>' +
+                '<div class="event-card-title">' + htmlEscape(title) + '</div>' +
                 '<div class="event-card-meta">' + htmlEscape(meta) + '</div>' +
               '</div>' +
               '<div class="event-card-toggle">' + toggleHtml + '</div>' +
@@ -2822,12 +2734,12 @@
         EndOfPlan: [
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. End of Plan (Alex)' },
           { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true, help: 'Whose life expectancy this marks' },
-          { name: 'year', type: 'number', label: 'Year', required: true },
+          { name: 'age', type: 'number', label: 'Age', placeholder: '90', required: true, help: 'Year computed as birth_year + age at save time' },
         ],
         Retire: [
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Alex Retires' },
           { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
-          { name: 'year', type: 'number', label: 'Year', required: true },
+          { name: 'age', type: 'number', label: 'Age', placeholder: '67', required: true, help: 'Year computed as birth_year + age at save time' },
         ],
         Marriage: [
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. Marriage' },
@@ -2843,8 +2755,7 @@
         SocialSecurity: [
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. SS — Person 1' },
           { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
-          { name: 'year', type: 'number', label: 'Start Year', required: true },
-          { name: 'monthly_benefit', type: 'number', label: 'Monthly Benefit', placeholder: '2000', required: true, help: 'Monthly benefit in current dollars' },
+          { name: 'age', type: 'number', label: 'Age', placeholder: '70', required: true, help: 'Start age. Year computed from birth year. Monthly benefit auto-looked up from benefit table.' },
           { name: 'taxable', type: 'bool', label: 'Taxable', default: true },
         ],
         NewJob: [
@@ -2945,12 +2856,7 @@
       function renderTypeGrid() {
         var grid = document.getElementById('event-type-grid');
         if (!grid) return;
-        // Hide types that are already synthesized in the current events list
-        var synthTypes = {};
-        (_eventsData || []).forEach(function (ev) {
-          if (ev.synthesized) synthTypes[ev.type] = true;
-        });
-        var types = Object.keys(EVENT_FIELDS).filter(function (t) { return !synthTypes[t]; });
+        var types = Object.keys(EVENT_FIELDS);
         var html = '<div class="type-grid">';
         types.forEach(function (t) {
           var icon = EVENT_ICONS[t] || '•';
@@ -2989,25 +2895,27 @@
             }
             return;
           }
-          var required = f.required ? ' <span style="color:var(--accent)">*</span>' : '';
-          html += '<div class="form-field">';
-          html += '<label>' + htmlEscape(f.label) + required + '</label>';
-          if (f.type === 'select') {
-            html += '<select id="evf-' + f.name + '">';
-            (f.options || []).forEach(function (o) {
-              var sel = (f.default === o) ? ' selected' : '';
-              html += '<option value="' + o + '"' + sel + '>' + (o || '(none)') + '</option>';
-            });
-            html += '</select>';
-          } else if (f.type === 'bool') {
+          if (f.type === 'bool') {
+            html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;margin-bottom:12px">';
             var chk = f.default ? ' checked' : '';
-            html += '<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer">';
-            html += '<input type="checkbox" id="evf-' + f.name + '"' + chk + ' style="accent-color:var(--accent-2)">';
-            html += '<span>' + htmlEscape(f.label) + '</span>';
-            html += '</label>';
+            html += '<input type="checkbox" id="evf-' + f.name + '"' + chk + ' style="accent-color:var(--accent-2);flex-shrink:0">';
+            html += '<label for="evf-' + f.name + '" style="font-size:13px;color:var(--text);cursor:pointer;font-weight:400">' + htmlEscape(f.label) + '</label>';
+            html += '</div>';
           } else {
-            var ph = f.placeholder ? ' placeholder="' + f.placeholder.replace(/"/g, '&quot;') + '"' : '';
-            html += '<input type="' + f.type + '" id="evf-' + f.name + '"' + ph + '>';
+            var required = f.required ? ' <span style="color:var(--accent)">*</span>' : '';
+            html += '<div class="form-field">';
+            html += '<label>' + htmlEscape(f.label) + required + '</label>';
+            if (f.type === 'select') {
+              html += '<select id="evf-' + f.name + '">';
+              (f.options || []).forEach(function (o) {
+                var sel = (f.default === o) ? ' selected' : '';
+                html += '<option value="' + o + '"' + sel + '>' + (o || '(none)') + '</option>';
+              });
+              html += '</select>';
+            } else {
+              var ph = f.placeholder ? ' placeholder="' + f.placeholder.replace(/"/g, '&quot;') + '"' : '';
+              html += '<input type="' + f.type + '" id="evf-' + f.name + '"' + ph + '>';
+            }
           }
           if (f.help) html += '<div class="form-help">' + htmlEscape(f.help) + '</div>';
           html += '</div>';

@@ -95,7 +95,6 @@ failure_grace_period_months = 0
 name              = "Alex"
 dob               = "1969-04-12"   # YYYY-MM-DD
 life_expectancy   = 90             # modeled terminal age (not a prediction)
-retirement_year   = 2038           # first year wages stop in the model
 
 # Employment income inputs (annual, nominal dollars)
 annual_take_home  = 78000          # net-cash wage input (see [taxes].wage_tax_treatment)
@@ -129,7 +128,6 @@ annual_ira_contribution  = 0        # direct IRA contribution (cash outflow + bu
 rmd_trad_ira_share = 0.6
 
 # Social Security timing and benefit options
-ss_start_age = 67   # source of truth for SS start timing
 
 [person1.social_security_benefits]
 "62" = 1700
@@ -154,7 +152,6 @@ roth     = 0.69
 name              = "Sam"
 dob               = "1974-10-03"
 life_expectancy   = 92
-retirement_year   = 2043
 
 annual_take_home  = 52000
 annual_take_home_is_net_of_retirement_contributions = true
@@ -178,7 +175,6 @@ annual_ira_contribution  = 3000  # direct IRA contribution
 annual_ira_contribution_bucket = "roth"
 
 rmd_trad_ira_share = 0.4
-ss_start_age = 67
 
 [person2.social_security_benefits]
 "62" = 1100
@@ -436,3 +432,29 @@ amount  = -25000
 expense_kind = "mandatory"
 repeat_every_years = 1
 chart_first_occurrence_only = true
+[[events]]
+enabled = true
+type = "Retire"
+label = "Retirement (A)"
+person = "person1"
+year = 2038
+[[events]]
+enabled = true
+type = "SocialSecurity"
+label = "SS Begins (A)"
+person = "person1"
+year = 2036
+monthly_benefit = 2520.0
+[[events]]
+enabled = true
+type = "Retire"
+label = "Retirement (S)"
+person = "person2"
+year = 2043
+[[events]]
+enabled = true
+type = "SocialSecurity"
+label = "SS Begins (S)"
+person = "person2"
+year = 2041
+monthly_benefit = 1600.0

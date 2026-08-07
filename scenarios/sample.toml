@@ -100,7 +100,6 @@ failure_grace_period_months = 0
 name              = "Alex"
 dob               = "1972-03-15"   # YYYY-MM-DD
 life_expectancy   = 90             # modeled terminal age (not a prediction)
-retirement_year   = 2040           # first year wages stop in the model
 
 # Employment income inputs (annual, nominal dollars)
 annual_take_home  = 62000          # net-cash wage input (see [taxes].wage_tax_treatment)
@@ -125,7 +124,6 @@ annual_ira_contribution  = 0
 # Share of household traditional retirement balance for RMD math
 rmd_trad_ira_share = 1.0
 
-ss_start_age = 67
 
 [person1.social_security_benefits]
 "62" = 1400
@@ -386,6 +384,19 @@ expense_kind = "mandatory"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
+[[events]]
+enabled = true
+type = "Retire"
+label = "Retirement (A)"
+person = "person1"
+year = 2040
+[[events]]
+enabled = true
+type = "SocialSecurity"
+label = "SS Begins (A)"
+person = "person1"
+year = 2039
+monthly_benefit = 2020.0
 [person2]
 name = "Person 2"
 dob = "0-01-01"
