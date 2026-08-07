@@ -3,6 +3,35 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-07 (Phase 3a — Events Tab in Setup Panel)
+
+**Branch:** `dev` (not yet merged to main)
+
+### Added
+
+- **Events tab in Setup Panel** — 4th tab between Accounts and Raw TOML. Lazy-loads event data from `GET /api/events` and renders each `[[events]]` block as a summary card with type icon (💸💰🏠 etc.), label, year range, amount, and recurring info.
+- **Enable/disable toggle per event** — Each card has an On/Off checkbox. Calls `POST /api/toggle-event` to flip `enabled` in the TOML file via tomlkit, updates the raw TOML textarea, and applies disabled opacity styling. Optimistic UI with rollback on failure.
+- **`GET /api/events` endpoint** — Parses scenario TOML via tomlkit and returns all `[[events]]` blocks as JSON with type, label, year, amount, person, recurring controls. Handles both `year` and `start_year` anchor fields.
+- **`POST /api/toggle-event` endpoint** — Accepts `{index, enabled}`, reads TOML via tomlkit, flips the event's `enabled` flag, writes via `_backup_and_write_toml()`, returns updated `toml_content`.
+- **Event card CSS** — Dark-themed cards with type icon, body, and toggle switch. `.disabled` class reduces opacity. Uses existing design tokens.
+- **Comprehensive plan** — `docs/plans/2026-08-06-event-management-setup-panel.md` covering all 4 phases with file lists, API specs, risk catalog, and testing strategy.
+
+### Changed
+
+- **`admin_app.py`** — +78 lines: two new API endpoints added after `api_save_quick_controls`.
+- **`templates/setup_panel.html`** — +155 lines: tab button, tab-content div, event card CSS, JS for lazy load, card rendering, toggle with optimistic UI.
+
+### Verified
+
+- `GET /api/events?scenario=sample` returns 11 parsed events with correct types, amounts, years
+- `POST /api/toggle-event` correctly flips `enabled` both ways (tested on sample scenario)
+- HTML assertions pass: tab button, CSS rules, JS functions all present in rendered page
+- admin_app.py passes Python compile check
+
+### Next
+
+- Phase 3b: Add Event form (type selector + type-specific fields → `POST /api/add-event`)
+
 ## 2026-07-15 (v1.8.0 — Real-dollar JS toggle, Phase 2)
 
 **Branch:** `feat/real-dollar-toggle` (18 commits, not yet merged to main)

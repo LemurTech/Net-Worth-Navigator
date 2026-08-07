@@ -1888,6 +1888,86 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
+# ── API: list events ────────────────────────────────────────────────────────────
+
+@app.get("/api/events")
+async def api_list_events(request: Request) -> JSONResponse:
+    """Return the scenario's [[events]] blocks as a JSON list."""
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        raw_events = doc.get("events")
+        if not isinstance(raw_events, list):
+            return JSONResponse({"ok": True, "events": [], "count": 0})
+        parsed = []
+        for i, ev in enumerate(raw_events):
+            entry = {
+                "index": i,
+                "type": str(ev.get("type", "")),
+                "label": str(ev.get("label", "")),
+                "enabled": ev.get("enabled", True) if "enabled" in ev else True,
+            }
+            # Extract year/amount for display summary
+            year = ev.get("year") or ev.get("start_year")
+            if year is not None:
+                entry["year"] = int(year)
+            end_year = ev.get("end_year")
+            if end_year is not None:
+                entry["end_year"] = int(end_year)
+            amount = ev.get("amount")
+            if amount is not None:
+                entry["amount"] = float(amount)
+            entry["person"] = ev.get("person", "")
+            entry["annual_cost"] = ev.get("annual_cost", ev.get("down_payment", ""))
+            # Recurring summary
+            if ev.get("repeat_every_years") is not None:
+                entry["recurring"] = {
+                    "every_years": int(ev["repeat_every_years"]),
+                    "until_year": ev.get("repeat_until_year"),
+                }
+            parsed.append(entry)
+        return JSONResponse({"ok": True, "events": parsed, "count": len(parsed)})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+# ── API: toggle event enabled ───────────────────────────────────────────────────
+
+@app.post("/api/toggle-event")
+async def api_toggle_event(request: Request) -> JSONResponse:
+    """Toggle the enabled flag on an event at the given index."""
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+    index = body.get("index")
+    if index is None:
+        return JSONResponse({"ok": False, "error": "Missing event index."}, status_code=400)
+    try:
+        idx = int(index)
+    except (TypeError, ValueError):
+        return JSONResponse({"ok": False, "error": "Event index must be an integer."}, status_code=400)
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        events = doc.get("events")
+        if not isinstance(events, list) or idx < 0 or idx >= len(events):
+            return JSONResponse({"ok": False, "error": f"No event at index {idx}."}, status_code=400)
+        ev = events[idx]
+        current = ev.get("enabled")
+        # Treat missing "enabled" as True
+        if isinstance(current, bool):
+            new_state = not current
+        else:
+            new_state = False
+        ev["enabled"] = new_state
+        _backup_and_write_toml(doc, scenario_slug)
+        toml_text = tomlkit.dumps(doc)
+        return JSONResponse({"ok": True, "enabled": new_state, "toml_content": toml_text})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
 @app.get("/api/validate-scenario")
 async def api_validate_scenario(request: Request) -> JSONResponse:
     """

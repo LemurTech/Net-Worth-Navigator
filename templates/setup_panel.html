@@ -123,6 +123,29 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px;
     }
     .card { padding: 0; overflow: hidden; }
+
+    /* ── Event cards ──────────────────────────────────────────────── */    
+    .event-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: var(--panel-2);
+    }
+    .event-card.disabled { opacity: 0.45; }
+    .event-card-icon { font-size: 18px; flex-shrink: 0; }
+    .event-card-body { flex: 1; min-width: 0; }
+    .event-card-title { font-weight: 600; font-size: 13px; }
+    .event-card-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .event-card-toggle { flex-shrink: 0; }
+    .event-card-toggle label {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      cursor: pointer;
+    }
+    .event-card-toggle input { accent-color: var(--accent-2); cursor: pointer; }
+
     .toast-container {
       position: fixed; top: 20px; right: 20px; z-index: 10001;
       display: flex; flex-direction: column; gap: 8px; pointer-events: none;
@@ -456,6 +479,7 @@
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="metadata">Metadata</button>
         <button class="tab-btn" data-tab="accounts">Accounts</button>
+        <button class="tab-btn" data-tab="events">Events</button>
         <button class="tab-btn" data-tab="toml">Raw TOML</button>
       </div>
 
@@ -752,6 +776,13 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ── Tab: Events ──────────────────────────────────────────────── -->
+      <div class="tab-content tab-card" id="tab-events">
+        <div class="quick-section-title">Events</div>
+        <div id="events-list"></div>
+        <div id="events-empty" style="font-size:13px;color:var(--muted);margin-top:4px">Loading events…</div>
       </div>
 
       <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
@@ -2539,9 +2570,140 @@
             if (tab === 'accounts' && !_accountsData) {
               initAccountsTab();
             }
+            // Lazy load events tab
+            if (tab === 'events') {
+              initEventsTab();
+            }
           });
         });
       }
+
+      /* ── Events tab ─────────────────────────────────────────────── */
+      var EVENT_ICONS = {
+        "EndOfPlan": "💀", "Retire": "🎉", "SocialSecurity": "🏛️",
+        "Expense": "💸", "Income": "💰", "BuyHome": "🏠", "SellHome": "🏡",
+        "NewJob": "💼", "CareerBreak": "⏸️", "Education": "🎓",
+        "Marriage": "💍", "SpendingShift": "🌍", "ContributionChange": "📈"
+      };
+
+      var _eventsLoaded = false;
+      var _eventsData = [];
+
+      function initEventsTab() {
+        if (_eventsLoaded) { renderEvents(); return; }
+        var emptyEl = document.getElementById('events-empty');
+        if (emptyEl) emptyEl.textContent = 'Loading events…';
+        apiGet('api/events').then(function (data) {
+          _eventsLoaded = true;
+          if (data.ok) {
+            _eventsData = data.events || [];
+            renderEvents();
+          } else {
+            if (emptyEl) emptyEl.textContent = 'Could not load events.';
+            showError(data.error || 'Could not load events.');
+          }
+        }).catch(function (err) {
+          _eventsLoaded = true;
+          if (emptyEl) emptyEl.textContent = 'Could not load events.';
+          showError('Event load failed: ' + err.message);
+        });
+      }
+
+      function renderEvents() {
+        var listEl = document.getElementById('events-list');
+        var emptyEl = document.getElementById('events-empty');
+        if (!listEl) return;
+
+        if (!_eventsData || _eventsData.length === 0) {
+          listEl.innerHTML = '';
+          if (emptyEl) emptyEl.textContent = 'No events configured in this scenario.';
+          return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        var html = '';
+        _eventsData.forEach(function (ev, i) {
+          var icon = EVENT_ICONS[ev.type] || '•';
+          var title = ev.label || (ev.type + ' (' + (ev.person || '') + ')');
+          var enabled = ev.enabled !== false; // treat missing as true
+
+          var metaParts = [ev.type];
+          if (ev.year != null) {
+            metaParts.push(String(ev.year));
+            if (ev.end_year != null && ev.end_year !== ev.year) {
+              metaParts.push('→ ' + ev.end_year);
+            }
+          }
+          if (ev.amount != null) {
+            var amt = ev.amount;
+            metaParts.push(amt < 0 ? '-$' + Math.abs(amt).toLocaleString('en-US') : '$' + amt.toLocaleString('en-US'));
+          }
+          if (ev.annual_cost != null && ev.annual_cost !== '') {
+            metaParts.push('$' + Number(ev.annual_cost).toLocaleString('en-US') + '/yr');
+          }
+          if (ev.recurring) {
+            metaParts.push('every ' + ev.recurring.every_years + ' yr');
+            if (ev.recurring.until_year) metaParts.push('→ ' + ev.recurring.until_year);
+          }
+
+          var meta = metaParts.join('  ·  ');
+          var disabledClass = enabled ? '' : ' disabled';
+          var checkedAttr = enabled ? ' checked' : '';
+
+          html +=
+            '<div class="event-card' + disabledClass + '" data-index="' + i + '">' +
+              '<span class="event-card-icon">' + icon + '</span>' +
+              '<div class="event-card-body">' +
+                '<div class="event-card-title">' + htmlEscape(title) + '</div>' +
+                '<div class="event-card-meta">' + htmlEscape(meta) + '</div>' +
+              '</div>' +
+              '<div class="event-card-toggle">' +
+                '<label>' +
+                  '<input type="checkbox"' + checkedAttr + ' onchange="toggleEvent(' + i + ', this.checked)">' +
+                  '<span>On</span>' +
+                '</label>' +
+              '</div>' +
+            '</div>';
+        });
+        listEl.innerHTML = html;
+      }
+
+      function htmlEscape(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
+      function toggleEvent(index, newEnabled) {
+        var card = document.querySelector('.event-card[data-index="' + index + '"]');
+        if (card) card.classList.toggle('disabled', !newEnabled);
+
+        apiPost('api/toggle-event', { index: index }).then(function (data) {
+          if (data.ok) {
+            if (data.toml_content) {
+              var rawEl = document.getElementById('raw-toml-content');
+              if (rawEl) rawEl.value = data.toml_content;
+            }
+            if (_eventsData[index]) {
+              _eventsData[index].enabled = data.enabled;
+            }
+          } else {
+            // Revert the toggle
+            if (card) card.classList.toggle('disabled', !!newEnabled);
+            var cb = card ? card.querySelector('input[type=checkbox]') : null;
+            if (cb) cb.checked = newEnabled;
+            showError(data.error || 'Toggle failed.');
+          }
+        }).catch(function (err) {
+          if (card) card.classList.toggle('disabled', !!newEnabled);
+          var cb = card ? card.querySelector('input[type=checkbox]') : null;
+          if (cb) cb.checked = newEnabled;
+          showError('Toggle failed: ' + err.message);
+        });
+      }
+      // Expose for inline onchange handler
+      window.toggleEvent = toggleEvent;
 
       /* ── Raw TOML actions ──────────────────────────────────────── */
       function initRawTomlActions() {

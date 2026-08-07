@@ -1,7 +1,22 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-07-13
-**Status:** v1.4.2 — Shell page JS syntax error fix (f-string quote escaping).
+**Last updated:** 2026-08-07
+**Status:** v1.8.4 — Phase 3a complete: Events tab with summary cards + enable/disable toggle in Setup Panel.
+
+---
+
+## Current Work
+
+### Phase 3a — Events Tab (landed 2026-08-07)
+
+Added an Events tab to the Scenario Setup Panel that reads existing `[[events]]` blocks and renders them as summary cards with enable/disable toggles. Two new API endpoints:
+
+- `GET /api/events` — returns all events as JSON with type, label, year, amount, recurring info
+- `POST /api/toggle-event` — flips `enabled` on an event by index, writes via tomlkit with backup
+
+Changes in `admin_app.py` (+78 lines) and `templates/setup_panel.html` (+155 lines: tab button, CSS, JS). Working on `dev` branch.
+
+**Plan:** `docs/plans/2026-08-06-event-management-setup-panel.md` — 4-phase plan (3a → list+toggle, 3b → add form, 3c → edit/delete/reorder, 3d → validation).
 
 ---
 
