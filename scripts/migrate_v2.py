@@ -142,7 +142,7 @@ def migrate_scenario(path: Path, dry_run: bool = False, strip_comments: bool = F
             except (TypeError, ValueError):
                 actions.append(f"  {slug}: {person_key} EndOfPlan SKIPPED (invalid value)")
 
-    if actions and not dry_run:
+    if (actions or strip_comments) and not dry_run:
         text = tomlkit.dumps(doc)
         text = _rewrite_events_section(text, strip_comments=strip_comments)
         path.write_text(text, encoding="utf-8")
