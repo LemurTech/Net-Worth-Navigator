@@ -11,6 +11,7 @@ Run: .venv/bin/python scripts/migrate_v2.py [--dry-run] [scenario_slug ...]
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -142,9 +143,83 @@ def migrate_scenario(path: Path, dry_run: bool = False) -> list[str]:
                 actions.append(f"  {slug}: {person_key} EndOfPlan SKIPPED (invalid value)")
 
     if actions and not dry_run:
-        path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+        text = tomlkit.dumps(doc)
+        text = _rewrite_events_section(text)
+        path.write_text(text, encoding="utf-8")
 
     return actions
+
+
+def _rewrite_events_section(text: str) -> str:
+    """Replace the events section with clean, sorted event blocks."""
+    # Find the first uncommented [[events]] line
+    m = re.search(r'^\[\[events\]\]\n', text, re.MULTILINE)
+    if not m:
+        return text
+    first_ev = m.start()
+
+    header = text[:first_ev].rstrip() + "\n"
+    # Also strip decorative lines from the header
+    header_lines = header.split('\n')
+    header_lines = [
+        line for line in header_lines
+        if not re.match(r'^#\s*[─]{3,}', line)
+    ]
+    header = '\n'.join(header_lines).rstrip() + '\n'
+
+    # Extract all event blocks: ^[[events]]$ (not commented, no inline comment)
+    blocks = []
+    pattern = r'^\[\[events\]\]\n(.*?)(?=\n^\[\[events\]\]|\Z)'
+    for m in re.finditer(pattern, text[first_ev:], re.MULTILINE | re.DOTALL):
+        # Skip if the [[events]] line has a # before it (commented out)
+        block = m.group(0).strip()
+        # Strip decorative comment lines (section headers, separator bars)
+        lines = block.split('\n')
+        cleaned_lines = [
+            line for line in lines
+            if not re.match(r'^#\s*[─]{3,}', line)  # any line starting with #─ or # ───
+        ]
+        block = '\n'.join(cleaned_lines).strip()
+        if block:
+            blocks.append(block)
+
+    if not blocks:
+        return text
+
+    # Parse each block to extract sort key: (disabled, year, type)
+    parsed = []
+    for block in blocks:
+        m_type = re.search(r'^type\s*=\s*"([^"]+)"', block, re.MULTILINE)
+        m_enabled = re.search(r'^enabled\s*=\s*(true|false)', block, re.MULTILINE)
+        m_year = re.search(r'^(?:year|start_year)\s*=\s*(\d+)', block, re.MULTILINE)
+
+        etype = m_type.group(1) if m_type else ""
+        disabled = 0 if (m_enabled and m_enabled.group(1) == "true") else 1
+        year = int(m_year.group(1)) if m_year else 0
+
+        parsed.append((disabled, year, etype, block))
+
+    parsed.sort(key=lambda x: (x[0], x[1], x[2]))
+
+    # Write clean events section
+    result = header + "\n".join(p[3] for p in parsed) + "\n"
+
+    # Now also fix data_source position
+    if "[data_source]" not in result[:200]:
+        # Find and move [data_source] to after [scenario]
+        m = re.search(r'\n?\[data_source\].*?(?=\n\[)', result, re.DOTALL)
+        if m:
+            ds_block = m.group(0).lstrip('\n')
+            result = result[:m.start()] + result[m.end():]
+            scenario_end = re.search(r'\[scenario\].*?(?=\n\[)', result, re.DOTALL)
+            if scenario_end:
+                result = result[:scenario_end.end()] + '\n\n' + ds_block + result[scenario_end.end():]
+
+    # Normalize blank lines: ensure blank before [[events]]
+    result = re.sub(r'([^\n])\n\[\[events\]\]', r'\1\n\n[[events]]', result)
+    result = re.sub(r'\n{3,}', '\n\n', result)
+
+    return result
 
 
 def main():

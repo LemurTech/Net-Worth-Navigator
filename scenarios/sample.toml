@@ -17,8 +17,6 @@
 # Events can be toggled on/off with enabled = true/false without deleting them.
 # All monetary values are in today's USD unless noted.
 
-# ─── Scenario Metadata ─────────────────────────────────────────────────────────
-
 [scenario]
 name        = "Sample Plan (Single-Person)"
 slug        = "sample"
@@ -27,13 +25,10 @@ is_default  = false
 # household_type is omitted — inferred as "single" from absence of [person2]
 # To explicitly set:  household_type = "single"
 
-# ─── Data Source (synthetic → no Monarch call, no cache) ───────────────────────
 household_type = "single"
 
 [data_source]
 mode = "synthetic"   # synthetic | monarch
-
-# ─── Synthetic Starting Balances ───────────────────────────────────────────────
 
 [synthetic_start]
 # Investable buckets
@@ -60,8 +55,6 @@ other      = 0
 "Home Mortgage" = 280000
 "RAV4 Hybrid Auto Loan" = 25000
 
-# ─── Simulation Controls ───────────────────────────────────────────────────────
-
 [simulation]
 start_year  = 2026
 end_year    = 2062
@@ -72,13 +65,10 @@ mode = "deterministic"   # compatibility/default single-run mode
 # portfolio_return_volatility = 0.15      # annual stdev for blended investable return
 # historical_returns_path = "config/return_sequences/us_balanced_returns.csv"
 
-# ─── Display Settings ──────────────────────────────────────────────────────────
 value_basis = "both"
 
 [display]
 projection_title = "Single-Person Sample (Synthetic Demo)"
-
-# ─── Stochastic Success / Failure Rules ────────────────────────────────────────
 
 [monte_carlo.success]
 failure_mode = "spending_shortfall"
@@ -91,10 +81,6 @@ failure_grace_period_months = 0
 # custom_failure_column   = "spending_funded_ratio"
 # custom_failure_operator = "<"
 # custom_failure_threshold = 1.0
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Household Members ─────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 
 [person1]
 name              = "Alex"
@@ -124,7 +110,6 @@ annual_ira_contribution  = 0
 # Share of household traditional retirement balance for RMD math
 rmd_trad_ira_share = 1.0
 
-
 [person1.social_security_benefits]
 "62" = 1400
 "63" = 1500
@@ -140,14 +125,8 @@ rmd_trad_ira_share = 1.0
 trad_ira = 0.70
 roth     = 0.30
 
-# ────────────────────────────────────────────────────────────────────────────────
 # NOTE: No [person2] section is present.  The engine auto-infers
 # household_type = "single" and skips all person2 logic.
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Spending & Withdrawal Policy ──────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 
 [spending]
 retirement_annual = 60000            # annual spending target (single person)
@@ -168,9 +147,6 @@ retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "ro
 accumulation_surplus_order = ["taxable", "roth", "trad_ira"]
 retirement_surplus_order   = ["taxable", "roth", "trad_ira"]
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Market Assumptions ────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 survivor_withdrawal_order = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
 survivor_surplus_order = ["roth", "taxable"]
 
@@ -192,10 +168,6 @@ trad_ira_withdrawal_taxable_fraction = 1.00  # 100% of traditional withdrawals a
 # initial_taxable_cost_basis_fraction = 0.50
 # initial_roth_contribution_basis_fraction = 1.00
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Tax Engine ────────────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
-
 [taxes]
 enabled = true
 table_set = "2025_us_federal_oregon"   # shared tax table reference in config/tax_tables/
@@ -208,10 +180,6 @@ wage_tax_treatment = "net_cash"        # "net_cash" (current) | "taxable_wages" 
 [taxes.rmd]
 enabled    = true
 start_age  = 73
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Liabilities ───────────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 
 [[liabilities]]
 name        = "Home Mortgage"
@@ -227,9 +195,6 @@ monthly_base  = 550
 monthly_extra = 0
 type          = "auto"
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Events ────────────────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 #
 # Each [[events]] block is one event. Set enabled = false to exclude it from
 # the current run without deleting configuration.
@@ -253,16 +218,12 @@ type          = "auto"
 # Recurring controls: repeat_every_years, repeat_until_year, repeat_count
 # Chart decluttering:   chart_first_occurrence_only = true (show only first label)
 
-# ─── 1. Plan Boundary / Life Expectancy ────────────────────────────────────────
-
 [[events]]
 enabled = true
 type    = "EndOfPlan"
 label   = "End of Plan (Alex)"
 person  = "person1"
 year    = 2062                      # 1972 + 90
-
-# ─── 2. Pre-Retirement / Near-Term Known Events ────────────────────────────────
 
 # --- ContributionChange ---
 # Override one or more per-person contribution amounts from a given year onward.
@@ -292,9 +253,6 @@ year    = 2062                      # 1972 + 90
 # year    = 2033
 # person  = "person1"
 # annual_401k_contribution_delta = 12000   # redirect freed mortgage cash into 401(k)
-# ──────────────────────────────────────────────────────────────────────────────
-
-# ─── 3. Lifestyle Before and During Retirement ─────────────────────────────────
 
 # Recurring travel (every other year, starting in 2027)
 [[events]]
@@ -340,8 +298,6 @@ amount  = -18000
 expense_kind = "mandatory"
 funding = "cash_reserve_first"
 
-# ─── 4. Vehicle Lifecycle ──────────────────────────────────────────────────────
-
 [[events]]
 enabled = true
 type    = "Expense"
@@ -360,8 +316,6 @@ amount  = -30000
 expense_kind = "mandatory"
 funding = "cash_reserve_first"
 
-# ─── 5. Income Events ─────────────────────────────────────────────────────────
-
 # Bounded side income during early retirement
 [[events]]
 enabled = true
@@ -371,8 +325,6 @@ year    = 2038
 amount  = 18000
 end_year = 2042
 taxable  = true
-
-# ─── 6. Later-Life Care ────────────────────────────────────────────────────────
 
 [[events]]
 enabled = true

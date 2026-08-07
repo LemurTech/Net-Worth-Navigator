@@ -23,7 +23,6 @@ household_type = "couple"
 [data_source]
 mode = "synthetic"
 
-# ─── Starting Balances ────────────────────────────────────────────────────────
 # Identical to Sample B — this is the same household at the same point in time.
 
 [synthetic_start]
@@ -40,8 +39,6 @@ other      = 0
 
 [synthetic_start.liability_balances]
 "Sample Mortgage" = 265000
-
-# ─── Simulation ───────────────────────────────────────────────────────────────
 
 [simulation]
 start_year  = 2026
@@ -62,10 +59,6 @@ minimum_spending_funded_ratio   = 1.0
 allow_home_equity_for_spending  = false
 allow_debt_for_spending         = false
 failure_grace_period_months     = 0
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Household Members ─────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 
 [person1]
 name             = "Alex"
@@ -103,7 +96,6 @@ roth     = 0.30
 69 = 2910
 70 = 3120
 
-
 [person2]
 name             = "Sam"
 dob              = "1974-10-03"
@@ -139,10 +131,6 @@ roth     = 0.30
 68 = 1730
 69 = 1860
 70 = 2010
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Spending, Withdrawal, and Assumptions ─────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 
 [spending]
 retirement_annual              = 80000   # Moderate spending target
@@ -190,10 +178,6 @@ wage_tax_treatment           = "net_cash"
 enabled   = true
 start_age = 73
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Liabilities ───────────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
-
 [[liabilities]]
 name           = "Sample Mortgage"
 annual_rate    = 0.0575
@@ -201,10 +185,6 @@ monthly_base   = 2100
 monthly_escrow = 450               # Property tax + insurance
 monthly_extra  = 200               # Modest extra payment
 type           = "mortgage"
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ─── Events ────────────────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════════════
 
 # ── Property and liability escrow replacement post-payoff ─────────────────────
 [[events]]

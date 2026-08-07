@@ -7,7 +7,6 @@
 # For couples / two-person households, use starter-couple.toml instead.
 #
 # HOW TO USE THIS FILE
-# ──────────────────────────────────────────────────────────────────────
 # 1. Copy this file to a new scenario:
 #       Linux/macOS:  cp scenarios/starter.toml scenarios/myhousehold.toml
 #       Windows:      copy scenarios\starter.toml scenarios\myhousehold.toml
@@ -26,24 +25,18 @@
 #    the "Synthetic Setup" tab to manage your starting balances.
 #
 # WHAT "synthetic" MODE MEANS
-# ──────────────────────────────────────────────────────────────────────
 # Setting  [data_source].mode = "synthetic"  tells the model to read
 # starting balances from [synthetic_start] below instead of from
 # Monarch Money.  No Monarch account or API key is required.
 # You maintain your balances manually (e.g. once a year).
 #
 # LIABILITIES
-# ──────────────────────────────────────────────────────────────────────
 # Each loan needs TWO entries:
 #   1. A [[liabilities]] block with the amortization parameters.
 #   2. A matching key in [synthetic_start.liability_balances] with the
 #      current outstanding balance.
 # The name must match exactly between both places.
 #
-# ═══════════════════════════════════════════════════════════════════════
-
-
-# ─── Scenario Metadata ─────────────────────────────────────────────────
 
 [scenario]
 name        = "My Single Household"   # ← YOUR VALUE: display name shown in the UI
@@ -52,14 +45,9 @@ description = "Single-person starter template — replace with a brief descripti
 is_default  = false                    # set true once this is your primary scenario
 is_template = true                     # hides from projection shell dropdown
 
-
-# ─── Data Source ───────────────────────────────────────────────────────
-
 [data_source]
 mode = "synthetic"   # synthetic | monarch   (leave as "synthetic" if not using Monarch)
 
-
-# ─── Starting Balances ─────────────────────────────────────────────────
 #
 # Enter your approximate current account balances.
 # All amounts are in today's dollars.
@@ -90,22 +78,14 @@ other      = 0      # other non-investable assets (optional)
 # "Home Mortgage" = 0    # ← YOUR VALUE: current outstanding mortgage balance
 # "Auto Loan"     = 0    # ← YOUR VALUE: current outstanding auto loan balance
 
-
-# ─── Simulation Controls ───────────────────────────────────────────────
-
 [simulation]
 start_year   = 2025       # ← YOUR VALUE: current or next calendar year
 end_year     = 2070       # ← YOUR VALUE: typically max(life_expectancy) + a few years
 render_modes = ["deterministic", "historical", "monte_carlo"]
 
-
-# ─── Display ───────────────────────────────────────────────────────────
-
 [display]
 projection_title = "My Household Plan"   # ← YOUR VALUE: chart title
 
-
-# ─── Stochastic Success Rules ──────────────────────────────────────────
 # Controls what counts as "failure" in Monte Carlo / historical simulations.
 # These defaults work for most households.
 
@@ -115,11 +95,6 @@ minimum_spending_funded_ratio   = 1.0
 allow_home_equity_for_spending  = false
 allow_debt_for_spending         = false
 failure_grace_period_months     = 0
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# ─── Household Members ─────────────────────────────────────────════════
-# ═══════════════════════════════════════════════════════════════════════
 
 [person1]
 name              = "Person 1"          # ← YOUR VALUE
@@ -159,24 +134,15 @@ roth     = 0.30   # ← YOUR VALUE: fraction routed to Roth
 [person1.social_security_benefits]
 67 = 0   # ← YOUR VALUE: estimated monthly benefit at your claim age
 
-
-# ─── Person 2 ──────────────────────────────────────────────────────────
 # NOTE: This file is for single-person households.  No [person2] section
 # is needed — the engine auto-infers household_type = "single" from its
 # absence.  If you need to model a second person, use starter-couple.toml
 # instead.
 
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# ─── Spending ──────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════
-
 [spending]
 retirement_annual              = 0       # ← YOUR VALUE: annual retirement spending target
 debt_service_handling          = "auto_reduce"  # frees loan P&I from spending target at payoff
 # Note: survivor_* fields are for couples only — not applicable here
-
 
 [withdrawal_policy]
 # Cash reserve targets — how much cash to keep on hand
@@ -193,11 +159,6 @@ retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "ro
 accumulation_surplus_order = ["roth", "taxable"]
 retirement_surplus_order   = ["roth", "taxable"]
 
-
-# ═══════════════════════════════════════════════════════════════════════
-# ─── Assumptions ───────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════
-
 [assumptions]
 stock_return              = 0.07    # annual nominal stock return (e.g. 0.07 = 7%)
 bond_return               = 0.04    # annual nominal bond return
@@ -206,10 +167,6 @@ equity_allocation         = 0.70    # fraction of portfolio in equities (rest in
 effective_tax_rate_pre_retirement  = 0.22  # ← YOUR VALUE: rough combined effective rate
 effective_tax_rate_post_retirement = 0.15  # ← YOUR VALUE: typically lower in retirement
 
-
-# ═══════════════════════════════════════════════════════════════════════
-# ─── Liabilities (Loans) ───────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════
 #
 # Uncomment and fill in one [[liabilities]] block per loan.
 # The name MUST match the key in [synthetic_start.liability_balances] exactly.
@@ -230,10 +187,6 @@ effective_tax_rate_post_retirement = 0.15  # ← YOUR VALUE: typically lower in 
 # monthly_extra  = 0
 # type           = "auto"
 
-
-# ═══════════════════════════════════════════════════════════════════════
-# ─── Events ────────────────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════════════
 #
 # Retirement, Social Security, and EndOfPlan events are synthesized
 # automatically from each person's retirement_year, ss_start_age, dob,

@@ -1245,6 +1245,63 @@ def _toml_open(scenario_slug: str | None = None) -> tuple[tomlkit.TOMLDocument, 
     return tomlkit.parse(path.read_text(encoding="utf-8")), path
 
 
+def _normalize_toml_blank_lines(toml_text: str) -> str:
+    """Add blank lines between consecutive [[events]] blocks for readability."""
+    text = re.sub(r'([^\n])\n\[\[events\]\]', r'\1\n\n[[events]]', toml_text)
+    return re.sub(r'\n{3,}', '\n\n', text)
+
+
+def _sort_events(doc: tomlkit.TOMLDocument) -> None:
+    """Sort [[events]] by disabled, year, type. Disabled events at absolute bottom."""
+    events = doc.get("events")
+    if not isinstance(events, list) or len(events) < 2:
+        return
+    def _key(ev):
+        etype = str(ev.get("type", ""))
+        disabled = 1 if ev.get("enabled", True) is False else 0
+        year = 0
+        raw = ev.get("year") or ev.get("start_year")
+        if raw is not None:
+            try:
+                year = int(raw)
+            except (TypeError, ValueError):
+                pass
+        return (disabled, year, etype)
+    items = list(events)
+    items.sort(key=_key)
+    events.clear()
+    for item in items:
+        events.append(item)
+
+
+def _fix_data_source_position(toml_text: str) -> str:
+    """Ensure [data_source] section is positioned right after [scenario]."""
+    if "[data_source]" not in toml_text:
+        return toml_text
+    # Already correctly positioned?
+    scenario_pos = toml_text.find("[scenario]")
+    ds_pos = toml_text.find("[data_source]")
+    if ds_pos < scenario_pos:
+        return toml_text  # already before scenario, shouldn't happen
+    # Find the [display] or first section after scenario
+    next_section = re.search(r'\n\[(?!data_source\])', toml_text[scenario_pos:])
+    if next_section and ds_pos < scenario_pos + next_section.start():
+        return toml_text  # data_source already immediately after scenario
+    
+    # Extract data_source block
+    m = re.search(r'\n?\[data_source\].*?(?=\n\[|\Z)', toml_text, re.DOTALL)
+    if not m:
+        return toml_text
+    ds_block = m.group(0).lstrip('\n')
+    toml_text = toml_text[:m.start()] + toml_text[m.end():]
+    
+    # Reinsert after [scenario] block
+    scenario_end = re.search(r'\[scenario\].*?(?=\n\[)', toml_text, re.DOTALL)
+    if scenario_end:
+        return toml_text[:scenario_end.end()] + '\n\n' + ds_block + toml_text[scenario_end.end():]
+    return toml_text
+
+
 def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None = None) -> Path:
     OUTPUT_DIR.mkdir(exist_ok=True)
     backup_dir = _backup_dir(scenario_slug)
@@ -1266,8 +1323,11 @@ def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None 
         ts = datetime.now().strftime("%Y%m%d-%H%M%S")
         backup_path = backup_dir / f"config-{ts}.toml"
         backup_path.write_text(current_content, encoding="utf-8")
-
-    config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    _sort_events(doc)
+    toml_text = tomlkit.dumps(doc)
+    # Ensure [data_source] appears right after [scenario]
+    toml_text = _fix_data_source_position(toml_text)
+    config_path.write_text(_normalize_toml_blank_lines(toml_text), encoding="utf-8")
     # fsync to flush the write through any bind-mount / Docker storage delay.
     # Best-effort: some filesystems (overlay2, NFS) reject fsync on O_RDONLY fds.
     try:
