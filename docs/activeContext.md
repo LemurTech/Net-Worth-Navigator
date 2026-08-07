@@ -1,22 +1,27 @@
 # Active Context — Net Worth Navigator
 
 **Last updated:** 2026-08-07
-**Status:** v1.8.4 — Phase 3a complete: Events tab with summary cards + enable/disable toggle in Setup Panel.
+**Status:** v2.0 — Event-driven timeline: all key dates live in Events tab. Phase 3c complete: edit, delete, sort.
 
 ---
 
 ## Current Work
 
-### Phase 3a — Events Tab (landed 2026-08-07)
+### v2.0 Event-Driven Timeline (landed 2026-08-07)
 
-Added an Events tab to the Scenario Setup Panel that reads existing `[[events]]` blocks and renders them as summary cards with enable/disable toggles. Two new API endpoints:
+`retirement_year`, `ss_start_age`, and `life_expectancy` moved from person config into `[[events]]` blocks. Events tab is now the single place for all timeline decisions. Users enter ages, not years — the server computes years from `dob`.
 
-- `GET /api/events` — returns all events as JSON with type, label, year, amount, recurring info
-- `POST /api/toggle-event` — flips `enabled` on an event by index, writes via tomlkit with backup
+- **Model:** `_person_event_year()`/`_person_event_age()` helpers. Income zeroing, NewJob guard, validation, and Gantt chart all read events instead of person config. Synthesis functions removed.
+- **Migration:** `scripts/migrate_v2.py` migrated all 13 scenario files. `GET /api/events` detects v1 config and returns `migration_needed`.
+- **Setup Panel:** Retires-year input + age slider removed from People. Event forms for Retire/SS/EndOfPlan use Age fields. SS benefit auto-looked up from `social_security_benefits` table.
 
-Changes in `admin_app.py` (+78 lines) and `templates/setup_panel.html` (+155 lines: tab button, CSS, JS). Working on `dev` branch.
+### Phase 3c — Edit, Delete, Sort (landed 2026-08-07)
 
-**Plan:** `docs/plans/2026-08-06-event-management-setup-panel.md` — 4-phase plan (3a → list+toggle, 3b → add form, 3c → edit/delete/reorder, 3d → validation).
+- **Sort dropdown:** Chronological (default) and By Type modes. Disabled events always at bottom. `localStorage` persistence.
+- **Edit:** Edit button on each card opens pre-populated form. Age-entry types compute `age = year - birth_year` for display. `POST /api/update-event`.
+- **Delete:** × button with confirm dialog. `POST /api/delete-event`.
+
+**Next:** SS benefits entry tab, or Phase 3d validation endpoint. Working on `dev` branch.
 
 ---
 

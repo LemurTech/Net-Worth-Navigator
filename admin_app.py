@@ -1916,11 +1916,29 @@ async def api_list_events(request: Request) -> JSONResponse:
                 entry["amount"] = float(amount)
             entry["person"] = ev.get("person", "")
             entry["annual_cost"] = ev.get("annual_cost", ev.get("down_payment", ""))
+            # Include recurring fields both nested and flat (for edit form population)
             if ev.get("repeat_every_years") is not None:
                 entry["recurring"] = {
                     "every_years": int(ev["repeat_every_years"]),
                     "until_year": ev.get("repeat_until_year"),
                 }
+                entry["repeat_every_years"] = int(ev["repeat_every_years"])
+            if ev.get("repeat_until_year") is not None:
+                entry["repeat_until_year"] = int(ev["repeat_until_year"])
+            # Include other common optional fields at top level
+            for flat_field in ("expense_kind", "funding", "chart_first_occurrence_only",
+                               "phase", "mode", "taxable", "taxable_fraction",
+                               "reinvest_to", "reinvest_fraction", "sale_fee_rate",
+                               "property", "price", "mortgage_rate", "term_years",
+                               "retirement_annual", "survivor_annual",
+                               "survivor_percent_of_retirement", "monthly_benefit",
+                               "annual_income"):
+                val = ev.get(flat_field)
+                if val is not None:
+                    try:
+                        entry[flat_field] = float(val) if isinstance(val, (int, float)) else val
+                    except (TypeError, ValueError):
+                        entry[flat_field] = val
             # Flag events that carry an age field (v2 EndOfPlan, Retire, SS)
             if ev.get("age") is not None:
                 entry["has_age"] = True
@@ -1945,6 +1963,19 @@ async def api_list_events(request: Request) -> JSONResponse:
                 migration_needed.append(f"{person_key} EndOfPlan")
 
         result = {"ok": True, "events": parsed, "count": len(parsed)}
+        # Include birth years for age computation in edit forms
+        birth_years = {}
+        for person_key in ("person1", "person2"):
+            person = doc.get(person_key)
+            if isinstance(person, dict):
+                dob = person.get("dob")
+                if dob:
+                    try:
+                        birth_years[person_key] = int(str(dob).split("-", 1)[0])
+                    except (TypeError, ValueError):
+                        pass
+        if birth_years:
+            result["birth_years"] = birth_years
         if migration_needed:
             result["migration_needed"] = True
             result["migration_items"] = migration_needed
@@ -2163,6 +2194,112 @@ async def api_add_event(request: Request) -> JSONResponse:
             "index": new_index,
             "toml_content": toml_text,
         })
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+# ── API: update event ─────────────────────────────────────────────────────────
+
+@app.post("/api/update-event")
+async def api_update_event(request: Request) -> JSONResponse:
+    """Update an existing [[events]] block at the given index."""
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+    index = body.get("index")
+    if index is None:
+        return JSONResponse({"ok": False, "error": "Missing event index."}, status_code=400)
+    try:
+        idx = int(index)
+    except (TypeError, ValueError):
+        return JSONResponse({"ok": False, "error": "Event index must be an integer."}, status_code=400)
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        events = doc.get("events")
+        if not isinstance(events, list) or idx < 0 or idx >= len(events):
+            return JSONResponse({"ok": False, "error": f"No event at index {idx}."}, status_code=400)
+
+        ev_type = str(body.get("type", "")).strip()
+        if not ev_type or ev_type not in _VALID_EVENT_TYPES:
+            return JSONResponse({"ok": False, "error": f"Invalid event type: {ev_type}"}, status_code=400)
+
+        # Compute year from age for age-entry event types
+        if "age" in body and "year" not in body:
+            person_key = str(body.get("person", "person1")).strip()
+            person = doc.get(person_key, {}) if isinstance(doc.get(person_key), dict) else {}
+            dob = person.get("dob")
+            if dob:
+                try:
+                    birth_year = int(str(dob).split("-", 1)[0])
+                    age = int(body["age"])
+                    body["year"] = birth_year + age
+                    if ev_type == "SocialSecurity" and "monthly_benefit" not in body:
+                        benefits = person.get("social_security_benefits")
+                        if isinstance(benefits, dict):
+                            monthly = benefits.get(str(age))
+                            if monthly is not None:
+                                body["monthly_benefit"] = float(monthly)
+                except (TypeError, ValueError):
+                    pass
+
+        errors = _validate_event_fields(ev_type, body)
+        if errors:
+            return JSONResponse({"ok": False, "error": "; ".join(errors)}, status_code=400)
+
+        # Replace the event table
+        table = tomlkit.table()
+        table["type"] = ev_type
+        table["enabled"] = body.get("enabled", events[idx].get("enabled", True))
+        for key, val in body.items():
+            if key in ("type", "enabled", "index"):
+                continue
+            if val is None or val == "":
+                continue
+            if key in _INT_FIELDS:
+                table[key] = int(val)
+            elif key in _FLOAT_FIELDS:
+                table[key] = float(val)
+            elif key in _BOOL_FIELDS:
+                table[key] = bool(val) if not isinstance(val, bool) else val
+            else:
+                table[key] = str(val)
+
+        events[idx] = table
+        _backup_and_write_toml(doc, scenario_slug)
+        toml_text = tomlkit.dumps(doc)
+        return JSONResponse({"ok": True, "toml_content": toml_text})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+# ── API: delete event ─────────────────────────────────────────────────────────
+
+@app.post("/api/delete-event")
+async def api_delete_event(request: Request) -> JSONResponse:
+    """Delete an [[events]] block at the given index."""
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+    index = body.get("index")
+    if index is None:
+        return JSONResponse({"ok": False, "error": "Missing event index."}, status_code=400)
+    try:
+        idx = int(index)
+    except (TypeError, ValueError):
+        return JSONResponse({"ok": False, "error": "Event index must be an integer."}, status_code=400)
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        events = doc.get("events")
+        if not isinstance(events, list) or idx < 0 or idx >= len(events):
+            return JSONResponse({"ok": False, "error": f"No event at index {idx}."}, status_code=400)
+        del events[idx]
+        _backup_and_write_toml(doc, scenario_slug)
+        toml_text = tomlkit.dumps(doc)
+        return JSONResponse({"ok": True, "toml_content": toml_text})
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 

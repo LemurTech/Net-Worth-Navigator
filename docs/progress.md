@@ -3,6 +3,45 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-07 (v2.0 — Event-driven timeline + Phase 3c edit/delete/sort)
+
+**Branch:** `dev` (not yet merged to main)
+
+### Added — v2.0 Architecture
+
+- **Event-driven timeline** — `retirement_year`, `ss_start_age`, and `life_expectancy` moved from `[personX]` config into `[[events]]` blocks. Three new helpers: `_person_event_year()`, `_person_event_age()`. Income zeroing, NewJob guard, validation, and Gantt chart now read events instead of person config.
+- **Age-entry forms** — Retire, SocialSecurity, and EndOfPlan event forms accept an Age field. Server computes `year = birth_year + age` from `person.dob`.
+- **SS benefit auto-lookup** — SocialSecurity form sends an age; server looks up `monthly_benefit` from `person.social_security_benefits[age]`. No manual benefit entry needed.
+- **`scripts/migrate_v2.py`** — Migrates scenario TOML files from v1 person fields to v2 event blocks. Dry-run support. Idempotent.
+- **Migration detection** — `GET /api/events` returns `migration_needed: true` when v1 fields exist without corresponding events.
+
+### Added — Phase 3c
+
+- **Sort dropdown** — "Chronological" (by year) and "By Type" modes. Disabled events always to bottom. `localStorage` persistence.
+- **Edit event** — Edit button on each card opens pre-populated form. Age-entry types compute `age = year - birth_year` from API-provided `birth_years`. `POST /api/update-event` with validation + age→year computation.
+- **Delete event** — × button with `confirm()` dialog. `POST /api/delete-event` with tomlkit backup.
+- **`birth_years` in API response** — `GET /api/events` includes per-person birth years for edit-form age computation.
+
+### Changed
+
+- **Model** — `_person_event_year()` and `_person_event_age()` helpers added. `_person_income_components()` reads Retire event instead of `person.retirement_year`. `_sync_end_of_plan_years()` supports `age` field. Synthesis functions removed from `resolve_runtime_config()` pipeline. Validation re-pointed to events.
+- **Setup Panel** — Retires-year input + age slider removed from People section. Retirement fields removed from `_QUICK_CONTROL_MAP` and `collectQuickControls()`. Event forms for three types use Age. Checkbox labels fixed (inline, no duplicate). SYSTEM badges removed.
+- **API** — `GET /api/events` returns flat optional fields for edit form population. `POST /api/add-event` computes year from age with SS benefit lookup. `POST /api/update-event` and `POST /api/delete-event` added.
+- **Favicon** — Setup Panel now uses same bar-chart favicon as projection page.
+
+### Migration
+
+- 13 scenario files migrated (6 tracked + 7 personal). 55 events created from person fields.
+
+### Tests
+
+- 161 passed, 1 skipped. 7 tests updated for v2 event pass-through behavior.
+
+### Plans
+
+- `docs/plans/2026-08-06-event-management-setup-panel.md` — 4-phase event management plan
+- `docs/plans/2026-08-07-v2-event-driven-timeline.md` — v2.0 architectural shift design
+
 ## 2026-08-07 (Phase 3a — Events Tab in Setup Panel)
 
 **Branch:** `dev` (not yet merged to main)

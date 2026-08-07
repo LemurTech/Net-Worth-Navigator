@@ -5,7 +5,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b1220'/%3E%3Cpath d='M8 24V16l4 2 4-6 4 8 4-4v8z' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111827'/%3E%3Cg fill='none' stroke='%237dd3fc' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,22 10,18 15,20 20,12 26,7'/%3E%3C/g%3E%3Cg fill='%2338bdf8' opacity='0.35'%3E%3Crect x='5' y='23' width='3' height='5' rx='0.8'/%3E%3Crect x='9' y='21' width='3' height='7' rx='0.8'/%3E%3Crect x='14' y='22' width='3' height='6' rx='0.8'/%3E%3Crect x='19' y='16' width='3' height='12' rx='0.8'/%3E%3Crect x='24' y='14' width='3' height='14' rx='0.8'/%3E%3C/g%3E%3C/svg%3E">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Net Worth Navigator — Scenario Setup</title>
   <style>
@@ -828,7 +828,13 @@
       <div class="tab-content tab-card" id="tab-events">
         <div class="quick-section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <span>Events</span>
-          <button type="button" class="linkbtn" id="add-event-btn" style="font-size:12px;padding:6px 12px">+ Add Event</button>
+          <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <select id="event-sort" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:12px;font-family:inherit">
+              <option value="chronological">Chronological</option>
+              <option value="by_type">By Type</option>
+            </select>
+            <button type="button" class="linkbtn" id="add-event-btn" style="font-size:12px;padding:6px 12px">+ Add Event</button>
+          </span>
         </div>
         <div id="events-list"></div>
         <div id="events-empty" style="font-size:13px;color:var(--muted);margin-top:4px">Loading events…</div>
@@ -2593,6 +2599,8 @@
 
       var _eventsLoaded = false;
       var _eventsData = [];
+      var _birthYears = {};
+      var _editingIndex = -1;
 
       function initEventsTab() {
         if (_eventsLoaded) { renderEvents(); return; }
@@ -2602,6 +2610,7 @@
           _eventsLoaded = true;
           if (data.ok) {
             _eventsData = data.events || [];
+            _birthYears = data.birth_years || {};
             renderEvents();
             renderTypeGrid(); // refresh to hide synthesized types
           } else {
@@ -2613,6 +2622,21 @@
           if (emptyEl) emptyEl.textContent = 'Could not load events.';
           showError('Event load failed: ' + err.message);
         });
+      }
+
+      function sortEvents(events) {
+        var sortMode = (document.getElementById('event-sort') || {}).value || 'chronological';
+        var enabled = [], disabled = [];
+        events.forEach(function(ev) { (ev.enabled !== false ? enabled : disabled).push(ev); });
+        function byYear(a, b) { return (a.year || 0) - (b.year || 0); }
+        function byType(a, b) {
+          var t = a.type.localeCompare(b.type);
+          return t !== 0 ? t : (a.year || 0) - (b.year || 0);
+        }
+        var fn = sortMode === 'by_type' ? byType : byYear;
+        enabled.sort(fn);
+        disabled.sort(fn);
+        return enabled.concat(disabled);
       }
 
       function renderEvents() {
@@ -2628,11 +2652,13 @@
 
         if (emptyEl) emptyEl.style.display = 'none';
 
+        var sorted = sortEvents(_eventsData);
         var html = '';
-        _eventsData.forEach(function (ev, i) {
+        sorted.forEach(function (ev, i) {
           var icon = EVENT_ICONS[ev.type] || '•';
           var title = ev.label || (ev.type + ' (' + (ev.person || '') + ')');
           var enabled = ev.enabled !== false;
+          var realIndex = ev.index; // TOML index
 
           var metaParts = [ev.type];
           if (ev.year != null) {
@@ -2656,16 +2682,20 @@
           var meta = metaParts.join('  ·  ');
           var disabledClass = enabled ? '' : ' disabled';
           var checkedAttr = enabled ? ' checked' : '';
-          var toggleHtml = '<label><input type="checkbox"' + checkedAttr + ' onchange="toggleEvent(' + i + ', this.checked)"><span>On</span></label>';
+          var toggleHtml = '<label><input type="checkbox"' + checkedAttr + ' onchange="toggleEvent(' + realIndex + ', this.checked)"><span>On</span></label>';
 
           html +=
-            '<div class="event-card' + disabledClass + '" data-index="' + i + '">' +
+            '<div class="event-card' + disabledClass + '" data-index="' + realIndex + '">' +
               '<span class="event-card-icon">' + icon + '</span>' +
               '<div class="event-card-body">' +
                 '<div class="event-card-title">' + htmlEscape(title) + '</div>' +
                 '<div class="event-card-meta">' + htmlEscape(meta) + '</div>' +
               '</div>' +
-              '<div class="event-card-toggle">' + toggleHtml + '</div>' +
+              '<div class="event-card-actions" style="display:flex;align-items:center;gap:6px">' +
+                '<button type="button" class="evt-edit-btn" onclick="editEvent(' + realIndex + ')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit">Edit</button>' +
+                '<button type="button" class="evt-del-btn" onclick="deleteEvent(' + realIndex + ')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid rgba(248,113,113,0.3);background:transparent;color:#fca5a5;cursor:pointer;font-family:inherit">×</button>' +
+                '<div class="event-card-toggle">' + toggleHtml + '</div>' +
+              '</div>' +
             '</div>';
         });
         listEl.innerHTML = html;
@@ -2675,6 +2705,158 @@
         var div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
+      }
+
+      function editEvent(index) {
+        var ev = null;
+        for (var j = 0; j < _eventsData.length; j++) {
+          if (_eventsData[j].index === index) { ev = _eventsData[j]; break; }
+        }
+        if (!ev) return;
+        _editingIndex = index;
+        // Open form pre-populated
+        var evType = ev.type;
+        document.getElementById('event-type-modal').style.display = 'none';
+        _currentFormType = evType;
+        var fields = EVENT_FIELDS[evType] || [];
+        var titleEl = document.getElementById('event-form-title');
+        var bodyEl = document.getElementById('event-form-body');
+        var errEl = document.getElementById('event-form-errors');
+        if (titleEl) titleEl.textContent = 'Edit ' + evType + ' Event';
+        if (errEl) errEl.style.display = 'none';
+
+        // Compute age from year for age-entry types
+        var evData = {};
+        for (var k in ev) { if (ev.hasOwnProperty(k)) evData[k] = ev[k]; }
+        if (ev.year != null && ev.person && _birthYears[ev.person]) {
+          var by = _birthYears[ev.person];
+          // Age-entry types: Retire, SocialSecurity, EndOfPlan
+          if (['Retire','SocialSecurity','EndOfPlan'].indexOf(evType) >= 0) {
+            evData.age = ev.year - by;
+          }
+        }
+
+        var html = '';
+        fields.forEach(function (f) {
+          if (typeof f === 'string') {
+            if (f.startsWith('---section---')) {
+              html += '<div class="form-section-title">' + htmlEscape(f.slice(13)) + '</div>';
+            } else if (f === '---recurring---') {
+              html += '<div class="form-section-title">Recurring (optional)</div>';
+            }
+            return;
+          }
+          if (f.type === 'bool') {
+            html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;margin-bottom:12px">';
+            var chk = (evData[f.name] !== false && evData[f.name] !== undefined) ? ' checked' : '';
+            html += '<input type="checkbox" id="evf-' + f.name + '"' + chk + ' style="accent-color:var(--accent-2);flex-shrink:0">';
+            html += '<label for="evf-' + f.name + '" style="font-size:13px;color:var(--text);cursor:pointer;font-weight:400">' + htmlEscape(f.label) + '</label>';
+            html += '</div>';
+          } else {
+            var required = f.required ? ' <span style="color:var(--accent)">*</span>' : '';
+            html += '<div class="form-field">';
+            html += '<label>' + htmlEscape(f.label) + required + '</label>';
+            if (f.type === 'select') {
+              html += '<select id="evf-' + f.name + '">';
+              (f.options || []).forEach(function (o) {
+                var sel = (evData[f.name] === o || (f.default === o && evData[f.name] === undefined)) ? ' selected' : '';
+                html += '<option value="' + o + '"' + sel + '>' + (o || '(none)') + '</option>';
+              });
+              html += '</select>';
+            } else {
+              var curVal = evData[f.name] != null ? String(evData[f.name]) : '';
+              html += '<input type="' + f.type + '" id="evf-' + f.name + '" value="' + curVal.replace(/"/g, '&quot;') + '">';
+            }
+          }
+          if (f.help) html += '<div class="form-help">' + htmlEscape(f.help) + '</div>';
+          html += '</div>';
+        });
+        bodyEl.innerHTML = html;
+        var saveBtn = document.getElementById('save-event-btn');
+        saveBtn.textContent = 'Update Event';
+        saveBtn.onclick = saveEditEvent;
+        document.getElementById('event-form-modal').style.display = 'flex';
+      }
+
+      function saveEditEvent() {
+        if (!_currentFormType) return;
+        var fields = EVENT_FIELDS[_currentFormType] || [];
+        var body = { type: _currentFormType, index: _editingIndex };
+        var errEl = document.getElementById('event-form-errors');
+        var reqMissing = [];
+        fields.forEach(function (f) {
+          if (typeof f === 'string') return;
+          var el = document.getElementById('evf-' + f.name);
+          if (!el) return;
+          var val;
+          if (f.type === 'bool') {
+            val = el.checked;
+          } else {
+            val = el.value.trim();
+          }
+          if (f.required && (val === '' || val === false)) {
+            reqMissing.push(f.label);
+          }
+          if (val !== '' && val !== false) {
+            if (f.type === 'number') body[f.name] = Number(val);
+            else body[f.name] = val;
+          }
+        });
+        if (reqMissing.length > 0) {
+          errEl.style.display = 'block';
+          errEl.textContent = 'Missing required: ' + reqMissing.join(', ');
+          return;
+        }
+        var saveBtn = document.getElementById('save-event-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Updating…';
+        apiPost('api/update-event', body).then(function (data) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Update Event';
+          if (data.ok) {
+            document.getElementById('event-form-modal').style.display = 'none';
+            if (data.toml_content) {
+              var rawEl = document.getElementById('raw-toml-content');
+              if (rawEl) rawEl.value = data.toml_content;
+            }
+            _eventsLoaded = false;
+            _editingIndex = -1;
+            initEventsTab();
+            showSuccess('Event updated.');
+          } else {
+            if (errEl) { errEl.style.display = 'block'; errEl.textContent = data.error || 'Update failed.'; }
+          }
+        }).catch(function (err) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Update Event';
+          if (errEl) { errEl.style.display = 'block'; errEl.textContent = err.message; }
+        });
+      }
+
+      function deleteEvent(index) {
+        var ev = null;
+        for (var j = 0; j < _eventsData.length; j++) {
+          if (_eventsData[j].index === index) { ev = _eventsData[j]; break; }
+        }
+        if (!ev) return;
+        var label = ev.label || (ev.type + ' event');
+        if (!confirm('Delete "' + label + '"? This cannot be undone.')) return;
+        apiPost('api/delete-event', { index: index }).then(function (data) {
+          if (data.ok) {
+            if (data.toml_content) {
+              var rawEl = document.getElementById('raw-toml-content');
+              if (rawEl) rawEl.value = data.toml_content;
+            }
+            _eventsLoaded = false;
+            initEventsTab();
+            renderTypeGrid();
+            showSuccess('Event deleted.');
+          } else {
+            showError(data.error || 'Delete failed.');
+          }
+        }).catch(function (err) {
+          showError('Delete failed: ' + err.message);
+        });
       }
 
       function toggleEvent(index, newEnabled) {
@@ -2707,6 +2889,8 @@
       }
       // Expose for inline onchange handler
       window.toggleEvent = toggleEvent;
+      window.editEvent = editEvent;
+      window.deleteEvent = deleteEvent;
 
       /* ── Event form (add) ────────────────────────────────────────── */
       var EVENT_FIELDS = {
@@ -2830,6 +3014,16 @@
       var _currentFormType = null;
 
       function initEventFormButtons() {
+        // Sort dropdown
+        var sortEl = document.getElementById('event-sort');
+        if (sortEl) {
+          var saved = localStorage.getItem('nwn-event-sort') || 'chronological';
+          sortEl.value = saved;
+          sortEl.addEventListener('change', function () {
+            localStorage.setItem('nwn-event-sort', sortEl.value);
+            renderEvents();
+          });
+        }
         var addBtn = document.getElementById('add-event-btn');
         var typeModal = document.getElementById('event-type-modal');
         var formModal = document.getElementById('event-form-modal');
@@ -2883,6 +3077,9 @@
         var bodyEl = document.getElementById('event-form-body');
         var errEl = document.getElementById('event-form-errors');
         if (titleEl) titleEl.textContent = 'Add ' + evType + ' Event';
+        var saveBtn = document.getElementById('save-event-btn');
+        saveBtn.textContent = 'Save Event';
+        saveBtn.onclick = saveEvent;
         if (errEl) errEl.style.display = 'none';
 
         var html = '';
@@ -2963,6 +3160,7 @@
         apiPost('api/add-event', body).then(function (data) {
           saveBtn.disabled = false;
           saveBtn.textContent = 'Save Event';
+          saveBtn.onclick = saveEvent;
           if (data.ok) {
             document.getElementById('event-form-modal').style.display = 'none';
             if (data.toml_content) {
@@ -2980,6 +3178,7 @@
         }).catch(function (err) {
           saveBtn.disabled = false;
           saveBtn.textContent = 'Save Event';
+          saveBtn.onclick = saveEvent;
           if (errEl) { errEl.style.display = 'block'; errEl.textContent = err.message; }
         });
       }
