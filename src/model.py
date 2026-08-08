@@ -697,7 +697,19 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
                     )
             except (TypeError, ValueError):
                 pass
-    
+
+        # Validate the Social Security benefit can actually be resolved.
+        # The benefit is derived live from social_security_benefits at the
+        # claiming age — never trusted from a stored monthly_benefit value —
+        # so an incomplete benefit table must be caught here rather than
+        # silently zeroing SS income at projection time.
+        ss_event = _social_security_event_for_person(config.get("events", []), person_key)
+        if ss_event is not None and ss_event.get("enabled", True):
+            try:
+                resolve_social_security_monthly_benefit(person, person_key, ss_event)
+            except ValueError as exc:
+                errors.append(f"{person_display}: {exc}{path_hint}")
+
     # Only report life-expectancy errors if no person survives to the end
     # (scenarios with one early death and one surviving partner are valid).
     if not someone_survives_to_end:
@@ -2106,6 +2118,51 @@ def _survivor_social_security_start_age(person: dict) -> int:
         return 60
 
 
+def resolve_social_security_monthly_benefit(
+    person: dict,
+    person_key: str,
+    event: dict,
+) -> float:
+    """Resolve the live monthly Social Security benefit for a SocialSecurity event.
+
+    The benefit table (`social_security_benefits`) is the single source of
+    truth — this is looked up fresh every call, never trusted from a stored
+    `monthly_benefit` value on the event itself (events should not carry one).
+
+    Raises ValueError if the claiming age can't be determined, or if no
+    benefit is configured for that age.
+    """
+    age = event.get("age")
+    if age is None:
+        age = person.get("ss_start_age")
+    if age is None and event.get("year") is not None:
+        age = _person_age_in_year(person, event["year"])
+    if age is None:
+        raise ValueError(
+            f"Cannot determine Social Security claiming age for {person_key}: "
+            "the event has no usable 'year' and the person has no dob or "
+            "ss_start_age to derive it from."
+        )
+    try:
+        age = int(age)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid Social Security claiming age for {person_key}: {age!r}")
+
+    monthly_benefit = _resolve_social_security_monthly_benefit(person, ss_start_age=age)
+    if monthly_benefit is None:
+        raise ValueError(
+            f"No Social Security benefit found for {person_key} at age {age}. "
+            f"Add an entry to [{person_key}.social_security_benefits] "
+            f"(e.g. \"{age}\" = <monthly amount>), or set {person_key}.ss_monthly_benefit."
+        )
+    try:
+        return float(monthly_benefit)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"Social Security benefit for {person_key} at age {age} is not numeric: {monthly_benefit!r}"
+        )
+
+
 def _planned_social_security_monthly_benefit(
     *,
     person: dict,
@@ -2115,10 +2172,7 @@ def _planned_social_security_monthly_benefit(
     """Return the person's configured or synthesized Social Security monthly benefit."""
     event = _social_security_event_for_person(events, person_key)
     if event is not None:
-        try:
-            return max(0.0, float(event.get("monthly_benefit", 0.0)))
-        except (TypeError, ValueError):
-            return 0.0
+        return max(0.0, resolve_social_security_monthly_benefit(person, person_key, event))
 
     monthly_benefit = _resolve_social_security_monthly_benefit(
         person,
@@ -4377,7 +4431,8 @@ def _person_income_components(
     for event in events:
         if event["type"] == "SocialSecurity" and event.get("person") == person_key:
             if year >= event["year"]:
-                annual_ss = event.get("monthly_benefit", 0) * 12
+                monthly_benefit = resolve_social_security_monthly_benefit(person, person_key, event)
+                annual_ss = monthly_benefit * 12
                 ss_income += annual_ss
                 ss_taxable_income += annual_ss * _event_taxable_fraction(event, default=1.0)
 

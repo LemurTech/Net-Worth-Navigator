@@ -134,19 +134,22 @@ Every scenario that includes a death-triggered relocation needs:
 
 ## 5. Social Security Income — Flat Nominal, No CPI Growth
 
-**File:** `model.py`, lines 3853–3858
+**File:** `model.py`, `_person_income_components()`, around line 4430
 
 ```python
 for event in events:
     if event["type"] == "SocialSecurity" and event.get("person") == person_key:
         if year >= event["year"]:
-            annual_ss = event.get("monthly_benefit", 0) * 12
+            monthly_benefit = resolve_social_security_monthly_benefit(person, person_key, event)
+            annual_ss = monthly_benefit * 12
             ss_income += annual_ss
 ```
 
 SS benefits from SSA.gov estimates are treated as **fixed nominal values**.
-The `monthly_benefit` from `[person].social_security_benefits.<age>` is
-used directly — no inflation growth after the claiming year.
+`resolve_social_security_monthly_benefit()` resolves `monthly_benefit` fresh
+from `[person].social_security_benefits.<age>` on every call — it is never
+stored on the event itself — but the resolved value is still not
+CPI-inflated after the claiming year.
 
 SS income does NOT go through `_project_person_take_home()` which is
 where wage growth (raise + inflation) is applied.

@@ -20,9 +20,6 @@ For the most accurate modeling, you'll want estimates at **each age from 62 to 7
 Once you have your estimates, open your scenario TOML file (or use the **Raw TOML** tab in the Setup Panel). Find the `[person1]` section and add a `social_security_benefits` sub-table:
 
 ```toml
-# Social Security timing
-ss_start_age = 67   # the age you plan to claim
-
 [person1.social_security_benefits]
 "62" = 1700   # estimated monthly benefit if claimed at 62
 "63" = 1840
@@ -50,11 +47,24 @@ Do the same for `[person2]` if you're modeling a couple:
 "70" = 1950
 ```
 
+Then add a `SocialSecurity` event for the age you plan to claim. In the Setup Panel's **Events** tab, adding a `SocialSecurity` event asks for an **age**, not a year — the panel computes and stores the corresponding `year` for you from that age and the person's `dob`. Hand-editing TOML directly looks like:
+
+```toml
+[[events]]
+enabled = true
+type    = "SocialSecurity"
+label   = "SS Begins (M)"
+person  = "person1"
+year    = 2037   # birth_year + claiming age (e.g. 1970 + 67)
+```
+
 ## How the Model Uses This Data
 
-- **`ss_start_age`** — the age at which Social Security payments begin for that person. This is the **source of truth** for SS timing. The model auto-synthesizes a `SocialSecurity` event from this setting — you don't need to write one manually.
+- **The `SocialSecurity` event's `year`** is the source of truth for SS timing — not a person-level field. Your claiming age is worked out from `year` minus your `dob`'s birth year.
 
-- **`social_security_benefits`** — a table mapping each claim age (62–70) to the estimated monthly benefit. The model looks up the benefit amount that matches your chosen `ss_start_age`. If `ss_start_age` is 67, it uses `"67" = 2440`.
+- **`social_security_benefits`** — a table mapping each claim age (62–70) to the estimated monthly benefit. The model looks this up fresh every time it's needed, for your resolved claiming age — the benefit amount is **never** stored on the event itself. That means updating this table later (a new SSA estimate, say) takes effect immediately without touching the event.
+
+- **Missing benefit data is a hard error, not a silent $0.** If a `SocialSecurity` event exists but `social_security_benefits` has no entry for the resolved claiming age (or the table is missing entirely), the scenario fails validation with a clear message instead of quietly modeling no Social Security income.
 
 - **Widow/er step-up** — when one partner passes away (end-of-plan year), the survivor steps up to the deceased partner's benefit if it is higher. The survivor's own benefit is replaced starting at `survivor_ss_start_age` (default: 60).
 

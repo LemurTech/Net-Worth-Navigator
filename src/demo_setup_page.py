@@ -160,7 +160,24 @@ def build_demo_setup_page(
         birth_year = str(dob).split("-")[0] if dob else ""
         life_exp = _fmt(p.get("life_expectancy"))
         retire = _fmt(p.get("retirement_year"))
-        ss_age = _fmt(p.get("ss_start_age"))
+        # v2: read SS start age from the SocialSecurity event; v1 fallback
+        # to person.ss_start_age for scenarios not yet migrated.
+        ss_start_age = p.get("ss_start_age")
+        ss_event = next(
+            (
+                e for e in (config.get("events", []) or [])
+                if e.get("type") == "SocialSecurity"
+                and str(e.get("person")) == label
+                and e.get("enabled", True)
+            ),
+            None,
+        )
+        if ss_event is not None and ss_event.get("year") is not None and birth_year:
+            try:
+                ss_start_age = int(ss_event["year"]) - int(birth_year)
+            except (TypeError, ValueError):
+                pass
+        ss_age = _fmt(ss_start_age)
         income = _fmt_dollar(p.get("annual_take_home"))
         gross = _fmt_dollar(p.get("gross_income"))
         contrib = _fmt_pct(p.get("retirement_contribution_percent"))

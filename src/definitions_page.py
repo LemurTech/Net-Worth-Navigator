@@ -260,11 +260,11 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
             },
             {
                 "key": "[personX].ss_start_age",
-                "summary": "Age when that person starts Social Security in the synthesized runtime config.",
+                "summary": "Optional convenience cache of the claiming age entered on this person's SocialSecurity event; the event's year (birth_year + age) is the actual source of truth.",
             },
             {
                 "key": "[personX].social_security_benefits",
-                "summary": "Age-to-monthly-benefit lookup used by the runtime Social Security event builder.",
+                "summary": "Age-to-monthly-benefit lookup, resolved live at the claiming age on every read — never stored on the SocialSecurity event itself. A missing table or age entry fails scenario validation.",
             },
         ],
     },

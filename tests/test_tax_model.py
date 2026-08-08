@@ -120,6 +120,9 @@ class TaxModelTests(unittest.TestCase):
 
     def test_run_projection_uses_bracket_tax_for_social_security(self):
         config = self._base_config()
+        # monthly_benefit is resolved live from the person's benefit table (or
+        # legacy ss_monthly_benefit scalar) — no longer read from the event.
+        config["person1"]["ss_monthly_benefit"] = 2.0
         config["events"] = [
             {
                 "enabled": True,
@@ -127,7 +130,7 @@ class TaxModelTests(unittest.TestCase):
                 "label": "SS Begins (M)",
                 "person": "person1",
                 "year": 2026,
-                "monthly_benefit": 2.0,
+                "age": 67,
             }
         ]
 
@@ -208,6 +211,9 @@ class TaxModelTests(unittest.TestCase):
 
     def test_social_security_uses_provisional_income_thresholds(self):
         config = self._base_config()
+        # monthly_benefit is resolved live from the person's benefit table (or
+        # legacy ss_monthly_benefit scalar) — no longer read from the event.
+        config["person1"]["ss_monthly_benefit"] = 2_000.0
         config["events"] = [
             {
                 "enabled": True,
@@ -215,7 +221,7 @@ class TaxModelTests(unittest.TestCase):
                 "label": "SS Begins (M)",
                 "person": "person1",
                 "year": 2026,
-                "monthly_benefit": 2_000.0,
+                "age": 67,
             },
             {
                 "enabled": True,

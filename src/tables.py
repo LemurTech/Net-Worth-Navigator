@@ -271,9 +271,27 @@ def build_assumptions_summary(
         retirement_year = person.get("retirement_year")
         retirement_age = _age_from_year(person.get("dob"), retirement_year)
 
+        # v2: read SS start age/year from the SocialSecurity event; v1 fallback
+        # to person.ss_start_age for scenarios not yet migrated.
         ss_start_age = person.get("ss_start_age")
         ss_start_year = None
-        if birth_year is not None and ss_start_age not in (None, ""):
+        ss_event = next(
+            (
+                e for e in (config.get("events", []) or [])
+                if e.get("type") == "SocialSecurity"
+                and str(e.get("person")) == person_key
+                and e.get("enabled", True)
+            ),
+            None,
+        )
+        if ss_event is not None and ss_event.get("year") is not None:
+            try:
+                ss_start_year = int(ss_event["year"])
+                if birth_year is not None:
+                    ss_start_age = ss_start_year - birth_year
+            except (TypeError, ValueError):
+                ss_start_year = None
+        elif birth_year is not None and ss_start_age not in (None, ""):
             try:
                 ss_start_year = birth_year + int(ss_start_age)
             except (TypeError, ValueError):

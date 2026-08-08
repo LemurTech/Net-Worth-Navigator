@@ -21,6 +21,7 @@ from fastapi.templating import Jinja2Templates
 from src.config_loader import merge_tax_tables, TAX_TABLES_DIR
 from src.csv_importer import accounts_from_csv, merge_accounts, parse_csv
 from src.definitions_page import build_definitions_page_html
+from src.model import resolve_social_security_monthly_benefit
 from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes, SCENARIOS_DIR, write_scenarios_index
 from src.scenario_shell import build_scenario_shell, build_compare_page
 
@@ -2002,6 +2003,19 @@ async def api_list_events(request: Request) -> JSONResponse:
             # Flag events that carry an age field (v2 EndOfPlan, Retire, SS)
             if ev.get("age") is not None:
                 entry["has_age"] = True
+            # Resolve Social Security benefit live for display — never trust
+            # a stale stored monthly_benefit value (see flat_field loop above).
+            if entry["type"] == "SocialSecurity":
+                person_key = str(ev.get("person", "")).strip()
+                person = doc.get(person_key) if person_key else None
+                if isinstance(person, dict):
+                    try:
+                        entry["monthly_benefit"] = resolve_social_security_monthly_benefit(
+                            person, person_key, ev
+                        )
+                    except ValueError as exc:
+                        entry.pop("monthly_benefit", None)
+                        entry["benefit_error"] = str(exc)
             parsed.append(entry)
 
         # ── Migration detection ───────────────────────────────────────────
@@ -2106,7 +2120,9 @@ _EVENT_REQUIRED_FIELDS: dict[str, list[str]] = {
 }
 
 _INT_FIELDS = {"year", "start_year", "end_year", "repeat_every_years", "repeat_count", "repeat_until_year", "age"}
-_FLOAT_FIELDS = {"amount", "annual_cost", "down_payment", "monthly_benefit", "annual_income",
+# NOTE: "monthly_benefit" is deliberately excluded — it is never stored on a
+# SocialSecurity event, always resolved live from social_security_benefits.
+_FLOAT_FIELDS = {"amount", "annual_cost", "down_payment", "annual_income",
                  "retirement_annual", "survivor_annual", "survivor_percent_of_retirement",
                  "price", "mortgage_rate", "term_years", "sale_fee_rate", "reinvest_fraction",
                  "annual_401k_contribution", "annual_ira_contribution", "annual_401k_employer_match",
@@ -2191,6 +2207,7 @@ async def api_add_event(request: Request) -> JSONResponse:
         doc, _ = _toml_open(scenario_slug)
 
         # Compute year from age for age-entry event types (must happen before validation)
+        resolved_monthly_benefit = None
         if "age" in body and "year" not in body:
             person_key = str(body.get("person", "person1")).strip()
             person = doc.get(person_key, {}) if isinstance(doc.get(person_key), dict) else {}
@@ -2200,21 +2217,21 @@ async def api_add_event(request: Request) -> JSONResponse:
                     birth_year = int(str(dob).split("-", 1)[0])
                     age = int(body["age"])
                     body["year"] = birth_year + age
-                    # For SocialSecurity, auto-lookup monthly benefit
-                    if ev_type == "SocialSecurity" and "monthly_benefit" not in body:
-                        benefits = person.get("social_security_benefits")
-                        if isinstance(benefits, dict):
-                            monthly = benefits.get(str(age))
-                            if monthly is not None:
-                                body["monthly_benefit"] = float(monthly)
-                            else:
-                                return JSONResponse({
-                                    "ok": False,
-                                    "error": f"No benefit amount found for age {age} in {person_key}.social_security_benefits. "
-                                             f"Available ages: {', '.join(sorted(benefits.keys()))}",
-                                }, status_code=400)
                 except (TypeError, ValueError):
                     pass  # fall through — year will be missing, validation catches it
+
+        # monthly_benefit is never stored on the event — resolve it live for
+        # display, and reject the request if it can't be resolved at all.
+        body.pop("monthly_benefit", None)
+        if ev_type == "SocialSecurity" and "year" in body:
+            person_key = str(body.get("person", "person1")).strip()
+            person = doc.get(person_key, {}) if isinstance(doc.get(person_key), dict) else {}
+            try:
+                resolved_monthly_benefit = resolve_social_security_monthly_benefit(
+                    person, person_key, {"year": int(body["year"]), "age": body.get("age")}
+                )
+            except (ValueError, TypeError) as exc:
+                return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
         errors = _validate_event_fields(ev_type, body)
         if errors:
@@ -2226,7 +2243,7 @@ async def api_add_event(request: Request) -> JSONResponse:
         table["enabled"] = body.get("enabled", True) if "enabled" in body else True
 
         for key, val in body.items():
-            if key in ("type", "enabled"):
+            if key in ("type", "enabled", "monthly_benefit"):
                 continue
             if val is None or val == "":
                 continue
@@ -2249,11 +2266,14 @@ async def api_add_event(request: Request) -> JSONResponse:
         new_index = len(doc["events"]) - 1
         toml_text = tomlkit.dumps(doc)
 
-        return JSONResponse({
+        response = {
             "ok": True,
             "index": new_index,
             "toml_content": toml_text,
-        })
+        }
+        if resolved_monthly_benefit is not None:
+            response["resolved_monthly_benefit"] = resolved_monthly_benefit
+        return JSONResponse(response)
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
@@ -2295,14 +2315,22 @@ async def api_update_event(request: Request) -> JSONResponse:
                     birth_year = int(str(dob).split("-", 1)[0])
                     age = int(body["age"])
                     body["year"] = birth_year + age
-                    if ev_type == "SocialSecurity" and "monthly_benefit" not in body:
-                        benefits = person.get("social_security_benefits")
-                        if isinstance(benefits, dict):
-                            monthly = benefits.get(str(age))
-                            if monthly is not None:
-                                body["monthly_benefit"] = float(monthly)
                 except (TypeError, ValueError):
                     pass
+
+        # monthly_benefit is never stored on the event — resolve it live for
+        # display, and reject the request if it can't be resolved at all.
+        resolved_monthly_benefit = None
+        body.pop("monthly_benefit", None)
+        if ev_type == "SocialSecurity" and "year" in body:
+            person_key = str(body.get("person", "person1")).strip()
+            person = doc.get(person_key, {}) if isinstance(doc.get(person_key), dict) else {}
+            try:
+                resolved_monthly_benefit = resolve_social_security_monthly_benefit(
+                    person, person_key, {"year": int(body["year"]), "age": body.get("age")}
+                )
+            except (ValueError, TypeError) as exc:
+                return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
         errors = _validate_event_fields(ev_type, body)
         if errors:
@@ -2313,7 +2341,7 @@ async def api_update_event(request: Request) -> JSONResponse:
         table["type"] = ev_type
         table["enabled"] = body.get("enabled", events[idx].get("enabled", True))
         for key, val in body.items():
-            if key in ("type", "enabled", "index"):
+            if key in ("type", "enabled", "index", "monthly_benefit"):
                 continue
             if val is None or val == "":
                 continue
@@ -2329,7 +2357,10 @@ async def api_update_event(request: Request) -> JSONResponse:
         events[idx] = table
         _backup_and_write_toml(doc, scenario_slug)
         toml_text = tomlkit.dumps(doc)
-        return JSONResponse({"ok": True, "toml_content": toml_text})
+        response = {"ok": True, "toml_content": toml_text}
+        if resolved_monthly_benefit is not None:
+            response["resolved_monthly_benefit"] = resolved_monthly_benefit
+        return JSONResponse(response)
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
