@@ -27,8 +27,11 @@ from src.scenario_shell import build_scenario_shell, build_compare_page
 
 APP_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_ROOT / "output"
-VENV_PYTHON = APP_ROOT / ".venv" / "bin" / "python"
-PYTHON_BIN = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
+_VENV_PYTHON_CANDIDATES = (
+    APP_ROOT / ".venv" / "bin" / "python",          # Linux/macOS venv layout
+    APP_ROOT / ".venv" / "Scripts" / "python.exe",  # Windows venv layout
+)
+PYTHON_BIN = next((p for p in _VENV_PYTHON_CANDIDATES if p.exists()), Path(sys.executable))
 RUN_SCRIPT = APP_ROOT / "run.py"
 
 # Public URL path prefix for reverse-proxy deployments (e.g. /finances).
