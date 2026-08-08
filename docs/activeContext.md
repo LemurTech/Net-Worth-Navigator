@@ -1,12 +1,19 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-08-07
+**Last updated:** 2026-08-08
 **Status:** v2.0 — Event-driven timeline. Phase 3c complete: edit, delete, sort.
            TOML cleanup complete: comment stripping, blank-line normalization, migration script.
+           Social Security benefit resolution now live/derived, not stored. Dead synthesis code removed.
 
 ---
 
 ## Current Work
+
+### Social Security Live Benefit Derivation (landed 2026-08-08)
+
+`SocialSecurity` events no longer carry a stored `monthly_benefit` — it's resolved fresh on every read via `resolve_social_security_monthly_benefit()` in `model.py`, from `[personX].social_security_benefits` at the claiming age (derived from the event's `year` and `dob`, or a cached `ss_start_age`). `validate_scenario()` now catches an unresolvable benefit (missing table, missing age entry) as a scenario error instead of letting it silently zero out SS income at projection time. See `docs/plans/2026-08-08-social-security-live-benefit-derivation.md`.
+
+As part of the same pass, the dead synthesis code left behind by the v2.0 refactor below (`_resolve_retirement_events`, `_synthesize_retire_event`, `_resolve_social_security_events`, `_synthesize_social_security_event`, `_person_event_age`, plus three now-orphaned helpers) was deleted from `model.py` — none of it had been reachable from `resolve_runtime_config()` since 2026-08-07.
 
 ### v2.0 Event-Driven Timeline (landed 2026-08-07)
 
@@ -28,7 +35,9 @@
 - **Blank-line normalization:** `_normalize_toml_blank_lines` in both the migration script and API. Adds blank lines between ALL TOML sections, not just `[[events]]`.
 - **Release notes:** `⚠️ Breaking Change` section in the v2 plan documents the comment-stripping behavior and migration instructions.
 
-**Next:** SS benefits entry tab, or Phase 3d validation endpoint. Matthew to enhance sample file documentation offline. Working on `dev` branch.
+**Next:** Phase 3d validation endpoint. Working on `dev` branch.
+
+*(SS benefit live derivation and sample-file documentation enhancement — both listed here previously — landed 2026-08-08.)*
 
 ---
 

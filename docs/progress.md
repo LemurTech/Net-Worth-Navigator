@@ -3,6 +3,39 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-08 (Social Security live benefit derivation + dead-code cleanup)
+
+**Branch:** `dev` (not yet merged to main)
+
+### Added
+
+- **`resolve_social_security_monthly_benefit()`** in `model.py` — resolves a SocialSecurity event's benefit live from `[personX].social_security_benefits` on every read (age from event `age` → `ss_start_age` → `year - birth_year`), instead of trusting a stored `monthly_benefit` snapshot. Raises `ValueError` if unresolvable.
+- **`validate_scenario()`** now checks every enabled `SocialSecurity` event resolves to a benefit, catching incomplete tables in hand-edited TOML before a run.
+- **`tests/test_social_security_resolution.py`** — 15 new tests covering the resolver, live derivation through `run_projection`, and the new validation checks.
+
+### Changed
+
+- `_person_income_components()` and `_planned_social_security_monthly_benefit()` call the new resolver instead of reading `event["monthly_benefit"]` directly.
+- `admin_app.py`'s add/update-event no longer persists `monthly_benefit`; `GET /api/events` resolves it live for display instead of echoing a stale stored value.
+- `tables.py` / `demo_setup_page.py` read SS start age from the person's `SocialSecurity` event (v2) with a fallback to legacy `ss_start_age` (v1), instead of only ever reading the legacy field.
+- Fixed two `test_tax_model.py` fixtures that relied on the old stored-value behavior.
+- Docs updated: `systemPatterns.md`, `survivor-phase-modeling.md`, the social-security guide, `definitions_page.py`.
+
+### Removed — dead code from the v2.0 event-driven timeline refactor
+
+`resolve_runtime_config()` stopped calling the person-settings synthesis path on 2026-08-07, leaving it unreachable. Deleted outright:
+
+- `_resolve_retirement_events()`, `_synthesize_retire_event()`
+- `_resolve_social_security_events()`, `_synthesize_social_security_event()`
+- `_person_event_age()` (never wired in; its year→age fallback was also buggy)
+- `_person_event_initial()`, `_person_end_of_plan_year()`, `_person_event_is_posthumous()` — orphaned helpers used only by the functions above
+
+Full test suite still 143/143 passing (excluding one pre-existing, unrelated `pytest`-dependency gap in `test_401k_percent.py`).
+
+### Plan
+
+- `docs/plans/2026-08-08-social-security-live-benefit-derivation.md`
+
 ## 2026-08-07 (v2.0 — Event-driven timeline + Phase 3c edit/delete/sort)
 
 **Branch:** `dev` (not yet merged to main)
