@@ -680,6 +680,64 @@
           </div>
         </div>
       </div>
+
+      <div style="margin-top:4px">
+        <button class="expander-toggle" id="advanced-settings-toggle" type="button">▼ Advanced: Spending, Taxes &amp; Assumptions</button>
+      </div>
+      <div class="expander-content" id="advanced-settings-content">
+        <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Household Spending</div>
+        <div class="inline-row">
+          <div class="inline-field"><label>Retirement Annual Spending</label><input type="text" class="synth-dollar" id="spending_retirement_annual" placeholder="$ 0"></div>
+          <div class="inline-field"><label>Survivor % of Retirement</label><input type="number" id="spending_survivor_percent" step="1" placeholder="70"></div>
+          <div class="inline-field"><label>Survivor Annual (absolute)</label><input type="text" class="synth-dollar" id="spending_survivor_annual" placeholder="$ 0"></div>
+          <div class="inline-field"><label>Spending Basis</label>
+            <select id="spending_basis">
+              <option value="real">Today's Dollars (real)</option>
+              <option value="nominal">Future Dollars (nominal)</option>
+            </select>
+          </div>
+        </div>
+        <div class="synth-hint" style="max-width:none">If both Survivor % and Survivor Annual are set, Survivor Annual takes precedence. Only applies to couple households.</div>
+
+        <div class="quick-section-title">Tax Policy</div>
+        <div class="inline-row">
+          <div class="inline-field"><label>Bracket Tax Model</label><input type="checkbox" id="taxes_enabled_flag" style="max-width:20px"></div>
+          <div class="inline-field"><label>Pre-Retirement Filing</label>
+            <select id="taxes_pre_retirement_filing_status"><option value="single">Single</option><option value="married_joint">Married Filing Jointly</option><option value="head_of_household">Head of Household</option></select>
+          </div>
+          <div class="inline-field"><label>Retirement Filing</label>
+            <select id="taxes_retirement_filing_status"><option value="single">Single</option><option value="married_joint">Married Filing Jointly</option><option value="head_of_household">Head of Household</option></select>
+          </div>
+          <div class="inline-field"><label>Survivor Filing</label>
+            <select id="taxes_survivor_filing_status"><option value="single">Single</option><option value="married_joint">Married Filing Jointly</option><option value="head_of_household">Head of Household</option></select>
+          </div>
+          <div class="inline-field"><label>Wage Treatment</label>
+            <select id="taxes_wage_tax_treatment"><option value="net_cash">Net Cash</option><option value="taxable_wages">Taxable Wages</option></select>
+          </div>
+        </div>
+        <div class="synth-hint" style="max-width:none">Unchecking the bracket tax model falls back to the flat "Effective Tax Rate" percentages further below. "Taxable Wages" is not yet fully implemented — leave on Net Cash.</div>
+
+        <div class="quick-section-title">Required Minimum Distributions</div>
+        <div class="inline-row">
+          <div class="inline-field"><label>Force RMDs</label><input type="checkbox" id="rmd_enabled_flag" style="max-width:20px"></div>
+          <div class="inline-field"><label>RMD Start Age</label><input type="number" id="rmd_start_age" step="1" placeholder="73"></div>
+        </div>
+        <div class="synth-hint" style="max-width:none">Forces annual traditional-account withdrawals from IRS life-expectancy factors starting at this age, feeding both cash flow and taxable income.</div>
+
+        <div class="quick-section-title">Additional Assumptions</div>
+        <div class="inline-row">
+          <div class="inline-field"><label>Cash Return</label><input type="number" id="assump_cash_return" step="0.1" placeholder="0"></div>
+          <div class="inline-field"><label>Real Estate Appreciation</label><input type="number" id="assump_real_estate_appreciation" step="0.1" placeholder="0"></div>
+          <div class="inline-field"><label>Home Sale Fee Rate</label><input type="number" id="assump_real_estate_sale_fee_rate" step="0.5" placeholder="6"></div>
+          <div class="inline-field"><label>Effective Tax Rate (Pre-Retirement)</label><input type="number" id="assump_effective_tax_rate_pre_retirement" step="0.5" placeholder="22"></div>
+          <div class="inline-field"><label>Effective Tax Rate (Retired)</label><input type="number" id="assump_effective_tax_rate_post_retirement" step="0.5" placeholder="15"></div>
+          <div class="inline-field"><label>Taxable Withdrawal Gain %</label><input type="number" id="assump_taxable_withdrawal_taxable_fraction" step="1" placeholder="50"></div>
+          <div class="inline-field"><label>Trad IRA Withdrawal Taxable %</label><input type="number" id="assump_trad_ira_withdrawal_taxable_fraction" step="1" placeholder="100"></div>
+          <div class="inline-field"><label>Initial Taxable Basis %</label><input type="number" id="assump_initial_taxable_cost_basis_fraction" step="1" placeholder="50"></div>
+          <div class="inline-field"><label>Initial Roth Basis %</label><input type="number" id="assump_initial_roth_contribution_basis_fraction" step="1" placeholder="100"></div>
+        </div>
+        <div class="synth-hint" style="max-width:none">"Effective Tax Rate" is a flat fallback used only when the bracket tax model above is disabled or has no brackets for the resolved filing status. "Taxable Withdrawal Gain %" is the portion of a taxable-account withdrawal treated as a realized gain; "Trad IRA Withdrawal Taxable %" is nearly always 100. The two "Initial Basis" percentages only affect the very first projection year's cost-basis seed.</div>
+      </div>
     </div><!-- /#tab-metadata -->
 
       <!-- ── Tab: Social Security ─────────────────────────────────── -->
@@ -1469,6 +1527,60 @@
           setField(personKey + '_roth_share', pct(grabNum(block, 'roth_share')));
         });
 
+        // ── Advanced settings: spending / taxes / rmd / assumptions ──────
+        // Bounded per-section (stopping at the next [section] header) since
+        // several of these field names (enabled, retirement_annual,
+        // survivor_annual, survivor_percent_of_retirement) are reused inside
+        // [[events]] SpendingShift blocks and/or [taxes.rmd], and an unbounded
+        // regex would risk matching the wrong occurrence.
+        function sectionBlock(header) {
+          var startRe = new RegExp('^\\[' + header.replace(/\./g, '\\.') + '\\]\\s*$', 'm');
+          var sm = configContent.match(startRe);
+          if (!sm) return '';
+          var rest = configContent.slice(sm.index + sm[0].length);
+          var stopM = rest.match(/\n\[/);
+          return stopM ? rest.slice(0, stopM.index) : rest;
+        }
+
+        var spendingBlock = sectionBlock('spending');
+        setField('spending_retirement_annual', grabNum(spendingBlock, 'retirement_annual'));
+        setField('spending_survivor_percent', pct(grabNum(spendingBlock, 'survivor_percent_of_retirement')));
+        setField('spending_survivor_annual', grabNum(spendingBlock, 'survivor_annual'));
+        var spendingBasis = grabStr(spendingBlock, 'spending_basis');
+        setField('spending_basis', (spendingBasis === 'nominal') ? 'nominal' : 'real');
+
+        var taxesBlock = sectionBlock('taxes');
+        var taxesEnabledEl = document.getElementById('taxes_enabled_flag');
+        if (taxesEnabledEl) {
+          var taxesEnabledVal = grabBool(taxesBlock, 'enabled');
+          taxesEnabledEl.checked = (taxesEnabledVal !== false);
+        }
+        var preFiling = grabStr(taxesBlock, 'pre_retirement_filing_status');
+        setField('taxes_pre_retirement_filing_status', preFiling || 'married_joint');
+        var retFiling = grabStr(taxesBlock, 'retirement_filing_status');
+        setField('taxes_retirement_filing_status', retFiling || 'married_joint');
+        var survFiling = grabStr(taxesBlock, 'survivor_filing_status');
+        setField('taxes_survivor_filing_status', survFiling || 'single');
+        var wageTreatment = grabStr(taxesBlock, 'wage_tax_treatment');
+        setField('taxes_wage_tax_treatment', (wageTreatment === 'taxable_wages') ? 'taxable_wages' : 'net_cash');
+
+        var rmdBlock = sectionBlock('taxes.rmd');
+        var rmdEnabledEl = document.getElementById('rmd_enabled_flag');
+        if (rmdEnabledEl) rmdEnabledEl.checked = !!grabBool(rmdBlock, 'enabled');
+        var rmdStartAge = grabNum(rmdBlock, 'start_age');
+        setField('rmd_start_age', rmdStartAge != null ? rmdStartAge : 73);
+
+        var assumptionsBlock = sectionBlock('assumptions');
+        setField('assump_cash_return', pct(grabNum(assumptionsBlock, 'cash_return')));
+        setField('assump_real_estate_appreciation', pct(grabNum(assumptionsBlock, 'real_estate_appreciation')));
+        setField('assump_real_estate_sale_fee_rate', pct(grabNum(assumptionsBlock, 'real_estate_sale_fee_rate')));
+        setField('assump_effective_tax_rate_pre_retirement', pct(grabNum(assumptionsBlock, 'effective_tax_rate_pre_retirement')));
+        setField('assump_effective_tax_rate_post_retirement', pct(grabNum(assumptionsBlock, 'effective_tax_rate_post_retirement')));
+        setField('assump_taxable_withdrawal_taxable_fraction', pct(grabNum(assumptionsBlock, 'taxable_withdrawal_taxable_fraction')));
+        setField('assump_trad_ira_withdrawal_taxable_fraction', pct(grabNum(assumptionsBlock, 'trad_ira_withdrawal_taxable_fraction')));
+        setField('assump_initial_taxable_cost_basis_fraction', pct(grabNum(assumptionsBlock, 'initial_taxable_cost_basis_fraction')));
+        setField('assump_initial_roth_contribution_basis_fraction', pct(grabNum(assumptionsBlock, 'initial_roth_contribution_basis_fraction')));
+
         function getBirthYear(inputId) {
           var el = document.getElementById(inputId);
           return el ? (parseInt(el.value, 10) || 0) : 0;
@@ -1605,6 +1717,16 @@
             advSurplusContent.classList.toggle('open', open);
           });
         }
+      }
+
+      function initAdvancedSettingsToggle() {
+        var toggle = document.getElementById('advanced-settings-toggle');
+        var content = document.getElementById('advanced-settings-content');
+        if (!toggle || !content) return;
+        toggle.addEventListener('click', function () {
+          var open = content.classList.toggle('open');
+          toggle.innerHTML = (open ? '▲' : '▼') + ' Advanced: Spending, Taxes &amp; Assumptions';
+        });
       }
 
       function togglePerson2(show) {
@@ -1777,6 +1899,43 @@
           if (rmdShare) body[personKey + '_rmd_trad_ira_share'] = parseFloat(rmdShare) / 100;
           var rothShare = getField(personKey + '_roth_share');
           if (rothShare) body[personKey + '_roth_share'] = parseFloat(rothShare) / 100;
+        });
+
+        // Advanced settings: spending / taxes / rmd / assumptions
+        var spendRetirement = getDollarField('spending_retirement_annual');
+        if (spendRetirement != null) body.spending_retirement_annual = spendRetirement;
+        var spendSurvivorPct = getField('spending_survivor_percent');
+        if (spendSurvivorPct) body.spending_survivor_percent = parseFloat(spendSurvivorPct) / 100;
+        var spendSurvivorAnnual = getDollarField('spending_survivor_annual');
+        if (spendSurvivorAnnual != null) body.spending_survivor_annual = spendSurvivorAnnual;
+        var spendBasis = getField('spending_basis');
+        if (spendBasis) body.spending_basis = spendBasis;
+
+        var taxesEnabledEl = document.getElementById('taxes_enabled_flag');
+        if (taxesEnabledEl) body.taxes_enabled_flag = taxesEnabledEl.checked;
+        var preFiling = getField('taxes_pre_retirement_filing_status');
+        if (preFiling) body.taxes_pre_retirement_filing_status = preFiling;
+        var retFiling = getField('taxes_retirement_filing_status');
+        if (retFiling) body.taxes_retirement_filing_status = retFiling;
+        var survFiling = getField('taxes_survivor_filing_status');
+        if (survFiling) body.taxes_survivor_filing_status = survFiling;
+        var wageTreatment = getField('taxes_wage_tax_treatment');
+        if (wageTreatment) body.taxes_wage_tax_treatment = wageTreatment;
+
+        var rmdEnabledEl = document.getElementById('rmd_enabled_flag');
+        if (rmdEnabledEl) body.rmd_enabled_flag = rmdEnabledEl.checked;
+        var rmdStartAge = getField('rmd_start_age');
+        if (rmdStartAge) body.rmd_start_age = parseInt(rmdStartAge, 10);
+
+        var assumptionFields = [
+          'cash_return', 'real_estate_appreciation', 'real_estate_sale_fee_rate',
+          'effective_tax_rate_pre_retirement', 'effective_tax_rate_post_retirement',
+          'taxable_withdrawal_taxable_fraction', 'trad_ira_withdrawal_taxable_fraction',
+          'initial_taxable_cost_basis_fraction', 'initial_roth_contribution_basis_fraction',
+        ];
+        assumptionFields.forEach(function (field) {
+          var raw = getField('assump_' + field);
+          if (raw) body['assump_' + field] = parseFloat(raw) / 100;
         });
 
         // Value basis
@@ -4430,6 +4589,7 @@
         initAddProperty();
         initAddSsBenefit();
         initModeToggles();
+        initAdvancedSettingsToggle();
         initLiabilitiesCrud();
         installDsRadioHandler();
         initRenameScenario();

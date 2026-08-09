@@ -1,6 +1,6 @@
 # Expose remaining TOML settings in the Setup Panel — staged plan
 
-**Status (2026-08-08):** Stages 0, 1, 2, and 3 landed. Stages 4–5 still pending, in priority order below.
+**Status (2026-08-08):** Stages 0–4 landed. Stage 5 still pending.
 
 ## Context
 
@@ -51,15 +51,11 @@ The name-as-join-key constraint is handled explicitly: renaming a liability migr
 
 Deferred from Stage 1/2's original scope note (not requested and out of scope here): no attempt is made to update `SellHome.liability_names` event references when a liability is renamed/deleted — only the balance-entry join is kept in sync, matching the plan's original constraint description.
 
-## Stage 4 — Household spending & tax policy baseline + remaining assumptions
+## Stage 4 — Household spending & tax policy baseline + remaining assumptions (landed 2026-08-08)
 
-All scalar fields via pattern #1:
-- `[spending]`: `retirement_annual`, `survivor_percent_of_retirement` (or `survivor_annual`), `spending_basis`.
-- `[taxes]`: `enabled`, `pre_retirement_filing_status`, `retirement_filing_status`, `survivor_filing_status`, `wage_tax_treatment`.
-- `[taxes.rmd]`: `enabled`, `start_age` (skip the per-age `factors.<age>` override table — advanced/rare, leave raw-TOML-only).
-- Remaining `[assumptions]` knobs: `cash_return`, `real_estate_appreciation`, `real_estate_sale_fee_rate`, `effective_tax_rate_pre_retirement`, `effective_tax_rate_post_retirement`, `taxable_withdrawal_taxable_fraction`, `trad_ira_withdrawal_taxable_fraction`, `initial_taxable_cost_basis_fraction`, `initial_roth_contribution_basis_fraction`.
+Added as a collapsed-by-default "Advanced: Spending, Taxes & Assumptions" section at the end of the Metadata tab, reusing the existing `.expander-toggle`/`.expander-content` pattern already used for the withdrawal-order chips (rather than inventing a new collapse mechanism) — since these fields have sensible defaults and are tuned far more rarely than Income/SS. Covers `[spending]` (`retirement_annual`, `survivor_percent_of_retirement`, `survivor_annual`, `spending_basis`), `[taxes]` (`enabled`, the three filing-status fields, `wage_tax_treatment`), `[taxes.rmd]` (`enabled`, `start_age`), and the remaining 9 `[assumptions]` knobs. All via pattern #1 (`_QUICK_CONTROL_MAP`), no new endpoints.
 
-Present the assumptions/tax-policy additions as a clearly-labeled "Advanced" section in Metadata (collapsed by default) so the primary form doesn't balloon — these mostly have sensible defaults and are tuned rarely.
+Important gotcha this stage had to solve: several of these field names are **reused verbatim inside `[[events]]` SpendingShift blocks** (`survivor_annual`, `survivor_percent_of_retirement`, `enabled`), and `[taxes]`/`[taxes.rmd]` both have their own `enabled` field. An unbounded regex search for these names risks silently reading (or, worse, the wrong write target) the wrong occurrence. Extended `initQuickEdit()`'s bounded-block extraction approach from Stage 2 (previously per-person) into a generic `sectionBlock(header)` helper that stops at the next `[section]` header, and verified directly via Node against a deliberately adversarial TOML snippet (a `[spending]` section followed by a same-named-field SpendingShift event, and `[taxes]` followed by `[taxes.rmd]`) that the correct value is picked up in both cases. The write side was already safe by construction — `_resolve_toml_path("taxes.enabled")` vs `("taxes.rmd.enabled")` naturally disambiguate via dotted-path navigation — confirmed with an end-to-end save test.
 
 ## Stage 5 — Simulation & Monte Carlo controls
 

@@ -1912,6 +1912,31 @@ for _person_key in ("person1", "person2"):
         _QUICK_CONTROL_MAP[f"{_person_key}_{_ui_suffix}"] = (f"{_person_key}.{_toml_suffix}", float)
 del _person_key, _field, _type, _ui_suffix, _toml_suffix
 
+# Advanced settings tab: household spending baseline, tax policy, RMD, and
+# the remaining [assumptions] knobs -- all household-level (not per-person).
+_QUICK_CONTROL_MAP.update({
+    "spending_retirement_annual": ("spending.retirement_annual", float),
+    "spending_survivor_percent": ("spending.survivor_percent_of_retirement", float),
+    "spending_survivor_annual": ("spending.survivor_annual", float),
+    "spending_basis": ("spending.spending_basis", str),
+    "taxes_enabled_flag": ("taxes.enabled", bool),
+    "taxes_pre_retirement_filing_status": ("taxes.pre_retirement_filing_status", str),
+    "taxes_retirement_filing_status": ("taxes.retirement_filing_status", str),
+    "taxes_survivor_filing_status": ("taxes.survivor_filing_status", str),
+    "taxes_wage_tax_treatment": ("taxes.wage_tax_treatment", str),
+    "rmd_enabled_flag": ("taxes.rmd.enabled", bool),
+    "rmd_start_age": ("taxes.rmd.start_age", int),
+    "assump_cash_return": ("assumptions.cash_return", float),
+    "assump_real_estate_appreciation": ("assumptions.real_estate_appreciation", float),
+    "assump_real_estate_sale_fee_rate": ("assumptions.real_estate_sale_fee_rate", float),
+    "assump_effective_tax_rate_pre_retirement": ("assumptions.effective_tax_rate_pre_retirement", float),
+    "assump_effective_tax_rate_post_retirement": ("assumptions.effective_tax_rate_post_retirement", float),
+    "assump_taxable_withdrawal_taxable_fraction": ("assumptions.taxable_withdrawal_taxable_fraction", float),
+    "assump_trad_ira_withdrawal_taxable_fraction": ("assumptions.trad_ira_withdrawal_taxable_fraction", float),
+    "assump_initial_taxable_cost_basis_fraction": ("assumptions.initial_taxable_cost_basis_fraction", float),
+    "assump_initial_roth_contribution_basis_fraction": ("assumptions.initial_roth_contribution_basis_fraction", float),
+})
+
 _QUICK_ARRAY_MAP: dict[str, str] = {
     "retirement_withdrawal_order": "withdrawal_policy.retirement_withdrawal_order",
     "accumulation_withdrawal_order": "withdrawal_policy.accumulation_withdrawal_order",
