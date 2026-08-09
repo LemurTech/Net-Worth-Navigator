@@ -540,6 +540,7 @@
     <div class="card" id="tab-card">
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="metadata">Metadata</button>
+        <button class="tab-btn" data-tab="social-security">Social Security</button>
         <button class="tab-btn" data-tab="accounts">Accounts</button>
         <button class="tab-btn" data-tab="events">Events</button>
         <button class="tab-btn" data-tab="toml">Raw TOML</button>
@@ -600,27 +601,6 @@
         <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
 
       </div>
-      </div>
-
-      <div class="quick-section-title">Social Security</div>
-      <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Monthly benefit by claiming age (from SSA.gov estimates). Each person's Social Security event resolves its claiming age to a benefit from this table automatically.</div>
-      <div style="margin-bottom:16px">
-        <div class="inline-row">
-          <div class="inline-field" style="flex:0 0 auto"><label id="label-ss-p1">Person 1: Fallback Claiming Age</label><input type="number" id="person1_ss_start_age" min="60" max="70" step="1" placeholder="67" style="width:100px"></div>
-          <div class="inline-field" style="flex:0 0 auto"><label>Survivor Claiming Age</label><input type="number" id="person1_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60" style="width:100px"></div>
-          <div class="inline-field" style="flex:0 0 auto"><label>Flat Benefit <span style="color:var(--muted);font-weight:400">(legacy)</span></label><input type="number" id="person1_ss_monthly_benefit" step="10" placeholder="e.g. 2500" style="width:120px"</div>
-        </div>
-        <div id="person1-ss-rows" style="margin:10px 0 6px"></div>
-        <button type="button" class="add-property-btn" id="add-ss-benefit-person1-btn">+ Add claiming age</button>
-      </div>
-      <div id="ss-person2-section" class="person2-toggle-section" style="margin-bottom:8px">
-        <div class="inline-row">
-          <div class="inline-field" style="flex:0 0 auto"><label id="label-ss-p2">Person 2: Fallback Claiming Age</label><input type="number" id="person2_ss_start_age" min="60" max="70" step="1" placeholder="67" style="width:100px"></div>
-          <div class="inline-field" style="flex:0 0 auto"><label>Survivor Claiming Age</label><input type="number" id="person2_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60" style="width:100px"></div>
-          <div class="inline-field" style="flex:0 0 auto"><label>Flat Benefit <span style="color:var(--muted);font-weight:400">(legacy)</span></label><input type="number" id="person2_ss_monthly_benefit" step="10" style="width:120px"></div>
-        </div>
-        <div id="person2-ss-rows" style="margin:10px 0 6px"></div>
-        <button type="button" class="add-property-btn" id="add-ss-benefit-person2-btn">+ Add claiming age</button>
       </div>
 
       <div class="quick-section-title">Cash Targets</div>
@@ -696,6 +676,30 @@
         </div>
       </div>
     </div><!-- /#tab-metadata -->
+
+      <!-- ── Tab: Social Security ─────────────────────────────────── -->
+      <div class="tab-content tab-card" id="tab-social-security">
+        <div class="quick-section-title" style="border-top:none;padding-top:0">Social Security</div>
+        <div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;line-height:1.4">Monthly benefit by claiming age (from SSA.gov estimates). Each person's Social Security event resolves its claiming age to a benefit from this table automatically.</div>
+
+        <div class="synth-section" id="ss-person1-section">
+          <h3>Person 1</h3>
+          <div class="synth-row"><label>Fallback Claiming Age</label><input type="number" id="person1_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
+          <div class="synth-row"><label>Survivor Claiming Age</label><input type="number" id="person1_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60"></div>
+          <div class="synth-row"><label>Flat Benefit <span class="optional">(legacy)</span></label><input type="number" id="person1_ss_monthly_benefit" step="10" placeholder="e.g. 2500"></div>
+          <div id="person1-ss-rows" style="margin:14px 0 8px"></div>
+          <button type="button" class="add-property-btn" id="add-ss-benefit-person1-btn">+ Add claiming age</button>
+        </div>
+
+        <div class="synth-section person2-toggle-section" id="ss-person2-section">
+          <h3>Person 2</h3>
+          <div class="synth-row"><label>Fallback Claiming Age</label><input type="number" id="person2_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
+          <div class="synth-row"><label>Survivor Claiming Age</label><input type="number" id="person2_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60"></div>
+          <div class="synth-row"><label>Flat Benefit <span class="optional">(legacy)</span></label><input type="number" id="person2_ss_monthly_benefit" step="10" placeholder="e.g. 2500"></div>
+          <div id="person2-ss-rows" style="margin:14px 0 8px"></div>
+          <button type="button" class="add-property-btn" id="add-ss-benefit-person2-btn">+ Add claiming age</button>
+        </div>
+      </div><!-- /#tab-social-security -->
 
       <!-- ── Tab: Accounts ────────────────────────────────────────── -->
       <div class="tab-content tab-card" id="tab-accounts">
@@ -931,6 +935,7 @@
       /* ── State ──────────────────────────────────────────────────── */
       var _accountsData = null;       // cache of latest GET /api/accounts
       var _syntheticData = null;      // cache of latest GET /api/synthetic-start
+      var _ssLoaded = false;          // whether the Social Security tab has fetched its data
       var _withdrawalDefaults = null; // from config load
 
       var currentScenarioSlug = '{{ scenario_slug }}';
@@ -2742,6 +2747,11 @@
             if (tab === 'events') {
               initEventsTab();
             }
+            // Lazy load Social Security tab
+            if (tab === 'social-security' && !_ssLoaded) {
+              _ssLoaded = true;
+              loadSocialSecurityBlock();
+            }
           });
         });
       }
@@ -3920,7 +3930,6 @@
         initCsvSave();
         initAddProperty();
         initAddSsBenefit();
-        loadSocialSecurityBlock();
         installDsRadioHandler();
         initRenameScenario();
         installCategoryMoveHandler();
