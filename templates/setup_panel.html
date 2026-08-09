@@ -365,6 +365,10 @@
       font-variant-numeric: tabular-nums;
     }
     .synth-row input:focus { outline: none; border-color: var(--accent); }
+    .synth-hint {
+      font-size: 11px; color: var(--muted); line-height: 1.4;
+      margin: -4px 0 10px; max-width: 520px;
+    }
     .add-property-btn {
       font-size: 12px; color: var(--accent); cursor: pointer; background: none;
       border: 1px dashed var(--border); padding: 6px 14px; border-radius: 7px;
@@ -684,19 +688,27 @@
 
         <div class="synth-section" id="ss-person1-section">
           <h3>Person 1</h3>
-          <div class="synth-row"><label>Fallback Claiming Age</label><input type="number" id="person1_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
+          <div class="synth-row"><label>Default Claiming Age</label><input type="number" id="person1_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
+          <div class="synth-hint">Only used if this person's Social Security event doesn't specify its own age. Most scenarios set the age directly on the event, so this can usually stay blank.</div>
           <div class="synth-row"><label>Survivor Claiming Age</label><input type="number" id="person1_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60"></div>
-          <div class="synth-row"><label>Flat Benefit <span class="optional">(legacy)</span></label><input type="number" id="person1_ss_monthly_benefit" step="10" placeholder="e.g. 2500"></div>
-          <div id="person1-ss-rows" style="margin:14px 0 8px"></div>
+          <div class="synth-hint">If this person passes away, their spouse can switch to this (typically larger) benefit once they reach this age — even before the spouse's own planned claim year. Default: 60.</div>
+          <div class="synth-row"><label>Flat Monthly Benefit</label><input type="number" id="person1_ss_monthly_benefit" step="10" placeholder="e.g. 2500"></div>
+          <div class="synth-hint">A single dollar amount, used only if the age table below is empty. SSA.gov gives a different estimate for each claiming age, so filling in the table below is usually more accurate.</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:0.04em">Benefit by Claiming Age</div>
+          <div id="person1-ss-rows" style="margin:0 0 8px"></div>
           <button type="button" class="add-property-btn" id="add-ss-benefit-person1-btn">+ Add claiming age</button>
         </div>
 
         <div class="synth-section person2-toggle-section" id="ss-person2-section">
           <h3>Person 2</h3>
-          <div class="synth-row"><label>Fallback Claiming Age</label><input type="number" id="person2_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
+          <div class="synth-row"><label>Default Claiming Age</label><input type="number" id="person2_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
+          <div class="synth-hint">Only used if this person's Social Security event doesn't specify its own age. Most scenarios set the age directly on the event, so this can usually stay blank.</div>
           <div class="synth-row"><label>Survivor Claiming Age</label><input type="number" id="person2_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60"></div>
-          <div class="synth-row"><label>Flat Benefit <span class="optional">(legacy)</span></label><input type="number" id="person2_ss_monthly_benefit" step="10" placeholder="e.g. 2500"></div>
-          <div id="person2-ss-rows" style="margin:14px 0 8px"></div>
+          <div class="synth-hint">If this person passes away, their spouse can switch to this (typically larger) benefit once they reach this age — even before the spouse's own planned claim year. Default: 60.</div>
+          <div class="synth-row"><label>Flat Monthly Benefit</label><input type="number" id="person2_ss_monthly_benefit" step="10" placeholder="e.g. 2500"></div>
+          <div class="synth-hint">A single dollar amount, used only if the age table below is empty. SSA.gov gives a different estimate for each claiming age, so filling in the table below is usually more accurate.</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:0.04em">Benefit by Claiming Age</div>
+          <div id="person2-ss-rows" style="margin:0 0 8px"></div>
           <button type="button" class="add-property-btn" id="add-ss-benefit-person2-btn">+ Add claiming age</button>
         </div>
       </div><!-- /#tab-social-security -->
