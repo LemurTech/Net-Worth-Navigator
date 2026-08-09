@@ -26,7 +26,7 @@ is_default  = false
 # To explicitly set:  household_type = "single"
 
 [data_source]
-mode = "synthetic"   # synthetic | monarch
+mode = "synthetic" # synthetic | monarch
 
 [synthetic_start]
 # Investable buckets
@@ -54,14 +54,14 @@ other      = 0
 "RAV4 Hybrid Auto Loan" = 25000
 
 [simulation]
-start_year   = 2026
-end_year     = 2062
+start_year = 2026
+end_year = 2062
 render_modes = [
    "deterministic",
    "historical",
    "monte_carlo"
 ] # shell/render pipeline outputs these mode variants
-mode         = "deterministic"         # compatibility/default single-run mode
+mode = "deterministic" # compatibility/default single-run mode
 # num_runs = 250                       # Monte Carlo run count (default 250)
 # seed = 12345                         # reproducibility seed
 # portfolio_return_volatility = 0.15   # annual stdev for blended investable return
@@ -76,7 +76,7 @@ value_basis = "both"
 [display]
 projection_title = "Single-Person Sample (Synthetic Demo)"
 
-[monte_carlo.success]    # success/failure rules for all stochastic modes: monte_carlo and historical
+[monte_carlo.success] # success/failure rules for all stochastic modes: monte_carlo and historical
 failure_mode = "spending_shortfall"
 # Possible values:
 # - "net_worth_below_zero"
@@ -84,10 +84,10 @@ failure_mode = "spending_shortfall"
 # - "spending_shortfall"
 # - "preserve_home_equity"
 # - "custom"
-minimum_spending_funded_ratio = 1.0
+minimum_spending_funded_ratio  = 1.0
 allow_home_equity_for_spending = false
-allow_debt_for_spending = false
-failure_grace_period_months = 0
+allow_debt_for_spending        = false
+failure_grace_period_months    = 0
 
 # Additional stochastic risk metrics shown in the UI/sidecars
 # (for example Probability of Home Equity Required) are derived
@@ -101,31 +101,31 @@ failure_grace_period_months = 0
 # ─── Household Members ────────────────────────────────────────────────────────
 
 [person1]
-name              = "Alex"
-dob               = "1972-03-15"   # YYYY-MM-DD
-life_expectancy   = 90             # modeled terminal age (not a prediction)
+name            = "Alex"
+dob             = "1972-03-15" # YYYY-MM-DD
+life_expectancy = 90           # modeled terminal age (not a prediction)
 
 # Employment income inputs (annual, nominal dollars)
 # ANCHORED AT start_year — known current values, grown forward automatically.
 # Refresh: replace with prior year's W-2 actuals each January at tax time.
-annual_take_home  = 62000          # net-cash wage input (see [taxes].wage_tax_treatment)
+annual_take_home                                    = 62000 # net-cash wage input (see [taxes].wage_tax_treatment)
 annual_take_home_is_net_of_retirement_contributions = true  # true = do NOT subtract payroll contributions again
-annual_take_home_real_raise = 0.01 # real raise above inflation
+annual_take_home_real_raise                         = 0.01  # real raise above inflation
 
 # Retirement contributions — percentage of gross income
-contribution_method = "percent_of_gross"
-gross_income = 90000                                    # gross annual income (used for contribution math only)
-gross_income_annual_increase_percent = 0.04             # combined COLA + performance
-retirement_contribution_percent = 0.20                  # 20% of gross income
-retirement_contribution_annual_increase_percent = 0.00  # no auto-escalation
-retirement_contribution_max_percent = 0.30              # never exceed 30% of gross
+contribution_method                             = "percent_of_gross"
+gross_income                                    = 90000              # gross annual income (used for contribution math only)
+gross_income_annual_increase_percent            = 0.04               # combined COLA + performance
+retirement_contribution_percent                 = 0.20               # 20% of gross income
+retirement_contribution_annual_increase_percent = 0.00               # no auto-escalation
+retirement_contribution_max_percent             = 0.30               # never exceed 30% of gross
 
 # Employer match
 # annual_401k_employer_match = 6513                   # flat annual employer 401(k) match
-annual_401k_employer_match_mode = "percent_of_gross"  # "flat" (default) | "percent_of_gross"
-annual_401k_employer_match_rate = 1.0                 # e.g. 0.50 = 50% match on each dollar contributed
-annual_401k_employer_match_max_percent = 0.06         # e.g. 0.06 = match applies to first 6% of salary
-annual_ira_contribution  = 0                          # direct IRA contribution modeled as cash outflow + bucket deposit
+annual_401k_employer_match_mode        = "percent_of_gross" # "flat" (default) | "percent_of_gross"
+annual_401k_employer_match_rate        = 1.0                # e.g. 0.50 = 50% match on each dollar contributed
+annual_401k_employer_match_max_percent = 0.06               # e.g. 0.06 = match applies to first 6% of salary
+annual_ira_contribution                = 0                  # direct IRA contribution modeled as cash outflow + bucket deposit
 
 # Optional routing override for explicit contribution deposits
 # annual_401k_contribution_bucket = "trad_ira"  # valid: trad_ira | roth
@@ -159,11 +159,11 @@ roth     = 0.30
 # Retirement spending baseline (household)
 # Units: annual dollars in today's purchasing power when spending_basis = "real".
 # With spending_basis = "real", model inflates this forward by CPI each year.
-retirement_annual = 60000            # annual spending target (single person)
+retirement_annual = 60000 # annual spending target (single person)
 # spending_basis options:
 # - "real": inputs above are interpreted in today's dollars and CPI-adjusted per year
 # - "nominal": inputs are treated as fixed nominal dollars (no CPI growth)
-spending_basis        = "real"
+spending_basis = "real"
 # debt_service_handling controls how mortgage/loan P&I payments interact with retirement_annual:
 # - "auto_reduce": retiement_annual is treated as NOT including debt service.
 #   While a loan is active in retirement, its P&I (principal + interest, minus
@@ -212,8 +212,8 @@ retirement_withdrawal_order = [
 # Valid buckets here: taxable, roth, trad_ira (no cash_* steps).
 # If first choice is excluded in-year (e.g., trad_ira during forced RMD routing),
 # the model automatically falls through to the next bucket in this order.
-accumulation_surplus_order    = ["taxable", "roth", "trad_ira"]
-retirement_surplus_order      = ["taxable", "roth", "trad_ira"]
+accumulation_surplus_order = ["taxable", "roth", "trad_ira"]
+retirement_surplus_order   = ["taxable", "roth", "trad_ira"]
 
 # survivor_* fields are not applicable and ignored for single-person households
 survivor_cash_target = 30000
@@ -229,42 +229,42 @@ survivor_surplus_order = ["roth", "taxable"]
 # ─── Market & Economic Assumptions ───────────────────────────────────────────
 
 [assumptions]
-stock_return  = 0.07   # annual nominal return on equities
-bond_return   = 0.04   # annual nominal return on bonds
-inflation     = 0.03   # annual inflation rate
-cash_return   = 0.03   # annual return on cash buckets (defaults to inflation if omitted)
-real_estate_appreciation  = 0.03   # annual home-value appreciation
-equity_allocation         = 0.70   # fraction of investable portfolio in equities (rest in bonds)
-real_estate_sale_fee_rate = 0.06   # fee deducted from gross sale proceeds
+stock_return              = 0.07 # annual nominal return on equities
+bond_return               = 0.04 # annual nominal return on bonds
+inflation                 = 0.03 # annual inflation rate
+cash_return               = 0.03 # annual return on cash buckets (defaults to inflation if omitted)
+real_estate_appreciation  = 0.03 # annual home-value appreciation
+equity_allocation         = 0.70 # fraction of investable portfolio in equities (rest in bonds)
+real_estate_sale_fee_rate = 0.06 # fee deducted from gross sale proceeds
 
-effective_tax_rate_pre_retirement  = 0.22  # legacy flat-tax fallback (see [taxes] for current model)
-effective_tax_rate_post_retirement = 0.15  # legacy flat-tax fallback
+effective_tax_rate_pre_retirement  = 0.22 # legacy flat-tax fallback (see [taxes] for current model)
+effective_tax_rate_post_retirement = 0.15 # legacy flat-tax fallback
 
 # Account-mechanics defaults
-taxable_withdrawal_taxable_fraction = 0.50   # 50% of taxable withdrawals are realized gains
-trad_ira_withdrawal_taxable_fraction = 1.00  # 100% of traditional withdrawals are taxable
+taxable_withdrawal_taxable_fraction  = 0.50 # 50% of taxable withdrawals are realized gains
+trad_ira_withdrawal_taxable_fraction = 1.00 # 100% of traditional withdrawals are taxable
 # initial_taxable_cost_basis_fraction = 0.50
 # initial_roth_contribution_basis_fraction = 1.00
 
 [taxes]
 # Toggle for detailed bracket-based tax model.
 enabled   = true
-table_set = "2025_us_federal_oregon"   # shared tax table reference in config/tax_tables/
+table_set = "2025_us_federal_oregon" # shared tax table reference in config/tax_tables/
 # For single-person households, filing status defaults to "single"
 # for both pre_retirement and retirement phases (survivor is not applicable)
-pre_retirement_filing_status = "single"  # single | married_joint
-retirement_filing_status     = "single"  # single | married_joint
+pre_retirement_filing_status = "single" # single | married_joint
+retirement_filing_status     = "single" # single | married_joint
 # Wage handling mode:
 # - net_cash: annual_take_home is treated as after-tax cashflow only (default/current)
 # - taxable_wages: annual_take_home is treated as taxable wage income (not currently implemented)
-wage_tax_treatment           = "net_cash"
+wage_tax_treatment = "net_cash"
 
 [taxes.rmd]
 # Required Minimum Distribution modeling controls.
 # enabled=true forces annual traditional-account withdrawals at/after start_age.
 # Forced RMD withdrawals increase modeled cash flow and taxable ordinary income.
-enabled    = true
-start_age  = 73
+enabled   = true
+start_age = 73
 
 # ─── Liabilities ──────────────────────────────────────────────────────────────
 # Each liability is amortized year-by-year in the model.
@@ -273,11 +273,11 @@ start_age  = 73
 # type = "mortgage" means payoff is also reflected in home equity tracking.
 
 [[liabilities]]
-name           = "Home Mortgage"     # must match Monarch account name exactly
+name           = "Home Mortgage" # must match Monarch account name exactly
 annual_rate    = 0.0575
-monthly_base   = 2163                # contractual P&I payment
-monthly_escrow = 494.54              # escrowed property tax + insurance
-monthly_extra  = 200                 # voluntary extra principal payment
+monthly_base   = 2163            # contractual P&I payment
+monthly_escrow = 494.54          # escrowed property tax + insurance
+monthly_extra  = 200             # voluntary extra principal payment
 type           = "mortgage"
 
 [[liabilities]]
@@ -464,32 +464,33 @@ enabled = true
 type    = "EndOfPlan"
 label   = "End of Plan (Alex)"
 person  = "person1"
-year    = 2062                      # 1972 + 90
+year    = 2062                 # 1972 + 90
 
 # ─── 2. Pre-Retirement / Near-Term Known Events ───────────────────────────────
 
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "Surgery"
-year    = 2026
-amount  = -12000
+enabled      = true
+type         = "Expense"
+label        = "Surgery"
+year         = 2026
+amount       = -12000
 expense_kind = "mandatory"
-funding = "cash_reserve_first" 
+funding      = "cash_reserve_first"
 
 # ─── 3. Lifestyle Before and During Retirement ────────────────────────────────
 
 # Recurring travel (every other year, starting in 2027)
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "Travel"
-year    = 2027
-amount  = -8000
+enabled      = true
+type         = "Expense"
+label        = "Travel"
+year         = 2027
+amount       = -8000
 expense_kind = "discretionary"
-funding = "cash_reserve_first"
+funding      = "cash_reserve_first"
 repeat_every_years = 2
 repeat_until_year  = 2055
+
 chart_first_occurrence_only = true
 
 [[events]]
@@ -505,15 +506,16 @@ type    = "SocialSecurity"
 label   = "SS Begins (A)"
 person  = "person1"
 year    = 2039
+
 monthly_benefit = 2020.0
 
 # Bounded side income during early retirement
 [[events]]
-enabled = true
-type    = "Income"
-label   = "Part-time consulting"
-year    = 2038
-amount  = 18000
+enabled  = true
+type     = "Income"
+label    = "Part-time consulting"
+year     = 2038
+amount   = 18000
 end_year = 2042
 taxable  = true
 
@@ -521,13 +523,13 @@ taxable  = true
 
 # Annual home maintenance reserve
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "Home maintenance reserve"
-year    = 2026
-amount  = -3500
+enabled      = true
+type         = "Expense"
+label        = "Home maintenance reserve"
+year         = 2026
+amount       = -3500
 expense_kind = "mandatory"
-funding = "cash_reserve_first"
+funding      = "cash_reserve_first"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
@@ -535,49 +537,49 @@ chart_first_occurrence_only = true
 
 # One-time large home repairs
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "HVAC replacement"
-year    = 2034
-amount  = -12000
+enabled      = true
+type         = "Expense"
+label        = "HVAC replacement"
+year         = 2034
+amount       = -12000
 expense_kind = "mandatory"
-funding = "cash_reserve_first"
+funding      = "cash_reserve_first"
 
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "Roof replacement"
-year    = 2043
-amount  = -18000
+enabled      = true
+type         = "Expense"
+label        = "Roof replacement"
+year         = 2043
+amount       = -18000
 expense_kind = "mandatory"
-funding = "cash_reserve_first"
+funding      = "cash_reserve_first"
 
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "Vehicle purchase"
-year    = 2032
-amount  = -26000
+enabled      = true
+type         = "Expense"
+label        = "Vehicle purchase"
+year         = 2032
+amount       = -26000
 expense_kind = "mandatory"
-funding = "cash_reserve_first"
+funding      = "cash_reserve_first"
 
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "Vehicle replacement"
-year    = 2044
-amount  = -30000
+enabled      = true
+type         = "Expense"
+label        = "Vehicle replacement"
+year         = 2044
+amount       = -30000
 expense_kind = "mandatory"
-funding = "cash_reserve_first"
+funding      = "cash_reserve_first"
 
 # ─── 8. Elder Care / Parent Death ───────────────────────────────────────
 
 [[events]]
-enabled = true
-type    = "Expense"
-label   = "Care support"
-year    = 2053
-amount  = -25000
+enabled      = true
+type         = "Expense"
+label        = "Care support"
+year         = 2053
+amount       = -25000
 expense_kind = "mandatory"
 repeat_every_years = 1
 chart_first_occurrence_only = true
