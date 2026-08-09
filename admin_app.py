@@ -1766,6 +1766,88 @@ async def api_save_synthetic_start(request: Request) -> JSONResponse:
     })
 
 
+# ── API: Social Security benefits table ─────────────────────────────────────
+
+@app.get("/api/social-security")
+async def api_social_security(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    config_text = _read_config_text(scenario_slug)
+    parsed = tomllib.loads(config_text)
+
+    def _person_ss(person_key: str) -> dict:
+        person = parsed.get(person_key, {})
+        if not isinstance(person, dict):
+            person = {}
+        benefits = person.get("social_security_benefits", {})
+        if not isinstance(benefits, dict):
+            benefits = {}
+        return {
+            "benefits": {str(age): amount for age, amount in benefits.items()},
+            "ss_start_age": person.get("ss_start_age"),
+            "survivor_ss_start_age": person.get("survivor_ss_start_age"),
+            "ss_monthly_benefit": person.get("ss_monthly_benefit"),
+        }
+
+    return JSONResponse({
+        "ok": True,
+        "person1": _person_ss("person1"),
+        "person2": _person_ss("person2"),
+    })
+
+
+@app.post("/api/save-social-security")
+async def api_save_social_security(request: Request) -> JSONResponse:
+    """Whole-table-replace each person's social_security_benefits (age -> monthly
+    $ amount). The three scalar SS fields (ss_start_age, survivor_ss_start_age,
+    ss_monthly_benefit) are saved separately via /api/save-quick-controls."""
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+
+    doc, _ = _toml_open(scenario_slug)
+
+    for person_key in ("person1", "person2"):
+        raw_benefits = body.get(person_key)
+        if raw_benefits is None:
+            continue
+        if not isinstance(raw_benefits, dict):
+            return JSONResponse(
+                {"ok": False, "error": f"{person_key} benefits must be an object of age -> monthly amount."},
+                status_code=400,
+            )
+
+        benefits: dict[str, float] = {}
+        for age_key, amount in raw_benefits.items():
+            try:
+                age = int(str(age_key).strip())
+                amt = float(amount)
+            except (TypeError, ValueError):
+                continue
+            if amt > 0:
+                benefits[str(age)] = int(amt) if amt == int(amt) else amt
+
+        if person_key not in doc or doc[person_key] is None:
+            doc[person_key] = tomlkit.table()
+
+        if benefits:
+            table = tomlkit.table()
+            for age in sorted(benefits, key=int):
+                table[age] = benefits[age]
+            doc[person_key]["social_security_benefits"] = table
+        else:
+            doc[person_key].pop("social_security_benefits", None)
+
+    backup_path = _backup_and_write_toml(doc, scenario_slug)
+    return JSONResponse({
+        "ok": True,
+        "message": "Social Security benefit table saved.",
+        "backup_path": str(backup_path),
+        "toml_content": doc.as_string(),
+    })
+
+
 # ── API: save quick controls ────────────────────────────────────────────────
 
 _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
@@ -1785,6 +1867,12 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "household_type": ("scenario.household_type", str),
     "table_set": ("taxes.table_set", str),
     "value_basis": ("simulation.value_basis", str),
+    "person1_ss_start_age": ("person1.ss_start_age", int),
+    "person2_ss_start_age": ("person2.ss_start_age", int),
+    "person1_survivor_ss_start_age": ("person1.survivor_ss_start_age", int),
+    "person2_survivor_ss_start_age": ("person2.survivor_ss_start_age", int),
+    "person1_ss_monthly_benefit": ("person1.ss_monthly_benefit", float),
+    "person2_ss_monthly_benefit": ("person2.ss_monthly_benefit", float),
 }
 
 _QUICK_ARRAY_MAP: dict[str, str] = {

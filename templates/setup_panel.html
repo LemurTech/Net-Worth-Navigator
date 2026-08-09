@@ -594,12 +594,33 @@
         <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person1_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
 
       </div>
-      <div id="person2-section">
+      <div id="person2-section" class="person2-toggle-section">
       <div class="inline-row person-row" style="margin-bottom:14px">
         <div class="inline-field" style="flex:1 1 160px;min-width:120px"><label id="label-person2-name">Person 2 Name</label><input type="text" id="person2_name" style="width:100%"></div>
         <div class="inline-field" style="flex:0 0 auto"><label>Birth Year</label><input type="number" id="person2_birth_year" step="1" min="1900" max="2100" style="width:100px"></div>
 
       </div>
+      </div>
+
+      <div class="quick-section-title">Social Security</div>
+      <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Monthly benefit by claiming age (from SSA.gov estimates). Each person's Social Security event resolves its claiming age to a benefit from this table automatically.</div>
+      <div style="margin-bottom:16px">
+        <div class="inline-row">
+          <div class="inline-field" style="flex:0 0 auto"><label id="label-ss-p1">Person 1: Fallback Claiming Age</label><input type="number" id="person1_ss_start_age" min="60" max="70" step="1" placeholder="67" style="width:100px"></div>
+          <div class="inline-field" style="flex:0 0 auto"><label>Survivor Claiming Age</label><input type="number" id="person1_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60" style="width:100px"></div>
+          <div class="inline-field" style="flex:0 0 auto"><label>Flat Benefit <span style="color:var(--muted);font-weight:400">(legacy)</span></label><input type="number" id="person1_ss_monthly_benefit" step="10" placeholder="e.g. 2500" style="width:120px"</div>
+        </div>
+        <div id="person1-ss-rows" style="margin:10px 0 6px"></div>
+        <button type="button" class="add-property-btn" id="add-ss-benefit-person1-btn">+ Add claiming age</button>
+      </div>
+      <div id="ss-person2-section" class="person2-toggle-section" style="margin-bottom:8px">
+        <div class="inline-row">
+          <div class="inline-field" style="flex:0 0 auto"><label id="label-ss-p2">Person 2: Fallback Claiming Age</label><input type="number" id="person2_ss_start_age" min="60" max="70" step="1" placeholder="67" style="width:100px"></div>
+          <div class="inline-field" style="flex:0 0 auto"><label>Survivor Claiming Age</label><input type="number" id="person2_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60" style="width:100px"></div>
+          <div class="inline-field" style="flex:0 0 auto"><label>Flat Benefit <span style="color:var(--muted);font-weight:400">(legacy)</span></label><input type="number" id="person2_ss_monthly_benefit" step="10" style="width:120px"></div>
+        </div>
+        <div id="person2-ss-rows" style="margin:10px 0 6px"></div>
+        <button type="button" class="add-property-btn" id="add-ss-benefit-person2-btn">+ Add claiming age</button>
       </div>
 
       <div class="quick-section-title">Cash Targets</div>
@@ -946,14 +967,21 @@
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify(body),
         }).then(function (r) {
-          if (!r.ok) throw new Error('API POST returned ' + r.status + ' ' + r.statusText);
           var ct = (r.headers.get('content-type') || '').toLowerCase();
           if (ct.indexOf('application/json') < 0) {
             return r.text().then(function (text) {
               throw new Error('API POST: non-JSON response (' + ct + '): ' + text.substring(0, 120));
             });
           }
-          return r.json();
+          // Parse the body even on error responses -- admin_app.py's error
+          // responses are JSON ({ok: false, error: "..."}) with a specific,
+          // actionable message that a generic status-code error would discard.
+          return r.json().then(function (data) {
+            if (!r.ok) {
+              throw new Error((data && data.error) || ('API POST returned ' + r.status + ' ' + r.statusText));
+            }
+            return data;
+          });
         });
       }
 
@@ -1297,9 +1325,10 @@
       }
 
       function togglePerson2(show) {
-        var section = document.getElementById('person2-section');
-        if (!section) return;
-        section.style.display = show ? '' : 'none';
+        var sections = document.querySelectorAll('.person2-toggle-section');
+        sections.forEach(function (section) {
+          section.style.display = show ? '' : 'none';
+        });
       }
 
       function setField(id, val) {
@@ -1397,6 +1426,16 @@
         if (by1) body.person1_birth_year = parseInt(by1, 10);
         if (by2) body.person2_birth_year = parseInt(by2, 10);
 
+        // Social Security scalar fields (benefits table saved separately)
+        ['person1', 'person2'].forEach(function (personKey) {
+          var startAge = getField(personKey + '_ss_start_age');
+          if (startAge) body[personKey + '_ss_start_age'] = parseInt(startAge, 10);
+          var survivorAge = getField(personKey + '_survivor_ss_start_age');
+          if (survivorAge) body[personKey + '_survivor_ss_start_age'] = parseInt(survivorAge, 10);
+          var flatBenefit = getField(personKey + '_ss_monthly_benefit');
+          if (flatBenefit) body[personKey + '_ss_monthly_benefit'] = parseFloat(flatBenefit);
+        });
+
         // Value basis
         var vb = getField('value_basis');
         if (vb && ['nominal', 'both', 'real'].indexOf(vb) >= 0) body.value_basis = vb;
@@ -1458,35 +1497,54 @@
               var contentEl = document.getElementById('raw-toml-content');
               if (contentEl) contentEl.value = data.toml_content;
             }
-            // 2. Save accounts data based on active mode
-            var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
-            var mode = dsRadio ? dsRadio.value : 'monarch';
-            if (mode === 'monarch') {
-              var entries = typeof collectClassification === 'function' ? collectClassification() : [];
-              if (entries.length > 0) {
-                apiPost('api/save-classification', { accounts: entries }).then(function (clsData) {
-                  if (clsData.ok && clsData.toml_content) {
+            function saveAccountsThenFinish() {
+              // 3. Save accounts data based on active mode
+              var dsRadio = document.querySelector('input[name="ds_mode"]:checked');
+              var mode = dsRadio ? dsRadio.value : 'monarch';
+              if (mode === 'monarch') {
+                var entries = typeof collectClassification === 'function' ? collectClassification() : [];
+                if (entries.length > 0) {
+                  apiPost('api/save-classification', { accounts: entries }).then(function (clsData) {
+                    if (clsData.ok && clsData.toml_content) {
+                      var ce = document.getElementById('raw-toml-content');
+                      if (ce) ce.value = clsData.toml_content;
+                    }
+                    if (onSuccess) onSuccess();
+                  }).catch(function (err) { console.error('Classification save error:', err); if (onSuccess) onSuccess(); });
+                } else {
+                  if (onSuccess) onSuccess();
+                }
+              } else if (mode === 'synthetic') {
+                var synthData = collectSyntheticData();
+                apiPost('api/save-synthetic-start', synthData).then(function (synthRes) {
+                  if (synthRes.ok && synthRes.toml_content) {
                     var ce = document.getElementById('raw-toml-content');
-                    if (ce) ce.value = clsData.toml_content;
+                    if (ce) ce.value = synthRes.toml_content;
                   }
                   if (onSuccess) onSuccess();
-                }).catch(function (err) { console.error('Classification save error:', err); if (onSuccess) onSuccess(); });
+                }).catch(function (err) { console.error('Synthetic save error:', err); if (onSuccess) onSuccess(); });
               } else {
+                // csv_import mode — nothing extra to save
                 if (onSuccess) onSuccess();
               }
-            } else if (mode === 'synthetic') {
-              var synthData = collectSyntheticData();
-              apiPost('api/save-synthetic-start', synthData).then(function (synthRes) {
-                if (synthRes.ok && synthRes.toml_content) {
-                  var ce = document.getElementById('raw-toml-content');
-                  if (ce) ce.value = synthRes.toml_content;
-                }
-                if (onSuccess) onSuccess();
-              }).catch(function (err) { console.error('Synthetic save error:', err); if (onSuccess) onSuccess(); });
-            } else {
-              // csv_import mode — nothing extra to save
-              if (onSuccess) onSuccess();
             }
+
+            // 2. Save Social Security benefits table (best-effort; proceed to
+            // accounts save regardless of outcome, matching the existing
+            // non-blocking error handling below).
+            apiPost('api/save-social-security', {
+              person1: collectSsBenefits('person1'),
+              person2: collectSsBenefits('person2'),
+            }).then(function (ssRes) {
+              if (ssRes.ok && ssRes.toml_content) {
+                var ce = document.getElementById('raw-toml-content');
+                if (ce) ce.value = ssRes.toml_content;
+              }
+              saveAccountsThenFinish();
+            }).catch(function (err) {
+              console.error('Social Security save error:', err);
+              saveAccountsThenFinish();
+            });
           }).catch(function (err) {
             console.error('Quick-controls save error:', err);
             if (onError) onError(err.message || 'Network error');
@@ -2488,6 +2546,105 @@
         });
       }
 
+      /* ── Social Security benefits table ──────────────────────────── */
+      function addSsBenefitRow(personKey, age, amount) {
+        var container = document.getElementById(personKey + '-ss-rows');
+        if (!container) return;
+        var row = document.createElement('div');
+        row.className = 'synth-row ss-benefit-row';
+
+        var label = document.createElement('label');
+        label.textContent = 'Age';
+
+        var ageInput = document.createElement('input');
+        ageInput.type = 'number';
+        ageInput.className = 'ss-benefit-age';
+        ageInput.min = '55';
+        ageInput.max = '80';
+        ageInput.step = '1';
+        ageInput.value = (age !== undefined && age !== null && age !== '') ? age : '';
+        ageInput.style.maxWidth = '80px';
+        ageInput.style.marginRight = '6px';
+        ageInput.placeholder = 'Age';
+
+        var valueInput = document.createElement('input');
+        valueInput.type = 'text';
+        valueInput.className = 'synth-dollar ss-benefit-amount';
+        valueInput.value = amount ? formatDollar(amount) : '';
+        valueInput.placeholder = '$ 0 / mo';
+
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '×';
+        removeBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 8px;cursor:pointer';
+        removeBtn.addEventListener('click', function () { row.parentNode.removeChild(row); });
+        removeBtn.addEventListener('mouseenter', function () { removeBtn.style.color = '#fca5a5'; });
+        removeBtn.addEventListener('mouseleave', function () { removeBtn.style.color = 'var(--muted)'; });
+
+        row.appendChild(label);
+        row.appendChild(ageInput);
+        row.appendChild(valueInput);
+        row.appendChild(removeBtn);
+        container.appendChild(row);
+
+        valueInput.addEventListener('blur', function () {
+          var v = parseDollar(valueInput.value);
+          valueInput.value = v ? formatDollar(v) : '';
+        });
+        valueInput.addEventListener('focus', function () {
+          valueInput.value = parseDollar(valueInput.value).toString();
+        });
+      }
+
+      function collectSsBenefits(personKey) {
+        var container = document.getElementById(personKey + '-ss-rows');
+        var result = {};
+        if (!container) return result;
+        container.querySelectorAll('.ss-benefit-row').forEach(function (row) {
+          var ageEl = row.querySelector('.ss-benefit-age');
+          var valEl = row.querySelector('.ss-benefit-amount');
+          if (!ageEl || !valEl) return;
+          var age = parseInt(ageEl.value, 10);
+          var amount = parseDollar(valEl.value);
+          if (age && amount > 0) {
+            result[String(age)] = amount;
+          }
+        });
+        return result;
+      }
+
+      function loadSocialSecurityBlock() {
+        apiGet('api/social-security').then(function (data) {
+          if (!data || !data.ok) return;
+          ['person1', 'person2'].forEach(function (personKey) {
+            var info = data[personKey] || {};
+            var startAgeEl = document.getElementById(personKey + '_ss_start_age');
+            if (startAgeEl) startAgeEl.value = info.ss_start_age != null ? info.ss_start_age : '';
+            var survivorAgeEl = document.getElementById(personKey + '_survivor_ss_start_age');
+            if (survivorAgeEl) survivorAgeEl.value = info.survivor_ss_start_age != null ? info.survivor_ss_start_age : '';
+            var flatEl = document.getElementById(personKey + '_ss_monthly_benefit');
+            if (flatEl) flatEl.value = info.ss_monthly_benefit != null ? info.ss_monthly_benefit : '';
+
+            var container = document.getElementById(personKey + '-ss-rows');
+            if (container) container.innerHTML = '';
+            var benefits = info.benefits || {};
+            Object.keys(benefits).sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); }).forEach(function (age) {
+              addSsBenefitRow(personKey, age, benefits[age]);
+            });
+          });
+        }).catch(function (err) { console.error('Social Security load error:', err); });
+      }
+
+      function initAddSsBenefit() {
+        ['person1', 'person2'].forEach(function (personKey) {
+          var btn = document.getElementById('add-ss-benefit-' + personKey + '-btn');
+          if (!btn) return;
+          btn.addEventListener('click', function () {
+            addSsBenefitRow(personKey, '', '');
+          });
+        });
+      }
+
       function initAddProperty() {
         var btn = document.getElementById('add-property-btn');
         if (!btn) return;
@@ -2677,6 +2834,13 @@
           if (ev.recurring) {
             metaParts.push('every ' + ev.recurring.every_years + ' yr');
             if (ev.recurring.until_year) metaParts.push('→ ' + ev.recurring.until_year);
+          }
+          if (ev.type === 'SocialSecurity') {
+            if (ev.monthly_benefit != null) {
+              metaParts.push('$' + Number(ev.monthly_benefit).toLocaleString('en-US') + '/mo');
+            } else if (ev.benefit_error) {
+              metaParts.push('⚠ ' + ev.benefit_error);
+            }
           }
 
           var meta = metaParts.join('  ·  ');
@@ -3755,6 +3919,8 @@
         initCsvUpload();
         initCsvSave();
         initAddProperty();
+        initAddSsBenefit();
+        loadSocialSecurityBlock();
         installDsRadioHandler();
         initRenameScenario();
         installCategoryMoveHandler();

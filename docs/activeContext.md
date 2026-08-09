@@ -9,6 +9,14 @@
 
 ## Current Work
 
+### Setup Panel — Expose Remaining TOML Settings (staged, in progress)
+
+Comprehensive audit found a large slice of scenario TOML (per-person income/contribution economics, the Social Security benefit-by-age table, RMD/filing-status settings, Monte Carlo failure-mode config, liability definitions) is still raw-TOML-only in the Setup Panel. Staged rollout plan at `docs/plans/2026-08-08-setup-panel-toml-coverage-plan.md`.
+
+- **Stage 0 (landed):** Fixed 4 incidental bugs found during the audit — a stale `contribution_percent` validation check (real field is `retirement_contribution_percent`), inconsistent `event.enabled` default across `model.py`/`charts.py`/`sidecars.py`/`tables.py` (now `True` everywhere), removed the dead `BuyHome.mortgage_rate`/`term_years` UI fields (never read by the model), removed `Education.person` from the UI (model always treats it as household-wide).
+- **Stage 1 (landed):** New Social Security benefits-table editor (age→monthly $, per person) in Metadata → People, backed by `GET/POST /api/social-security`. Also fixed `apiPost()` to surface the actual JSON error message on failed requests instead of a generic "API POST returned 400" — this was silently swallowing specific error messages (like unresolvable SS benefits) across the whole Setup Panel.
+- **Next:** Stage 2 — person employment/contribution economics (largest remaining gap).
+
 ### Social Security Live Benefit Derivation (landed 2026-08-08)
 
 `SocialSecurity` events no longer carry a stored `monthly_benefit` — it's resolved fresh on every read via `resolve_social_security_monthly_benefit()` in `model.py`, from `[personX].social_security_benefits` at the claiming age (derived from the event's `year` and `dob`, or a cached `ss_start_age`). `validate_scenario()` now catches an unresolvable benefit (missing table, missing age entry) as a scenario error instead of letting it silently zero out SS income at projection time. See `docs/plans/2026-08-08-social-security-live-benefit-derivation.md`.
