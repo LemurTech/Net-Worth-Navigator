@@ -1,0 +1,74 @@
+name: Update clone count badge
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Fetch traffic clones
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/traffic/clones" -o traffic.json
+          cat traffic.json
+
+      - name: Merge daily counts and rebuild badge JSON
+        run: |
+          python3 - <<'EOF'
+          import json
+          import os
+
+          with open("traffic.json") as f:
+              traffic = json.load(f)
+
+          data_path = "clones-data.json"
+          if os.path.exists(data_path):
+              with open(data_path) as f:
+                  store = json.load(f)
+          else:
+              store = {"daily": {}}
+
+          # GitHub's traffic API only reports a rolling 14-day window, so each
+          # day's count is merged in by date rather than summed as a delta --
+          # this keeps re-running the workflow idempotent and avoids double
+          # counting once a date scrolls out of that window.
+          for day in traffic.get("clones", []):
+              date = day["timestamp"][:10]
+              store["daily"][date] = day["count"]
+
+          total = sum(store["daily"].values())
+          store["total"] = total
+
+          with open(data_path, "w") as f:
+              json.dump(store, f, indent=2, sort_keys=True)
+
+          badge = {
+              "schemaVersion": 1,
+              "label": "clones",
+              "message": str(total),
+              "color": "blue",
+          }
+          with open("clones-badge.json", "w") as f:
+              json.dump(badge, f)
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add clones-data.json clones-badge.json
+          git diff --cached --quiet || git commit -m "chore: update clone count badge"
+          git push

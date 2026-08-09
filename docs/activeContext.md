@@ -159,10 +159,6 @@ When selecting a sample/Manual Entry scenario and clicking the Accounts tab, the
 
 ## Features Under Consideration
 
-| Feature | Priority | Notes |
-|---------|----------|-------|
-| **Real-dollar display toggle** | Low | Show all chart and table figures in today's purchasing power (deflated by CPI). A live client-side toggle would be ideal but requires dynamic JS on static pages; a config switch (render-mode option in TOML) is a simpler starting point. See `[assumptions].inflation` for the underlying rate. |
-
 ### Feature gaps
 
 - `resolve_state_tax_system()` in `src/tax_model.py` — Maryland's county-level income tax (1.75%-3.2%) is not modeled. State-only brackets provide a useful approximation.
