@@ -9,6 +9,14 @@
 
 ## Current Work
 
+### Setup Panel — post-plan polish and bug fixes (2026-08-08)
+
+Follow-up pass after the staged TOML-coverage plan (below) landed, based on user review of the new Advanced sections:
+
+- **Layout fixes**: `.synth-hint` help text now has proper top margin (the shared class had a negative margin meant for a different context); Withdrawal/Surplus Priority merged into one "Advanced: Withdrawal & Surplus Priorities" panel with uniform styling across all six phase groups (previously Retirement had no border while Accumulation/Survivor did); Wage Treatment only offers "Net Cash" (the only implemented mode); checkboxes are all box-left/label-right via a shared `.checkbox-field` class; new `.inline-row-fluid`/`.inline-row-fixed` CSS helpers replace fixed-width inputs sitting under much wider labels (fixed-width avoids a flexbox quirk where a lone item on a wrapped line stretches to fill it).
+- **Household type bug**: the JS defaulted to `hhType = 'couple'` whenever `household_type` wasn't explicitly set in the TOML, instead of inferring from `[person2]` presence like the engine's `_resolve_household_type()` in `model.py` — this misdetected `sample.toml` (a single-person scenario with no explicit `household_type`) as "Couple." Fixed to mirror the engine's actual inference rule exactly; verified via Node against real scenario files plus an adversarial case (explicit `household_type` shouldn't be overridden by a stray commented-out `[person2]` mention).
+- **Start Year / End Year clarity**: added help text explaining that Start Year auto-advances to match the account data's as-of date (live Monarch sync, offline cache, or CSV import — not Synthetic) via `simulation.clamp_start_year` (default `true`), and exposed that as a new "Auto-Advance to Data Date" checkbox (`_QUICK_CONTROL_MAP` entry) rather than leaving it raw-TOML-only. End Year is a fixed, manually-set projection cutoff — not auto-derived from lifespan — so added a computed hint showing each person's implied end-of-plan year (from the v2 `EndOfPlan` event if present, else `life_expectancy` + birth year) to give the user something concrete to aim for.
+
 ### Setup Panel — Expose Remaining TOML Settings (staged, complete)
 
 Comprehensive audit found a large slice of scenario TOML (per-person income/contribution economics, the Social Security benefit-by-age table, RMD/filing-status settings, Monte Carlo failure-mode config, liability definitions) was still raw-TOML-only in the Setup Panel. Staged rollout plan at `docs/plans/2026-08-08-setup-panel-toml-coverage-plan.md` — all 6 stages (0-5) now landed; full TOML coverage achieved except the two explicitly-deferred items (tax bracket table editor, `[csv_source]` internals).

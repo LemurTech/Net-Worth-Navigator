@@ -1945,6 +1945,7 @@ _QUICK_CONTROL_MAP.update({
     "sim_seed": ("simulation.seed", int),
     "sim_portfolio_return_volatility": ("simulation.portfolio_return_volatility", float),
     "sim_historical_returns_path": ("simulation.historical_returns_path", str),
+    "sim_clamp_start_year": ("simulation.clamp_start_year", bool),
     "mc_failure_mode": ("monte_carlo.success.failure_mode", str),
     "mc_minimum_spending_funded_ratio": ("monte_carlo.success.minimum_spending_funded_ratio", float),
     "mc_allow_home_equity_for_spending": ("monte_carlo.success.allow_home_equity_for_spending", bool),

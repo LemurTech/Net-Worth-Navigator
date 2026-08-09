@@ -61,6 +61,7 @@ class QuickControlMapTests(unittest.TestCase):
             "sim_seed": ("simulation.seed", int),
             "sim_portfolio_return_volatility": ("simulation.portfolio_return_volatility", float),
             "sim_historical_returns_path": ("simulation.historical_returns_path", str),
+            "sim_clamp_start_year": ("simulation.clamp_start_year", bool),
             "mc_failure_mode": ("monte_carlo.success.failure_mode", str),
             "mc_minimum_spending_funded_ratio": ("monte_carlo.success.minimum_spending_funded_ratio", float),
             "mc_allow_home_equity_for_spending": ("monte_carlo.success.allow_home_equity_for_spending", bool),
@@ -89,6 +90,7 @@ class SaveQuickControlsSimulationFieldsTests(unittest.TestCase):
                 "sim_seed": 42,
                 "sim_portfolio_return_volatility": 0.18,
                 "sim_historical_returns_path": "config/return_sequences/us_balanced_returns.csv",
+                "sim_clamp_start_year": False,
                 "mc_failure_mode": "spending_shortfall",
                 "mc_minimum_spending_funded_ratio": 0.90,
                 "mc_allow_home_equity_for_spending": True,
@@ -111,6 +113,7 @@ class SaveQuickControlsSimulationFieldsTests(unittest.TestCase):
                 parsed["simulation"]["historical_returns_path"],
                 "config/return_sequences/us_balanced_returns.csv",
             )
+            self.assertIs(parsed["simulation"]["clamp_start_year"], False)
             # [simulation].mode (the compatibility single-run field, overridden
             # per render pass by run.py) must be untouched by this save --
             # nothing in the UI writes it directly.

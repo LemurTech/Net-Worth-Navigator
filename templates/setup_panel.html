@@ -655,9 +655,11 @@
         <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="0.001" min="0" max="1" style="width:100px"></div>
         <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="0.05" min="0" max="1" style="width:100px"></div>
         <div class="inline-field"><label>Start Year</label><input type="number" id="simulation_start_year" step="1" style="width:100px"></div>
+        <div class="inline-field checkbox-field"><label><input type="checkbox" id="sim_clamp_start_year"> Auto-Advance to Data Date</label></div>
         <div class="inline-field"><label>End Year</label><input type="number" id="simulation_end_year" step="1" style="width:100px"></div>
         <div class="inline-field"><label>State Tax</label><select id="tax_state" style="width:180px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">Loading…</option></select></div>
       </div>
+      <div class="synth-hint" style="max-width:none;margin-top:8px">Start Year auto-advances to match your account data's as-of date when using live Monarch sync, offline cache, or CSV import (not Synthetic mode) — uncheck "Auto-Advance to Data Date" to keep an earlier start year regardless. End Year is a fixed cutoff for the whole projection and isn't derived automatically — the engine only warns if it's set far beyond the household's life expectancy.<span id="end-year-life-exp-hint"></span></div>
 
       <div class="quick-section-title">Value Basis Options</div>
       <div class="inline-row">
@@ -1708,6 +1710,8 @@
         var volNum = grabNum(simulationBlock, 'portfolio_return_volatility');
         setField('sim_portfolio_return_volatility', volNum != null ? pct(volNum) : 15);
         var historicalReturnsPath = grabStr(simulationBlock, 'historical_returns_path');
+        var clampEl = document.getElementById('sim_clamp_start_year');
+        if (clampEl) clampEl.checked = (grabBool(simulationBlock, 'clamp_start_year') !== false);
 
         var mcBlock = sectionBlock('monte_carlo.success');
         var failureMode = grabStr(mcBlock, 'failure_mode');
@@ -1746,10 +1750,45 @@
         m = configContent.match(/^\s*table_set\s*=\s*\"([^\"]+)\"/m);
         if (m && m[1]) tableSet = m[1];
 
-        // Household type
-        var hhType = 'couple';
+        // Household type -- mirrors _resolve_household_type() in model.py:
+        // an explicit household_type wins; otherwise infer from whether
+        // [person2] is present at all (not just "couple" by default).
+        var hhType = null;
         m = configContent.match(/^\s*household_type\s*=\s*"([^"]+)"/m);
         if (m && m[1]) hhType = m[1].toLowerCase();
+        if (hhType !== 'single' && hhType !== 'couple') {
+          hhType = /^\[person2\]\s*$/m.test(configContent) ? 'couple' : 'single';
+        }
+
+        // End Year hint: show each person's implied end-of-plan year from
+        // [personX].life_expectancy (v1) as a starting estimate. Upgraded
+        // below to the v2 EndOfPlan event's year, if one exists, since that
+        // takes precedence in validate_scenario's own life-expectancy check.
+        function renderEndYearHint(p1Year, p2Year) {
+          var el = document.getElementById('end-year-life-exp-hint');
+          if (!el) return;
+          var parts = [];
+          if (p1Year) parts.push(person1Name + ' → ' + p1Year);
+          if (hhType !== 'single' && p2Year) parts.push(person2Name + ' → ' + p2Year);
+          el.textContent = parts.length
+            ? (' Implied end-of-plan year from life expectancy: ' + parts.join(', ') + '.')
+            : '';
+        }
+        var p1LifeExpYear = p1BirthYear ? (function () {
+          var v = grabNum(personBlock('person1'), 'life_expectancy');
+          return v != null ? p1BirthYear + v : null;
+        })() : null;
+        var p2LifeExpYear = p2BirthYear ? (function () {
+          var v = grabNum(personBlock('person2'), 'life_expectancy');
+          return v != null ? p2BirthYear + v : null;
+        })() : null;
+        renderEndYearHint(p1LifeExpYear, p2LifeExpYear);
+        apiGet('api/events').then(function (data) {
+          if (!data || !data.ok || !data.events) return;
+          var eop1 = data.events.find(function (e) { return e.type === 'EndOfPlan' && e.person === 'person1'; });
+          var eop2 = data.events.find(function (e) { return e.type === 'EndOfPlan' && e.person === 'person2'; });
+          renderEndYearHint(eop1 ? eop1.year : p1LifeExpYear, eop2 ? eop2.year : p2LifeExpYear);
+        }).catch(function () {});
 
         // Withdrawal orders
         var orders = {
@@ -2135,6 +2174,8 @@
         if (simVol) body.sim_portfolio_return_volatility = parseFloat(simVol) / 100;
         var simHistPath = getField('sim_historical_returns_path');
         if (simHistPath) body.sim_historical_returns_path = simHistPath;
+        var clampEl = document.getElementById('sim_clamp_start_year');
+        if (clampEl) body.sim_clamp_start_year = clampEl.checked;
 
         var mcFailureMode = getField('mc_failure_mode');
         if (mcFailureMode) body.mc_failure_mode = mcFailureMode;
