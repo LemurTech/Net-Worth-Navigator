@@ -232,8 +232,8 @@ def _scenario_manifest(
     projection_result: ProjectionResult,
     raw_accounts: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
-    enabled_events_config = [e for e in config.get("events", []) if e.get("enabled", False)]
-    enabled_events_runtime = [e for e in runtime_config.get("events", []) if e.get("enabled", False)]
+    enabled_events_config = [e for e in config.get("events", []) if e.get("enabled", True)]
+    enabled_events_runtime = [e for e in runtime_config.get("events", []) if e.get("enabled", True)]
 
     resolved_end_of_plan_years = {
         event.get("person"): int(event["year"])

@@ -2112,7 +2112,7 @@ _EVENT_REQUIRED_FIELDS: dict[str, list[str]] = {
     "Marriage":           ["year"],
     "Income":             ["year", "amount"],
     "Expense":            ["year", "amount"],
-    "Education":          ["person", "start_year", "end_year", "annual_cost"],
+    "Education":          ["start_year", "end_year", "annual_cost"],
     "SocialSecurity":     ["person", "year"],
     "NewJob":             ["person", "year", "annual_income"],
     "CareerBreak":        ["person", "start_year", "end_year"],

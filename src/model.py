@@ -620,14 +620,14 @@ def validate_scenario(config: dict, config_path: Path | None = None) -> tuple[bo
         has_take_home = person.get("annual_take_home") is not None
         has_401k = person.get("annual_401k_contribution") is not None
         has_gross_and_percent = (
-            person.get("gross_income") is not None 
-            and person.get("contribution_percent") is not None
+            person.get("gross_income") is not None
+            and person.get("retirement_contribution_percent") is not None
         )
-        
+
         if not (has_take_home or has_401k or has_gross_and_percent):
             errors.append(
                 f"{person_display}: Must specify either annual_take_home, "
-                f"annual_401k_contribution, or (gross_income + contribution_percent){path_hint}"
+                f"annual_401k_contribution, or (gross_income + retirement_contribution_percent){path_hint}"
             )
         
         # Validate date of birth format
@@ -2291,7 +2291,7 @@ def _first_depletion_year(df: pd.DataFrame) -> int | None:
 def _first_retirement_year(config: dict) -> int | None:
     retirement_years: list[int] = []
     for event in config.get("events", []):
-        if event.get("type") != "Retire" or not event.get("enabled", False):
+        if event.get("type") != "Retire" or not event.get("enabled", True):
             continue
         try:
             retirement_years.append(int(event["year"]))
@@ -2832,7 +2832,7 @@ def run_projection_result(
                   f"Projection start adjusted from {start_year} to {as_of_year}.")
             # Scan events that fall before the clamped year
             events = [e for e in config.get("events", [])
-                      if isinstance(e, dict) and e.get("enabled", False)]
+                      if isinstance(e, dict) and e.get("enabled", True)]
             pre_clamp = [e for e in events
                          if isinstance(e.get("year"), int) and e["year"] < as_of_year]
             if pre_clamp:
@@ -3025,7 +3025,7 @@ def _run_projection_yearly(
     owner_keys = _resolve_owner_keys_from_type(household_type)
     sim = config["simulation"]
     assumptions = config["assumptions"]
-    events = [e for e in config.get("events", []) if e.get("enabled", False)]
+    events = [e for e in config.get("events", []) if e.get("enabled", True)]
 
     start_year = sim["start_year"]
     end_year = sim["end_year"]

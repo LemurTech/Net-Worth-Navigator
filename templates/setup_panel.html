@@ -2933,10 +2933,9 @@
         ],
         Education: [
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. College' },
-          { name: 'person', type: 'select', label: 'Person', options: ['person1', 'person2'], default: 'person1', required: true },
           { name: 'start_year', type: 'number', label: 'Start Year', required: true },
           { name: 'end_year', type: 'number', label: 'End Year', required: true },
-          { name: 'annual_cost', type: 'number', label: 'Annual Cost', placeholder: '25000', required: true },
+          { name: 'annual_cost', type: 'number', label: 'Annual Cost', placeholder: '25000', required: true, help: 'Deducted as a household expense, regardless of which person the education is for' },
         ],
         SocialSecurity: [
           { name: 'label', type: 'text', label: 'Label', placeholder: 'e.g. SS — Person 1' },
@@ -2963,9 +2962,7 @@
           { name: 'down_payment', type: 'number', label: 'Down Payment', placeholder: '80000', required: true },
           '---section---Property Details (optional)',
           { name: 'property', type: 'text', label: 'Property Name', placeholder: 'e.g. Beach House', help: 'Name used to track this property for later SellHome events' },
-          { name: 'price', type: 'number', label: 'Purchase Price', placeholder: '400000', help: 'If set, the property value is tracked and appreciates with inflation' },
-          { name: 'mortgage_rate', type: 'number', label: 'Mortgage Rate', placeholder: '0.065', help: 'Annual rate (e.g. 0.065 for 6.5%)' },
-          { name: 'term_years', type: 'number', label: 'Term (years)', placeholder: '30' },
+          { name: 'price', type: 'number', label: 'Purchase Price', placeholder: '400000', help: 'If set, the property value is tracked and appreciates with inflation. Financing a mortgage? Add it separately as a Liability (Accounts tab) -- BuyHome only tracks the down payment and property value.' },
         ],
         SellHome: [
           '---section---Required',

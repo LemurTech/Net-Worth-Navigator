@@ -553,7 +553,7 @@ def _events_enabled_metrics(events) -> dict[str, int]:
     if not isinstance(events, list):
         return {"Enabled events": 0, "Recurring-enabled events": 0}
 
-    enabled = [e for e in events if isinstance(e, dict) and bool(e.get("enabled", False))]
+    enabled = [e for e in events if isinstance(e, dict) and bool(e.get("enabled", True))]
     by_type: dict[str, int] = {}
     recurring = 0
     for event in enabled:

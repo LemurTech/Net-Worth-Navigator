@@ -1333,7 +1333,7 @@ def _format_percent(value: float) -> str:
 def _first_retirement_event(config: dict) -> dict | None:
     events = [
         e for e in config.get("events", [])
-        if e.get("enabled", False) and e.get("type") == "Retire" and e.get("person")
+        if e.get("enabled", True) and e.get("type") == "Retire" and e.get("person")
     ]
     if not events:
         return None
@@ -2131,7 +2131,7 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
     plot_bg = "#0f1725"
     grid = "rgba(148,163,184,0.14)"
     font_color = "#e5edf7"
-    events = [e for e in config.get("events", []) if e.get("enabled", False)]
+    events = [e for e in config.get("events", []) if e.get("enabled", True)]
     if not events:
         return "<div class='gantt-wrap'><div class='gantt-empty'>No enabled events to display.</div></div>"
 
