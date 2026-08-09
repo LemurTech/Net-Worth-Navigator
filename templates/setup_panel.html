@@ -738,6 +738,71 @@
         </div>
         <div class="synth-hint" style="max-width:none">"Effective Tax Rate" is a flat fallback used only when the bracket tax model above is disabled or has no brackets for the resolved filing status. "Taxable Withdrawal Gain %" is the portion of a taxable-account withdrawal treated as a realized gain; "Trad IRA Withdrawal Taxable %" is nearly always 100. The two "Initial Basis" percentages only affect the very first projection year's cost-basis seed.</div>
       </div>
+
+      <div style="margin-top:4px">
+        <button class="expander-toggle" id="simulation-settings-toggle" type="button">▼ Advanced: Simulation &amp; Monte Carlo</button>
+      </div>
+      <div class="expander-content" id="simulation-settings-content">
+        <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Render Modes</div>
+        <div class="inline-row">
+          <div class="inline-field"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked disabled style="max-width:16px;margin:0"> Deterministic</label></div>
+          <div class="inline-field"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="sim_render_mode_historical" style="max-width:16px;margin:0"> Historical</label></div>
+          <div class="inline-field"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="sim_render_mode_monte_carlo" style="max-width:16px;margin:0"> Monte Carlo</label></div>
+        </div>
+        <div class="synth-hint" style="max-width:none">Each checked mode renders its own full projection page. "Deterministic" (a single best-guess run) is always included. "Historical" replays real past market sequences year by year; "Monte Carlo" runs many randomized simulations to estimate a probability of success.</div>
+
+        <div class="quick-section-title">Monte Carlo &amp; Historical Run Settings</div>
+        <div class="inline-row">
+          <div class="inline-field"><label>Number of Runs</label><input type="number" id="sim_num_runs" step="10" placeholder="250"></div>
+          <div class="inline-field"><label>Random Seed (optional)</label><input type="number" id="sim_seed" step="1" placeholder="random each time"></div>
+          <div class="inline-field"><label>Return Volatility %</label><input type="number" id="sim_portfolio_return_volatility" step="1" placeholder="15"></div>
+          <div class="inline-field"><label>Historical Return Sequence</label>
+            <select id="sim_historical_returns_path"><option value="">Loading…</option></select>
+          </div>
+        </div>
+        <div class="synth-hint" style="max-width:none">"Number of Runs" and "Return Volatility" (annual standard deviation of the blended portfolio return, as a %) only affect Monte Carlo. "Random Seed" makes Monte Carlo results reproducible — leave blank for a different random outcome each run. "Historical Return Sequence" picks which real historical-returns dataset the Historical mode replays.</div>
+
+        <div class="quick-section-title">Success / Failure Definition</div>
+        <div class="inline-row">
+          <div class="inline-field"><label>Failure Mode</label>
+            <select id="mc_failure_mode" data-mode-target="mc-failure">
+              <option value="liquid_depletion">Liquid Assets Depleted</option>
+              <option value="net_worth_below_zero">Net Worth Below Zero</option>
+              <option value="spending_shortfall">Spending Shortfall</option>
+              <option value="preserve_home_equity">Preserve Home Equity</option>
+              <option value="custom">Custom Column Rule</option>
+            </select>
+          </div>
+        </div>
+        <div class="synth-hint" style="max-width:none">Defines what counts as a "failed" run in Historical/Monte Carlo mode. "Liquid Assets Depleted" (the default) fails when investable + cash assets hit zero. "Net Worth Below Zero" also counts home equity and debt. "Spending Shortfall"/"Preserve Home Equity" fail when planned spending can't be funded to a target ratio. "Custom Column Rule" compares any projection column against a threshold (advanced).</div>
+
+        <div data-mode-group="mc-failure" data-visible-when="spending_shortfall,preserve_home_equity">
+          <div class="inline-row">
+            <div class="inline-field"><label>Minimum Spending Funded %</label><input type="number" id="mc_minimum_spending_funded_ratio" step="1" placeholder="100"></div>
+            <div class="inline-field"><label>Grace Period (months)</label><input type="number" id="mc_failure_grace_period_months" step="1" placeholder="0"></div>
+            <div class="inline-field"><label>Allow Home Equity</label><input type="checkbox" id="mc_allow_home_equity_for_spending" style="max-width:20px"></div>
+            <div class="inline-field"><label>Allow Debt</label><input type="checkbox" id="mc_allow_debt_for_spending" style="max-width:20px"></div>
+          </div>
+          <div class="synth-hint" style="max-width:none">A run only fails once funded spending drops below this % of the target for longer than the grace period. "Allow Home Equity"/"Allow Debt" let a shortfall be covered by tapping home equity or additional debt before it counts as a failure.</div>
+        </div>
+
+        <div data-mode-group="mc-failure" data-visible-when="custom">
+          <div class="inline-row">
+            <div class="inline-field"><label>Column Name</label><input type="text" id="mc_custom_failure_column" placeholder="e.g. spending_funded_ratio"></div>
+            <div class="inline-field"><label>Operator</label>
+              <select id="mc_custom_failure_operator">
+                <option value="<">&lt;</option>
+                <option value="<=">&le;</option>
+                <option value=">">&gt;</option>
+                <option value=">=">&ge;</option>
+                <option value="==">=</option>
+              </select>
+            </div>
+            <div class="inline-field"><label>Threshold</label><input type="number" id="mc_custom_failure_threshold" step="0.01" placeholder="1.0"></div>
+          </div>
+          <div class="synth-hint" style="max-width:none">Advanced: a run fails when this projection column's value compares against the threshold using the chosen operator (e.g. spending_funded_ratio &lt; 1.0). The column name must match a field the engine actually outputs each year.</div>
+        </div>
+      </div>
     </div><!-- /#tab-metadata -->
 
       <!-- ── Tab: Social Security ─────────────────────────────────── -->
@@ -1481,6 +1546,13 @@
           return m ? (m[1] === 'true') : null;
         }
         function pct(value) { return value != null ? (value * 100) : ''; }
+        function grabArr(block, field) {
+          var re = new RegExp('^\\s*' + field + '\\s*=\\s*\\[([^\\]]*)\\]', 'm');
+          var m = block.match(re);
+          if (!m) return null;
+          var items = m[1].match(/"([^"]*)"/g) || [];
+          return items.map(function (s) { return s.replace(/"/g, ''); });
+        }
 
         ['person1', 'person2'].forEach(function (personKey) {
           var block = personBlock(personKey);
@@ -1581,6 +1653,47 @@
         setField('assump_initial_taxable_cost_basis_fraction', pct(grabNum(assumptionsBlock, 'initial_taxable_cost_basis_fraction')));
         setField('assump_initial_roth_contribution_basis_fraction', pct(grabNum(assumptionsBlock, 'initial_roth_contribution_basis_fraction')));
 
+        // ── Simulation & Monte Carlo settings ────────────────────────────
+        // Bounded to [simulation] so "seed"/"mode" etc. can't bleed in from
+        // [data_source].mode or any other section.
+        var simulationBlock = sectionBlock('simulation');
+        var renderModesArr = grabArr(simulationBlock, 'render_modes');
+        if (renderModesArr === null) renderModesArr = ['deterministic', 'historical', 'monte_carlo'];
+        var histModeEl = document.getElementById('sim_render_mode_historical');
+        if (histModeEl) histModeEl.checked = renderModesArr.indexOf('historical') >= 0;
+        var mcModeEl = document.getElementById('sim_render_mode_monte_carlo');
+        if (mcModeEl) mcModeEl.checked = renderModesArr.indexOf('monte_carlo') >= 0;
+
+        var numRunsNum = grabNum(simulationBlock, 'num_runs');
+        setField('sim_num_runs', numRunsNum != null ? numRunsNum : 250);
+        var seedNum = grabNum(simulationBlock, 'seed');
+        setField('sim_seed', seedNum != null ? seedNum : '');
+        var volNum = grabNum(simulationBlock, 'portfolio_return_volatility');
+        setField('sim_portfolio_return_volatility', volNum != null ? pct(volNum) : 15);
+        var historicalReturnsPath = grabStr(simulationBlock, 'historical_returns_path');
+
+        var mcBlock = sectionBlock('monte_carlo.success');
+        var failureMode = grabStr(mcBlock, 'failure_mode');
+        var failureModeSel = document.getElementById('mc_failure_mode');
+        var validFailureModes = ['net_worth_below_zero', 'liquid_depletion', 'spending_shortfall', 'preserve_home_equity', 'custom'];
+        if (failureModeSel) {
+          failureModeSel.value = (failureMode && validFailureModes.indexOf(failureMode) >= 0) ? failureMode : 'liquid_depletion';
+        }
+        var minRatioNum = grabNum(mcBlock, 'minimum_spending_funded_ratio');
+        setField('mc_minimum_spending_funded_ratio', minRatioNum != null ? pct(minRatioNum) : 100);
+        var graceNum = grabNum(mcBlock, 'failure_grace_period_months');
+        setField('mc_failure_grace_period_months', graceNum != null ? graceNum : 0);
+        var homeEquityEl = document.getElementById('mc_allow_home_equity_for_spending');
+        if (homeEquityEl) homeEquityEl.checked = !!grabBool(mcBlock, 'allow_home_equity_for_spending');
+        var allowDebtEl = document.getElementById('mc_allow_debt_for_spending');
+        if (allowDebtEl) allowDebtEl.checked = !!grabBool(mcBlock, 'allow_debt_for_spending');
+        setField('mc_custom_failure_column', grabStr(mcBlock, 'custom_failure_column') || '');
+        var customOpSel = document.getElementById('mc_custom_failure_operator');
+        var customOp = grabStr(mcBlock, 'custom_failure_operator');
+        if (customOpSel) customOpSel.value = (customOp && ['<', '<=', '>', '>=', '=='].indexOf(customOp) >= 0) ? customOp : '<';
+        var customThreshNum = grabNum(mcBlock, 'custom_failure_threshold');
+        setField('mc_custom_failure_threshold', customThreshNum != null ? customThreshNum : '');
+
         function getBirthYear(inputId) {
           var el = document.getElementById(inputId);
           return el ? (parseInt(el.value, 10) || 0) : 0;
@@ -1670,6 +1783,9 @@
         // State tax dropdown (populate once from API and select current)
         populateStateDropdown(tableSet);
 
+        // Historical return-sequence dropdown (populate once from API and select current)
+        populateReturnSequenceDropdown(historicalReturnsPath);
+
         // Value basis — explicit value_basis takes precedence; fall back to
         // legacy real_dollar_basis for backward compatibility.
         var valueBasis = 'nominal';
@@ -1719,14 +1835,19 @@
         }
       }
 
-      function initAdvancedSettingsToggle() {
-        var toggle = document.getElementById('advanced-settings-toggle');
-        var content = document.getElementById('advanced-settings-content');
+      function initExpanderToggle(toggleId, contentId, label) {
+        var toggle = document.getElementById(toggleId);
+        var content = document.getElementById(contentId);
         if (!toggle || !content) return;
         toggle.addEventListener('click', function () {
           var open = content.classList.toggle('open');
-          toggle.innerHTML = (open ? '▲' : '▼') + ' Advanced: Spending, Taxes &amp; Assumptions';
+          toggle.innerHTML = (open ? '▲' : '▼') + ' ' + label;
         });
+      }
+
+      function initAdvancedSettingsToggle() {
+        initExpanderToggle('advanced-settings-toggle', 'advanced-settings-content', 'Advanced: Spending, Taxes &amp; Assumptions');
+        initExpanderToggle('simulation-settings-toggle', 'simulation-settings-content', 'Advanced: Simulation &amp; Monte Carlo');
       }
 
       function togglePerson2(show) {
@@ -1794,6 +1915,40 @@
         for (var i = 0; i < sel.options.length; i++) {
           if (sel.options[i].value === tableSet) {
             sel.value = tableSet;
+            return;
+          }
+        }
+      }
+
+      /* ── Historical return-sequence dropdown ─────────────────────── */
+      var _returnSequencesLoaded = false;
+      function populateReturnSequenceDropdown(selectedPath) {
+        if (_returnSequencesLoaded) {
+          selectReturnSequenceInDropdown(selectedPath);
+          return;
+        }
+        apiGet('api/return-sequences').then(function (data) {
+          if (!data || !data.ok || !data.sequences) return;
+          var sel = document.getElementById('sim_historical_returns_path');
+          if (!sel) return;
+          sel.innerHTML = '<option value="">— Select a dataset —</option>';
+          data.sequences.forEach(function (s) {
+            var opt = document.createElement('option');
+            opt.value = s.path;
+            opt.textContent = s.name + ' (' + s.row_count + ' yrs)';
+            sel.appendChild(opt);
+          });
+          _returnSequencesLoaded = true;
+          selectReturnSequenceInDropdown(selectedPath);
+        }).catch(function () {});
+      }
+
+      function selectReturnSequenceInDropdown(path) {
+        var sel = document.getElementById('sim_historical_returns_path');
+        if (!sel || !path) return;
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === path) {
+            sel.value = path;
             return;
           }
         }
@@ -1937,6 +2092,40 @@
           var raw = getField('assump_' + field);
           if (raw) body['assump_' + field] = parseFloat(raw) / 100;
         });
+
+        // Simulation & Monte Carlo
+        var renderModes = ['deterministic'];
+        var histModeEl = document.getElementById('sim_render_mode_historical');
+        if (histModeEl && histModeEl.checked) renderModes.push('historical');
+        var mcModeEl = document.getElementById('sim_render_mode_monte_carlo');
+        if (mcModeEl && mcModeEl.checked) renderModes.push('monte_carlo');
+        body.render_modes = renderModes;
+
+        var simNumRuns = getField('sim_num_runs');
+        if (simNumRuns) body.sim_num_runs = parseInt(simNumRuns, 10);
+        var simSeed = getField('sim_seed');
+        if (simSeed) body.sim_seed = parseInt(simSeed, 10);
+        var simVol = getField('sim_portfolio_return_volatility');
+        if (simVol) body.sim_portfolio_return_volatility = parseFloat(simVol) / 100;
+        var simHistPath = getField('sim_historical_returns_path');
+        if (simHistPath) body.sim_historical_returns_path = simHistPath;
+
+        var mcFailureMode = getField('mc_failure_mode');
+        if (mcFailureMode) body.mc_failure_mode = mcFailureMode;
+        var mcMinRatio = getField('mc_minimum_spending_funded_ratio');
+        if (mcMinRatio) body.mc_minimum_spending_funded_ratio = parseFloat(mcMinRatio) / 100;
+        var mcGrace = getField('mc_failure_grace_period_months');
+        if (mcGrace) body.mc_failure_grace_period_months = parseFloat(mcGrace);
+        var mcHomeEquityEl = document.getElementById('mc_allow_home_equity_for_spending');
+        if (mcHomeEquityEl) body.mc_allow_home_equity_for_spending = mcHomeEquityEl.checked;
+        var mcDebtEl = document.getElementById('mc_allow_debt_for_spending');
+        if (mcDebtEl) body.mc_allow_debt_for_spending = mcDebtEl.checked;
+        var mcCustomCol = getField('mc_custom_failure_column');
+        if (mcCustomCol) body.mc_custom_failure_column = mcCustomCol.trim();
+        var mcCustomOp = getField('mc_custom_failure_operator');
+        if (mcCustomOp) body.mc_custom_failure_operator = mcCustomOp;
+        var mcCustomThresh = getField('mc_custom_failure_threshold');
+        if (mcCustomThresh) body.mc_custom_failure_threshold = parseFloat(mcCustomThresh);
 
         // Value basis
         var vb = getField('value_basis');
@@ -3153,7 +3342,8 @@
         if (!key) return;
         var val = selectEl.value;
         document.querySelectorAll('[data-mode-group="' + key + '"]').forEach(function (g) {
-          g.style.display = (g.getAttribute('data-visible-when') === val) ? '' : 'none';
+          var allowed = (g.getAttribute('data-visible-when') || '').split(',');
+          g.style.display = (allowed.indexOf(val) >= 0) ? '' : 'none';
         });
       }
 

@@ -1,6 +1,6 @@
 # Expose remaining TOML settings in the Setup Panel — staged plan
 
-**Status (2026-08-08):** Stages 0–4 landed. Stage 5 still pending.
+**Status (2026-08-08):** Stages 0–5 landed. Plan complete.
 
 ## Context
 
@@ -57,12 +57,16 @@ Added as a collapsed-by-default "Advanced: Spending, Taxes & Assumptions" sectio
 
 Important gotcha this stage had to solve: several of these field names are **reused verbatim inside `[[events]]` SpendingShift blocks** (`survivor_annual`, `survivor_percent_of_retirement`, `enabled`), and `[taxes]`/`[taxes.rmd]` both have their own `enabled` field. An unbounded regex search for these names risks silently reading (or, worse, the wrong write target) the wrong occurrence. Extended `initQuickEdit()`'s bounded-block extraction approach from Stage 2 (previously per-person) into a generic `sectionBlock(header)` helper that stops at the next `[section]` header, and verified directly via Node against a deliberately adversarial TOML snippet (a `[spending]` section followed by a same-named-field SpendingShift event, and `[taxes]` followed by `[taxes.rmd]`) that the correct value is picked up in both cases. The write side was already safe by construction — `_resolve_toml_path("taxes.enabled")` vs `("taxes.rmd.enabled")` naturally disambiguate via dotted-path navigation — confirmed with an end-to-end save test.
 
-## Stage 5 — Simulation & Monte Carlo controls
+## Stage 5 — Simulation & Monte Carlo controls (landed 2026-08-08)
 
-- `[simulation]`: `render_modes` (checkboxes: deterministic/historical/monte_carlo), `num_runs`, `seed`, `portfolio_return_volatility`, `historical_returns_path` (dropdown populated from `config/return_sequences/*.csv`, needs a small new listing endpoint mirroring `GET /api/tax-states`).
-- `[monte_carlo.success]`: `failure_mode` dropdown (5 modes) driving the conditional-visibility helper (pattern #4, reused from Stage 2) to show only the relevant fields per mode — `minimum_spending_funded_ratio`/`allow_home_equity_for_spending`/`allow_debt_for_spending`/`failure_grace_period_months` for `spending_shortfall`/`preserve_home_equity`, `custom_failure_column`/`_operator`/`_threshold` for `custom`.
+Added as a second collapsed-by-default expander in the Metadata tab ("Advanced: Simulation & Monte Carlo"), directly below Stage 4's "Advanced: Spending, Taxes & Assumptions" — factored the shared toggle wiring into a small `initExpanderToggle(toggleId, contentId, label)` helper rather than copy-pasting a third near-identical click handler.
 
-Lowest priority of the "regular" stages — these are tuned far less often than income/spending/SS settings.
+- **`[simulation]`**: `render_modes` exposed as three checkboxes (Deterministic — always checked & disabled, since `normalized_render_modes()` always forces it on; Historical; Monte Carlo), saved via a new `_QUICK_ARRAY_MAP["render_modes"]` entry (pattern #2's array-write path, same mechanism as the withdrawal-order chip lists — just collected from checkbox state instead of chip order). Also `num_runs`, `seed` (optional — blank leaves existing/random), `portfolio_return_volatility` (%), and `historical_returns_path` via a new dropdown populated from a new `GET /api/return-sequences` endpoint (mirrors `GET /api/tax-states`, lists `config/return_sequences/*.csv` with row counts).
+- **`[monte_carlo.success]`**: `failure_mode` dropdown (5 modes) driving the conditional-visibility helper from Stage 2 (pattern #4) to show only the relevant fields per mode — `minimum_spending_funded_ratio`/`failure_grace_period_months`/`allow_home_equity_for_spending`/`allow_debt_for_spending` for `spending_shortfall`/`preserve_home_equity`, `custom_failure_column`/`_operator`/`_threshold` for `custom`. The visibility helper (`applyModeGroup`) was generalized to accept a comma-separated `data-visible-when` list (e.g. `"spending_shortfall,preserve_home_equity"`) instead of a single exact-match value, since this is the first mode toggle where more than one dropdown value shares a field group — verified backward-compatible with Stage 2's single-value groups (comma-split of a one-item string is a no-op).
+- All fields via pattern #1 (`_QUICK_CONTROL_MAP`) except `render_modes`; no collision risk found (`num_runs`/`seed`/`failure_mode`/etc. are not reused elsewhere in the schema), so no new bounded-extraction work was needed beyond reusing `sectionBlock('simulation')` / `sectionBlock('monte_carlo.success')` from Stage 4 — confirmed via an explicit regression test that `[simulation].mode` and `[data_source].mode` (both literally named `mode`) are untouched by a `[simulation]`-targeted save.
+- Regression tests: `tests/test_simulation_montecarlo_ui.py`.
+
+This was the last stage in the plan — full TOML coverage in the Setup Panel is now complete (raw-TOML editing remains available for the two explicitly-deferred items below).
 
 ## Explicitly deferred / out of scope
 

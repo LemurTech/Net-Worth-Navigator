@@ -1937,6 +1937,24 @@ _QUICK_CONTROL_MAP.update({
     "assump_initial_roth_contribution_basis_fraction": ("assumptions.initial_roth_contribution_basis_fraction", float),
 })
 
+# Simulation & Monte Carlo tab: [simulation] scalars and [monte_carlo.success]
+# failure-mode settings -- household-level, tuned far less often than
+# income/spending/SS, hence the "Advanced" collapsed placement in the UI.
+_QUICK_CONTROL_MAP.update({
+    "sim_num_runs": ("simulation.num_runs", int),
+    "sim_seed": ("simulation.seed", int),
+    "sim_portfolio_return_volatility": ("simulation.portfolio_return_volatility", float),
+    "sim_historical_returns_path": ("simulation.historical_returns_path", str),
+    "mc_failure_mode": ("monte_carlo.success.failure_mode", str),
+    "mc_minimum_spending_funded_ratio": ("monte_carlo.success.minimum_spending_funded_ratio", float),
+    "mc_allow_home_equity_for_spending": ("monte_carlo.success.allow_home_equity_for_spending", bool),
+    "mc_allow_debt_for_spending": ("monte_carlo.success.allow_debt_for_spending", bool),
+    "mc_failure_grace_period_months": ("monte_carlo.success.failure_grace_period_months", float),
+    "mc_custom_failure_column": ("monte_carlo.success.custom_failure_column", str),
+    "mc_custom_failure_operator": ("monte_carlo.success.custom_failure_operator", str),
+    "mc_custom_failure_threshold": ("monte_carlo.success.custom_failure_threshold", float),
+})
+
 _QUICK_ARRAY_MAP: dict[str, str] = {
     "retirement_withdrawal_order": "withdrawal_policy.retirement_withdrawal_order",
     "accumulation_withdrawal_order": "withdrawal_policy.accumulation_withdrawal_order",
@@ -1944,6 +1962,7 @@ _QUICK_ARRAY_MAP: dict[str, str] = {
     "retirement_surplus_order": "withdrawal_policy.retirement_surplus_order",
     "accumulation_surplus_order": "withdrawal_policy.accumulation_surplus_order",
     "survivor_surplus_order": "withdrawal_policy.survivor_surplus_order",
+    "render_modes": "simulation.render_modes",
 }
 
 
@@ -3087,6 +3106,29 @@ async def api_tax_states() -> JSONResponse:
                 "bracket_count": bracket_count,
             })
     return JSONResponse({"ok": True, "states": states})
+
+
+# ── API: list available historical return-sequence datasets ──────────────────
+
+
+@app.get("/api/return-sequences")
+async def api_return_sequences() -> JSONResponse:
+    """Return available historical return-sequence CSVs for simulation.historical_returns_path."""
+    return_sequences_dir = TAX_TABLES_DIR.parent / "return_sequences"
+    sequences: list[dict] = []
+    if return_sequences_dir.exists():
+        for fpath in sorted(return_sequences_dir.glob("*.csv")):
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    row_count = max(0, sum(1 for _ in f) - 1)
+            except Exception:
+                row_count = 0
+            sequences.append({
+                "path": f"config/return_sequences/{fpath.name}",
+                "name": fpath.stem.replace("_", " ").title(),
+                "row_count": row_count,
+            })
+    return JSONResponse({"ok": True, "sequences": sequences})
 
 
 # ── Static file mounts (output/ directory) ──────────────────────────
