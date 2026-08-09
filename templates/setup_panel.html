@@ -207,6 +207,38 @@
     }
     .inline-field input:focus { outline: none; border-color: var(--accent); }
     .inline-field input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
+    .inline-field select {
+      width: 100%; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border);
+      background: var(--panel-2); color: var(--text); font-size: 13px; font-family: inherit;
+    }
+    .inline-field select:focus { outline: none; border-color: var(--accent); }
+
+    /* Rows whose field labels can run longer than a fixed input width (e.g.
+       the Advanced settings panels) -- fields share the row width equally
+       instead of clipping under a short fixed-width input. */
+    .inline-row-fluid { gap: 14px 18px; }
+    .inline-row-fluid .inline-field { flex: 1 1 150px; min-width: 150px; }
+    .inline-row-fluid .inline-field input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; }
+
+    /* Same idea, but a fixed (non-growing) width -- for rows with enough
+       fields that they wrap across multiple lines. A flex-grow field left
+       alone on the last line stretches to fill it (a real flexbox quirk,
+       not a typo); a fixed width keeps every field the same size no matter
+       where the line breaks fall. */
+    .inline-row-fixed { gap: 14px 18px; }
+    .inline-row-fixed .inline-field { flex: 0 0 225px; }
+    .inline-row-fixed .inline-field input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; }
+
+    /* Checkbox fields: box on the left, label text to its right -- kept
+       consistent across every checkbox in the Setup Panel's quick-edit forms. */
+    .inline-field.checkbox-field { flex: 0 0 auto; }
+    .inline-field.checkbox-field label {
+      display: flex; align-items: center; gap: 6px; text-transform: none;
+      font-size: 12px; letter-spacing: 0.02em; margin-bottom: 0; cursor: pointer;
+    }
+    .inline-field.checkbox-field input[type="checkbox"] {
+      width: auto; margin: 0; accent-color: var(--accent-2); cursor: pointer;
+    }
 
     /* ── Radio cards ───────────────────────────────────────────────── */
     .radio-group { display: flex; gap: 8px; }
@@ -643,16 +675,16 @@
         <span id="vb-both-help" style="display:none">Dual rendering with a toggle to switch between real (deflated) and nominal (future-year) dollars. Two chart passes, longest render time.</span>
       </div>
 
-      <div class="quick-section-title">Withdrawal Priority</div>
-      <div class="inline-row" style="margin-bottom:6px">
-        <span style="font-size:12px;color:var(--muted);margin-right:8px">Retirement:</span>
-        <div class="chip-row" id="retirement-order-chips"></div>
+      <div style="margin-top:4px">
+        <button class="expander-toggle" id="withdrawal-priority-toggle" type="button">▼ Advanced: Withdrawal &amp; Surplus Priorities</button>
       </div>
-      <div style="margin-bottom:4px">
-        <button class="expander-toggle" id="advanced-order-toggle" type="button">▼ Accumulation &amp; Survivor phases</button>
-      </div>
-      <div class="expander-content" id="advanced-order-content">
-        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
+      <div class="expander-content" id="withdrawal-priority-content">
+        <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Withdrawal Priority</div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Retirement:</span>
+            <div class="chip-row" id="retirement-order-chips"></div>
+          </div>
           <div>
             <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Accumulation:</span>
             <div class="chip-row" id="accumulation-order-chips"></div>
@@ -662,20 +694,19 @@
             <div class="chip-row" id="survivor-order-chips"></div>
           </div>
         </div>
-      </div>
-      <div class="quick-section-title" style="margin-top:10px">Surplus Priority</div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Retirement surplus:</div>
-        <div class="chip-row" id="retirement-surplus-chips"></div>
-      </div>
-      <div class="expander-content" id="advanced-surplus-content" style="margin-top:8px">
-        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
+
+        <div class="quick-section-title">Surplus Priority</div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
           <div>
-            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Accumulation surplus:</span>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Retirement:</span>
+            <div class="chip-row" id="retirement-surplus-chips"></div>
+          </div>
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Accumulation:</span>
             <div class="chip-row" id="accumulation-surplus-chips"></div>
           </div>
           <div>
-            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Survivor surplus:</span>
+            <span style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Survivor:</span>
             <div class="chip-row" id="survivor-surplus-chips"></div>
           </div>
         </div>
@@ -686,7 +717,7 @@
       </div>
       <div class="expander-content" id="advanced-settings-content">
         <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Household Spending</div>
-        <div class="inline-row">
+        <div class="inline-row inline-row-fluid">
           <div class="inline-field"><label>Retirement Annual Spending</label><input type="text" class="synth-dollar" id="spending_retirement_annual" placeholder="$ 0"></div>
           <div class="inline-field"><label>Survivor % of Retirement</label><input type="number" id="spending_survivor_percent" step="1" placeholder="70"></div>
           <div class="inline-field"><label>Survivor Annual (absolute)</label><input type="text" class="synth-dollar" id="spending_survivor_annual" placeholder="$ 0"></div>
@@ -697,11 +728,13 @@
             </select>
           </div>
         </div>
-        <div class="synth-hint" style="max-width:none">If both Survivor % and Survivor Annual are set, Survivor Annual takes precedence. Only applies to couple households.</div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">If both Survivor % and Survivor Annual are set, Survivor Annual takes precedence. Only applies to couple households.</div>
 
         <div class="quick-section-title">Tax Policy</div>
         <div class="inline-row">
-          <div class="inline-field"><label>Bracket Tax Model</label><input type="checkbox" id="taxes_enabled_flag" style="max-width:20px"></div>
+          <div class="inline-field checkbox-field"><label><input type="checkbox" id="taxes_enabled_flag"> Bracket Tax Model</label></div>
+        </div>
+        <div class="inline-row inline-row-fluid" style="margin-top:10px">
           <div class="inline-field"><label>Pre-Retirement Filing</label>
             <select id="taxes_pre_retirement_filing_status"><option value="single">Single</option><option value="married_joint">Married Filing Jointly</option><option value="head_of_household">Head of Household</option></select>
           </div>
@@ -712,20 +745,22 @@
             <select id="taxes_survivor_filing_status"><option value="single">Single</option><option value="married_joint">Married Filing Jointly</option><option value="head_of_household">Head of Household</option></select>
           </div>
           <div class="inline-field"><label>Wage Treatment</label>
-            <select id="taxes_wage_tax_treatment"><option value="net_cash">Net Cash</option><option value="taxable_wages">Taxable Wages</option></select>
+            <select id="taxes_wage_tax_treatment" disabled><option value="net_cash">Net Cash</option></select>
           </div>
         </div>
-        <div class="synth-hint" style="max-width:none">Unchecking the bracket tax model falls back to the flat "Effective Tax Rate" percentages further below. "Taxable Wages" is not yet fully implemented — leave on Net Cash.</div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">Unchecking the bracket tax model falls back to the flat "Effective Tax Rate" percentages further below. "Wage Treatment" currently only supports "Net Cash" — an alternate "Taxable Wages" mode may be added in a future release.</div>
 
         <div class="quick-section-title">Required Minimum Distributions</div>
         <div class="inline-row">
-          <div class="inline-field"><label>Force RMDs</label><input type="checkbox" id="rmd_enabled_flag" style="max-width:20px"></div>
-          <div class="inline-field"><label>RMD Start Age</label><input type="number" id="rmd_start_age" step="1" placeholder="73"></div>
+          <div class="inline-field checkbox-field"><label><input type="checkbox" id="rmd_enabled_flag"> Force RMDs</label></div>
         </div>
-        <div class="synth-hint" style="max-width:none">Forces annual traditional-account withdrawals from IRS life-expectancy factors starting at this age, feeding both cash flow and taxable income.</div>
+        <div class="inline-row" style="margin-top:10px">
+          <div class="inline-field"><label>RMD Start Age</label><input type="number" id="rmd_start_age" step="1" placeholder="73" style="width:90px"></div>
+        </div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">Forces annual traditional-account withdrawals from IRS life-expectancy factors starting at this age, feeding both cash flow and taxable income.</div>
 
         <div class="quick-section-title">Additional Assumptions</div>
-        <div class="inline-row">
+        <div class="inline-row inline-row-fixed">
           <div class="inline-field"><label>Cash Return</label><input type="number" id="assump_cash_return" step="0.1" placeholder="0"></div>
           <div class="inline-field"><label>Real Estate Appreciation</label><input type="number" id="assump_real_estate_appreciation" step="0.1" placeholder="0"></div>
           <div class="inline-field"><label>Home Sale Fee Rate</label><input type="number" id="assump_real_estate_sale_fee_rate" step="0.5" placeholder="6"></div>
@@ -736,7 +771,7 @@
           <div class="inline-field"><label>Initial Taxable Basis %</label><input type="number" id="assump_initial_taxable_cost_basis_fraction" step="1" placeholder="50"></div>
           <div class="inline-field"><label>Initial Roth Basis %</label><input type="number" id="assump_initial_roth_contribution_basis_fraction" step="1" placeholder="100"></div>
         </div>
-        <div class="synth-hint" style="max-width:none">"Effective Tax Rate" is a flat fallback used only when the bracket tax model above is disabled or has no brackets for the resolved filing status. "Taxable Withdrawal Gain %" is the portion of a taxable-account withdrawal treated as a realized gain; "Trad IRA Withdrawal Taxable %" is nearly always 100. The two "Initial Basis" percentages only affect the very first projection year's cost-basis seed.</div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">"Effective Tax Rate" is a flat fallback used only when the bracket tax model above is disabled or has no brackets for the resolved filing status. "Taxable Withdrawal Gain %" is the portion of a taxable-account withdrawal treated as a realized gain; "Trad IRA Withdrawal Taxable %" is nearly always 100. The two "Initial Basis" percentages only affect the very first projection year's cost-basis seed.</div>
       </div>
 
       <div style="margin-top:4px">
@@ -745,14 +780,14 @@
       <div class="expander-content" id="simulation-settings-content">
         <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Render Modes</div>
         <div class="inline-row">
-          <div class="inline-field"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked disabled style="max-width:16px;margin:0"> Deterministic</label></div>
-          <div class="inline-field"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="sim_render_mode_historical" style="max-width:16px;margin:0"> Historical</label></div>
-          <div class="inline-field"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="sim_render_mode_monte_carlo" style="max-width:16px;margin:0"> Monte Carlo</label></div>
+          <div class="inline-field checkbox-field"><label><input type="checkbox" checked disabled> Deterministic</label></div>
+          <div class="inline-field checkbox-field"><label><input type="checkbox" id="sim_render_mode_historical"> Historical</label></div>
+          <div class="inline-field checkbox-field"><label><input type="checkbox" id="sim_render_mode_monte_carlo"> Monte Carlo</label></div>
         </div>
-        <div class="synth-hint" style="max-width:none">Each checked mode renders its own full projection page. "Deterministic" (a single best-guess run) is always included. "Historical" replays real past market sequences year by year; "Monte Carlo" runs many randomized simulations to estimate a probability of success.</div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">Each checked mode renders its own full projection page. "Deterministic" (a single best-guess run) is always included. "Historical" replays real past market sequences year by year; "Monte Carlo" runs many randomized simulations to estimate a probability of success.</div>
 
         <div class="quick-section-title">Monte Carlo &amp; Historical Run Settings</div>
-        <div class="inline-row">
+        <div class="inline-row inline-row-fluid">
           <div class="inline-field"><label>Number of Runs</label><input type="number" id="sim_num_runs" step="10" placeholder="250"></div>
           <div class="inline-field"><label>Random Seed (optional)</label><input type="number" id="sim_seed" step="1" placeholder="random each time"></div>
           <div class="inline-field"><label>Return Volatility %</label><input type="number" id="sim_portfolio_return_volatility" step="1" placeholder="15"></div>
@@ -760,11 +795,11 @@
             <select id="sim_historical_returns_path"><option value="">Loading…</option></select>
           </div>
         </div>
-        <div class="synth-hint" style="max-width:none">"Number of Runs" and "Return Volatility" (annual standard deviation of the blended portfolio return, as a %) only affect Monte Carlo. "Random Seed" makes Monte Carlo results reproducible — leave blank for a different random outcome each run. "Historical Return Sequence" picks which real historical-returns dataset the Historical mode replays.</div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">"Number of Runs" and "Return Volatility" (annual standard deviation of the blended portfolio return, as a %) only affect Monte Carlo. "Random Seed" makes Monte Carlo results reproducible — leave blank for a different random outcome each run. "Historical Return Sequence" picks which real historical-returns dataset the Historical mode replays.</div>
 
         <div class="quick-section-title">Success / Failure Definition</div>
         <div class="inline-row">
-          <div class="inline-field"><label>Failure Mode</label>
+          <div class="inline-field" style="flex:0 1 320px;min-width:220px"><label>Failure Mode</label>
             <select id="mc_failure_mode" data-mode-target="mc-failure">
               <option value="liquid_depletion">Liquid Assets Depleted</option>
               <option value="net_worth_below_zero">Net Worth Below Zero</option>
@@ -774,20 +809,20 @@
             </select>
           </div>
         </div>
-        <div class="synth-hint" style="max-width:none">Defines what counts as a "failed" run in Historical/Monte Carlo mode. "Liquid Assets Depleted" (the default) fails when investable + cash assets hit zero. "Net Worth Below Zero" also counts home equity and debt. "Spending Shortfall"/"Preserve Home Equity" fail when planned spending can't be funded to a target ratio. "Custom Column Rule" compares any projection column against a threshold (advanced).</div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">Defines what counts as a "failed" run in Historical/Monte Carlo mode. "Liquid Assets Depleted" (the default) fails when investable + cash assets hit zero. "Net Worth Below Zero" also counts home equity and debt. "Spending Shortfall"/"Preserve Home Equity" fail when planned spending can't be funded to a target ratio. "Custom Column Rule" compares any projection column against a threshold (advanced).</div>
 
         <div data-mode-group="mc-failure" data-visible-when="spending_shortfall,preserve_home_equity">
-          <div class="inline-row">
+          <div class="inline-row inline-row-fluid">
             <div class="inline-field"><label>Minimum Spending Funded %</label><input type="number" id="mc_minimum_spending_funded_ratio" step="1" placeholder="100"></div>
             <div class="inline-field"><label>Grace Period (months)</label><input type="number" id="mc_failure_grace_period_months" step="1" placeholder="0"></div>
-            <div class="inline-field"><label>Allow Home Equity</label><input type="checkbox" id="mc_allow_home_equity_for_spending" style="max-width:20px"></div>
-            <div class="inline-field"><label>Allow Debt</label><input type="checkbox" id="mc_allow_debt_for_spending" style="max-width:20px"></div>
+            <div class="inline-field checkbox-field"><label><input type="checkbox" id="mc_allow_home_equity_for_spending"> Allow Home Equity</label></div>
+            <div class="inline-field checkbox-field"><label><input type="checkbox" id="mc_allow_debt_for_spending"> Allow Debt</label></div>
           </div>
-          <div class="synth-hint" style="max-width:none">A run only fails once funded spending drops below this % of the target for longer than the grace period. "Allow Home Equity"/"Allow Debt" let a shortfall be covered by tapping home equity or additional debt before it counts as a failure.</div>
+          <div class="synth-hint" style="max-width:none;margin-top:8px">A run only fails once funded spending drops below this % of the target for longer than the grace period. "Allow Home Equity"/"Allow Debt" let a shortfall be covered by tapping home equity or additional debt before it counts as a failure.</div>
         </div>
 
         <div data-mode-group="mc-failure" data-visible-when="custom">
-          <div class="inline-row">
+          <div class="inline-row inline-row-fluid">
             <div class="inline-field"><label>Column Name</label><input type="text" id="mc_custom_failure_column" placeholder="e.g. spending_funded_ratio"></div>
             <div class="inline-field"><label>Operator</label>
               <select id="mc_custom_failure_operator">
@@ -800,7 +835,7 @@
             </div>
             <div class="inline-field"><label>Threshold</label><input type="number" id="mc_custom_failure_threshold" step="0.01" placeholder="1.0"></div>
           </div>
-          <div class="synth-hint" style="max-width:none">Advanced: a run fails when this projection column's value compares against the threshold using the chosen operator (e.g. spending_funded_ratio &lt; 1.0). The column name must match a field the engine actually outputs each year.</div>
+          <div class="synth-hint" style="max-width:none;margin-top:8px">Advanced: a run fails when this projection column's value compares against the threshold using the chosen operator (e.g. spending_funded_ratio &lt; 1.0). The column name must match a field the engine actually outputs each year.</div>
         </div>
       </div>
     </div><!-- /#tab-metadata -->
@@ -1633,8 +1668,10 @@
         setField('taxes_retirement_filing_status', retFiling || 'married_joint');
         var survFiling = grabStr(taxesBlock, 'survivor_filing_status');
         setField('taxes_survivor_filing_status', survFiling || 'single');
-        var wageTreatment = grabStr(taxesBlock, 'wage_tax_treatment');
-        setField('taxes_wage_tax_treatment', (wageTreatment === 'taxable_wages') ? 'taxable_wages' : 'net_cash');
+        // Only "net_cash" is implemented and selectable in the UI; force the
+        // field to that value regardless of what's stored (a scenario edited
+        // by hand could still have the unimplemented "taxable_wages").
+        setField('taxes_wage_tax_treatment', 'net_cash');
 
         var rmdBlock = sectionBlock('taxes.rmd');
         var rmdEnabledEl = document.getElementById('rmd_enabled_flag');
@@ -1821,18 +1858,6 @@
         makeChips('retirement-surplus-chips', orders.retirement_surplus);
         makeChips('accumulation-surplus-chips', orders.accumulation_surplus);
         makeChips('survivor-surplus-chips', orders.survivor_surplus);
-
-        // Expander
-        var advToggle = document.getElementById('advanced-order-toggle');
-        var advContent = document.getElementById('advanced-order-content');
-        var advSurplusContent = document.getElementById('advanced-surplus-content');
-        if (advToggle) {
-          advToggle.addEventListener('click', function () {
-            var open = advContent.classList.toggle('open');
-            advToggle.innerHTML = (open ? '▲' : '▼') + ' Accumulation &amp; Survivor phases';
-            advSurplusContent.classList.toggle('open', open);
-          });
-        }
       }
 
       function initExpanderToggle(toggleId, contentId, label) {
@@ -1846,6 +1871,7 @@
       }
 
       function initAdvancedSettingsToggle() {
+        initExpanderToggle('withdrawal-priority-toggle', 'withdrawal-priority-content', 'Advanced: Withdrawal &amp; Surplus Priorities');
         initExpanderToggle('advanced-settings-toggle', 'advanced-settings-content', 'Advanced: Spending, Taxes &amp; Assumptions');
         initExpanderToggle('simulation-settings-toggle', 'simulation-settings-content', 'Advanced: Simulation &amp; Monte Carlo');
       }
