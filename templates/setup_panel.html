@@ -640,6 +640,16 @@
       </div>
       </div>
 
+      <div class="quick-section-title">Plan Start / End</div>
+      <div class="inline-row">
+        <div class="inline-field checkbox-field"><label><input type="checkbox" id="sim_clamp_start_year"> Auto-Advance to Data Date</label></div>
+      </div>
+      <div class="inline-row" style="margin-top:10px">
+        <div class="inline-field"><label>Start Year</label><input type="number" id="simulation_start_year" step="1" style="width:100px"></div>
+        <div class="inline-field"><label>End Year</label><input type="number" id="simulation_end_year" step="1" style="width:100px"></div>
+      </div>
+      <div class="synth-hint" style="max-width:none;margin-top:8px">Start Year auto-advances to match your account data's as-of date when using live Monarch sync, offline cache, or CSV import (not Synthetic mode) — uncheck "Auto-Advance to Data Date" to keep an earlier start year regardless. End Year is a fixed cutoff for the whole projection and isn't derived automatically — the engine only warns if it's set far beyond the household's life expectancy.<span id="end-year-life-exp-hint"></span></div>
+
       <div class="quick-section-title">Cash Targets</div>
       <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Cash reserves set aside for expenses outside normal spending — emergencies, vacations, large purchases, home repairs, and other lumpy costs not modeled as individual events.</div>
       <div class="inline-row">
@@ -648,18 +658,15 @@
         <div class="inline-field"><label>Survivor Phase</label><input type="number" id="cash_survivor" step="1000" style="width:145px"></div>
       </div>
 
-      <div class="quick-section-title">Assumptions &amp; Years</div>
+      <div class="quick-section-title">Market Assumptions</div>
       <div class="inline-row">
         <div class="inline-field"><label>Stock Return</label><input type="number" id="stock_return" step="0.01" min="0" max="1" style="width:100px"></div>
         <div class="inline-field"><label>Bond Return</label><input type="number" id="bond_return" step="0.01" min="0" max="1" style="width:100px"></div>
         <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="0.001" min="0" max="1" style="width:100px"></div>
         <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="0.05" min="0" max="1" style="width:100px"></div>
-        <div class="inline-field"><label>Start Year</label><input type="number" id="simulation_start_year" step="1" style="width:100px"></div>
-        <div class="inline-field checkbox-field"><label><input type="checkbox" id="sim_clamp_start_year"> Auto-Advance to Data Date</label></div>
-        <div class="inline-field"><label>End Year</label><input type="number" id="simulation_end_year" step="1" style="width:100px"></div>
         <div class="inline-field"><label>State Tax</label><select id="tax_state" style="width:180px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">Loading…</option></select></div>
       </div>
-      <div class="synth-hint" style="max-width:none;margin-top:8px">Start Year auto-advances to match your account data's as-of date when using live Monarch sync, offline cache, or CSV import (not Synthetic mode) — uncheck "Auto-Advance to Data Date" to keep an earlier start year regardless. End Year is a fixed cutoff for the whole projection and isn't derived automatically — the engine only warns if it's set far beyond the household's life expectancy.<span id="end-year-life-exp-hint"></span></div>
+      <div class="synth-hint" style="max-width:none;margin-top:8px">Stock Return, Bond Return, and Inflation are long-run average annual assumptions used to project growth — not guarantees of any single year's result. Equity Allocation is the share of your investable portfolio (in the model, not your real accounts) assumed to be in stocks vs. bonds — e.g. 70 means 70% stocks / 30% bonds. A higher stock allocation tends to grow faster over long periods but swings more from year to year, both up and down; a higher bond allocation is steadier but usually grows more slowly.</div>
 
       <div class="quick-section-title">Value Basis Options</div>
       <div class="inline-row">
