@@ -56,7 +56,11 @@ other      = 0
 [simulation]
 start_year   = 2026
 end_year     = 2062
-render_modes = ["deterministic", "historical", "monte_carlo"]   # shell/render pipeline outputs these mode variants
+render_modes = [
+   "deterministic",
+   "historical",
+   "monte_carlo"
+] # shell/render pipeline outputs these mode variants
 mode         = "deterministic"         # compatibility/default single-run mode
 # num_runs = 250                       # Monte Carlo run count (default 250)
 # seed = 12345                         # reproducibility seed
@@ -186,9 +190,20 @@ retirement_cash_target   = 55000
 # Withdrawal order when cash is below target (which buckets to sell first)
 # cash_above_target uses only dollars above the reserve.
 # cash_below_target taps the reserve itself only as a last resort.
-accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
-retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
-
+accumulation_withdrawal_order = [
+   "cash_above_target",
+   "taxable",
+   "roth",
+   "trad_ira",
+   "cash_below_target"
+]
+retirement_withdrawal_order = [
+   "cash_above_target",
+   "trad_ira",
+   "taxable",
+   "roth",
+   "cash_below_target"
+]
 # Surplus reinvestment order when cash is above target (which buckets get the extra)
 # This is phase-specific and independent from withdrawal order.
 # Ordered priority: first non-excluded bucket gets ALL remaining surplus.
@@ -201,9 +216,15 @@ accumulation_surplus_order    = ["taxable", "roth", "trad_ira"]
 retirement_surplus_order      = ["taxable", "roth", "trad_ira"]
 
 # survivor_* fields are not applicable and ignored for single-person households
-survivor_cash_target       = 30000
-survivor_withdrawal_order  = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
-survivor_surplus_order     = ["roth", "taxable"]
+survivor_cash_target = 30000
+survivor_withdrawal_order = [
+   "cash_above_target",
+   "trad_ira",
+   "taxable",
+   "roth",
+   "cash_below_target"
+]
+survivor_surplus_order = ["roth", "taxable"]
 
 # ─── Market & Economic Assumptions ───────────────────────────────────────────
 
