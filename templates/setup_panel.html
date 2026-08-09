@@ -974,6 +974,17 @@
           </div>
         </div>
 
+        <!-- ── Liabilities (loans amortized by the model) ─────────── -->
+        <div class="synth-section" id="liabilities-crud-section" style="padding:0 18px">
+          <h3 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <span>Liabilities</span>
+            <button type="button" class="linkbtn" id="add-liability-def-btn" style="font-size:12px;padding:6px 12px">+ Add Liability</button>
+          </h3>
+          <div style="font-size:12px;color:var(--muted);margin:-6px 0 10px;line-height:1.4">Loans amortized year-by-year in the model (mortgages, auto loans, etc). The name should match your Monarch/CSV account name so the model can pull its live balance; in manual entry mode, set the starting balance below instead.</div>
+          <div id="liabilities-crud-list"></div>
+          <div id="liabilities-crud-empty" style="font-size:13px;color:var(--muted)">No liabilities configured in this scenario.</div>
+        </div>
+
         <!-- ── Synthetic (Manual) input section ──────────────────── -->
         <div id="synth-input-section" style="display:none">
           <div class="synth-form">
@@ -1046,6 +1057,38 @@
         </div>
       </div>
 
+      <!-- ── Modal: Liability Form ────────────────────────────────── -->
+      <div class="modal-overlay" id="liability-form-modal" style="display:none">
+        <div class="modal-card" style="max-width:480px">
+          <div class="modal-header" id="liability-form-title">Add Liability</div>
+          <div class="modal-body">
+            <div class="synth-row"><label>Name</label><input type="text" id="liab-name" placeholder="e.g. Home Mortgage"></div>
+            <div class="synth-hint">Should match your Monarch/CSV account name exactly, if using live sync.</div>
+            <div class="synth-row"><label>Type</label>
+              <select id="liab-type">
+                <option value="mortgage">Mortgage</option>
+                <option value="auto">Auto</option>
+                <option value="other" selected>Other</option>
+              </select>
+            </div>
+            <div class="synth-hint">"Mortgage" is also reflected in home-equity tracking; the others aren't.</div>
+            <div class="synth-row"><label>Annual Rate</label><input type="number" id="liab-annual-rate" step="0.01" placeholder="e.g. 5.75"></div>
+            <div class="synth-hint">Whole percent, e.g. 5.75 = 5.75% APR.</div>
+            <div class="synth-row"><label>Monthly Payment</label><input type="text" class="synth-dollar" id="liab-monthly-base" placeholder="$ 0"></div>
+            <div class="synth-hint">Contractual principal + interest payment.</div>
+            <div class="synth-row"><label>Monthly Escrow <span class="optional">(optional)</span></label><input type="text" class="synth-dollar" id="liab-monthly-escrow" placeholder="$ 0"></div>
+            <div class="synth-hint">Taxes/insurance portion already included in the payment above, if any.</div>
+            <div class="synth-row"><label>Extra Payment <span class="optional">(optional)</span></label><input type="text" class="synth-dollar" id="liab-monthly-extra" placeholder="$ 0"></div>
+            <div class="synth-hint">Voluntary additional principal paid each month.</div>
+          </div>
+          <div id="liability-form-errors" style="display:none;margin:0 20px 10px;padding:8px 12px;border-radius:6px;border:1px solid var(--error-border);background:var(--error-bg);color:#fca5a5;font-size:13px"></div>
+          <div class="modal-actions">
+            <button type="button" class="linkbtn" id="cancel-liability-form-btn">Cancel</button>
+            <button type="button" class="linkbtn" id="save-liability-btn" style="border-color:var(--accent);color:var(--accent)">Save Liability</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── Tab: Raw TOML ──────────────────────────────────────────── -->
       <div class="tab-content tab-card" id="tab-toml">
         <div class="editor-head">Edit the raw scenario TOML below.</div>
@@ -1093,6 +1136,9 @@
       var _accountsData = null;       // cache of latest GET /api/accounts
       var _syntheticData = null;      // cache of latest GET /api/synthetic-start
       var _ssLoaded = false;          // whether the Social Security tab has fetched its data
+      var _liabilitiesLoaded = false; // whether the Liabilities CRUD list has fetched its data
+      var _liabilitiesData = [];      // cache of latest GET /api/liabilities
+      var _editingLiabilityIndex = -1;
       var _withdrawalDefaults = null; // from config load
 
       var currentScenarioSlug = '{{ scenario_slug }}';
@@ -2959,6 +3005,146 @@
         });
       }
 
+      /* ── Liabilities CRUD (definitions: name/type/rate/payment) ──── */
+      var LIABILITY_TYPE_ICONS = { mortgage: '🏠', auto: '🚗', other: '📄' };
+
+      function loadLiabilitiesCrud() {
+        apiGet('api/liabilities').then(function (data) {
+          if (!data || !data.ok) return;
+          _liabilitiesData = data.liabilities || [];
+          renderLiabilitiesCrudList();
+        }).catch(function (err) { console.error('Liabilities load error:', err); });
+      }
+
+      function renderLiabilitiesCrudList() {
+        var listEl = document.getElementById('liabilities-crud-list');
+        var emptyEl = document.getElementById('liabilities-crud-empty');
+        if (!listEl) return;
+        if (!_liabilitiesData.length) {
+          listEl.innerHTML = '';
+          if (emptyEl) emptyEl.style.display = '';
+          return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        var html = '';
+        _liabilitiesData.forEach(function (liab) {
+          var icon = LIABILITY_TYPE_ICONS[liab.type] || LIABILITY_TYPE_ICONS.other;
+          var metaParts = [];
+          if (liab.annual_rate != null) metaParts.push((liab.annual_rate * 100).toFixed(2) + '% APR');
+          if (liab.monthly_base != null) metaParts.push('$' + Number(liab.monthly_base).toLocaleString('en-US') + '/mo');
+          html +=
+            '<div class="event-card" data-index="' + liab.index + '">' +
+              '<span class="event-card-icon">' + icon + '</span>' +
+              '<div class="event-card-body">' +
+                '<div class="event-card-title">' + htmlEscape(liab.name || '(unnamed)') + '</div>' +
+                '<div class="event-card-meta">' + htmlEscape(metaParts.join('  ·  ')) + '</div>' +
+              '</div>' +
+              '<div class="event-card-actions" style="display:flex;align-items:center;gap:6px">' +
+                '<button type="button" class="evt-edit-btn" onclick="openLiabilityForm(' + liab.index + ')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit">Edit</button>' +
+                '<button type="button" class="evt-del-btn" onclick="deleteLiabilityDef(' + liab.index + ')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid rgba(248,113,113,0.3);background:transparent;color:#fca5a5;cursor:pointer;font-family:inherit">×</button>' +
+              '</div>' +
+            '</div>';
+        });
+        listEl.innerHTML = html;
+      }
+
+      function openLiabilityForm(index) {
+        _editingLiabilityIndex = (index != null) ? index : -1;
+        var liab = (index != null) ? _liabilitiesData.filter(function (l) { return l.index === index; })[0] : null;
+
+        document.getElementById('liability-form-title').textContent = liab ? 'Edit Liability' : 'Add Liability';
+        setField('liab-name', liab ? liab.name : '');
+        setField('liab-type', liab ? (liab.type || 'other') : 'other');
+        setField('liab-annual-rate', (liab && liab.annual_rate != null) ? (liab.annual_rate * 100) : '');
+        setField('liab-monthly-base', (liab && liab.monthly_base != null) ? formatDollar(liab.monthly_base) : '');
+        setField('liab-monthly-escrow', (liab && liab.monthly_escrow != null) ? formatDollar(liab.monthly_escrow) : '');
+        setField('liab-monthly-extra', (liab && liab.monthly_extra != null) ? formatDollar(liab.monthly_extra) : '');
+
+        var errEl = document.getElementById('liability-form-errors');
+        if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+        document.getElementById('liability-form-modal').style.display = 'flex';
+      }
+
+      function saveLiabilityForm() {
+        var errEl = document.getElementById('liability-form-errors');
+        var name = getField('liab-name');
+        if (!name) {
+          if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Missing required: Name'; }
+          return;
+        }
+        var body = {
+          name: name.trim(),
+          type: getField('liab-type') || 'other',
+        };
+        var rate = getField('liab-annual-rate');
+        body.annual_rate = rate ? parseFloat(rate) / 100 : 0;
+        body.monthly_base = parseDollar(getField('liab-monthly-base') || '0');
+        var escrow = getField('liab-monthly-escrow');
+        if (escrow) body.monthly_escrow = parseDollar(escrow);
+        var extra = getField('liab-monthly-extra');
+        if (extra) body.monthly_extra = parseDollar(extra);
+
+        var isEdit = _editingLiabilityIndex >= 0;
+        if (isEdit) body.index = _editingLiabilityIndex;
+        var endpoint = isEdit ? 'api/update-liability' : 'api/add-liability';
+
+        var saveBtn = document.getElementById('save-liability-btn');
+        saveBtn.disabled = true;
+        apiPost(endpoint, body).then(function (data) {
+          saveBtn.disabled = false;
+          if (data.ok) {
+            document.getElementById('liability-form-modal').style.display = 'none';
+            if (data.toml_content) {
+              var rawEl = document.getElementById('raw-toml-content');
+              if (rawEl) rawEl.value = data.toml_content;
+            }
+            loadLiabilitiesCrud();
+            loadSyntheticTab();
+            showSuccess(isEdit ? 'Liability updated.' : 'Liability added.');
+          } else {
+            if (errEl) { errEl.style.display = 'block'; errEl.textContent = data.error || 'Save failed.'; }
+          }
+        }).catch(function (err) {
+          saveBtn.disabled = false;
+          if (errEl) { errEl.style.display = 'block'; errEl.textContent = err.message; }
+        });
+      }
+
+      function deleteLiabilityDef(index) {
+        var liab = _liabilitiesData.filter(function (l) { return l.index === index; })[0];
+        var label = (liab && liab.name) || 'this liability';
+        if (!confirm('Delete "' + label + '"? Its starting balance entry (if any) will also be removed. This cannot be undone.')) return;
+        apiPost('api/delete-liability', { index: index }).then(function (data) {
+          if (data.ok) {
+            if (data.toml_content) {
+              var rawEl = document.getElementById('raw-toml-content');
+              if (rawEl) rawEl.value = data.toml_content;
+            }
+            loadLiabilitiesCrud();
+            loadSyntheticTab();
+            showSuccess('Liability deleted.');
+          } else {
+            showError(data.error || 'Delete failed.');
+          }
+        }).catch(function (err) { showError('Delete failed: ' + err.message); });
+      }
+
+      function initLiabilitiesCrud() {
+        var addBtn = document.getElementById('add-liability-def-btn');
+        if (addBtn) addBtn.addEventListener('click', function () { openLiabilityForm(null); });
+        var cancelBtn = document.getElementById('cancel-liability-form-btn');
+        if (cancelBtn) cancelBtn.addEventListener('click', function () {
+          document.getElementById('liability-form-modal').style.display = 'none';
+        });
+        var saveBtn = document.getElementById('save-liability-btn');
+        if (saveBtn) saveBtn.addEventListener('click', saveLiabilityForm);
+      }
+
+      // Expose for inline onclick in the card list
+      window.openLiabilityForm = openLiabilityForm;
+      window.deleteLiabilityDef = deleteLiabilityDef;
+
       function initAddProperty() {
         var btn = document.getElementById('add-property-btn');
         if (!btn) return;
@@ -3051,6 +3237,10 @@
             var tab = btn.getAttribute('data-tab');
             if (tab === 'accounts' && !_accountsData) {
               initAccountsTab();
+            }
+            if (tab === 'accounts' && !_liabilitiesLoaded) {
+              _liabilitiesLoaded = true;
+              loadLiabilitiesCrud();
             }
             // Lazy load events tab
             if (tab === 'events') {
@@ -4240,6 +4430,7 @@
         initAddProperty();
         initAddSsBenefit();
         initModeToggles();
+        initLiabilitiesCrud();
         installDsRadioHandler();
         initRenameScenario();
         installCategoryMoveHandler();

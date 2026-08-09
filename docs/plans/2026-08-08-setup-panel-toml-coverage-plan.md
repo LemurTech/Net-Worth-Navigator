@@ -1,6 +1,6 @@
 # Expose remaining TOML settings in the Setup Panel — staged plan
 
-**Status (2026-08-08):** Stages 0, 1, and 2 landed. Stages 3–5 still pending, in priority order below.
+**Status (2026-08-08):** Stages 0, 1, 2, and 3 landed. Stages 4–5 still pending, in priority order below.
 
 ## Context
 
@@ -43,11 +43,13 @@ Unlike Stage 1, this needed **no new backend endpoints** — every field here is
 
 Built the conditional-visibility helper (pattern #4) as a generic `data-mode-target`/`data-mode-group`/`data-visible-when` mechanism (`applyModeGroup()`/`initModeToggles()`), reused for both `contribution_method` and `annual_401k_employer_match_mode` mode toggles in this stage, ready for Stage 5's Monte Carlo failure-mode fields.
 
-## Stage 3 — Liabilities full CRUD
+## Stage 3 — Liabilities full CRUD (landed 2026-08-08)
 
-Currently the UI only edits *starting balances* for liabilities that already exist in raw TOML (`synthetic_start.liability_balances`, auto-detected read-only names). Add real add/edit/delete for `[[liabilities]]` records (`name`, `type` [mortgage/auto/other], `annual_rate`, `monthly_base`, `monthly_escrow`, `monthly_extra`), reusing pattern #3 (Events-style CRUD + modal form) since this is also an array of typed records. New endpoints: `add-liability` / `update-liability` / `delete-liability`.
+Previously the UI only edited *starting balances* for liabilities already in raw TOML. Added a full "Liabilities" card-list + add/edit modal (mirroring the Events tab's CRUD pattern) in the Accounts tab, positioned above the existing balance-only fields and visible regardless of data-source mode (unlike the balance values, which are synthetic-mode-only) — `name`, `type` (mortgage/auto/other), `annual_rate`, `monthly_base`, `monthly_escrow`, `monthly_extra`, via `GET /api/liabilities` + `POST /api/add-liability` / `update-liability` / `delete-liability`.
 
-Constraint to handle explicitly: a liability's `name` is the join key against `synthetic_start.liability_balances` (synthetic mode) and against Monarch/CSV account names (live mode) — renaming or deleting a liability must keep the balance-entry UI in sync rather than leaving an orphaned balance row.
+The name-as-join-key constraint is handled explicitly: renaming a liability migrates its matching `synthetic_start.liability_balances` entry to the new name (`_rename_liability_balance`), and deleting one removes the matching balance entry too (`_remove_liability_balance`) — both verified with a live end-to-end test against a scratch scenario copy, not just unit-level mocks. Duplicate names are rejected on add/rename. After any CRUD action, the UI re-fetches both the liabilities list and the synthetic balance rows so nothing goes stale.
+
+Deferred from Stage 1/2's original scope note (not requested and out of scope here): no attempt is made to update `SellHome.liability_names` event references when a liability is renamed/deleted — only the balance-entry join is kept in sync, matching the plan's original constraint description.
 
 ## Stage 4 — Household spending & tax policy baseline + remaining assumptions
 

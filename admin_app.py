@@ -2223,6 +2223,189 @@ async def api_toggle_event(request: Request) -> JSONResponse:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
+# ── API: Liabilities CRUD ────────────────────────────────────────────────────
+
+_VALID_LIABILITY_TYPES = {"mortgage", "auto", "other"}
+_LIABILITY_FLOAT_FIELDS = {"annual_rate", "monthly_base", "monthly_escrow", "monthly_extra"}
+
+
+def _validate_liability_fields(fields: dict, *, existing_names: set[str], current_name: str | None = None) -> list[str]:
+    errors: list[str] = []
+    name = str(fields.get("name", "")).strip()
+    if not name:
+        errors.append("Missing required field: name")
+    elif name in existing_names and name != current_name:
+        errors.append(f"A liability named '{name}' already exists.")
+    for field in ("annual_rate", "monthly_base"):
+        if fields.get(field) in (None, ""):
+            errors.append(f"Missing required field: {field}")
+    for field in _LIABILITY_FLOAT_FIELDS:
+        if fields.get(field) not in (None, ""):
+            try:
+                float(fields[field])
+            except (TypeError, ValueError):
+                errors.append(f"Field '{field}' must be a number")
+    liability_type = str(fields.get("type") or "other").strip().lower()
+    if liability_type not in _VALID_LIABILITY_TYPES:
+        errors.append(f"type must be one of {sorted(_VALID_LIABILITY_TYPES)}")
+    return errors
+
+
+def _build_liability_table(body: dict) -> "tomlkit.items.Table":
+    table = tomlkit.table()
+    table["name"] = str(body["name"]).strip()
+    table["annual_rate"] = float(body["annual_rate"])
+    table["monthly_base"] = float(body["monthly_base"])
+    if body.get("monthly_escrow") not in (None, ""):
+        table["monthly_escrow"] = float(body["monthly_escrow"])
+    if body.get("monthly_extra") not in (None, ""):
+        table["monthly_extra"] = float(body["monthly_extra"])
+    table["type"] = str(body.get("type") or "other").strip().lower()
+    return table
+
+
+def _rename_liability_balance(doc: tomlkit.TOMLDocument, old_name: str, new_name: str) -> None:
+    """Keep synthetic_start.liability_balances in sync with a rename so the
+    starting balance isn't silently orphaned under the old name."""
+    if old_name == new_name:
+        return
+    synthetic_start = doc.get("synthetic_start")
+    if not isinstance(synthetic_start, dict):
+        return
+    balances = synthetic_start.get("liability_balances")
+    if isinstance(balances, dict) and old_name in balances:
+        balances[new_name] = balances.pop(old_name)
+
+
+def _remove_liability_balance(doc: tomlkit.TOMLDocument, name: str) -> None:
+    synthetic_start = doc.get("synthetic_start")
+    if not isinstance(synthetic_start, dict):
+        return
+    balances = synthetic_start.get("liability_balances")
+    if isinstance(balances, dict) and name in balances:
+        del balances[name]
+
+
+@app.get("/api/liabilities")
+async def api_list_liabilities(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    config_text = _read_config_text(scenario_slug)
+    parsed = tomllib.loads(config_text)
+    liabilities = parsed.get("liabilities", [])
+    if not isinstance(liabilities, list):
+        liabilities = []
+    result = []
+    for i, item in enumerate(liabilities):
+        if not isinstance(item, dict):
+            continue
+        result.append({
+            "index": i,
+            "name": item.get("name", ""),
+            "type": item.get("type", "other"),
+            "annual_rate": item.get("annual_rate"),
+            "monthly_base": item.get("monthly_base"),
+            "monthly_escrow": item.get("monthly_escrow"),
+            "monthly_extra": item.get("monthly_extra"),
+        })
+    return JSONResponse({"ok": True, "liabilities": result})
+
+
+@app.post("/api/add-liability")
+async def api_add_liability(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        existing = doc.get("liabilities", [])
+        existing_names = {str(item.get("name", "")).strip() for item in existing if isinstance(item, dict)}
+        errors = _validate_liability_fields(body, existing_names=existing_names)
+        if errors:
+            return JSONResponse({"ok": False, "error": "; ".join(errors)}, status_code=400)
+
+        table = _build_liability_table(body)
+        if "liabilities" not in doc or not isinstance(doc["liabilities"], list):
+            doc["liabilities"] = tomlkit.aot()
+        doc["liabilities"].append(table)
+
+        _backup_and_write_toml(doc, scenario_slug)
+        new_index = len(doc["liabilities"]) - 1
+        return JSONResponse({"ok": True, "index": new_index, "toml_content": doc.as_string()})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+@app.post("/api/update-liability")
+async def api_update_liability(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+    index = body.get("index")
+    if index is None:
+        return JSONResponse({"ok": False, "error": "Missing liability index."}, status_code=400)
+    try:
+        idx = int(index)
+    except (TypeError, ValueError):
+        return JSONResponse({"ok": False, "error": "Liability index must be an integer."}, status_code=400)
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        liabilities = doc.get("liabilities")
+        if not isinstance(liabilities, list) or idx < 0 or idx >= len(liabilities):
+            return JSONResponse({"ok": False, "error": f"No liability at index {idx}."}, status_code=400)
+
+        old_name = str(liabilities[idx].get("name", "")).strip()
+        existing_names = {
+            str(item.get("name", "")).strip()
+            for i, item in enumerate(liabilities) if isinstance(item, dict) and i != idx
+        }
+        errors = _validate_liability_fields(body, existing_names=existing_names, current_name=old_name)
+        if errors:
+            return JSONResponse({"ok": False, "error": "; ".join(errors)}, status_code=400)
+
+        new_name = str(body["name"]).strip()
+        liabilities[idx] = _build_liability_table(body)
+        _rename_liability_balance(doc, old_name, new_name)
+
+        _backup_and_write_toml(doc, scenario_slug)
+        return JSONResponse({"ok": True, "toml_content": doc.as_string()})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+@app.post("/api/delete-liability")
+async def api_delete_liability(request: Request) -> JSONResponse:
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Request body must be JSON."}, status_code=400)
+    index = body.get("index")
+    if index is None:
+        return JSONResponse({"ok": False, "error": "Missing liability index."}, status_code=400)
+    try:
+        idx = int(index)
+    except (TypeError, ValueError):
+        return JSONResponse({"ok": False, "error": "Liability index must be an integer."}, status_code=400)
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        liabilities = doc.get("liabilities")
+        if not isinstance(liabilities, list) or idx < 0 or idx >= len(liabilities):
+            return JSONResponse({"ok": False, "error": f"No liability at index {idx}."}, status_code=400)
+
+        name = str(liabilities[idx].get("name", "")).strip()
+        del liabilities[idx]
+        _remove_liability_balance(doc, name)
+
+        _backup_and_write_toml(doc, scenario_slug)
+        return JSONResponse({"ok": True, "toml_content": doc.as_string()})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
 # ── API: add event ──────────────────────────────────────────────────────────────
 
 _VALID_EVENT_TYPES = {
