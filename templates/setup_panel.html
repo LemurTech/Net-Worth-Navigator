@@ -545,6 +545,7 @@
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="metadata">Metadata</button>
         <button class="tab-btn" data-tab="social-security">Social Security</button>
+        <button class="tab-btn" data-tab="income">Income &amp; Contributions</button>
         <button class="tab-btn" data-tab="accounts">Accounts</button>
         <button class="tab-btn" data-tab="events">Events</button>
         <button class="tab-btn" data-tab="toml">Raw TOML</button>
@@ -712,6 +713,150 @@
           <button type="button" class="add-property-btn" id="add-ss-benefit-person2-btn">+ Add claiming age</button>
         </div>
       </div><!-- /#tab-social-security -->
+
+      <!-- ── Tab: Income & Contributions ──────────────────────────── -->
+      <div class="tab-content tab-card" id="tab-income">
+        <div class="quick-section-title" style="border-top:none;padding-top:0">Income &amp; Contributions</div>
+        <div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;line-height:1.4">Each person's employment income and how retirement contributions are calculated. Percent fields are entered as whole numbers (e.g. 20 = 20%).</div>
+
+        <div class="synth-section" id="income-person1-section">
+          <h3>Person 1</h3>
+
+          <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Employment Income</div>
+          <div class="synth-row"><label>Annual Take-Home Pay</label><input type="text" class="synth-dollar" id="person1_annual_take_home" placeholder="$ 0"></div>
+          <div class="synth-hint">Net cash income used for pre-retirement spending. Anchored at the simulation's start year and grown forward automatically.</div>
+          <div class="synth-row"><label>Real Raise Above Inflation</label><input type="number" id="person1_annual_take_home_real_raise" step="0.5" placeholder="0"></div>
+          <div class="synth-hint">Annual raise beyond inflation, compounding each year. Leave at 0 if pay just keeps pace with inflation.</div>
+          <div class="synth-row"><label>Net of Contributions</label><input type="checkbox" id="person1_annual_take_home_net_flag" style="flex:0 0 auto;max-width:20px"></div>
+          <div class="synth-hint">Check this if the take-home pay above already has 401(k)/IRA contributions taken out, so they aren't subtracted twice from pre-retirement spending.</div>
+
+          <div class="quick-section-title">Retirement Contributions</div>
+          <div class="synth-row"><label>Contribution Method</label>
+            <select id="person1_contribution_method" data-mode-target="p1-contrib">
+              <option value="flat">Flat dollar amount</option>
+              <option value="percent_of_gross">Percent of gross income</option>
+            </select>
+          </div>
+
+          <div data-mode-group="p1-contrib" data-visible-when="flat">
+            <div class="synth-row"><label>401(k) Contribution</label><input type="text" class="synth-dollar" id="person1_annual_401k_contribution" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Extra Annual Increase</label><input type="number" id="person1_annual_401k_contribution_extra_increase" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Additional yearly escalation on top of normal income growth.</div>
+          </div>
+          <div data-mode-group="p1-contrib" data-visible-when="percent_of_gross">
+            <div class="synth-row"><label>Gross Income</label><input type="text" class="synth-dollar" id="person1_gross_income" placeholder="$ 0"></div>
+            <div class="synth-hint">Used only for contribution math — not the same as take-home pay above.</div>
+            <div class="synth-row"><label>Gross Income Increase</label><input type="number" id="person1_gross_income_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-row"><label>Contribution % of Gross</label><input type="number" id="person1_retirement_contribution_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-row"><label>Contribution % Increase</label><input type="number" id="person1_retirement_contribution_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-row"><label>Contribution % Cap</label><input type="number" id="person1_retirement_contribution_max_percent" step="0.5" placeholder="100"></div>
+            <div class="synth-hint">The escalating contribution percentage above never exceeds this cap.</div>
+          </div>
+
+          <div class="quick-section-title">Employer Match</div>
+          <div class="synth-row"><label>Match Mode</label>
+            <select id="person1_annual_401k_employer_match_mode" data-mode-target="p1-match">
+              <option value="flat">Flat dollar amount</option>
+              <option value="percent_of_gross">Percent of gross income</option>
+            </select>
+          </div>
+          <div data-mode-group="p1-match" data-visible-when="flat">
+            <div class="synth-row"><label>Employer Match</label><input type="text" class="synth-dollar" id="person1_annual_401k_employer_match" placeholder="$ 0"></div>
+          </div>
+          <div data-mode-group="p1-match" data-visible-when="percent_of_gross">
+            <div class="synth-row"><label>Match Rate</label><input type="number" id="person1_annual_401k_employer_match_rate" step="1" placeholder="0"></div>
+            <div class="synth-hint">e.g. 100 = dollar-for-dollar match on every contributed dollar (up to the cap below).</div>
+            <div class="synth-row"><label>Match Applies Up To</label><input type="number" id="person1_annual_401k_employer_match_max_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Percent of salary the match applies to, e.g. 6 = first 6% of salary contributed.</div>
+          </div>
+
+          <div class="quick-section-title">IRA &amp; Contribution Routing</div>
+          <div class="synth-row"><label>Direct IRA Contribution</label><input type="text" class="synth-dollar" id="person1_annual_ira_contribution" placeholder="$ 0"></div>
+          <div class="synth-row"><label>401(k) Deposits Go To</label>
+            <select id="person1_annual_401k_contribution_bucket"><option value="trad_ira">Traditional</option><option value="roth">Roth</option></select>
+          </div>
+          <div class="synth-row"><label>IRA Deposits Go To</label>
+            <select id="person1_annual_ira_contribution_bucket"><option value="trad_ira">Traditional</option><option value="roth">Roth</option></select>
+          </div>
+          <div class="synth-row"><label>Split Override: Trad %</label><input type="number" id="person1_401k_split_trad_ira" step="1" placeholder="e.g. 70"></div>
+          <div class="synth-row"><label>Split Override: Roth %</label><input type="number" id="person1_401k_split_roth" step="1" placeholder="e.g. 30"></div>
+          <div class="synth-hint">Optional: splits the 401(k) contribution proportionally between buckets instead of the single routing choice above. Should sum to 100%. Leave both blank to ignore.</div>
+
+          <div class="quick-section-title">Household Ownership Shares</div>
+          <div class="synth-row"><label>Share of Traditional Balance</label><input type="number" id="person1_rmd_trad_ira_share" step="1" placeholder="e.g. 50"></div>
+          <div class="synth-hint">This person's share of the household's traditional IRA/401(k) balance, used for Required Minimum Distribution calculations. Defaults to 50/50 if left blank for both people.</div>
+          <div class="synth-row"><label>Share of Roth Balance</label><input type="number" id="person1_roth_share" step="1" placeholder="e.g. 50"></div>
+        </div>
+
+        <div class="synth-section person2-toggle-section" id="income-person2-section">
+          <h3>Person 2</h3>
+
+          <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Employment Income</div>
+          <div class="synth-row"><label>Annual Take-Home Pay</label><input type="text" class="synth-dollar" id="person2_annual_take_home" placeholder="$ 0"></div>
+          <div class="synth-hint">Net cash income used for pre-retirement spending. Anchored at the simulation's start year and grown forward automatically.</div>
+          <div class="synth-row"><label>Real Raise Above Inflation</label><input type="number" id="person2_annual_take_home_real_raise" step="0.5" placeholder="0"></div>
+          <div class="synth-hint">Annual raise beyond inflation, compounding each year. Leave at 0 if pay just keeps pace with inflation.</div>
+          <div class="synth-row"><label>Net of Contributions</label><input type="checkbox" id="person2_annual_take_home_net_flag" style="flex:0 0 auto;max-width:20px"></div>
+          <div class="synth-hint">Check this if the take-home pay above already has 401(k)/IRA contributions taken out, so they aren't subtracted twice from pre-retirement spending.</div>
+
+          <div class="quick-section-title">Retirement Contributions</div>
+          <div class="synth-row"><label>Contribution Method</label>
+            <select id="person2_contribution_method" data-mode-target="p2-contrib">
+              <option value="flat">Flat dollar amount</option>
+              <option value="percent_of_gross">Percent of gross income</option>
+            </select>
+          </div>
+
+          <div data-mode-group="p2-contrib" data-visible-when="flat">
+            <div class="synth-row"><label>401(k) Contribution</label><input type="text" class="synth-dollar" id="person2_annual_401k_contribution" placeholder="$ 0"></div>
+            <div class="synth-row"><label>Extra Annual Increase</label><input type="number" id="person2_annual_401k_contribution_extra_increase" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Additional yearly escalation on top of normal income growth.</div>
+          </div>
+          <div data-mode-group="p2-contrib" data-visible-when="percent_of_gross">
+            <div class="synth-row"><label>Gross Income</label><input type="text" class="synth-dollar" id="person2_gross_income" placeholder="$ 0"></div>
+            <div class="synth-hint">Used only for contribution math — not the same as take-home pay above.</div>
+            <div class="synth-row"><label>Gross Income Increase</label><input type="number" id="person2_gross_income_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-row"><label>Contribution % of Gross</label><input type="number" id="person2_retirement_contribution_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-row"><label>Contribution % Increase</label><input type="number" id="person2_retirement_contribution_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-row"><label>Contribution % Cap</label><input type="number" id="person2_retirement_contribution_max_percent" step="0.5" placeholder="100"></div>
+            <div class="synth-hint">The escalating contribution percentage above never exceeds this cap.</div>
+          </div>
+
+          <div class="quick-section-title">Employer Match</div>
+          <div class="synth-row"><label>Match Mode</label>
+            <select id="person2_annual_401k_employer_match_mode" data-mode-target="p2-match">
+              <option value="flat">Flat dollar amount</option>
+              <option value="percent_of_gross">Percent of gross income</option>
+            </select>
+          </div>
+          <div data-mode-group="p2-match" data-visible-when="flat">
+            <div class="synth-row"><label>Employer Match</label><input type="text" class="synth-dollar" id="person2_annual_401k_employer_match" placeholder="$ 0"></div>
+          </div>
+          <div data-mode-group="p2-match" data-visible-when="percent_of_gross">
+            <div class="synth-row"><label>Match Rate</label><input type="number" id="person2_annual_401k_employer_match_rate" step="1" placeholder="0"></div>
+            <div class="synth-hint">e.g. 100 = dollar-for-dollar match on every contributed dollar (up to the cap below).</div>
+            <div class="synth-row"><label>Match Applies Up To</label><input type="number" id="person2_annual_401k_employer_match_max_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Percent of salary the match applies to, e.g. 6 = first 6% of salary contributed.</div>
+          </div>
+
+          <div class="quick-section-title">IRA &amp; Contribution Routing</div>
+          <div class="synth-row"><label>Direct IRA Contribution</label><input type="text" class="synth-dollar" id="person2_annual_ira_contribution" placeholder="$ 0"></div>
+          <div class="synth-row"><label>401(k) Deposits Go To</label>
+            <select id="person2_annual_401k_contribution_bucket"><option value="trad_ira">Traditional</option><option value="roth">Roth</option></select>
+          </div>
+          <div class="synth-row"><label>IRA Deposits Go To</label>
+            <select id="person2_annual_ira_contribution_bucket"><option value="trad_ira">Traditional</option><option value="roth">Roth</option></select>
+          </div>
+          <div class="synth-row"><label>Split Override: Trad %</label><input type="number" id="person2_401k_split_trad_ira" step="1" placeholder="e.g. 70"></div>
+          <div class="synth-row"><label>Split Override: Roth %</label><input type="number" id="person2_401k_split_roth" step="1" placeholder="e.g. 30"></div>
+          <div class="synth-hint">Optional: splits the 401(k) contribution proportionally between buckets instead of the single routing choice above. Should sum to 100%. Leave both blank to ignore.</div>
+
+          <div class="quick-section-title">Household Ownership Shares</div>
+          <div class="synth-row"><label>Share of Traditional Balance</label><input type="number" id="person2_rmd_trad_ira_share" step="1" placeholder="e.g. 50"></div>
+          <div class="synth-hint">This person's share of the household's traditional IRA/401(k) balance, used for Required Minimum Distribution calculations. Defaults to 50/50 if left blank for both people.</div>
+          <div class="synth-row"><label>Share of Roth Balance</label><input type="number" id="person2_roth_share" step="1" placeholder="e.g. 50"></div>
+        </div>
+      </div><!-- /#tab-income -->
 
       <!-- ── Tab: Accounts ────────────────────────────────────────── -->
       <div class="tab-content tab-card" id="tab-accounts">
@@ -1203,6 +1348,81 @@
         setField('person1_birth_year', p1BirthYear);
         setField('person2_birth_year', p2BirthYear);
 
+        // ── Income & Contributions tab: bounded per-person field extraction ──
+        // Bounded to each person's own [personN] block (stopping at the next
+        // non-personN-dotted section header) so an optional field missing from
+        // one person's block can't accidentally pick up the other person's value.
+        function personBlock(personKey) {
+          var startRe = new RegExp('^\\[' + personKey + '\\]\\s*$', 'm');
+          var sm = configContent.match(startRe);
+          if (!sm) return '';
+          var rest = configContent.slice(sm.index + sm[0].length);
+          var stopRe = new RegExp('\\n\\[(?!' + personKey + '\\.)[^\\]]*\\]');
+          var stopM = rest.match(stopRe);
+          return stopM ? rest.slice(0, stopM.index) : rest;
+        }
+        function grabNum(block, field) {
+          var re = new RegExp('^\\s*' + field + '\\s*=\\s*([\\-\\d.]+)', 'm');
+          var m = block.match(re);
+          return (m && m[1] !== undefined && m[1] !== '') ? parseFloat(m[1]) : null;
+        }
+        function grabStr(block, field) {
+          var re = new RegExp('^\\s*' + field + '\\s*=\\s*"([^"]*)"', 'm');
+          var m = block.match(re);
+          return (m && m[1]) ? m[1] : null;
+        }
+        function grabBool(block, field) {
+          var re = new RegExp('^\\s*' + field + '\\s*=\\s*(true|false)', 'm');
+          var m = block.match(re);
+          return m ? (m[1] === 'true') : null;
+        }
+        function pct(value) { return value != null ? (value * 100) : ''; }
+
+        ['person1', 'person2'].forEach(function (personKey) {
+          var block = personBlock(personKey);
+
+          setField(personKey + '_annual_take_home', grabNum(block, 'annual_take_home'));
+          setField(personKey + '_annual_take_home_real_raise', pct(grabNum(block, 'annual_take_home_real_raise')));
+          var netFlagEl = document.getElementById(personKey + '_annual_take_home_net_flag');
+          if (netFlagEl) netFlagEl.checked = !!grabBool(block, 'annual_take_home_is_net_of_retirement_contributions');
+
+          var contribMethod = grabStr(block, 'contribution_method');
+          setField(personKey + '_contribution_method', (contribMethod === 'percent_of_gross') ? 'percent_of_gross' : 'flat');
+          setField(personKey + '_annual_401k_contribution', grabNum(block, 'annual_401k_contribution'));
+          setField(personKey + '_annual_401k_contribution_extra_increase', pct(grabNum(block, 'annual_401k_contribution_extra_increase')));
+          setField(personKey + '_gross_income', grabNum(block, 'gross_income'));
+          setField(personKey + '_gross_income_annual_increase_percent', pct(grabNum(block, 'gross_income_annual_increase_percent')));
+          setField(personKey + '_retirement_contribution_percent', pct(grabNum(block, 'retirement_contribution_percent')));
+          setField(personKey + '_retirement_contribution_annual_increase_percent', pct(grabNum(block, 'retirement_contribution_annual_increase_percent')));
+          setField(personKey + '_retirement_contribution_max_percent', pct(grabNum(block, 'retirement_contribution_max_percent')));
+
+          var matchMode = grabStr(block, 'annual_401k_employer_match_mode');
+          setField(personKey + '_annual_401k_employer_match_mode', (matchMode === 'percent_of_gross') ? 'percent_of_gross' : 'flat');
+          setField(personKey + '_annual_401k_employer_match', grabNum(block, 'annual_401k_employer_match'));
+          setField(personKey + '_annual_401k_employer_match_rate', pct(grabNum(block, 'annual_401k_employer_match_rate')));
+          setField(personKey + '_annual_401k_employer_match_max_percent', pct(grabNum(block, 'annual_401k_employer_match_max_percent')));
+
+          setField(personKey + '_annual_ira_contribution', grabNum(block, 'annual_ira_contribution'));
+          var contribBucket = grabStr(block, 'annual_401k_contribution_bucket');
+          setField(personKey + '_annual_401k_contribution_bucket', (contribBucket === 'roth') ? 'roth' : 'trad_ira');
+          var iraBucket = grabStr(block, 'annual_ira_contribution_bucket');
+          setField(personKey + '_annual_ira_contribution_bucket', (iraBucket === 'trad_ira') ? 'trad_ira' : 'roth');
+
+          // Sub-table, searched against the full document rather than the
+          // bounded flat-field block (sub-tables render after this person's
+          // flat keys, which is exactly where the bounded block stops).
+          var splitM = configContent.match(new RegExp('\\[' + personKey + '\\.annual_401k_contribution_split\\]([\\s\\S]*?)(?=\\n\\[|$)'));
+          if (splitM) {
+            var tradM = splitM[1].match(/^\s*trad_ira\s*=\s*([\d.]+)/m);
+            var rothM = splitM[1].match(/^\s*roth\s*=\s*([\d.]+)/m);
+            setField(personKey + '_401k_split_trad_ira', tradM ? pct(parseFloat(tradM[1])) : '');
+            setField(personKey + '_401k_split_roth', rothM ? pct(parseFloat(rothM[1])) : '');
+          }
+
+          setField(personKey + '_rmd_trad_ira_share', pct(grabNum(block, 'rmd_trad_ira_share')));
+          setField(personKey + '_roth_share', pct(grabNum(block, 'roth_share')));
+        });
+
         function getBirthYear(inputId) {
           var el = document.getElementById(inputId);
           return el ? (parseInt(el.value, 10) || 0) : 0;
@@ -1451,6 +1671,66 @@
           if (survivorAge) body[personKey + '_survivor_ss_start_age'] = parseInt(survivorAge, 10);
           var flatBenefit = getField(personKey + '_ss_monthly_benefit');
           if (flatBenefit) body[personKey + '_ss_monthly_benefit'] = parseFloat(flatBenefit);
+        });
+
+        // Income & Contributions fields
+        function getDollarField(id) {
+          var raw = getField(id);
+          return raw != null ? parseDollar(raw) : null;
+        }
+        ['person1', 'person2'].forEach(function (personKey) {
+          var takeHome = getDollarField(personKey + '_annual_take_home');
+          if (takeHome != null) body[personKey + '_annual_take_home'] = takeHome;
+          var raise = getField(personKey + '_annual_take_home_real_raise');
+          if (raise) body[personKey + '_annual_take_home_real_raise'] = parseFloat(raise) / 100;
+          var netFlagEl = document.getElementById(personKey + '_annual_take_home_net_flag');
+          if (netFlagEl) body[personKey + '_annual_take_home_is_net_of_retirement_contributions'] = netFlagEl.checked;
+
+          var contribMethod = getField(personKey + '_contribution_method');
+          if (contribMethod) body[personKey + '_contribution_method'] = contribMethod;
+          var contrib401k = getDollarField(personKey + '_annual_401k_contribution');
+          if (contrib401k != null) body[personKey + '_annual_401k_contribution'] = contrib401k;
+          var contrib401kInc = getField(personKey + '_annual_401k_contribution_extra_increase');
+          if (contrib401kInc) body[personKey + '_annual_401k_contribution_extra_increase'] = parseFloat(contrib401kInc) / 100;
+
+          var grossIncome = getDollarField(personKey + '_gross_income');
+          if (grossIncome != null) body[personKey + '_gross_income'] = grossIncome;
+          var grossIncInc = getField(personKey + '_gross_income_annual_increase_percent');
+          if (grossIncInc) body[personKey + '_gross_income_annual_increase_percent'] = parseFloat(grossIncInc) / 100;
+          var contribPct = getField(personKey + '_retirement_contribution_percent');
+          if (contribPct) body[personKey + '_retirement_contribution_percent'] = parseFloat(contribPct) / 100;
+          var contribPctInc = getField(personKey + '_retirement_contribution_annual_increase_percent');
+          if (contribPctInc) body[personKey + '_retirement_contribution_annual_increase_percent'] = parseFloat(contribPctInc) / 100;
+          var contribPctMax = getField(personKey + '_retirement_contribution_max_percent');
+          if (contribPctMax) body[personKey + '_retirement_contribution_max_percent'] = parseFloat(contribPctMax) / 100;
+
+          var matchMode = getField(personKey + '_annual_401k_employer_match_mode');
+          if (matchMode) body[personKey + '_annual_401k_employer_match_mode'] = matchMode;
+          var match = getDollarField(personKey + '_annual_401k_employer_match');
+          if (match != null) body[personKey + '_annual_401k_employer_match'] = match;
+          var matchRate = getField(personKey + '_annual_401k_employer_match_rate');
+          if (matchRate) body[personKey + '_annual_401k_employer_match_rate'] = parseFloat(matchRate) / 100;
+          var matchMax = getField(personKey + '_annual_401k_employer_match_max_percent');
+          if (matchMax) body[personKey + '_annual_401k_employer_match_max_percent'] = parseFloat(matchMax) / 100;
+
+          var iraContrib = getDollarField(personKey + '_annual_ira_contribution');
+          if (iraContrib != null) body[personKey + '_annual_ira_contribution'] = iraContrib;
+          var contribBucket = getField(personKey + '_annual_401k_contribution_bucket');
+          if (contribBucket) body[personKey + '_annual_401k_contribution_bucket'] = contribBucket;
+          var iraBucket = getField(personKey + '_annual_ira_contribution_bucket');
+          if (iraBucket) body[personKey + '_annual_ira_contribution_bucket'] = iraBucket;
+
+          var splitTrad = getField(personKey + '_401k_split_trad_ira');
+          var splitRoth = getField(personKey + '_401k_split_roth');
+          if (splitTrad || splitRoth) {
+            body[personKey + '_401k_split_trad_ira'] = splitTrad ? parseFloat(splitTrad) / 100 : 0;
+            body[personKey + '_401k_split_roth'] = splitRoth ? parseFloat(splitRoth) / 100 : 0;
+          }
+
+          var rmdShare = getField(personKey + '_rmd_trad_ira_share');
+          if (rmdShare) body[personKey + '_rmd_trad_ira_share'] = parseFloat(rmdShare) / 100;
+          var rothShare = getField(personKey + '_roth_share');
+          if (rothShare) body[personKey + '_roth_share'] = parseFloat(rothShare) / 100;
         });
 
         // Value basis
@@ -2659,6 +2939,23 @@
           btn.addEventListener('click', function () {
             addSsBenefitRow(personKey, '', '');
           });
+        });
+      }
+
+      /* ── Conditional field-group visibility (mode selects) ───────── */
+      function applyModeGroup(selectEl) {
+        var key = selectEl.getAttribute('data-mode-target');
+        if (!key) return;
+        var val = selectEl.value;
+        document.querySelectorAll('[data-mode-group="' + key + '"]').forEach(function (g) {
+          g.style.display = (g.getAttribute('data-visible-when') === val) ? '' : 'none';
+        });
+      }
+
+      function initModeToggles() {
+        document.querySelectorAll('select[data-mode-target]').forEach(function (sel) {
+          sel.addEventListener('change', function () { applyModeGroup(sel); });
+          applyModeGroup(sel);
         });
       }
 
@@ -3942,6 +4239,7 @@
         initCsvSave();
         initAddProperty();
         initAddSsBenefit();
+        initModeToggles();
         installDsRadioHandler();
         initRenameScenario();
         installCategoryMoveHandler();

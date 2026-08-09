@@ -1875,6 +1875,43 @@ _QUICK_CONTROL_MAP: dict[str, tuple[str, type]] = {
     "person2_ss_monthly_benefit": ("person2.ss_monthly_benefit", float),
 }
 
+# Income & Contributions tab: one entry per person per field, generated to
+# avoid 40+ near-identical hand-written lines. UI field id is "{person}_{field}".
+_PERSON_INCOME_FIELDS: list[tuple[str, type]] = [
+    ("annual_take_home", float),
+    ("annual_take_home_real_raise", float),
+    ("annual_take_home_is_net_of_retirement_contributions", bool),
+    ("contribution_method", str),
+    ("annual_401k_contribution", float),
+    ("annual_401k_contribution_extra_increase", float),
+    ("gross_income", float),
+    ("gross_income_annual_increase_percent", float),
+    ("retirement_contribution_percent", float),
+    ("retirement_contribution_annual_increase_percent", float),
+    ("retirement_contribution_max_percent", float),
+    ("annual_401k_employer_match_mode", str),
+    ("annual_401k_employer_match", float),
+    ("annual_401k_employer_match_rate", float),
+    ("annual_401k_employer_match_max_percent", float),
+    ("annual_ira_contribution", float),
+    ("annual_401k_contribution_bucket", str),
+    ("annual_ira_contribution_bucket", str),
+    ("rmd_trad_ira_share", float),
+    ("roth_share", float),
+]
+# UI field id suffix differs from the TOML path suffix for these two (the
+# TOML path is nested one level deeper, under annual_401k_contribution_split).
+_PERSON_401K_SPLIT_FIELDS: list[tuple[str, str]] = [
+    ("401k_split_trad_ira", "annual_401k_contribution_split.trad_ira"),
+    ("401k_split_roth", "annual_401k_contribution_split.roth"),
+]
+for _person_key in ("person1", "person2"):
+    for _field, _type in _PERSON_INCOME_FIELDS:
+        _QUICK_CONTROL_MAP[f"{_person_key}_{_field}"] = (f"{_person_key}.{_field}", _type)
+    for _ui_suffix, _toml_suffix in _PERSON_401K_SPLIT_FIELDS:
+        _QUICK_CONTROL_MAP[f"{_person_key}_{_ui_suffix}"] = (f"{_person_key}.{_toml_suffix}", float)
+del _person_key, _field, _type, _ui_suffix, _toml_suffix
+
 _QUICK_ARRAY_MAP: dict[str, str] = {
     "retirement_withdrawal_order": "withdrawal_policy.retirement_withdrawal_order",
     "accumulation_withdrawal_order": "withdrawal_policy.accumulation_withdrawal_order",

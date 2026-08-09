@@ -1,6 +1,6 @@
 # Expose remaining TOML settings in the Setup Panel — staged plan
 
-**Status (2026-08-08):** Stage 0 and Stage 1 landed. Stages 2–5 still pending, in priority order below.
+**Status (2026-08-08):** Stages 0, 1, and 2 landed. Stages 3–5 still pending, in priority order below.
 
 ## Context
 
@@ -35,11 +35,13 @@ Two decisions the user made up front:
 - **Surfaced already-plumbed live data**: `GET /api/events`'s `monthly_benefit` / `benefit_error` per SocialSecurity event now renders on the event card meta line (resolved $/mo, or a `⚠` + the specific missing-benefit message). Also fixed `apiPost()` globally to parse the JSON error body on non-2xx responses instead of discarding it for a generic "API POST returned 400" — this was silently swallowing the specific SS resolution error message (and any other endpoint's `{"error": "..."}` body) on every add/update-event failure across the whole Setup Panel, not just SS.
 - Regression tests: `tests/test_social_security_ui.py`.
 
-## Stage 2 — Person employment & contribution economics (next up)
+## Stage 2 — Person employment & contribution economics (landed 2026-08-08)
 
-The single largest remaining gap. New fields per person (all via pattern #1 scalar writes, `person{1,2}.<field>` dotted paths): `annual_take_home`, `annual_take_home_real_raise`, `annual_take_home_is_net_of_retirement_contributions`, `contribution_method` (flat/percent_of_gross toggle), flat-mode fields (`annual_401k_contribution`, `annual_401k_contribution_extra_increase`), percent-mode fields (`gross_income`, `gross_income_annual_increase_percent`, `retirement_contribution_percent`, `retirement_contribution_annual_increase_percent`, `retirement_contribution_max_percent`), employer match (`annual_401k_employer_match_mode`, flat `annual_401k_employer_match`, percent `annual_401k_employer_match_rate`/`_max_percent`), `annual_ira_contribution`, bucket routing (`annual_401k_contribution_bucket`, `annual_ira_contribution_bucket`), proportional split (`annual_401k_contribution_split.trad_ira`/`.roth`), and household ownership shares (`rmd_trad_ira_share`, `roth_share`).
+The single largest remaining gap, now closed. New "Income & Contributions" tab (after Social Security, before Accounts), with a section per person covering: `annual_take_home` + `annual_take_home_real_raise` + `annual_take_home_is_net_of_retirement_contributions`; `contribution_method` (flat/percent_of_gross) with mode-dependent field groups; employer match (`annual_401k_employer_match_mode` + flat/percent fields); `annual_ira_contribution`; bucket routing (`annual_401k_contribution_bucket`, `annual_ira_contribution_bucket`); the `annual_401k_contribution_split.trad_ira`/`.roth` override; and household ownership shares (`rmd_trad_ira_share`, `roth_share`).
 
-Apply the new conditional-visibility helper (pattern #4, built in this stage) so `contribution_method` and `annual_401k_employer_match_mode` each show only their relevant field group. Natural placement: new "Person" sub-tab or an expanded section within Metadata → People, since no dedicated per-person detail view exists today. Given the field count, consider splitting delivery into 2a (take-home, contribution flat/percent, employer match) and 2b (bucket routing, split ratios, ownership shares) — sequencing within the stage, not a hard gate.
+Unlike Stage 1, this needed **no new backend endpoints** — every field here is a fixed per-person scalar (no variable-cardinality data like the SS benefits table), so it reuses `_QUICK_CONTROL_MAP`/`_resolve_toml_path` purely by adding ~40 generated map entries (`person{1,2}.<field>`), and reads/writes through the existing `save-quick-controls` flow. Loading happens via the existing raw-TOML regex-scraping system (`initQuickEdit()`) rather than a GET endpoint, extended with a **bounded per-person block extractor** — critical because a naive unbounded regex risks bleeding an optional field from one person's block into the other's if it's missing from the first. Percent-like fields (contribution %, raise %, match rate, ownership shares, split ratios) follow the existing "whole-number-in-UI, fraction-in-TOML" convention already used for `stock_return`/`bond_return`/`equity_allocation` (divide by 100 on save, multiply by 100 on load).
+
+Built the conditional-visibility helper (pattern #4) as a generic `data-mode-target`/`data-mode-group`/`data-visible-when` mechanism (`applyModeGroup()`/`initModeToggles()`), reused for both `contribution_method` and `annual_401k_employer_match_mode` mode toggles in this stage, ready for Stage 5's Monte Carlo failure-mode fields.
 
 ## Stage 3 — Liabilities full CRUD
 
