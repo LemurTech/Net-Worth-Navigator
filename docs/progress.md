@@ -3,6 +3,17 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-09 (User Guide v2 alignment)
+
+### Changed
+
+- **Setup and onboarding guide** — Replaced the obsolete three-tab editor description with the six current tabs: Metadata, Social Security, Income & Contributions, Accounts, Events, and Raw TOML. Added the sample-scenario read-only/clone rule and made the quick-start workflow match those tabs.
+- **Events and configuration reference** — Made `Retire`, `SocialSecurity`, and `EndOfPlan` explicitly event-driven; documented live Social Security benefit lookup and `ContributionChange`; removed stale synthesized-event and stored-benefit guidance; and corrected BuyHome financing and Education scope.
+
+### Tests
+
+- Restored locked guide dependencies and built the Astro/Starlight site successfully (29 pages).
+
 ## 2026-08-09 (Definitions reference alignment)
 
 ### Changed

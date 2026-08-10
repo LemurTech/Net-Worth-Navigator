@@ -3,7 +3,7 @@ title: Using the Setup Panel
 description: A visual tour of the browser-based configuration interface
 ---
 
-The Setup Panel at `http://localhost:8010/setup` is the primary way to create, edit, and manage your scenarios. It has three tabs and a global action bar.
+The Setup Panel at `http://localhost:8010/setup` is the primary way to create, edit, and manage your scenarios. It has six tabs and a global action bar. Timeline decisions such as retirement, Social Security claiming, and the modeled end of plan live in **Events**, not in the person profile.
 
 ## Quick Start
 
@@ -11,40 +11,57 @@ The Setup Panel at `http://localhost:8010/setup` is the primary way to create, e
 - Open **[http://localhost:8010/setup](http://localhost:8010/setup)**
 - Click **New from Template**
 - Choose **Single-Person** or **Couple / Two-Person**, enter a name, and click **Create**
-- You're now in the Setup Panel for your new scenario. Fill in each tab:
-
-1. **Metadata tab** — edit your plan name, description, household members, cash targets, and investment assumptions
-- **Accounts tab** — select your data source (Manual, Monarch, or CSV) and enter your starting balances
-- **Raw TOML tab** — make advanced edits directly in the configuration file
+- You're now in the Setup Panel for your new scenario. Work through the tabs below; the first five cover the normal workflow, while Raw TOML remains available for advanced inspection or bulk edits.
 - Click **Save** to save your changes
 - Click **Validate** to check for configuration errors
 - Click **Re-render** to generate the projection
 
 **Tip:** The **Withdrawal / Surplus Order** settings in the Metadata tab control the priority of account buckets. Feel free to leave the defaults — they're sensible for most households.
 
-## The Three Tabs
+## The Six Tabs
+
 ### Metadata Tab
 
 This tab holds your scenario's high-level settings:
 
-- **Plan Name & Description** — a human-readable name and notes
-- **Household Members** — names, birth years, retirement years, and age sliders for each person
-- **Cash Targets** — reserve targets for accumulation, retirement, and survivor phases
-- **Assumptions & Years** — stock return, bond return, inflation, equity allocation, start/end years, state tax selection
-- **Withdrawal / Surplus Order** — drag-to-reorder chips controlling the priority of account buckets
-- **Data Source** — select Manual Entry, Monarch Money, or CSV Import
+- **Plan name, description, and household type** — identify the scenario and whether it is single-person or couple
+- **People** — names, dates of birth, take-home income, and current employment assumptions
+- **Cash targets and assumptions** — reserve targets, market assumptions, plan years, display basis, and state-tax selection
+- **Advanced disclosures** — withdrawal/surplus order, spending and tax settings, RMD controls, and simulation/Monte Carlo settings
+
+### Social Security Tab
+
+- Enter each person's age-to-monthly-benefit table from their SSA estimate.
+- Add the actual claim timing as a **SocialSecurity** event on the Events tab. The editor asks for an age and saves the corresponding year from the person's date of birth.
+- NWN resolves the benefit from the table at render time; it does not store a monthly benefit on the event.
+
+### Income & Contributions Tab
+
+- **Employment income** — take-home pay, real raises, and whether contributions are already excluded from take-home pay
+- **Contributions** — flat-dollar or percent-of-gross inputs, annual increases, employer matching, 401(k)/IRA routing, and traditional/Roth splits
+- **Ownership** — RMD and Roth ownership shares for pooled balances
 
 ### Accounts Tab
 
 Changes based on your selected data source:
 
-- **Manual Entry:** Structured form for investable balances (taxable, traditional IRA, Roth, cash), non-investable assets (home value, vehicles), property values, and liability balances
-- **Monarch Money:** Account table with category/owner/disabled controls and a **Refresh from Monarch** button
-- **CSV Import:** File upload, parsed account preview with category/owner dropdowns, and **Import & Save**
+- **Manual Entry:** Structured form for investable balances (taxable, traditional IRA, Roth, cash), non-investable assets, named properties, and named liabilities
+- **Monarch Money:** Account table with category, owner, disabled, and basis controls plus **Refresh from Monarch**
+- **CSV Import:** File upload, parsed account preview, category/owner assignment, and import
+
+### Events Tab
+
+Create, edit, delete, sort, or disable the event-driven timeline. Use it for **Retire**, **SocialSecurity**, and **EndOfPlan** as well as income, expenses, property changes, career events, spending changes, and contribution changes. See [Events & the Event System](/Net-Worth-Navigator/key-concepts/events/) for the modeling rules.
 
 ### Raw TOML Tab
 
-A text editor for the raw TOML configuration file. Every setting in the metadata and accounts tabs is stored here. Use this tab for bulk edits, copy-pasting event blocks, or advanced configuration changes that aren't exposed in the structured controls.
+A text editor for the complete scenario file. Every structured control is stored here. Use it for bulk edits or advanced configuration; after hand editing, choose **Validate** before rendering.
+
+## Editing a Sample
+
+Bundled sample scenarios are deliberately read-only. You can render and inspect them, but must use **Clone** or **New from Template** before saving changes.
+
+## Actions
 
 ## Global Action Bar
 

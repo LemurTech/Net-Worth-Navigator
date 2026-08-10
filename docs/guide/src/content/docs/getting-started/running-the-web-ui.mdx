@@ -63,15 +63,16 @@ After rendering a scenario, open **projection.html** at `http://localhost:8010/p
 
 ## The Scenario Setup Panel
 
-The Setup Panel at `/finances/config/setup` is how you create and edit scenarios. It uses three tabs:
+The Setup Panel at `/finances/config/setup` is how you create and edit scenarios. Its six tabs are:
 
-- **Metadata** — Plan name, description, household members (names, birth years, retirement years, age sliders), cash reserve targets, investment assumptions (returns, allocation, inflation), and withdrawal/surplus priority ordering with drag-to-reorder chips
-- **Accounts** — Changes based on your data source:
+- **Metadata** — scenario identity, people, plan years, cash targets, assumptions, and collapsed advanced withdrawal, tax, RMD, and simulation settings
+- **Social Security** — each person's claim-age benefit table
+- **Income & Contributions** — income, contribution method, employer match, routing, and ownership shares
+- **Accounts** — data source selection and opening balances: [Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/), [Monarch Money](/Net-Worth-Navigator/data-sources/monarch-money/), or [CSV Import](/Net-Worth-Navigator/data-sources/csv-import/)
+- **Events** — the editable event-driven timeline, including retirement, Social Security claiming, and end-of-plan timing
+- **Raw TOML** — direct text editor for the complete configuration file
 
-  1. *[Manual Entry](/Net-Worth-Navigator/data-sources/manual-entry/):* Structured form for starting balances (taxable, traditional IRA, Roth, cash, home value, property values, liability balances)
-  - *[Monarch Money](/Net-Worth-Navigator/data-sources/monarch-money/):* Account table with category/owner/disabled controls and Refresh from Monarch button
-  - *[CSV Import](/Net-Worth-Navigator/data-sources/csv-import/):* Upload a CSV export, preview parsed accounts, assign categories and owners, then import
-- **Raw TOML** — Direct text editor for the configuration file
+Sample scenarios are read-only; clone one before saving edits.
 
 **Global action bar** (at the bottom) — save, validate, render the current scenario, or render all scenarios.
 

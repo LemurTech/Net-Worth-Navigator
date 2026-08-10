@@ -27,13 +27,15 @@ Events can be singular (one year) or span multiple years. They can apply to one 
 | `SocialSecurity` | Permanent from year | Adds Social Security income for the specified person |
 | `Expense` | Singular or recurring | One-time cash outflow (medical, car, vacation) |
 | `Income` | Singular or bounded | Adds income for a period (side gig, rental) |
-| `BuyHome` | Singular (down payment) + ongoing | Adds a property with optional mortgage |
+| `EndOfPlan` | Permanent boundary | Marks a person's modeled plan boundary and starts survivor behavior in couple plans |
+| `BuyHome` | Singular | Adds a property and records its down payment; finance it separately as a liability |
 | `SellHome` | Singular | Converts a named property to cash proceeds |
 | `NewJob` | Permanent from year | Replaces a person's income from that year |
 | `CareerBreak` | Bounded | Zeroes a person's earned income for a period |
 | `Education` | Bounded | Subtracts annual cost for a period |
 | `Marriage` | Singular | Informational (future: tax filing status change) |
 | `SpendingShift` | Singular or bounded | Changes baseline spending (replace mode) |
+| `ContributionChange` | Permanent from year | Overrides or adjusts a person's contribution settings |
 
 <ImagePreview src="/Net-Worth-Navigator/nwn-gantt.png" alt="Gantt timeline showing events across the projection years" />
 
@@ -48,6 +50,18 @@ year = 2038
 
 Sets that person's earned income to zero from the specified year onward. Also triggers retirement-phase spending and withdrawal policies.
 
+### EndOfPlan
+```toml
+[[events]]
+enabled = true
+type = "EndOfPlan"
+person = "person1"
+age = 90
+year = 2062
+```
+
+Marks the person's modeled plan boundary, rather than predicting a life outcome. In the Setup Panel you enter the age and it computes the year from the date of birth. For couples, the next model year begins survivor behavior for the remaining person.
+
 ### SocialSecurity
 ```toml
 [[events]]
@@ -55,10 +69,9 @@ enabled = true
 type = "SocialSecurity"
 person = "person1"
 year = 2035
-monthly_benefit = 2400
 ```
 
-Adds monthly income from the specified year onward. Retirement and SS events are now **auto-synthesized** from the per-person settings in your TOML — you usually don't need to write them manually. If you do add them, your metadata overrides (like label or enabled flag) are preserved.
+Adds monthly income from the specified year onward. The event's year is the source of truth for claim timing. Its monthly amount is looked up live from that person's `social_security_benefits` table at the resolved claim age; it is never stored on the event. Create this event explicitly—NWN no longer synthesizes it from person-level fields.
 
 See **[Social Security Benefits](/Net-Worth-Navigator/key-concepts/social-security/)** for how to get your benefit estimates from ssa.gov and enter them in your scenario.
 
@@ -129,7 +142,7 @@ property = "Primary Residence"
 sale_fee_rate = 0.06
 ```
 
-`BuyHome` records a new property and subtracts the down payment. `SellHome` converts a named property to cash, net of sale fees and any linked mortgage payoff. Reinvestment into a specific bucket is supported via `reinvest_to`.
+`BuyHome` records a new property and subtracts the down payment. Add a named liability separately if the purchase is financed; mortgage rate and term fields on a BuyHome event are not modeled. `SellHome` converts a named property to cash, net of sale fees and any linked mortgage payoff. Reinvestment into a specific bucket is supported via `reinvest_to`.
 
 ### NewJob / CareerBreak
 ```toml
@@ -163,6 +176,19 @@ survivor_percent_of_retirement = 0.70
 ```
 
 Changes the baseline retirement spending from the specified year. Currently supports `mode = "replace"` which replaces the scenario's spending parameters.
+
+### ContributionChange
+```toml
+[[events]]
+enabled = true
+type = "ContributionChange"
+label = "Increase 401(k) after mortgage payoff"
+person = "person1"
+year = 2030
+annual_401k_contribution_delta = 6000
+```
+
+Changes one person's contribution settings from the specified year onward. An event can set new absolute amounts, apply dollar deltas, or override percent-of-gross settings. Later events for the same person take precedence for fields they specify.
 
 ## Organizing Events in the Gantt Timeline
 

@@ -15,13 +15,13 @@ Each scenario TOML includes these sections:
 | `[display]` | Chart title |
 | `[data_source]` | How starting balances are obtained (manual, Monarch, CSV) |
 | `[synthetic_start]` | Starting balances for manual entry mode |
-| `[person1]` / `[person2]` | Household members: name, DOB, income, retirement year, Social Security |
+| `[person1]` / `[person2]` | Household members: name, DOB, income, benefit estimates, and contribution settings |
 | `[spending]` | Retirement and survivor spending targets |
 | `[withdrawal_policy]` | Cash reserve targets, withdrawal order, surplus routing |
 | `[assumptions]` | Investment returns, inflation, asset allocation |
 | `[accounts]` | Account classification and ownership (for Monarch/CSV mode) |
 | `[[liabilities]]` | Amortized loans: mortgage, auto, etc. |
-| `[[events]]` | Life events that change the projection |
+| `[[events]]` | Life events and the source of truth for retirement, Social Security, and end-of-plan timing |
 
 ## Creating Scenarios
 

@@ -9,6 +9,11 @@
 
 ## Current Work
 
+### User Guide v2 alignment (2026-08-09)
+
+- Updated the public User Guide's Setup Panel, quick-start, scenario, event, configuration, and event-type pages for the six-tab editor and the v2 event-driven timeline. The guide now directs readers to explicit `Retire`, `SocialSecurity`, and `EndOfPlan` events; explains live Social Security benefit lookup; documents `ContributionChange`; and removes unmodeled BuyHome mortgage fields and Education person scope.
+- Built the Astro/Starlight guide successfully (29 pages). Local guide dependencies were restored with `npm ci --ignore-scripts`; `npm audit` reports 3 upstream advisories (1 moderate, 2 high), intentionally not addressed in this documentation-only work.
+
 ### Definitions reference alignment (2026-08-09)
 
 - Updated the generated Definitions page to match the current six-part Scenario Setup panel and v2 event-driven schema. It now covers `csv_import`, household type, Roth ownership, survivor spending/claiming, debt-service handling, `EndOfPlan`, and current Social Security benefit derivation; it also distinguishes legacy/reserved TOML fields from controls exposed by the Setup Panel.

@@ -66,24 +66,25 @@ roth_contribution_basis = 0
 [person1]
 name = "Alex"
 dob = "1972-06-15"                 # YYYY-MM-DD format
-life_expectancy = 90                # Age at end-of-plan
-retirement_year = 2038
-ss_start_age = 67
 
 # Income
 annual_take_home = 130000          # Net (take-home) income
 annual_take_home_real_raise = 0.01 # Annual real raise above inflation
 gross_income = 180000              # Gross income (for contribution calculations)
-contribution_method = "percent_of_income"
+contribution_method = "percent_of_gross"
 retirement_contribution_percent = 0.24
 annual_401k_contribution_split = { trad_ira = 0.70, roth = 0.30 }
 annual_ira_contribution = 0
+rmd_trad_ira_share = 0.50          # Person's share for RMD math
+roth_share = 0.50                  # Fallback share of pooled Roth balances
 
 # Social Security (age-keyed monthly amounts)
-[social_security_benefits]
+[person1.social_security_benefits]
 67 = 2600
 70 = 3200
 ```
+
+Timeline settings are event-driven in v2. Add `Retire`, `SocialSecurity`, and `EndOfPlan` records under `[[events]]`; see [Event Types](/Net-Worth-Navigator/reference/event-types/). Person-level `retirement_year` and `life_expectancy` remain only as legacy compatibility fallbacks.
 
 ### `[spending]`
 
@@ -91,6 +92,7 @@ annual_ira_contribution = 0
 [spending]
 retirement_annual = 82000          # Annual spending in retirement (both alive)
 survivor_percent_of_retirement = 0.70  # Survivor phase spending as % of retirement
+survivor_annual = 60000             # Optional absolute survivor target; takes precedence
 debt_service_handling = "auto_reduce"  # "auto_reduce" or "included_in_target"
 ```
 

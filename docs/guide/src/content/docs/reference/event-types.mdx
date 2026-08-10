@@ -29,7 +29,20 @@ person = "person1"      # Required: "person1" or "person2"
 year = 2038
 ```
 
-Retirement and SocialSecurity events are auto-synthesized from per-person settings. Manual entries override the auto-synthesis.
+The event year is the source of truth for retirement timing. Create this event explicitly; the legacy person-level retirement field is only a compatibility fallback.
+
+### EndOfPlan
+
+Marks a person's modeled plan boundary and starts survivor behavior in a couple plan from the following year. It is a planning horizon, not a life prediction.
+
+```toml
+[[events]]
+enabled = true
+type = "EndOfPlan"
+person = "person1"
+age = 90
+year = 2062
+```
 
 ### SocialSecurity
 
@@ -41,8 +54,9 @@ enabled = true
 type = "SocialSecurity"
 person = "person1"         # Required
 year = 2035
-monthly_benefit = 2400     # Required: monthly SS payment
 ```
+
+The event's `year` determines claiming timing. NWN resolves the monthly benefit live from `[personX].social_security_benefits` at the resolved age; do not add `monthly_benefit` to the event.
 ### Expense
 
 One-time cash outflow. Can be recurring.
@@ -75,7 +89,7 @@ end_year = 2029                    # Optional: last year of income
 ```
 ### BuyHome
 
-Records a property purchase with optional mortgage.
+Records a property purchase and down payment. Create a named liability separately if the purchase is financed.
 
 ```toml
 [[events]]
@@ -86,8 +100,6 @@ year = 2032
 down_payment = -80000              # Cash outflow at purchase
 price = 450000                     # Total purchase price
 property = "Beach House"           # Optional: name for tracking
-mortgage_rate = 0.065              # Optional: mortgage annual rate
-term_years = 30                    # Optional: mortgage term
 ```
 ### SellHome
 
@@ -137,7 +149,6 @@ Subtracts annual cost for a period.
 [[events]]
 enabled = true
 type = "Education"
-person = "person1"
 start_year = 2027
 end_year = 2030
 annual_cost = 15000
@@ -167,6 +178,21 @@ retirement_annual = 65000          # New retirement spending level
 survivor_percent_of_retirement = 0.70  # New survivor %
 end_year = 2050                    # Optional: revert after this year
 ```
+
+### ContributionChange
+
+Overrides selected contribution settings for one person from a specified year. Later changes override only the fields they supply.
+
+```toml
+[[events]]
+enabled = true
+type = "ContributionChange"
+person = "person1"
+year = 2030
+annual_401k_contribution_delta = 6000
+```
+
+Common optional fields include `annual_401k_contribution`, `annual_ira_contribution`, their `_delta` variants, `gross_income`, and percent-of-gross contribution/match settings.
 ## Recurring Event Fields
 
 Events that support recurrence (currently `Expense` and `Income`):
