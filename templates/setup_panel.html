@@ -383,6 +383,12 @@
       font-size: 14px; font-weight: 700; color: var(--muted); margin: 0 0 10px;
       text-transform: uppercase; letter-spacing: 0.05em;
     }
+    /* Major per-person divisions on the Income and Social Security tabs. */
+    .income-person-section > .person-section-heading,
+    .ss-person-section > .person-section-heading {
+      color: var(--text); margin: 18px 0 14px; padding: 12px 0;
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
     .synth-row {
       display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
     }
@@ -855,8 +861,8 @@
         <div class="quick-section-title" style="border-top:none;padding-top:0">Social Security</div>
         <div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;line-height:1.4">Monthly benefit by claiming age (from SSA.gov estimates). Each person's Social Security event resolves its claiming age to a benefit from this table automatically.</div>
 
-        <div class="synth-section" id="ss-person1-section">
-          <h3>Person 1</h3>
+        <div class="synth-section ss-person-section" id="ss-person1-section">
+          <h3 class="person-section-heading">Person 1</h3>
           <div class="synth-row"><label>Default Claiming Age</label><input type="number" id="person1_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
           <div class="synth-hint">Only used if this person's Social Security event doesn't specify its own age. Most scenarios set the age directly on the event, so this can usually stay blank.</div>
           <div class="person2-toggle-section" id="person1-survivor-claiming-age">
@@ -870,8 +876,8 @@
           <button type="button" class="add-property-btn" id="add-ss-benefit-person1-btn">+ Add claiming age</button>
         </div>
 
-        <div class="synth-section person2-toggle-section" id="ss-person2-section">
-          <h3>Person 2</h3>
+        <div class="synth-section ss-person-section person2-toggle-section" id="ss-person2-section">
+          <h3 class="person-section-heading">Person 2</h3>
           <div class="synth-row"><label>Default Claiming Age</label><input type="number" id="person2_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
           <div class="synth-hint">Only used if this person's Social Security event doesn't specify its own age. Most scenarios set the age directly on the event, so this can usually stay blank.</div>
           <div class="synth-row"><label>Survivor Claiming Age</label><input type="number" id="person2_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60"></div>
@@ -889,8 +895,8 @@
         <div class="quick-section-title" style="border-top:none;padding-top:0">Income &amp; Contributions</div>
         <div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;line-height:1.4">Each person's employment income and how retirement contributions are calculated. Percent fields are entered as whole numbers (e.g. 20 = 20%).</div>
 
-        <div class="synth-section" id="income-person1-section">
-          <h3>Person 1</h3>
+        <div class="synth-section income-person-section" id="income-person1-section">
+          <h3 class="person-section-heading">Person 1</h3>
 
           <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Employment Income</div>
           <div class="synth-row"><label>Annual Take-Home Pay</label><input type="text" class="synth-dollar" id="person1_annual_take_home" placeholder="$ 0"></div>
@@ -962,8 +968,8 @@
           <div class="synth-hint">Used when Roth accounts have no owner assignment: splits the pooled opening Roth balance between people and attributes shared Roth flows. Account-level owner assignments override this. Defaults to 50/50 if left blank for both people.</div>
         </div>
 
-        <div class="synth-section person2-toggle-section" id="income-person2-section">
-          <h3>Person 2</h3>
+        <div class="synth-section income-person-section person2-toggle-section" id="income-person2-section">
+          <h3 class="person-section-heading">Person 2</h3>
 
           <div class="quick-section-title" style="border-top:none;padding-top:0;margin-top:0">Employment Income</div>
           <div class="synth-row"><label>Annual Take-Home Pay</label><input type="text" class="synth-dollar" id="person2_annual_take_home" placeholder="$ 0"></div>
@@ -1619,7 +1625,12 @@
           var m = block.match(re);
           return m ? (m[1] === 'true') : null;
         }
-        function pct(value) { return value != null ? (value * 100) : ''; }
+        function pct(value) {
+          if (value == null) return '';
+          // Avoid exposing binary floating-point artifacts (for example,
+          // 0.035 * 100 displaying as 3.5000000000000004).
+          return Number((Number(value) * 100).toFixed(6));
+        }
         function grabArr(block, field) {
           var re = new RegExp('^\\s*' + field + '\\s*=\\s*\\[([^\\]]*)\\]', 'm');
           var m = block.match(re);

@@ -7,6 +7,7 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 ### Fixed
 
+- **Income & Contributions and Social Security** — Added clear above/below dividers for each person's section in couple households and normalized percentage input display to suppress binary floating-point artifacts (for example, `0.035` now shows as `3.5`, not `3.5000000000000004`).
 - **Projection table headers** — Removed the scroll-offset solid shadow behind the pinned first header cell. It rendered as a dark rectangular artifact that moved across the header row during horizontal table scrolling.
 
 ### Changed

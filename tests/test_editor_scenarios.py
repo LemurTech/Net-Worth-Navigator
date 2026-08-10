@@ -21,6 +21,17 @@ class _FakeJsonRequest:
 
 
 class EditorScenarioTests(unittest.TestCase):
+    def test_income_person_sections_and_percentage_display_are_stable(self):
+        template = Path("templates/setup_panel.html").read_text(encoding="utf-8")
+
+        self.assertIn('class="synth-section income-person-section" id="income-person1-section"', template)
+        self.assertIn('class="synth-section income-person-section person2-toggle-section" id="income-person2-section"', template)
+        self.assertIn('class="synth-section ss-person-section" id="ss-person1-section"', template)
+        self.assertIn('class="synth-section ss-person-section person2-toggle-section" id="ss-person2-section"', template)
+        self.assertEqual(template.count('class="person-section-heading">Person '), 4)
+        self.assertIn('border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);', template)
+        self.assertIn('Number((Number(value) * 100).toFixed(6))', template)
+
     def test_sample_render_job_rebuilds_without_writing_config(self):
         sample = ScenarioRef(
             slug="sample",

@@ -9,6 +9,10 @@
 
 ## Current Work
 
+### Couple person sections and percentage display (2026-08-09)
+
+- The Setup Panel now gives each person's Income & Contributions and Social Security sections a visible divider above and below its header. The shared percent-display helper rounds before assigning inputs, preventing binary floating-point artifacts such as `3.5000000000000004` for a TOML value of `0.035`.
+
 ### Projection table-header scroll artifact (2026-08-09)
 
 - Removed the dynamic, solid `box-shadow` used to fill the pinned first header cell while horizontally scrolling tables. It was visibly rendered as a dark rectangle that moved across the year headers; the opaque header background and existing z-index now cover the cell without the artifact.
