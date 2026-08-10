@@ -710,12 +710,11 @@ document.addEventListener('DOMContentLoaded', function() {
         var headerScroll = panel.querySelector('.header-scroll');
         if (headerScroll) {
           headerScroll.scrollLeft = scrollX;
-          // Pin the rowlabel in place — transform counters the scroll,
-          // box-shadow fills the gap where the cell was before translation
+          // Pin the rowlabel in place — transform counters the scroll.
+          // Its opaque header background and z-index cover the former position.
           var headerLabel = headerScroll.querySelector('th.rowlabel');
           if (headerLabel) {
             headerLabel.style.transform = 'translateX(' + scrollX + 'px)';
-            headerLabel.style.boxShadow = scrollX + 'px 0 0 0 #182233';
           }
         }
       }

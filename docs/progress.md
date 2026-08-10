@@ -5,6 +5,10 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 ## 2026-08-09 (Sample scenario write protection)
 
+### Fixed
+
+- **Projection table headers** — Removed the scroll-offset solid shadow behind the pinned first header cell. It rendered as a dark rectangular artifact that moved across the header row during horizontal table scrolling.
+
 ### Changed
 
 - **Single-professional sample timeline** — Expanded `sample.toml` with post-mortgage property tax and homeowners-insurance expenses, staged Medicare-era health coverage, and a bounded parent-care/death sequence that includes estate costs and a tax-free small inheritance.

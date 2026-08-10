@@ -9,6 +9,10 @@
 
 ## Current Work
 
+### Projection table-header scroll artifact (2026-08-09)
+
+- Removed the dynamic, solid `box-shadow` used to fill the pinned first header cell while horizontally scrolling tables. It was visibly rendered as a dark rectangle that moved across the year headers; the opaque header background and existing z-index now cover the cell without the artifact.
+
 ### Single-professional sample life events (2026-08-09)
 
 - Enriched `sample.toml` with the recurring costs that begin after its Town Home mortgage payoff (property tax and homeowners insurance), two Medicare-era health-coverage cost bands, and a bounded parent-care/death sequence with estate costs and a tax-free small inheritance. The mortgage payoff model places the transition after 2049; local deterministic, historical, and Monte Carlo projections completed successfully.
