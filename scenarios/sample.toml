@@ -1,7 +1,7 @@
 # Net Worth Navigator — Single-Person Sample Plan (Reference Documentation)
 #
 # This file demonstrates how to configure a single-person household.  It uses
-# synthetic starting balances (no Monarch account needed) and is safe to share.
+# synthetic starting balances (no Monarch account needed).
 #
 # Household: Alex (person1, b. 1972). Single, working into their 60s,
 # contributing to 401(k)/IRA, owns a home with a mortgage and a car loan.
@@ -24,38 +24,27 @@ description = "Single-person share-safe reference scenario with full inline docu
 is_default  = false
 # household_type is omitted — inferred as "single" from absence of [person2]
 # To explicitly set:  household_type = "single"
+household_type = "single"
 
 [data_source]
 mode = "synthetic" # synthetic | monarch
 
 [synthetic_start]
-# Investable buckets
-taxable  = 80000
-trad_ira = 250000
-roth     = 55000
-cash     = 30000
-# Optional explicit basis seeds (if omitted, defaults to 50% taxable cost basis,
-# 100% Roth contribution basis):
-# taxable_cost_basis = 84000
-# roth_contribution_basis = 70000
-
-# Non-investable balances
-home_value = 380000
-vehicles   = 0
-other      = 0
-
-# Named property balances for SellHome / property-tracking events
-[synthetic_start.property_values]
-"Single Residence" = 380000
-
-# Named liability balances (must match [[liabilities]].name entries)
-[synthetic_start.liability_balances]
-"Home Mortgage"         = 280000
-"RAV4 Hybrid Auto Loan" = 25000
+spending_retirement_annual = 60000.0
+person1_annual_take_home = 62000.0
+person1_gross_income = 90000.0
 
 [simulation]
 start_year = 2026
-end_year = 2062
+end_year   = 2062
+
+# value_basis controls which dollar basis is rendered:
+# - "nominal": future/inflated dollars only (default)
+# - "real": today's-dollars, inflation-adjusted (today's purchasing power)
+# - "both": renders both sets and lets you toggle between them in the UI —
+#   costs more render time since every series is computed twice
+value_basis = "both"
+
 render_modes = [
    "deterministic",
    "historical",
@@ -66,18 +55,15 @@ mode = "deterministic" # compatibility/default single-run mode
 # seed = 12345                         # reproducibility seed
 # portfolio_return_volatility = 0.15   # annual stdev for blended investable return
 # historical_returns_path     = "config/return_sequences/us_balanced_returns.csv"
-value_basis = "both"
-# value_basis controls which dollar basis is rendered:
-# - "nominal": future/inflated dollars only (default)
-# - "real": today's-dollars, inflation-adjusted (today's purchasing power)
-# - "both": renders both sets and lets you toggle between them in the UI —
-#   costs more render time since every series is computed twice
+num_runs = 250
+portfolio_return_volatility = 0.15
+clamp_start_year = true
 
 [display]
 projection_title = "Single-Person Sample (Synthetic Demo)"
 
 [monte_carlo.success] # success/failure rules for all stochastic modes: monte_carlo and historical
-failure_mode = "spending_shortfall"
+failure_mode = "liquid_depletion"
 # Possible values:
 # - "net_worth_below_zero"
 # - "liquid_depletion"
@@ -99,6 +85,7 @@ failure_grace_period_months    = 0
 # custom_failure_threshold = 1.0
 
 # ─── Household Members ────────────────────────────────────────────────────────
+custom_failure_operator = "<"
 
 [person1]
 name            = "Alex"
@@ -135,16 +122,8 @@ annual_ira_contribution                = 0                  # direct IRA contrib
 rmd_trad_ira_share = 1.0
 
 # Social Security benefit options (from SSA.gov estimates):
-[person1.social_security_benefits]
-"62" = 1400
-"63" = 1500
-"64" = 1620
-"65" = 1740
-"66" = 1880
-"67" = 2020
-"68" = 2170
-"69" = 2330
-"70" = 2500
+annual_401k_contribution_bucket = "trad_ira"
+annual_ira_contribution_bucket = "roth"
 
 [person1.annual_401k_contribution_split]
 trad_ira = 0.70
@@ -216,17 +195,19 @@ accumulation_surplus_order = ["taxable", "roth", "trad_ira"]
 retirement_surplus_order   = ["taxable", "roth", "trad_ira"]
 
 # survivor_* fields are not applicable and ignored for single-person households
-survivor_cash_target = 30000
-survivor_withdrawal_order = [
-   "cash_above_target",
-   "trad_ira",
-   "taxable",
-   "roth",
-   "cash_below_target"
-]
-survivor_surplus_order = ["roth", "taxable"]
+# survivor_cash_target = 30000
+# survivor_withdrawal_order = [
+#    "cash_above_target",
+#    "trad_ira",
+#    "taxable",
+#    "roth",
+#    "cash_below_target"
+# ]
+# survivor_surplus_order = ["roth", "taxable"]
 
 # ─── Market & Economic Assumptions ───────────────────────────────────────────
+survivor_withdrawal_order = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+survivor_surplus_order = ["roth", "taxable"]
 
 [assumptions]
 stock_return              = 0.07 # annual nominal return on equities
@@ -257,7 +238,8 @@ retirement_filing_status     = "single" # single | married_joint
 # Wage handling mode:
 # - net_cash: annual_take_home is treated as after-tax cashflow only (default/current)
 # - taxable_wages: annual_take_home is treated as taxable wage income (not currently implemented)
-wage_tax_treatment = "net_cash"
+wage_tax_treatment = "net_cash" # "net_cash" (current) | "taxable_wages" (future)
+survivor_filing_status = "single"
 
 [taxes.rmd]
 # Required Minimum Distribution modeling controls.
@@ -347,10 +329,10 @@ type          = "auto"
 # year    = 2032
 # amount  = -12000
 # # expense_kind = "mandatory"   # or "discretionary"
-# # funding = "cash_reserve_first"  # optional: let this expense tap reserve cash before roth/trad withdrawals
+# # funding      = "cash_reserve_first"  # optional: let this expense tap reserve cash before roth/trad withdrawals
 # # repeat_every_years = 1
 # # repeat_until_year  = 2036
-# # repeat_count = 5
+# # repeat_count       = 5
 # # chart_first_occurrence_only = true
 #
 # --- Income ---
@@ -361,8 +343,8 @@ type          = "auto"
 # year    = 2037
 # amount  = 40000
 # # end_year = 2041
-# # taxable = true
-# # taxable_fraction = 1.00
+# # taxable  = true
+# # taxable_fraction   = 1.00
 # # repeat_every_years = 1
 # # repeat_until_year  = 2041
 # # chart_first_occurrence_only = false
@@ -464,9 +446,9 @@ enabled = true
 type    = "EndOfPlan"
 label   = "End of Plan (Alex)"
 person  = "person1"
-year    = 2062                 # 1972 + 90
+year    = 2062 # 1972 + 90
 
-# ─── 2. Pre-Retirement / Near-Term Known Events ───────────────────────────────
+# ─── Pre-Retirement / Near-Term Known Events ───────────────────────────────
 
 [[events]]
 enabled      = true
@@ -477,7 +459,35 @@ amount       = -12000
 expense_kind = "mandatory"
 funding      = "cash_reserve_first"
 
-# ─── 3. Lifestyle Before and During Retirement ────────────────────────────────
+# ─── Retirement / Social Security ───────────────────────────────
+
+[[events]]
+enabled = true
+type    = "SocialSecurity"
+label   = "SS Begins (A)"
+person  = "person1"
+year    = 2039
+monthly_benefit = 2020.0
+
+# Bounded side income during early retirement
+
+[[events]]
+enabled = true
+type    = "Retire"
+label   = "Retirement (A)"
+person  = "person1"
+year    = 2040
+
+[[events]]
+enabled  = true
+type     = "Income"
+label    = "Part-time consulting"
+year     = 2038
+amount   = 18000
+end_year = 2042
+taxable  = true
+
+# ─── Lifestyle Before and During Retirement ────────────────────────────────
 
 # Recurring travel (every other year, starting in 2027)
 [[events]]
@@ -493,33 +503,7 @@ repeat_until_year  = 2055
 
 chart_first_occurrence_only = true
 
-[[events]]
-enabled = true
-type    = "Retire"
-label   = "Retirement (A)"
-person  = "person1"
-year    = 2040
-
-[[events]]
-enabled = true
-type    = "SocialSecurity"
-label   = "SS Begins (A)"
-person  = "person1"
-year    = 2039
-
-monthly_benefit = 2020.0
-
-# Bounded side income during early retirement
-[[events]]
-enabled  = true
-type     = "Income"
-label    = "Part-time consulting"
-year     = 2038
-amount   = 18000
-end_year = 2042
-taxable  = true
-
-# ─── 4. Home Ownership / Fixed Housing Costs ──────────────────────────────────
+# ─── Home Ownership / Fixed Housing Costs ──────────────────────────────────
 
 # Annual home maintenance reserve
 [[events]]
@@ -533,26 +517,7 @@ funding      = "cash_reserve_first"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
-# ─── 5. Major Home and Vehicle Capital Expenses ───────────────────────────────
-
-# One-time large home repairs
-[[events]]
-enabled      = true
-type         = "Expense"
-label        = "HVAC replacement"
-year         = 2034
-amount       = -12000
-expense_kind = "mandatory"
-funding      = "cash_reserve_first"
-
-[[events]]
-enabled      = true
-type         = "Expense"
-label        = "Roof replacement"
-year         = 2043
-amount       = -18000
-expense_kind = "mandatory"
-funding      = "cash_reserve_first"
+# ─── Major Home and Vehicle Capital Expenses ───────────────────────────────
 
 [[events]]
 enabled      = true
@@ -566,13 +531,32 @@ funding      = "cash_reserve_first"
 [[events]]
 enabled      = true
 type         = "Expense"
+label        = "HVAC replacement"
+year         = 2034
+amount       = -12000
+expense_kind = "mandatory"
+funding      = "cash_reserve_first"
+
+# One-time large home repairs
+[[events]]
+enabled      = true
+type         = "Expense"
+label        = "Roof replacement"
+year         = 2043
+amount       = -18000
+expense_kind = "mandatory"
+funding      = "cash_reserve_first"
+
+[[events]]
+enabled      = true
+type         = "Expense"
 label        = "Vehicle replacement"
 year         = 2044
 amount       = -30000
 expense_kind = "mandatory"
 funding      = "cash_reserve_first"
 
-# ─── 8. Elder Care / Parent Death ───────────────────────────────────────
+# ─── Elder Care / Parent Death ───────────────────────────────────────
 
 [[events]]
 enabled      = true

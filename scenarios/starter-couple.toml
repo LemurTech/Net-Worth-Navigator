@@ -9,10 +9,10 @@ is_template = true
 mode = "synthetic"
 
 [synthetic_start]
-taxable  = 0
-trad_ira = 0
-roth     = 0
-cash     = 0
+taxable    = 0
+trad_ira   = 0
+roth       = 0
+cash       = 0
 home_value = 0
 vehicles   = 0
 other      = 0
@@ -30,25 +30,25 @@ render_modes = ["deterministic", "historical", "monte_carlo"]
 projection_title = "My Household Plan"
 
 [monte_carlo.success]
-failure_mode                    = "spending_shortfall"
-minimum_spending_funded_ratio   = 1.0
-allow_home_equity_for_spending  = false
-allow_debt_for_spending         = false
-failure_grace_period_months     = 0
+failure_mode                   = "spending_shortfall"
+minimum_spending_funded_ratio  = 1.0
+allow_home_equity_for_spending = false
+allow_debt_for_spending        = false
+failure_grace_period_months    = 0
 
 [person1]
-name              = "Person 1"
-dob               = "1975-01-01"
-annual_take_home  = 0
+name             = "Person 1"
+dob              = "1975-01-01"
+annual_take_home = 0
 annual_take_home_is_net_of_retirement_contributions = true
 annual_take_home_real_raise = 0.01
-contribution_method                      = "percent_of_gross"
-gross_income                             = 0
-gross_income_annual_increase_percent     = 0.03
-retirement_contribution_percent          = 0.10
+contribution_method         = "percent_of_gross"
+gross_income                = 0
+gross_income_annual_increase_percent = 0.03
+retirement_contribution_percent      = 0.10
 retirement_contribution_annual_increase_percent = 0.00
-retirement_contribution_max_percent      = 0.25
-rmd_trad_ira_share = 0.5
+retirement_contribution_max_percent = 0.25
+rmd_trad_ira_share                  = 0.5
 
 [person1.annual_401k_contribution_split]
 trad_ira = 0.70
@@ -58,18 +58,18 @@ roth     = 0.30
 67 = 0
 
 [person2]
-name              = "Person 2"
-dob               = "1978-01-01"
-annual_take_home  = 0
+name             = "Person 2"
+dob              = "1978-01-01"
+annual_take_home = 0
 annual_take_home_is_net_of_retirement_contributions = true
 annual_take_home_real_raise = 0.01
-contribution_method                      = "percent_of_gross"
-gross_income                             = 0
-gross_income_annual_increase_percent     = 0.03
-retirement_contribution_percent          = 0.10
+contribution_method         = "percent_of_gross"
+gross_income                = 0
+gross_income_annual_increase_percent = 0.03
+retirement_contribution_percent      = 0.10
 retirement_contribution_annual_increase_percent = 0.00
-retirement_contribution_max_percent      = 0.25
-rmd_trad_ira_share = 0.5
+retirement_contribution_max_percent = 0.25
+rmd_trad_ira_share                  = 0.5
 
 [person2.annual_401k_contribution_split]
 trad_ira = 0.70
@@ -87,63 +87,80 @@ debt_service_handling          = "auto_reduce"
 accumulation_cash_target = 20000
 retirement_cash_target   = 30000
 survivor_cash_target     = 20000
-accumulation_withdrawal_order = ["cash_above_target", "taxable", "roth", "trad_ira", "cash_below_target"]
-retirement_withdrawal_order   = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
-survivor_withdrawal_order     = ["cash_above_target", "trad_ira", "taxable", "roth", "cash_below_target"]
+
+accumulation_withdrawal_order = [
+   "cash_above_target",
+   "taxable",
+   "roth",
+   "trad_ira",
+   "cash_below_target"
+]
+retirement_withdrawal_order = [
+   "cash_above_target",
+   "trad_ira",
+   "taxable",
+   "roth",
+   "cash_below_target"
+]
+survivor_withdrawal_order = [
+   "cash_above_target",
+   "trad_ira",
+   "taxable",
+   "roth",
+   "cash_below_target"
+]
 accumulation_surplus_order = ["roth", "taxable"]
 retirement_surplus_order   = ["roth", "taxable"]
 survivor_surplus_order     = ["roth", "taxable"]
 
 [assumptions]
-stock_return              = 0.07
-bond_return               = 0.04
-inflation                 = 0.03
-equity_allocation         = 0.70
+stock_return      = 0.07
+bond_return       = 0.04
+inflation         = 0.03
+equity_allocation = 0.70
 effective_tax_rate_pre_retirement  = 0.22
 effective_tax_rate_post_retirement = 0.15
 
 [[events]]
 enabled = true
-type = "Retire"
-label = "Retirement (P)"
-person = "person1"
-year = 2040
+type    = "Retire"
+label   = "Retirement (P)"
+person  = "person1"
+year    = 2040
 
 [[events]]
 enabled = true
-type = "SocialSecurity"
-label = "SS Begins (P)"
-person = "person1"
-year = 2042
-monthly_benefit = 0.0
+type    = "SocialSecurity"
+label   = "SS Begins (P)"
+person  = "person1"
+year    = 2042
 
 [[events]]
 enabled = true
-type = "Retire"
-label = "Retirement (P)"
-person = "person2"
-year = 2043
+type    = "Retire"
+label   = "Retirement (P)"
+person  = "person2"
+year    = 2043
 
 [[events]]
 enabled = true
-type = "SocialSecurity"
-label = "SS Begins (P)"
-person = "person2"
-year = 2045
-monthly_benefit = 0.0
+type    = "SocialSecurity"
+label   = "SS Begins (P)"
+person  = "person2"
+year    = 2045
 
 [[events]]
 enabled = true
-type = "EndOfPlan"
-label = "End of Plan (P)"
-person = "person1"
-age = 90
-year = 2065
+type    = "EndOfPlan"
+label   = "End of Plan (P)"
+person  = "person1"
+age     = 90
+year    = 2065
 
 [[events]]
 enabled = true
-type = "EndOfPlan"
-label = "End of Plan (P)"
-person = "person2"
-age = 90
-year = 2068
+type    = "EndOfPlan"
+label   = "End of Plan (P)"
+person  = "person2"
+age     = 90
+year    = 2068
