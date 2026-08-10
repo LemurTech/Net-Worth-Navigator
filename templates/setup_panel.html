@@ -374,6 +374,14 @@
       border-bottom: 1px solid rgba(59,130,246,0.2);
     }
     .accounts-mode-banner .banner-icon { font-style: normal; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .migrate-banner {
+      display: none; align-items: flex-start; gap: 10px;
+      padding: 12px 16px; font-size: 13px; line-height: 1.5;
+      color: #fcd34d; background: rgba(245,158,11,0.08);
+      border-bottom: 1px solid rgba(245,158,11,0.25);
+    }
+    .migrate-banner.show { display: flex; }
+    .migrate-banner a { color: #fbbf24; font-weight: 600; }
     #refresh-monarch-btn:disabled { opacity: 0.38; cursor: not-allowed; }
 
     /* ── Synthetic form ─────────────────────────────────────────────── */
@@ -569,6 +577,16 @@
         <a class="linkbtn" id="open-projection-btn" href="{{ projection_url }}">Open Projection</a>
         <button type="button" class="linkbtn" id="clone-scenario-btn" style="cursor:pointer">Clone Scenario</button>
         <button type="button" class="linkbtn linkbtn-danger" id="delete-scenario-btn" style="cursor:pointer">Delete Scenario</button>
+      </div>
+    </div>
+
+    <!-- ── Migration banner (v1 scenarios) ───────────────────────────── -->
+    <div class="migrate-banner" id="migrate-banner">
+      <span class="banner-icon">⚠️</span>
+      <div>
+        <strong>This scenario uses the older v1 format.</strong>
+        <span id="migrate-banner-items"></span>
+        <a href="https://lemurtech.github.io/Net-Worth-Navigator/guides/migrating-to-v2/" target="_blank" rel="noreferrer">Migration steps in the User Guide</a>
       </div>
     </div>
 
@@ -4910,6 +4928,19 @@
       }
 
       /* ── Init ──────────────────────────────────────────────────── */
+      function initMigrationBanner() {
+        apiGet('api/migration-status').then(function (data) {
+          if (!data || !data.ok) return;
+          var el = document.getElementById('migrate-banner');
+          if (!data.migration_needed || !el) return;
+          var itemsEl = document.getElementById('migrate-banner-items');
+          if (itemsEl && data.items && data.items.length) {
+            itemsEl.textContent = ' Missing: ' + data.items.join(', ') + '.';
+          }
+          el.classList.add('show');
+        }).catch(function () {});
+      }
+
       function init() {
         installRadioStyles();
         installDollarFormat();
@@ -4940,6 +4971,7 @@
         initCloneScenario();
         initDeleteScenario();
         initDefaultCheckbox();
+        initMigrationBanner();
         var dismissBtn = document.getElementById('dismiss-render-btn');
         if (dismissBtn) dismissBtn.addEventListener('click', hideRenderOverlay);
       }

@@ -2228,6 +2228,32 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
 
 # ── API: list events ────────────────────────────────────────────────────────────
 
+def _migration_status(doc: dict) -> tuple[bool, list[str]]:
+    """Return (needed, items) — whether the scenario still carries v1
+    person-timeline fields that lack v2 events, with human-facing item labels."""
+    raw_events = doc.get("events")
+    events = raw_events if isinstance(raw_events, list) else []
+    person_labels = {"person1": "Person 1", "person2": "Person 2"}
+    labels = {"Retire": "Retirement", "SocialSecurity": "Social Security", "EndOfPlan": "End of Plan"}
+    needed = []
+    for person_key in ("person1", "person2"):
+        person = doc.get(person_key)
+        if not isinstance(person, dict):
+            continue
+        has = {event_type: any(
+            e.get("type") == event_type and e.get("person") == person_key for e in events
+        ) for event_type in ("Retire", "SocialSecurity", "EndOfPlan")}
+        person_label = person_labels[person_key]
+        if not has["Retire"] and person.get("retirement_year") is not None:
+            needed.append(f"{person_label} — {labels['Retire']}")
+        if not has["SocialSecurity"] and (person.get("ss_start_age") is not None
+                                          or person.get("ss_claim_age") is not None):
+            needed.append(f"{person_label} — {labels['SocialSecurity']}")
+        if not has["EndOfPlan"] and person.get("life_expectancy") is not None:
+            needed.append(f"{person_label} — {labels['EndOfPlan']}")
+    return (bool(needed), needed)
+
+
 @app.get("/api/events")
 async def api_list_events(request: Request) -> JSONResponse:
     """Return the scenario's [[events]] blocks as a JSON list with migration status."""
@@ -2297,23 +2323,7 @@ async def api_list_events(request: Request) -> JSONResponse:
                         entry["benefit_error"] = str(exc)
             parsed.append(entry)
 
-        # ── Migration detection ───────────────────────────────────────────
-        migration_needed = []
-        for person_key in ("person1", "person2"):
-            person = doc.get(person_key)
-            if not isinstance(person, dict):
-                continue
-            has_retire = any(e["type"] == "Retire" and e.get("person") == person_key for e in parsed)
-            has_ss = any(e["type"] == "SocialSecurity" and e.get("person") == person_key for e in parsed)
-            has_eop = any(e["type"] == "EndOfPlan" and e.get("person") == person_key for e in parsed)
-
-            if not has_retire and person.get("retirement_year") is not None:
-                migration_needed.append(f"{person_key} Retire")
-            if not has_ss and (person.get("ss_start_age") is not None
-                               or person.get("ss_claim_age") is not None):
-                migration_needed.append(f"{person_key} SocialSecurity")
-            if not has_eop and person.get("life_expectancy") is not None:
-                migration_needed.append(f"{person_key} EndOfPlan")
+        migration_needed, migration_items = _migration_status(doc)
 
         result = {"ok": True, "events": parsed, "count": len(parsed)}
         # Include birth years for age computation in edit forms
@@ -2331,8 +2341,20 @@ async def api_list_events(request: Request) -> JSONResponse:
             result["birth_years"] = birth_years
         if migration_needed:
             result["migration_needed"] = True
-            result["migration_items"] = migration_needed
+            result["migration_items"] = migration_items
         return JSONResponse(result)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+@app.get("/api/migration-status")
+async def api_migration_status(request: Request) -> JSONResponse:
+    """Return whether the scenario still uses v1 person-timeline fields."""
+    scenario_slug = request.query_params.get("scenario") or None
+    try:
+        doc, _ = _toml_open(scenario_slug)
+        migration_needed, items = _migration_status(doc)
+        return JSONResponse({"ok": True, "migration_needed": migration_needed, "items": items})
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
