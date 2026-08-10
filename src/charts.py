@@ -8,6 +8,7 @@ Produces a single self-contained HTML file:
 
 from html import escape
 from pathlib import Path
+from datetime import datetime
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -158,6 +159,8 @@ _TABS_CSS = """
                    border: 1px solid #243142; background: #0f1725; color: #cbd5e1;
                    font-size: 12px; line-height: 1.45; }
   .modeling-note strong { color: #f8fafc; }
+  .render-timestamp { margin: 18px 6px 8px; text-align: center; color: #8b93a7;
+                      font-size: 12px; }
 
   /* ── Value-basis badge bar (flex row: text left, pill right) ── */
   .value-basis-bar {
@@ -2665,6 +2668,7 @@ def build_chart(
 """
 
     # Assemble full page
+    render_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2745,6 +2749,8 @@ def build_chart(
   <div class="tab-panel assumptions-panel" id="panel-scenario-parameters">
     {scenario_params_html}
   </div>
+
+  <div class="render-timestamp">Projection rendered {render_ts}</div>
 
   {_TABS_JS}
 </body>
