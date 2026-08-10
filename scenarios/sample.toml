@@ -551,6 +551,54 @@ funding      = "cash_reserve_first"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
+# ─── Post-Mortgage Housing Costs ────────────────────────────────────────────
+# The mortgage's escrow currently covers these costs.  The amortization schedule
+# pays off the Town Home during 2049, so begin direct payments in 2050.
+[[events]]
+enabled      = true
+type         = "Expense"
+label        = "Property taxes"
+year         = 2050
+amount       = -4700
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+[[events]]
+enabled      = true
+type         = "Expense"
+label        = "Homeowners insurance"
+year         = 2050
+amount       = -1250
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+# ─── Retirement Health Coverage ────────────────────────────────────────────
+
+# Alex is Medicare-eligible before retirement.  Use separate recurring events
+# so the assumed annual coverage cost can rise in later life.
+[[events]]
+enabled      = true
+type         = "Expense"
+label        = "Medicare premiums and supplement"
+year         = 2040
+amount       = -5400
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2051
+chart_first_occurrence_only = true
+
+[[events]]
+enabled      = true
+type         = "Expense"
+label        = "Later-life health coverage"
+year         = 2052
+amount       = -8400
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
 # ─── Major Home and Vehicle Capital Expenses ───────────────────────────────
 
 [[events]]
@@ -599,5 +647,24 @@ label        = "Care support"
 year         = 2053
 amount       = -25000
 expense_kind = "mandatory"
+funding      = "cash_reserve_first"
 repeat_every_years = 1
+repeat_until_year  = 2055
 chart_first_occurrence_only = true
+
+[[events]]
+enabled      = true
+type         = "Expense"
+label        = "Parent estate and funeral costs"
+year         = 2056
+amount       = -15000
+expense_kind = "mandatory"
+funding      = "cash_reserve_first"
+
+[[events]]
+enabled = true
+type    = "Income"
+label   = "Small inheritance"
+year    = 2056
+amount  = 50000
+taxable = false

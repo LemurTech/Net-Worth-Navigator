@@ -5,6 +5,10 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 
 ## 2026-08-09 (Sample scenario write protection)
 
+### Changed
+
+- **Single-professional sample timeline** — Expanded `sample.toml` with post-mortgage property tax and homeowners-insurance expenses, staged Medicare-era health coverage, and a bounded parent-care/death sequence that includes estate costs and a tax-free small inheritance.
+
 ### Fixed
 
 - **Setup Panel sample scenarios** — Scenarios with slugs beginning `sample` are now read-only. Save attempts produce one toast explaining that the scenario must be cloned before editing; server-side guards reject every TOML write endpoint, raw-TOML save/render action, rename, delete, and default-scenario change with HTTP 403.
