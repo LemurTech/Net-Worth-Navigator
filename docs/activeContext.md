@@ -9,6 +9,11 @@
 
 ## Current Work
 
+### Definitions reference alignment (2026-08-09)
+
+- Updated the generated Definitions page to match the current six-part Scenario Setup panel and v2 event-driven schema. It now covers `csv_import`, household type, Roth ownership, survivor spending/claiming, debt-service handling, `EndOfPlan`, and current Social Security benefit derivation; it also distinguishes legacy/reserved TOML fields from controls exposed by the Setup Panel.
+- Inline TOML/event references in section explanations now render as code. Removed the author-facing footer from the public page. Rebuilt the four-sample static demo and passed the full suite (224 tests).
+
 ### Static demo Setup-page visual polish (2026-08-09)
 
 - Enhanced the read-only Setup renderer with a richer static-snapshot orientation panel, live-style collapsed Advanced disclosures, targeted field help, and the live Events icon vocabulary (for example retirement, Social Security, End of Plan, income, and expense). It remains local-only: tabs/disclosures work in-browser but there are no API calls or write controls.

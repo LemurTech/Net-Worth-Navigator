@@ -29,19 +29,50 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "options": ["`true` = default starting scenario", "`false` = alternate scenario"],
             },
             {
+                "key": "[scenario].household_type",
+                "summary": "Controls whether the scenario is a single-person or couple household. If omitted, NWN infers the type from whether `[person2]` exists.",
+                "options": ["`single`", "`couple`"],
+            },
+            {
                 "key": "[display].projection_title",
                 "summary": "Subtitle text shown in the projection page header/chart title area.",
             },
         ],
     },
     {
+        "title": "Setup Panel Map",
+        "intro": "The live Scenario Setup Panel groups editable values into six areas. The public demo shows the same information as a static snapshot.",
+        "items": [
+            {
+                "key": "Metadata",
+                "summary": "Scenario identity, household type, plan years, cash targets, market assumptions, value basis, and advanced withdrawal, tax, and simulation controls.",
+            },
+            {
+                "key": "Social Security",
+                "summary": "Person-specific age-to-monthly-benefit tables plus default and survivor claiming ages.",
+            },
+            {
+                "key": "Income & Contributions",
+                "summary": "Employment income, contribution method, employer match, IRA routing, workplace-plan splits, and ownership shares for each person.",
+            },
+            {
+                "key": "Accounts / Events / Raw TOML",
+                "summary": "Opening data source and balances, named properties and liabilities, the event-driven timeline, and the underlying TOML for advanced reference.",
+            },
+        ],
+    },
+    {
         "title": "Data Source And Synthetic Start",
-        "intro": "Controls where year-0 balances come from. Most real household scenarios use Monarch data; demo/share-safe scenarios use synthetic balances.",
+        "intro": "Controls where year-0 balances come from. Use live/cached Monarch, manual synthetic amounts, or a compatible CSV import.",
         "items": [
             {
                 "key": "[data_source].mode",
-                "summary": "Choose whether the scenario starts from live/cached Monarch balances or explicit synthetic amounts.",
-                "options": ["`monarch` = live or cached classified account balances", "`synthetic` = balances come from `[synthetic_start]`"],
+                "summary": "Choose the opening-balance source for the scenario.",
+                "options": ["`monarch` = live or cached classified account balances", "`synthetic` = manual balances from `[synthetic_start]`", "`csv_import` = imported account balances from `[csv_source]`"],
+            },
+            {
+                "key": "[csv_source]",
+                "summary": "Stores CSV-import metadata and account rows after an import. It is managed by the Setup Panel import workflow rather than hand-authored in normal use.",
             },
             {
                 "key": "[synthetic_start].taxable / trad_ira / roth / cash",
@@ -88,8 +119,7 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
             },
             {
                 "key": "[simulation].real_dollar_basis",
-                "summary": "When true, all chart and table figures are shown in start-year purchasing power (deflated by cumulative inflation). False (default) shows nominal future-year values.",
-                "options": ["`false` (default) — nominal dollars", "`true` — deflated to start-year dollars"],
+                "summary": "Legacy compatibility switch. Prefer `[simulation].value_basis` for new scenarios and use this only when maintaining older TOML.",
             },
             {
                 "key": "[simulation].value_basis",
@@ -174,12 +204,8 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Date of birth used for age labels, end-of-plan timing, and RMD age checks.",
             },
             {
-                "key": "[personX].life_expectancy",
-                "summary": "Modeled terminal age, not a prediction.",
-            },
-            {
-                "key": "[personX].retirement_year",
-                "summary": "First model year in which wage income stops for that person.",
+                "key": "Timeline: `Retire` / `SocialSecurity` / `EndOfPlan` events",
+                "summary": "The event timeline is the current source of truth for retirement, claiming, and modeled end-of-plan timing. Person-level `retirement_year` and `life_expectancy` are legacy fallbacks only.",
             },
             {
                 "key": "[personX].annual_take_home",
@@ -259,12 +285,20 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Share of the household traditional balance attributed to that person for RMD math.",
             },
             {
+                "key": "[personX].roth_share",
+                "summary": "Fallback share of pooled Roth opening balances and unnamed shared Roth flows. Account-level Roth owner assignments override it.",
+            },
+            {
                 "key": "[personX].ss_start_age",
                 "summary": "Optional convenience cache of the claiming age entered on this person's SocialSecurity event; the event's year (birth_year + age) is the actual source of truth.",
             },
             {
                 "key": "[personX].social_security_benefits",
                 "summary": "Age-to-monthly-benefit lookup, resolved live at the claiming age on every read — never stored on the SocialSecurity event itself. A missing table or age entry fails scenario validation.",
+            },
+            {
+                "key": "[personX].survivor_ss_start_age",
+                "summary": "Couple-only age at which the surviving spouse may step up to the deceased partner’s configured benefit. Defaults to 60 when omitted.",
             },
         ],
     },
@@ -281,6 +315,10 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Survivor spending target expressed as a share of the couple retirement target.",
             },
             {
+                "key": "[spending].survivor_annual",
+                "summary": "Optional absolute survivor spending target. When both this and survivor_percent_of_retirement are set, the absolute annual amount wins.",
+            },
+            {
                 "key": "[spending].spending_basis",
                 "summary": "How to interpret the retirement/spending targets over time.",
                 "options": ["`real` = today’s dollars, then CPI-adjusted", "`nominal` = fixed nominal amounts"],
@@ -292,6 +330,10 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
             {
                 "key": "[spending].annual_savings_override",
                 "summary": "Optional explicit pre-retirement savings target when you want to derive spending from savings rather than the default implied math.",
+            },
+            {
+                "key": "[spending].debt_service_handling",
+                "summary": "Controls whether active loan principal-and-interest is automatically added to retirement spending (`auto_reduce`) or is already assumed inside the entered target (`included_in_target`).",
             },
         ],
     },
@@ -340,8 +382,8 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
             },
             {
                 "key": "[taxes].wage_tax_treatment",
-                "summary": "How wage income should enter the tax model.",
-                "options": ["`net_cash` = wages stay as after-tax cashflow only", "`taxable_wages` = wages are treated as taxable income"],
+                "summary": "How wage income enters the tax model. The current Setup Panel exposes the implemented net-cash mode only.",
+                "options": ["`net_cash` = wages stay as after-tax cashflow only (current supported mode)", "`taxable_wages` = reserved configuration value; not currently offered by the Setup Panel"],
             },
             {
                 "key": "[taxes.rmd].enabled",
@@ -448,14 +490,19 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
                 "summary": "Use `enabled = true/false` to toggle, keep `label` human-friendly, and prefer exact years over prose.",
             },
             {
+                "key": "EndOfPlan",
+                "summary": "Marks a person’s modeled plan boundary and drives survivor behavior for couple households. It is a planning horizon, not a life prediction.",
+                "options": ["Fields: `person`, `year`"],
+            },
+            {
                 "key": "Retire",
                 "summary": "Stops a person’s wage income from its `year` onward.",
                 "options": ["Fields: `person`, `year`"],
             },
             {
                 "key": "SocialSecurity",
-                "summary": "Adds Social Security income for a person from its `year` onward.",
-                "options": ["Fields: `person`, `year`, `monthly_benefit`", "Optional: `taxable`, `taxable_fraction`"],
+                "summary": "Adds Social Security income for a person from its `year` onward. NWN resolves the monthly amount live from `[personX].social_security_benefits` at the claiming age; it is not stored on the event.",
+                "options": ["Fields: `person`, `year`", "Optional legacy/convenience age: `age` or `ss_start_age`"],
             },
             {
                 "key": "Expense",
@@ -473,8 +520,8 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
             },
             {
                 "key": "BuyHome",
-                "summary": "Uses cash for a purchase and, when `price` is supplied, creates/updates a tracked property.",
-                "options": ["Fields: `year`, `down_payment`, `price`", "Optional: `property`, `mortgage_rate`, `term_years`"],
+                "summary": "Uses cash for a purchase and, when `price` is supplied, creates or updates a tracked property. Mortgage-rate and term fields are not modeled by the current event engine.",
+                "options": ["Fields: `year`, `down_payment`, `price`", "Optional: `property`"],
             },
             {
                 "key": "SellHome",
@@ -483,7 +530,7 @@ DEFINITION_SECTIONS: list[dict[str, object]] = [
             },
             {
                 "key": "NewJob / CareerBreak / Education / Marriage / SpendingShift",
-                "summary": "Additional event types for job changes, pauses, tuition, informational life events, and baseline-spending regime changes.",
+                "summary": "Additional event types for job changes, pauses, tuition, informational life events, and baseline-spending regime changes. Education is household-wide; a person field is not used.",
             },
             {
                 "key": "ContributionChange",
@@ -735,7 +782,7 @@ def build_definitions_page_html(
     <section class="hero">
       <div class="eyebrow">Net Worth Navigator Reference</div>
       <h1>Definitions And Options</h1>
-      <p class="lead">This page is the plain-English companion to the scenario TOML files. It groups parameters by purpose, explains what each one is for, and calls out the most important option values without forcing the config files themselves to become a handbook.</p>
+      <p class="lead">This page is the plain-English companion to the scenario TOML files and the six-part Scenario Setup panel. Timeline decisions now live in Events; the remaining controls are grouped by purpose here, with current option values and important compatibility notes.</p>
       <div class="hero-actions">
         <a class="btn primary" href="{escape(projection_url)}" target="_blank" rel="noreferrer">Open Projection</a>
         <a class="btn" href="{escape(editor_url)}" target="_blank" rel="noreferrer">Open Config Editor</a>
@@ -743,7 +790,6 @@ def build_definitions_page_html(
     </section>
     <nav class="nav">{nav_links}</nav>
     {sections_html}
-    <div class="foot">Keep the TOML concise. Put durable explanation here, then link to this page from the shell, editor, and scenario pages.</div>
   </div>
 </body>
 </html>"""
@@ -767,7 +813,7 @@ def write_definitions_page(
 
 def _render_section(section: dict[str, object]) -> str:
     title = escape(str(section["title"]))
-    intro = escape(str(section.get("intro", "")))
+    intro = _inline_code_markup(str(section.get("intro", "")))
     items = "".join(_render_item(item) for item in section.get("items", []))
     return (
         f"<section class='section' id='{_slugify(str(section['title']))}'>"
@@ -778,7 +824,7 @@ def _render_section(section: dict[str, object]) -> str:
 
 def _render_item(item: dict[str, object]) -> str:
     term = escape(str(item["key"]))
-    summary = escape(str(item["summary"]))
+    summary = _inline_code_markup(str(item["summary"]))
     options = item.get("options") or []
     options_html = ""
     if options:

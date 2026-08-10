@@ -15,7 +15,16 @@ class DefinitionsPageTests(unittest.TestCase):
         self.assertIn("Definitions And Options", html)
         self.assertIn("Scenario And Display", html)
         self.assertIn("Market And Economic Assumptions", html)
+        self.assertIn("Setup Panel Map", html)
         self.assertIn("[simulation].mode", html)
+        self.assertIn("Timeline: `Retire` / `SocialSecurity` / `EndOfPlan` events", html)
+        self.assertIn("[personX].roth_share", html)
+        self.assertIn("<code>csv_import</code>", html)
+        self.assertIn("not stored on the event", html)
+        self.assertNotIn(
+            "Fields: <code>person</code>, <code>year</code>, <code>monthly_benefit</code>",
+            html,
+        )
         self.assertIn("/finances/config/", html)
         self.assertIn("/finances/projection.html", html)
 

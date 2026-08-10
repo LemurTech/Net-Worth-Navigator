@@ -3,6 +3,17 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-09 (Definitions reference alignment)
+
+### Changed
+
+- **Definitions page** — Aligned the generated glossary with the current six-part Setup Panel and v2 event-driven timeline. Added the Setup Panel map, `csv_import`, household type, Roth ownership, survivor controls, debt-service handling, and `EndOfPlan`; corrected Social Security benefit derivation, retired-field guidance, wage-tax UI availability, BuyHome scope, and Education's household scope.
+- **Reference readability** — Rendered inline TOML/event references as code in descriptions and removed the internal author-guidance footer from the public HTML page.
+
+### Tests
+
+- Added regression coverage for the current timeline, derived Social Security behavior, CSV import, and Setup map. Rebuilt all four static demo samples; full suite passed (224 tests).
+
 ## 2026-08-09 (Read-only demo Setup polish)
 
 ### Changed
