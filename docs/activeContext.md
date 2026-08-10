@@ -9,6 +9,11 @@
 
 ## Current Work
 
+### Static demo Setup-page alignment (2026-08-09)
+
+- Replaced `src/demo_setup_page.py`'s obsolete three-tab summary with a six-tab read-only renderer aligned to the live Setup Panel: Metadata, Social Security, Income & Contributions, Accounts, Events, and Raw TOML. It presents advanced settings, all sample benefits/contribution/routing details, named properties/liabilities, and generic complete event cards without API calls or write controls.
+- Timeline display now derives Retirement, Social Security claiming, and End of Plan from their v2 event records rather than stale per-person fields. Rebuilt all four preview scenarios successfully; generator coverage and full suite passed (224 tests).
+
 ### Isolated static demo builds (2026-08-09)
 
 - `scripts/build_demo.py` now renders samples through an isolated `run.py --output-root <work-dir> --no-deploy` path, copies only public sample artifacts into `--output-dir`, and never filters or deletes normal `output/scenarios` content. It selects `.venv\Scripts\python.exe` on Windows and reads UTF-8 sample TOML explicitly.

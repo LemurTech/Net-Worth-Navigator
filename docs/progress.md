@@ -3,6 +3,17 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-09 (Read-only demo Setup alignment)
+
+### Changed
+
+- **Static Scenario Setup** — Replaced the three-tab demo facsimile with the live panel's six-tab information architecture. The generated public pages now expose Metadata, Social Security, Income & Contributions, Accounts, Events, and Raw TOML, while retaining a clear no-write/no-API contract.
+- **Demo configuration coverage** — Added static display of advanced withdrawal/spending/tax/RMD/simulation settings; Social Security benefit tables; person-specific pay, contribution, employer-match, routing, and ownership settings; synthetic balances/properties/liabilities; and all event properties. Retirement, claiming, and plan-boundary values are derived from v2 timeline events.
+
+### Tests
+
+- Added static-page generator coverage for the complete tab surface, representative sample values, and the absence of API calls and mutation controls. Verified a real four-sample preview build; full suite passed (224 tests).
+
 ## 2026-08-09 (Isolated demo builds)
 
 ### Changed
