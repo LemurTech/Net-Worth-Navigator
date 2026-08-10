@@ -27,12 +27,18 @@ def _person_initial(person: dict, person_key: str) -> str:
     return person_key[:1].upper()
 
 
+def _is_bundled_slug(slug: str) -> bool:
+    """Bundled sample/template scenarios keep their shipped comments."""
+    return slug.lower().startswith(("sample", "starter"))
+
+
 def migrate_scenario(path: Path, dry_run: bool = False, strip_comments: bool = False) -> list[str]:
     """Migrate one scenario file. Returns list of actions taken."""
     actions: list[str] = []
     slug = path.stem
 
-    doc = tomlkit.parse(path.read_text(encoding="utf-8"))
+    original = path.read_text(encoding="utf-8")
+    doc = tomlkit.parse(original)
     events = doc.get("events")
     if not isinstance(events, list):
         # tomlkit AoT may need creation
@@ -73,7 +79,7 @@ def migrate_scenario(path: Path, dry_run: bool = False, strip_comments: bool = F
                 tbl["year"] = yr
                 events.append(tbl)
                 del person["retirement_year"]
-                actions.append(f"  {slug}: {person_key} Retire → event year={yr}")
+                actions.append(f"  {slug}: {person_key} Retire -> event year={yr}")
             except (TypeError, ValueError):
                 actions.append(f"  {slug}: {person_key} Retire SKIPPED (invalid year)")
 
@@ -106,7 +112,7 @@ def migrate_scenario(path: Path, dry_run: bool = False, strip_comments: bool = F
                     if "ss_claim_age" in person:
                         del person["ss_claim_age"]
                     actions.append(
-                        f"  {slug}: {person_key} SocialSecurity → event year={start_year} "
+                        f"  {slug}: {person_key} SocialSecurity -> event year={start_year} "
                         f"age={ss_age} benefit={monthly}"
                     )
                 else:
@@ -137,15 +143,22 @@ def migrate_scenario(path: Path, dry_run: bool = False, strip_comments: bool = F
                 del person["life_expectancy"]
                 yr_str = f"year={birth_year + le}" if birth_year else "year=0 (no dob)"
                 actions.append(
-                    f"  {slug}: {person_key} EndOfPlan → event age={le} {yr_str}"
+                    f"  {slug}: {person_key} EndOfPlan -> event age={le} {yr_str}"
                 )
             except (TypeError, ValueError):
                 actions.append(f"  {slug}: {person_key} EndOfPlan SKIPPED (invalid value)")
 
-    if (actions or strip_comments) and not dry_run:
+    # --strip-comments applies to the user's own production files only;
+    # bundled sample/template scenarios keep their shipped comments.
+    do_strip = strip_comments and not _is_bundled_slug(slug)
+    if actions or do_strip:
         text = tomlkit.dumps(doc)
-        text = _rewrite_events_section(text, strip_comments=strip_comments)
-        path.write_text(text, encoding="utf-8")
+        text = _rewrite_events_section(text, strip_comments=do_strip)
+        if do_strip and text != original:
+            note = "comments stripped" if "#" in original else "formatting normalized"
+            actions.append(f"  {slug}: {note}")
+        if not dry_run:
+            path.write_text(text, encoding="utf-8")
 
     return actions
 
@@ -245,6 +258,14 @@ def main():
         paths = sorted(SCENARIOS_DIR.glob("*.toml"))
 
     total = 0
+    if strip_comments:
+        kept = []
+        for path in paths:
+            if _is_bundled_slug(path.stem):
+                print(f"  SKIP: {path.name} (bundled scenario - comments preserved)")
+            else:
+                kept.append(path)
+        paths = kept
     for path in paths:
         if not path.exists():
             print(f"  SKIP: {path} not found")

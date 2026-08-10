@@ -3,6 +3,18 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-10 (Migrate script --strip-comments fixes)
+
+### Fixed
+
+- **`--strip-comments` now skips bundled scenario files.** The flag is for the user's own production files only: any scenario whose name starts with `sample` or `starter` is reported as `SKIP ... (bundled scenario - comments preserved)` and left untouched (samples carry up to ~300 documentation lines; templates are shipped as-is).
+- **The action report now reflects comment stripping.** Previously a run that stripped comments reported "0 action(s)" because the strip work was never counted. The script now reports per-file `comments stripped` (or `formatting normalized` when only formatting changed) and the summary counts those — including in `--dry-run`, which shows what would happen without writing.
+- **Windows-safe output.** Replaced `→` with ASCII `->` in script messages (Unicode in `print()` can crash on Windows consoles).
+
+### Tests
+
+- Added `tests/test_migrate_v2.py` (5 tests): strip reports + removes, sample skip, starter skip, dry-run reports without writing, clean file claims nothing. Full suite 238 passed, 1 skipped.
+
 ## 2026-08-10 (Migration banner + user guide migration steps)
 
 ### Added
