@@ -3,6 +3,21 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-10 (Migration banner + user guide migration steps)
+
+### Added
+
+- **Migration banner in Scenario Setup** — A scenario still using the v1 per-person timeline fields (`retirement_year`, `ss_start_age`, `life_expectancy`) now shows an amber banner at the top of the Setup Panel: "This scenario uses the older v1 format", listing the missing items (for example "Person 1 — Social Security"), with a link to the migration steps in the User Guide. Detection logic was extracted from `GET /api/events` into a shared `_migration_status()` helper (human-facing labels) and surfaced through a new `GET /api/migration-status` endpoint consumed on page load.
+- **User Guide: "Migrating Scenarios from v1 to v2"** — New `guides/migrating-to-v2` page: what changed, why migrate, backup-first numbered steps with platform tabs (dry-run → apply → verify), optional `--strip-comments` for production files, and post-migration verification. Sidebar entry added in `astro.config.mjs`. The README's existing "Setup Panel's migration guidance" reference now holds true.
+
+### Tests
+
+- Added `tests/test_migration_banner.py` (10 tests): helper detection (full/partial/none, person2 skipped), endpoint behavior (v1 → flagged, migrated → clean), `/api/events` flag regression, and Setup Panel template assertions (banner markup, CSS, JS init, guide link). Full suite 233 passed, 1 skipped. Live-verified with a scratch v1 scenario: banner visible with the three missing items and the guide link; clean scenarios leave it hidden; no console errors.
+
+### Plan
+
+- `docs/plans/2026-08-10-migrate-banner.md`
+
 ## 2026-08-09 (README v2 announcement)
 
 ### Added
