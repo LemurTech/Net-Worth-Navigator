@@ -574,6 +574,76 @@ funding = "cash_reserve_first"
 repeat_every_years = 1
 chart_first_occurrence_only = true
 
+# ─── Post-Mortgage Housing Costs ────────────────────────────────────────────
+# The mortgage escrow currently covers these costs. The amortization schedule
+# pays off Home Mortgage during 2049, so begin direct payments in 2050.
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Property taxes"
+year    = 2050
+amount  = -4700
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Homeowners insurance"
+year    = 2050
+amount  = -1250
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
+# ─── Retirement Health Coverage ────────────────────────────────────────────
+# Alex retires in 2038. Sam reaches Medicare eligibility in 2039, and becomes
+# the surviving household member in 2059. Separate event ranges keep the
+# assumptions explicit as coverage needs change across those stages.
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Alex Medicare premiums and supplement"
+year    = 2038
+amount  = -5400
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2038
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Household Medicare premiums and supplements"
+year    = 2039
+amount  = -10800
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2051
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Later-life health coverage"
+year    = 2052
+amount  = -15600
+expense_kind = "mandatory"
+repeat_every_years = 1
+repeat_until_year  = 2058
+chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Survivor health coverage"
+year    = 2059
+amount  = -9600
+expense_kind = "mandatory"
+repeat_every_years = 1
+chart_first_occurrence_only = true
+
 # ─── Major Home and Vehicle Capital Expenses ───────────────────────────────
 
 # One-time large home repairs
@@ -622,6 +692,25 @@ label   = "Care support"
 year    = 2053
 amount  = -25000
 expense_kind = "mandatory"
+funding = "cash_reserve_first"
 repeat_every_years = 1
+repeat_until_year  = 2055
 chart_first_occurrence_only = true
+
+[[events]]
+enabled = true
+type    = "Expense"
+label   = "Parent estate and funeral costs"
+year    = 2056
+amount  = -15000
+expense_kind = "mandatory"
+funding = "cash_reserve_first"
+
+[[events]]
+enabled = true
+type    = "Income"
+label   = "Small inheritance"
+year    = 2056
+amount  = 50000
+taxable = false
 

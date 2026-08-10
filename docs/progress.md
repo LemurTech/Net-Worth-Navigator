@@ -13,6 +13,7 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 ### Changed
 
 - **Single-professional sample timeline** — Expanded `sample.toml` with post-mortgage property tax and homeowners-insurance expenses, staged Medicare-era health coverage, and a bounded parent-care/death sequence that includes estate costs and a tax-free small inheritance.
+- **Couples sample timeline** — Expanded `sample-couples.toml` with post-mortgage property tax and homeowners-insurance expenses, staged joint and survivor health coverage, and a bounded parent-care/death sequence that includes estate costs and a tax-free small inheritance.
 
 ### Fixed
 

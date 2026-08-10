@@ -21,6 +21,10 @@
 
 - Enriched `sample.toml` with the recurring costs that begin after its Town Home mortgage payoff (property tax and homeowners insurance), two Medicare-era health-coverage cost bands, and a bounded parent-care/death sequence with estate costs and a tax-free small inheritance. The mortgage payoff model places the transition after 2049; local deterministic, historical, and Monte Carlo projections completed successfully.
 
+### Couples sample life events (2026-08-09)
+
+- Enriched `sample-couples.toml` with post-mortgage property tax and homeowners-insurance costs, plus four non-overlapping health-coverage periods: Alex's first retirement year, joint Medicare coverage, later-life joint coverage, and Sam's survivor coverage. Parent care is explicitly bounded through 2055 and followed by estate costs and a tax-free small inheritance in 2056. The Home Mortgage pays off in 2049; validation and local deterministic, historical, and Monte Carlo projections completed successfully.
+
 ### Sample scenarios are read-only in Setup Panel (2026-08-09)
 
 - Any scenario whose slug begins with `sample` is now protected from Setup Panel writes. Save attempts show one toast directing the user to clone first; API and raw-TOML/render write paths independently return a 403, so the restriction cannot be bypassed from the browser.
