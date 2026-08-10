@@ -2895,7 +2895,7 @@ def _build_figure(
     title_text = config.get("display", {}).get("projection_title", "Household Projection")
 
     # ── Build subtitle with real-dollar indicator ──────────────────────────
-    subtitle = "Values shown are end-of-year estimates, anchored to live Monarch balances"
+    subtitle = "Values shown here are end-of-year estimates, anchored to the scenario's starting financial data"
     real_dollar_basis = (
         force_real_dollar_basis
         if force_real_dollar_basis is not None

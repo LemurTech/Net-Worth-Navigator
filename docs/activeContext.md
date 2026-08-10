@@ -9,6 +9,10 @@
 
 ## Current Work
 
+### Projection data-source-neutral subtitle (2026-08-09)
+
+- Reworded the projection subtitle to say estimates are anchored to the scenario's starting financial data. It now accurately covers live Monarch, synthetic, and imported-data scenarios instead of implying that every projection uses Monarch balances.
+
 ### Couple person sections and percentage display (2026-08-09)
 
 - The Setup Panel now gives each person's Income & Contributions and Social Security sections a visible divider above and below its header. The shared percent-display helper rounds before assigning inputs, preventing binary floating-point artifacts such as `3.5000000000000004` for a TOML value of `0.035`.
