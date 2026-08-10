@@ -26,7 +26,7 @@ mode = "synthetic" # synthetic | monarch
 [synthetic_start]
 # Investable buckets
 taxable  = 120000
-trad_ira = 380000
+trad_ira = 480000
 roth     = 95000
 cash     = 45000
 # Optional explicit basis seeds (if omitted, defaults to 50% taxable cost basis,

@@ -31,10 +31,10 @@ mode = "synthetic" # synthetic | monarch
 
 [synthetic_start]
 # Investable buckets
-spending_retirement_annual = 60000.0
-person1_annual_take_home = 62000.0
-person1_gross_income = 90000.0
-
+taxable  = 120000
+trad_ira = 580000
+roth     = 95000
+cash     = 45000
 # Optional explicit basis seeds (if omitted, defaults to 50% taxable cost basis,
 # 100% Roth contribution basis):
 # taxable_cost_basis = 84000
@@ -141,19 +141,24 @@ annual_ira_contribution_bucket = "roth"
 
 # Share of household traditional retirement balance attributed to this person for RMD math.
 # If both shares are omitted/invalid, model defaults to 50/50 while both alive.
-rmd_trad_ira_share = 1.0
+rmd_trad_ira_share  = 1.0
+
+# Used when Roth accounts have no owner assignment: splits the pooled opening Roth balance between people and 
+# attributes shared Roth flows. Account-level owner assignments override this. Defaults to 50/50 if left blank
+# for both people.
+roth_share          = 1.0
 
 # Social Security benefit options (from SSA.gov estimates):
 [person1.social_security_benefits]
-"62" = 1700
-"63" = 1840
-"64" = 1990
-"65" = 2160
-"66" = 2340
-"67" = 2520
-"68" = 2710
-"69" = 2910
-"70" = 3120
+"62" = 1900
+"63" = 2040
+"64" = 2190
+"65" = 2360
+"66" = 2540
+"67" = 2720
+"68" = 2910
+"69" = 3110
+"70" = 3320
 
 [person1.annual_401k_contribution_split]
 trad_ira = 0.70
@@ -469,7 +474,7 @@ type          = "auto"
 # annual_401k_employer_match_delta = 0    # optional: new employer match delta dollar amount
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ─── 1. Plan Boundary / Life Expectancy ───────────────────────────────────────
+# ─── Plan Boundary / Life Expectancy ───────────────────────────────────────
 
 [[events]]
 enabled = true
@@ -498,7 +503,6 @@ label   = "SS Begins (A)"
 person  = "person1"
 year    = 2039
 
-# Bounded side income during early retirement
 
 [[events]]
 enabled = true
@@ -507,6 +511,7 @@ label   = "Retirement (A)"
 person  = "person1"
 year    = 2040
 
+# Bounded side income during early retirement
 [[events]]
 enabled  = true
 type     = "Income"
