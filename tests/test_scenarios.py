@@ -9,6 +9,7 @@ from src.scenarios import (
     create_scenario_from_content,
     discover_scenarios,
     materialize_scenario_content,
+    scenario_output_dir,
     write_scenarios_index,
 )
 
@@ -81,3 +82,15 @@ class ScenarioTests(unittest.TestCase):
 
             self.assertEqual(created.slug, "optimistic")
             self.assertTrue((scenarios_dir / "optimistic.toml").exists())
+
+    def test_scenario_output_dir_accepts_an_isolated_output_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            isolated_root = Path(tmp) / "demo-work" / "scenarios"
+            self.assertEqual(
+                scenario_output_dir("sample", output_root=isolated_root),
+                isolated_root / "sample",
+            )
+            self.assertEqual(
+                scenario_output_dir("sample", "historical", output_root=isolated_root),
+                isolated_root / "sample" / "historical",
+            )

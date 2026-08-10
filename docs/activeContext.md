@@ -9,6 +9,17 @@
 
 ## Current Work
 
+### Isolated static demo builds (2026-08-09)
+
+- `scripts/build_demo.py` now renders samples through an isolated `run.py --output-root <work-dir> --no-deploy` path, copies only public sample artifacts into `--output-dir`, and never filters or deletes normal `output/scenarios` content. It selects `.venv\Scripts\python.exe` on Windows and reads UTF-8 sample TOML explicitly.
+- Local preview: `.venv\Scripts\python.exe scripts\build_demo.py --output-dir output\demo-preview`, then `python -m http.server 8000 --directory output\demo-preview`. GitHub Pages uses the same builder with explicit demo/work directories.
+- Verified a real four-sample local build (59 seconds): normal scenario-manifest SHA-256 was unchanged before/after; full suite passed (223 tests).
+
+### Static demo Setup-page fidelity assessment (2026-08-09)
+
+- Assessed `scripts/build_demo.py` and `src/demo_setup_page.py` against the live `templates/setup_panel.html`. The demo is a separate three-tab facsimile rather than a read-only rendering path for the six-tab live panel; it is materially behind the current Setup Panel. No product code changed in this assessment.
+- Highest-risk gaps: no Events or Social Security tabs, no Income & Contributions detail, no liability/named-balance display, and stale v1 person fields (`life_expectancy`, `retirement_year`) shown blank after the v2 event-driven migration. Recommended next work is to make the static builder use shared read-only Setup Panel markup/data, with static JSON instead of API writes.
+
 ### Projection data-source-neutral subtitle (2026-08-09)
 
 - Reworded the projection subtitle to say estimates are anchored to the scenario's starting financial data. It now accurately covers live Monarch, synthetic, and imported-data scenarios instead of implying that every projection uses Monarch balances.

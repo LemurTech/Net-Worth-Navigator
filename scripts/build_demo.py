@@ -27,8 +27,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = REPO_ROOT / "output"
-DEMO = OUTPUT / "demo"
-VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python"
+DEFAULT_DEMO_DIR = OUTPUT / "demo"
+DEFAULT_WORK_DIR = OUTPUT / "demo-build-work"
 SAMPLE_SLUGS = ["sample", "sample-a", "sample-b", "sample-couples"]
 GUIDE_DIR = REPO_ROOT / "docs" / "guide"
 
@@ -37,18 +37,54 @@ def step(msg: str) -> None:
     print(f"\n==> {msg}")
 
 
+def _resolve_path(raw: str | None, default: Path) -> Path:
+    path = Path(raw) if raw else default
+    return path if path.is_absolute() else REPO_ROOT / path
+
+
+def _venv_python() -> Path | None:
+    for candidate in (
+        REPO_ROOT / ".venv" / "Scripts" / "python.exe",
+        REPO_ROOT / ".venv" / "bin" / "python",
+    ):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _prepare_empty_dir(path: Path, *, label: str) -> None:
+    resolved = path.resolve()
+    if resolved in {REPO_ROOT.resolve(), OUTPUT.resolve()}:
+        raise ValueError(f"Refusing to replace {label} at {resolved}")
+    if resolved.exists():
+        shutil.rmtree(resolved)
+    resolved.mkdir(parents=True, exist_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build the gh-pages demo")
     parser.add_argument("--deploy", action="store_true", help="Deploy to gh-pages branch after building")
+    parser.add_argument("--output-dir", help="Static demo destination (default: output/demo)")
+    parser.add_argument("--work-dir", help="Isolated temporary render directory (default: output/demo-build-work)")
     args = parser.parse_args()
 
-    python = str(VENV_PYTHON if VENV_PYTHON.exists() else sys.executable)
+    demo_dir = _resolve_path(args.output_dir, DEFAULT_DEMO_DIR)
+    work_dir = _resolve_path(args.work_dir, DEFAULT_WORK_DIR)
+    if demo_dir.resolve() == work_dir.resolve():
+        parser.error("--output-dir and --work-dir must be different directories")
+    _prepare_empty_dir(demo_dir, label="demo output")
+    _prepare_empty_dir(work_dir, label="demo work directory")
+
+    python = str(_venv_python() or sys.executable)
 
     # ── 1. Re-render sample scenarios ────────────────────────────────────
     step("Re-rendering sample scenarios...")
     for slug in SAMPLE_SLUGS:
         result = subprocess.run(
-            [python, "run.py", "--offline", "--scenario", slug],
+            [
+                python, "run.py", "--offline", "--no-deploy",
+                "--output-root", str(work_dir), "--scenario", slug,
+            ],
             cwd=str(REPO_ROOT),
             capture_output=True, text=True, timeout=600,
         )
@@ -60,23 +96,20 @@ def main():
 
     # ── 2. Filter manifest to sample-only ────────────────────────────────
     step("Filtering manifest to sample-only scenarios...")
-    manifest_path = OUTPUT / "scenarios" / "index.json"
+    manifest_path = work_dir / "scenarios" / "index.json"
     manifest = json.loads(manifest_path.read_text())
     manifest["scenarios"] = [e for e in manifest["scenarios"] if e.get("slug") in SAMPLE_SLUGS]
 
-    # Remove personal scenario output directories
-    for d in (OUTPUT / "scenarios").iterdir():
-        if d.is_dir() and d.name not in SAMPLE_SLUGS:
-            shutil.rmtree(d)
-            print(f"  Removed: {d.name}")
-
-    manifest_path.write_text(json.dumps(manifest, indent=2))
-
-    # Copy filtered scenarios to demo directory
-    DEMO.mkdir(exist_ok=True)
-    if (DEMO / "scenarios").exists():
-        shutil.rmtree(DEMO / "scenarios")
-    shutil.copytree(OUTPUT / "scenarios", DEMO / "scenarios")
+    # Copy only public sample artifacts. The work directory is disposable and
+    # leaves normal output/scenarios, caches, and personal sidecars untouched.
+    demo_scenarios = demo_dir / "scenarios"
+    demo_scenarios.mkdir()
+    for slug in SAMPLE_SLUGS:
+        source = work_dir / "scenarios" / slug
+        if not source.exists():
+            raise FileNotFoundError(f"Sample render was not created: {source}")
+        shutil.copytree(source, demo_scenarios / slug)
+    (demo_scenarios / "index.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"  Demo scenarios: {len(manifest['scenarios'])}")
 
     # ── 3. Build static read-only setup pages ────────────────────────────
@@ -90,7 +123,7 @@ def main():
     for slug in SAMPLE_SLUGS:
         cfg_path = REPO_ROOT / "scenarios" / f"{slug}.toml"
         if cfg_path.exists():
-            cfg = tomllib.loads(cfg_path.read_text())
+            cfg = tomllib.loads(cfg_path.read_text(encoding="utf-8"))
             scenario_names[slug] = cfg.get("scenario", {}).get("name", slug)
         else:
             scenario_names[slug] = slug
@@ -101,7 +134,7 @@ def main():
         if config_path.exists():
             build_demo_setup_page(
                 config_path=config_path,
-                output_path=DEMO / "scenarios" / slug / "setup.html",
+                output_path=demo_dir / "scenarios" / slug / "setup.html",
                 slug=slug,
                 scenario_options=scenario_options,
                 setup_relbase="../",
@@ -112,7 +145,7 @@ def main():
     # Default setup page (sample scenario)
     build_demo_setup_page(
         config_path=REPO_ROOT / "scenarios" / "sample.toml",
-        output_path=DEMO / "setup.html",
+        output_path=demo_dir / "setup.html",
         slug="sample",
         scenario_options=scenario_options,
         setup_relbase="./scenarios/",
@@ -124,11 +157,11 @@ def main():
     from src.scenario_shell import build_scenario_shell, build_compare_page  # noqa: E402
     from src.definitions_page import build_definitions_page_html  # noqa: E402
 
-    manifest = json.loads((DEMO / "scenarios" / "index.json").read_text())
+    manifest = json.loads((demo_dir / "scenarios" / "index.json").read_text())
 
     build_scenario_shell(
         manifest=manifest,
-        output_path=DEMO / "projection.html",
+        output_path=demo_dir / "projection.html",
         manifest_relpath="scenarios/index.json",
         setup_url="./setup.html",
         definitions_url="./definitions.html",
@@ -137,7 +170,7 @@ def main():
 
     build_compare_page(
         manifest=manifest,
-        output_path=DEMO / "compare.html",
+        output_path=demo_dir / "compare.html",
         manifest_relpath="scenarios/index.json",
         shell_url="./projection.html",
         definitions_url="./definitions.html",
@@ -148,7 +181,7 @@ def main():
         editor_url="./setup.html",
         projection_url="https://lemurtech.github.io/Net-Worth-Navigator/demo/projection.html",
     )
-    (DEMO / "definitions.html").write_text(defs)
+    (demo_dir / "definitions.html").write_text(defs)
     print("  definitions.html")
 
     # ── 5. Build Starlight User Guide (if available) ─────────────────────
@@ -168,8 +201,9 @@ def main():
 
     # ── 6. Final output ──────────────────────────────────────────────────
     step("Demo build complete")
-    print(f"  Output: {DEMO}")
-    print(f"  Total size: {sum(f.stat().st_size for f in DEMO.rglob('*') if f.is_file()) / 1024:.0f} KB")
+    print(f"  Output: {demo_dir}")
+    print(f"  Preview: python -m http.server 8000 --directory {demo_dir}")
+    print(f"  Total size: {sum(f.stat().st_size for f in demo_dir.rglob('*') if f.is_file()) / 1024:.0f} KB")
     print()
     print("  To deploy to gh-pages:")
     print("    1. Clone the gh-pages branch to a worktree:")
@@ -208,7 +242,7 @@ def main():
                     shutil.copy2(f, deploy_dir / f.name)
 
         # Copy demo files
-        shutil.copytree(DEMO, deploy_dir / "demo", dirs_exist_ok=True)
+        shutil.copytree(demo_dir, deploy_dir / "demo", dirs_exist_ok=True)
 
         # Ensure .nojekyll
         (deploy_dir / ".nojekyll").touch()

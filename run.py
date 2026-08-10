@@ -29,7 +29,6 @@ from src.monarch_bridge import (
     fetch_raw_accounts,
 )
 from src.scenarios import (
-    SCENARIO_OUTPUT_ROOT,
     get_default_scenario,
     get_scenario,
     normalized_render_modes,
@@ -39,11 +38,24 @@ from src.scenarios import (
 from src.scenario_shell import build_scenario_shell, build_compare_page
 from src.sidecars import write_sidecars
 
-OUTPUT_DIR  = Path("output")
+def option_value(option: str, argv: list[str] | None = None) -> str | None:
+    """Read an option provided as ``--option value`` or ``--option=value``."""
+    argv = sys.argv if argv is None else argv
+    for i, arg in enumerate(argv):
+        if arg == option and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith(f"{option}="):
+            return arg.split("=", 1)[1]
+    return None
+
+
+OUTPUT_DIR  = Path(option_value("--output-root") or "output")
+SCENARIO_OUTPUT_ROOT = OUTPUT_DIR / "scenarios"
 DEPLOY_DIR  = Path(os.environ.get("NWN_DEPLOY_DIR", "/srv/web-projects/finances"))
 PUBLIC_PATH_PREFIX = os.environ.get("NWN_PUBLIC_PATH_PREFIX", "/finances")
 CACHE_FILE  = OUTPUT_DIR / "balances_cache.json"
 OFFLINE     = "--offline" in sys.argv
+NO_DEPLOY   = "--no-deploy" in sys.argv
 BUNDLED_HISTORICAL_RETURNS_PATH = "config/return_sequences/us_balanced_returns.csv"
 
 
@@ -233,7 +245,7 @@ def main():
     
     default_scenario = get_default_scenario()
     baseline_config = load_config(default_scenario.config_path)
-    scenario_dir = scenario_output_dir(scenario.slug)
+    scenario_dir = scenario_output_dir(scenario.slug, output_root=SCENARIO_OUTPUT_ROOT)
     render_modes = scenario_render_modes(config)
 
     print("Net Worth Navigator")
@@ -341,7 +353,11 @@ def main():
     for render_mode in render_modes:
         mode_config = config_for_render_mode(config, render_mode)
         mode_baseline_config = config_for_render_mode(baseline_config, render_mode)
-        mode_dir = scenario_output_dir(scenario.slug, render_mode)
+        mode_dir = scenario_output_dir(
+            scenario.slug,
+            render_mode,
+            output_root=SCENARIO_OUTPUT_ROOT,
+        )
         sidecar_dir = mode_dir / "sidecars"
         output_path = mode_dir / "projection.html"
 
@@ -429,6 +445,10 @@ def main():
     print(f"  compare_html: {compare_output_path}")
 
     # 4. Deploy to web server
+    if NO_DEPLOY:
+        print("=> Deployment skipped (--no-deploy)")
+        return
+
     DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
     deploy_scenario_dir = DEPLOY_DIR / "scenarios" / scenario.slug
     shutil.copytree(scenario_dir, deploy_scenario_dir, dirs_exist_ok=True)

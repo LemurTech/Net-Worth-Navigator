@@ -14,6 +14,15 @@ A local net worth projection and financial event modeling tool. Create and compa
 >
 > **New here?** The [Net Worth Navigator User Guide](https://lemurtech.github.io/Net-Worth-Navigator/) has full walkthroughs, explanations, and troubleshooting.
 
+To preview that static demo from an unmerged local branch:
+
+```powershell
+.venv\Scripts\python.exe scripts\build_demo.py --output-dir output\demo-preview
+python -m http.server 8000 --directory output\demo-preview
+```
+
+Open `http://localhost:8000`. The demo build uses an isolated work directory and does not modify normal `output\scenarios` artifacts.
+
 ---
 
 ## What Is Net Worth Navigator?

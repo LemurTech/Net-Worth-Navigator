@@ -3,6 +3,18 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-09 (Isolated demo builds)
+
+### Changed
+
+- **Demo builder** — `scripts/build_demo.py` now renders sample scenarios into an isolated work directory, copies only sample artifacts into a selected static output directory, and no longer deletes or rewrites normal `output/scenarios` content. Added `--output-dir` and `--work-dir` for branch-local preview builds, plus Windows virtual-environment Python selection and UTF-8 sample-TOML reading.
+- **Renderer** — `run.py` accepts `--output-root` for isolated artifacts and `--no-deploy` for static-build use; ordinary runs retain their existing default output and deployment behavior.
+- **GitHub Pages and docs** — The Pages workflow invokes the explicit isolated build path. README documents serving an unmerged branch's demo locally with Python's HTTP server.
+
+### Tests
+
+- Added isolation coverage for `scenario_output_dir` and the demo-build subprocess/copy contract. Verified a real four-sample local build without changing the normal scenario manifest; full suite passed (223 tests).
+
 ## 2026-08-09 (Sample scenario write protection)
 
 ### Fixed

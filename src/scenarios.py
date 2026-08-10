@@ -109,8 +109,14 @@ def get_scenario(slug: str | None = None) -> ScenarioRef:
     raise KeyError(f"Scenario '{slug}' not found.")
 
 
-def scenario_output_dir(slug: str, mode: str | None = None) -> Path:
-    base = SCENARIO_OUTPUT_ROOT / slug
+def scenario_output_dir(
+    slug: str,
+    mode: str | None = None,
+    *,
+    output_root: Path | None = None,
+) -> Path:
+    """Return a scenario artifact directory under the selected output root."""
+    base = (output_root or SCENARIO_OUTPUT_ROOT) / slug
     return base / mode if mode else base
 
 

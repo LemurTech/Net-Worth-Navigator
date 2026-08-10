@@ -69,9 +69,7 @@ jobs:
         run: python -W error::SyntaxWarning -m compileall src/ scripts/
 
       - name: Build demo (sample scenarios + Starlight guide)
-        run: python scripts/build_demo.py
-        env:
-          NWN_DEPLOY_DIR: output/deploy
+        run: python scripts/build_demo.py --output-dir output/demo --work-dir output/demo-build-work
 
       - name: Assemble artifact (guide at root, demo under /demo/)
         run: |
