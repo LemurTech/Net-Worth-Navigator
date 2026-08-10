@@ -3,6 +3,12 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-09 (README v2 announcement)
+
+### Added
+
+- **Returning-user announcement** — Added a prominent v2.0 callout near the README opening that highlights the event-driven timeline, expanded six-tab Setup Panel, complete supported UI settings coverage (no normal TOML editing required), legacy migration path, and links to the updated guide/reference.
+
 ## 2026-08-09 (User Guide v2 alignment)
 
 ### Changed

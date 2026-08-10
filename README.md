@@ -14,6 +14,12 @@ A local net worth projection and financial event modeling tool. Create and compa
 >
 > **New here?** The [Net Worth Navigator User Guide](https://lemurtech.github.io/Net-Worth-Navigator/) has full walkthroughs, explanations, and troubleshooting.
 
+> ## ✨ v2.0 is here: a richer, event-driven planning workflow
+>
+> Returning users: retirement, Social Security claiming, and each person's modeled end of plan are now explicit, editable timeline events. The expanded six-tab Scenario Setup panel now exposes the full supported settings surface—Social Security benefit tables, income and contribution controls, richer accounts/liabilities, advanced simulation settings, and a visual Events workspace—so direct TOML editing is no longer required for normal scenario setup.
+>
+> Existing scenarios retain legacy fallbacks, but use the Setup Panel's migration guidance (or update the event records in TOML) to adopt v2. See the [User Guide](https://lemurtech.github.io/Net-Worth-Navigator/) for the updated workflow and the [Event Types reference](https://lemurtech.github.io/Net-Worth-Navigator/reference/event-types/) for the schema.
+
 To preview that static demo from an unmerged local branch:
 
 ```powershell

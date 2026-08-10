@@ -9,6 +9,10 @@
 
 ## Current Work
 
+### README v2 announcement (2026-08-09)
+
+- Added a prominent returning-user announcement near the README opening. It highlights v2's event-driven timeline and expanded six-tab Setup Panel, makes clear that normal setup no longer requires direct TOML editing, notes legacy fallback/migration guidance, and links to the updated User Guide and event schema.
+
 ### User Guide v2 alignment (2026-08-09)
 
 - Updated the public User Guide's Setup Panel, quick-start, scenario, event, configuration, and event-type pages for the six-tab editor and the v2 event-driven timeline. The guide now directs readers to explicit `Retire`, `SocialSecurity`, and `EndOfPlan` events; explains live Social Security benefit lookup; documents `ContributionChange`; and removes unmodeled BuyHome mortgage fields and Education person scope.
