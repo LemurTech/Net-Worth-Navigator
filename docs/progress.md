@@ -3,6 +3,17 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-09 (Read-only demo Setup polish)
+
+### Changed
+
+- **Demo Setup experience** — Added a clearer static-snapshot orientation panel, local-only interaction cues, and collapsible Advanced sections so the public page better conveys the live product without suggesting it can save changes.
+- **Help and events** — Added targeted help for income, contribution routing, cash targets, market assumptions, taxes/RMDs, simulations, Social Security, accounts, liabilities, and event behavior. Event cards now use the live Setup Panel's type-icon vocabulary and richer status treatment.
+
+### Tests
+
+- Extended static-page coverage for the polished notice, advanced disclosures, and event icons. Rebuilt all sample pages; full suite passed (224 tests).
+
 ## 2026-08-09 (Read-only demo Setup alignment)
 
 ### Changed

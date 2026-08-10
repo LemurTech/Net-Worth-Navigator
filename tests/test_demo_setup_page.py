@@ -34,7 +34,13 @@ def test_demo_setup_page_matches_live_setup_information_architecture(tmp_path):
     assert "Home Mortgage" in html
     assert "Surgery" in html
     assert "Advanced: Simulation &amp; Monte Carlo" in html
-    assert "Read-only public demo" in html
+    assert "complete Setup Panel snapshot" in html
+    assert "Read-only details" in html
+    assert "Life events drive the projection timeline" in html
+    assert "💀" in html
+    assert "🎉" in html
+    assert "🏛️" in html
+    assert "💸" in html
     assert "fetch(" not in html
     assert "/api/" not in html
     assert "Save Event" not in html

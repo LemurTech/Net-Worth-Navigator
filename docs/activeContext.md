@@ -9,6 +9,11 @@
 
 ## Current Work
 
+### Static demo Setup-page visual polish (2026-08-09)
+
+- Enhanced the read-only Setup renderer with a richer static-snapshot orientation panel, live-style collapsed Advanced disclosures, targeted field help, and the live Events icon vocabulary (for example retirement, Social Security, End of Plan, income, and expense). It remains local-only: tabs/disclosures work in-browser but there are no API calls or write controls.
+- Rebuilt the four-sample demo preview successfully; focused generator checks and the full test suite passed (224 tests).
+
 ### Static demo Setup-page alignment (2026-08-09)
 
 - Replaced `src/demo_setup_page.py`'s obsolete three-tab summary with a six-tab read-only renderer aligned to the live Setup Panel: Metadata, Social Security, Income & Contributions, Accounts, Events, and Raw TOML. It presents advanced settings, all sample benefits/contribution/routing details, named properties/liabilities, and generic complete event cards without API calls or write controls.
