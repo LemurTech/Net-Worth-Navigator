@@ -13,6 +13,7 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - **Roth ownership share controls** — Added help text explaining that `personX.roth_share` is a fallback for pooled/unnamed Roth ownership and is overridden by account-level owner metadata.
 - **Percent-of-gross contribution controls** — Added in-context explanations for gross-income growth, the starting rate, and annual percentage-point contribution-rate increases.
 - **Cash targets** — Added phase guidance with standard help-text spacing and made the survivor target couple-only in the Setup Panel; single-person saves now ignore the survivor target server-side as well.
+- **Social Security** — Made Survivor Claiming Age couple-only in the Setup Panel and ignored it on single-person saves.
 
 ## 2026-08-08 (Social Security live benefit derivation + dead-code cleanup)
 

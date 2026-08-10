@@ -2085,6 +2085,8 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
                 continue
             if is_single_household and field_name == "cash_target_survivor":
                 continue
+            if is_single_household and field_name.endswith("_survivor_ss_start_age"):
+                continue
             raw = body.get(field_name)
             if raw is None:
                 continue

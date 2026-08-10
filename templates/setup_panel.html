@@ -859,8 +859,10 @@
           <h3>Person 1</h3>
           <div class="synth-row"><label>Default Claiming Age</label><input type="number" id="person1_ss_start_age" min="60" max="70" step="1" placeholder="67"></div>
           <div class="synth-hint">Only used if this person's Social Security event doesn't specify its own age. Most scenarios set the age directly on the event, so this can usually stay blank.</div>
-          <div class="synth-row"><label>Survivor Claiming Age</label><input type="number" id="person1_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60"></div>
-          <div class="synth-hint">If this person passes away, their spouse can switch to this (typically larger) benefit once they reach this age — even before the spouse's own planned claim year. Default: 60.</div>
+          <div class="person2-toggle-section" id="person1-survivor-claiming-age">
+            <div class="synth-row"><label>Survivor Claiming Age</label><input type="number" id="person1_survivor_ss_start_age" min="50" max="70" step="1" placeholder="60"></div>
+            <div class="synth-hint">If this person passes away, their spouse can switch to this (typically larger) benefit once they reach this age — even before the spouse's own planned claim year. Default: 60.</div>
+          </div>
           <div class="synth-row"><label>Flat Monthly Benefit</label><input type="number" id="person1_ss_monthly_benefit" step="10" placeholder="e.g. 2500"></div>
           <div class="synth-hint">A single dollar amount, used only if the age table below is empty. SSA.gov gives a different estimate for each claiming age, so filling in the table below is usually more accurate.</div>
           <div style="font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:0.04em">Benefit by Claiming Age</div>
@@ -2098,7 +2100,7 @@
           var startAge = getField(personKey + '_ss_start_age');
           if (startAge) body[personKey + '_ss_start_age'] = parseInt(startAge, 10);
           var survivorAge = getField(personKey + '_survivor_ss_start_age');
-          if (survivorAge) body[personKey + '_survivor_ss_start_age'] = parseInt(survivorAge, 10);
+          if (!isSingleHousehold && survivorAge) body[personKey + '_survivor_ss_start_age'] = parseInt(survivorAge, 10);
           var flatBenefit = getField(personKey + '_ss_monthly_benefit');
           if (flatBenefit) body[personKey + '_ss_monthly_benefit'] = parseFloat(flatBenefit);
         });

@@ -49,6 +49,11 @@ def _fake_backup_and_write(config_path):
 
 
 class QuickControlMapTests(unittest.TestCase):
+    def test_survivor_claiming_age_is_marked_couple_only_in_the_setup_panel(self):
+        template = (Path(__file__).resolve().parents[1] / "templates" / "setup_panel.html").read_text(encoding="utf-8")
+        self.assertIn('id="person1-survivor-claiming-age"', template)
+        self.assertIn('class="person2-toggle-section" id="person1-survivor-claiming-age"', template)
+
     def test_social_security_scalar_fields_are_registered(self):
         expected = {
             "person1_ss_start_age": ("person1.ss_start_age", int),
@@ -77,6 +82,27 @@ class SocialSecurityGetEndpointTests(unittest.TestCase):
 
 
 class SocialSecuritySaveEndpointTests(unittest.TestCase):
+    def test_single_household_ignores_survivor_claiming_age(self):
+        single_toml = SAMPLE_TOML.replace(
+            '[person2]\nname = "Sam"\ndob = "1977-01-01"\n',
+            '',
+        ).replace('slug = "test"', 'slug = "test"\nhousehold_type = "single"')
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "test.toml"
+            config_path.write_text(single_toml, encoding="utf-8")
+
+            with patch("admin_app._config_path", return_value=config_path), \
+                 patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
+                response = asyncio.run(admin_app.api_save_quick_controls(_FakeRequest(json_body={
+                    "person1_ss_start_age": 67,
+                    "person1_survivor_ss_start_age": 61,
+                })))
+
+            self.assertTrue(json.loads(response.body)["ok"])
+            person1 = tomllib.loads(config_path.read_text(encoding="utf-8"))["person1"]
+            self.assertEqual(person1["ss_start_age"], 67)
+            self.assertEqual(person1["survivor_ss_start_age"], 60)
+
     def test_single_household_ignores_person2_benefits_without_creating_table(self):
         single_toml = SAMPLE_TOML.replace(
             '[person2]\nname = "Sam"\ndob = "1977-01-01"\n',

@@ -29,6 +29,10 @@
 
 - Added an explanation of accumulation, retirement, and survivor cash-target phases with standard help-text top spacing. Survivor cash targets are hidden in single-person scenarios and omitted from their save payloads; the backend ignores a crafted survivor target for those households.
 
+### Survivor Social Security controls (2026-08-09)
+
+- Survivor Claiming Age is now couple-only, matching survivor cash targets. Single-person saves omit the field and the server ignores a crafted value.
+
 ### Setup Panel — post-plan polish and bug fixes (2026-08-08)
 
 Follow-up pass after the staged TOML-coverage plan (below) landed, based on user review of the new Advanced sections:
