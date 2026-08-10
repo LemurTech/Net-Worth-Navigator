@@ -10,6 +10,9 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - **Setup Panel sample scenarios** — Scenarios with slugs beginning `sample` are now read-only. Save attempts produce one toast explaining that the scenario must be cloned before editing; server-side guards reject every TOML write endpoint, raw-TOML save/render action, rename, delete, and default-scenario change with HTTP 403.
 - **Regression coverage** — Added editor tests for direct write attempts against `sample-a` and case-insensitive sample detection.
 - **Single-person Setup Panel saves** — Person 2 form values no longer leak from hidden controls into single-person TOML. Quick-controls and Social Security writes now omit/ignore Person 2 and preserve an absent `[person2]` table; new regression tests cover both endpoints.
+- **Roth ownership share controls** — Added help text explaining that `personX.roth_share` is a fallback for pooled/unnamed Roth ownership and is overridden by account-level owner metadata.
+- **Percent-of-gross contribution controls** — Added in-context explanations for gross-income growth, the starting rate, and annual percentage-point contribution-rate increases.
+- **Cash targets** — Added phase guidance with standard help-text spacing and made the survivor target couple-only in the Setup Panel; single-person saves now ignore the survivor target server-side as well.
 
 ## 2026-08-08 (Social Security live benefit derivation + dead-code cleanup)
 

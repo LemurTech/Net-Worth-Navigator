@@ -17,6 +17,18 @@
 
 - Setup Panel save payloads now omit Person 2 fields for a single household. The quick-controls and Social Security endpoints also enforce that boundary server-side, preventing a hidden UI field or crafted request from creating a dummy `[person2]` table. Changing a household from couple to single preserves existing Person 2 data rather than deleting it implicitly.
 
+### Roth ownership-share help text (2026-08-09)
+
+- Added in-context explanation for `personX.roth_share`: it is the fallback split for pooled Roth opening balances and unnamed shared Roth flows; account-level Roth owner assignments take precedence.
+
+### Percent-of-gross contribution help text (2026-08-09)
+
+- Added help for gross-income growth, starting contribution rate, and annual contribution-rate increases in both Person 1 and Person 2 percent-of-gross controls. The UI now explicitly distinguishes percentage growth from percentage-point rate increases.
+
+### Cash-target phase guidance (2026-08-09)
+
+- Added an explanation of accumulation, retirement, and survivor cash-target phases with standard help-text top spacing. Survivor cash targets are hidden in single-person scenarios and omitted from their save payloads; the backend ignores a crafted survivor target for those households.
+
 ### Setup Panel — post-plan polish and bug fixes (2026-08-08)
 
 Follow-up pass after the staged TOML-coverage plan (below) landed, based on user review of the new Advanced sections:

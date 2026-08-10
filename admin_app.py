@@ -2083,6 +2083,8 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         for field_name, (toml_path, value_type) in _QUICK_CONTROL_MAP.items():
             if is_single_household and toml_path.startswith("person2."):
                 continue
+            if is_single_household and field_name == "cash_target_survivor":
+                continue
             raw = body.get(field_name)
             if raw is None:
                 continue

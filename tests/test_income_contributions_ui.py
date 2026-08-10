@@ -52,6 +52,23 @@ def _fake_backup_and_write(config_path):
 
 
 class QuickControlMapTests(unittest.TestCase):
+    def test_roth_ownership_help_explains_the_fallback_and_account_override(self):
+        template = (Path(__file__).resolve().parents[1] / "templates" / "setup_panel.html").read_text(encoding="utf-8")
+        expected_help = (
+            "Used when Roth accounts have no owner assignment: splits the pooled opening Roth balance between people "
+            "and attributes shared Roth flows. Account-level owner assignments override this."
+        )
+        self.assertEqual(template.count(expected_help), 2)
+
+    def test_percent_of_gross_controls_have_help_for_growth_and_rate_semantics(self):
+        template = (Path(__file__).resolve().parents[1] / "templates" / "setup_panel.html").read_text(encoding="utf-8")
+        for expected_help in (
+            "Annual growth rate for gross income used in contribution math.",
+            "Starting share of gross income contributed to the retirement plan.",
+            "Annual increase in the contribution rate, measured in percentage points.",
+        ):
+            self.assertEqual(template.count(expected_help), 2)
+
     def test_income_contribution_fields_registered_for_both_persons(self):
         expected_suffixes_and_types = [
             ("annual_take_home", float),

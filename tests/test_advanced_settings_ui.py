@@ -70,6 +70,17 @@ def _fake_backup_and_write(config_path):
 
 
 class QuickControlMapTests(unittest.TestCase):
+    def test_cash_target_help_defines_phases_and_marks_survivor_as_couple_only(self):
+        template = (Path(__file__).resolve().parents[1] / "templates" / "setup_panel.html").read_text(encoding="utf-8")
+        self.assertIn('id="cash-survivor-field"', template)
+        self.assertIn('class="inline-field person2-toggle-section"', template)
+        self.assertIn('class="synth-hint" style="max-width:none;margin-top:8px">Accumulation applies', template)
+        self.assertIn(
+            "Accumulation applies while either partner is still working. Retirement applies once both partners are retired. "
+            "Survivor applies after one partner dies; it is ignored for a single-person household and is hidden above.",
+            template,
+        )
+
     def test_advanced_settings_fields_registered(self):
         expected = {
             "spending_retirement_annual": ("spending.retirement_annual", float),
@@ -98,6 +109,24 @@ class QuickControlMapTests(unittest.TestCase):
 
 
 class SaveQuickControlsAdvancedFieldsTests(unittest.TestCase):
+    def test_single_household_ignores_survivor_cash_target(self):
+        single_toml = SAMPLE_TOML.replace('slug = "test"', 'slug = "test"\nhousehold_type = "single"')
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "test.toml"
+            config_path.write_text(single_toml, encoding="utf-8")
+
+            with patch("admin_app._config_path", return_value=config_path), \
+                 patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
+                response = asyncio.run(admin_app.api_save_quick_controls(_FakeRequest(json_body={
+                    "cash_target_accumulation": 25000.0,
+                    "cash_target_survivor": 10000.0,
+                })))
+
+            self.assertTrue(json.loads(response.body)["ok"])
+            policy = tomllib.loads(config_path.read_text(encoding="utf-8"))["withdrawal_policy"]
+            self.assertEqual(policy["accumulation_cash_target"], 25000.0)
+            self.assertNotIn("survivor_cash_target", policy)
+
     def test_saves_taxes_rmd_spending_and_assumptions_without_cross_contamination(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "test.toml"

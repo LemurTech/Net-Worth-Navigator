@@ -652,11 +652,12 @@
 
       <div class="quick-section-title">Cash Targets</div>
       <div style="font-size:12px;color:var(--muted);margin:-8px 0 10px;line-height:1.4">Cash reserves set aside for expenses outside normal spending — emergencies, vacations, large purchases, home repairs, and other lumpy costs not modeled as individual events.</div>
-      <div class="inline-row">
-        <div class="inline-field"><label>Accumulation Phase</label><input type="number" id="cash_accumulation" step="1000" style="width:145px"></div>
-        <div class="inline-field"><label>Retirement Phase</label><input type="number" id="cash_retirement" step="1000" style="width:145px"></div>
-        <div class="inline-field"><label>Survivor Phase</label><input type="number" id="cash_survivor" step="1000" style="width:145px"></div>
-      </div>
+        <div class="inline-row">
+          <div class="inline-field"><label>Accumulation Phase</label><input type="number" id="cash_accumulation" step="1000" style="width:145px"></div>
+          <div class="inline-field"><label>Retirement Phase</label><input type="number" id="cash_retirement" step="1000" style="width:145px"></div>
+          <div class="inline-field person2-toggle-section" id="cash-survivor-field"><label>Survivor Phase</label><input type="number" id="cash_survivor" step="1000" style="width:145px"></div>
+        </div>
+        <div class="synth-hint" style="max-width:none;margin-top:8px">Accumulation applies while either partner is still working. Retirement applies once both partners are retired. Survivor applies after one partner dies; it is ignored for a single-person household and is hidden above.</div>
 
       <div class="quick-section-title">Market Assumptions</div>
       <div class="inline-row">
@@ -914,8 +915,11 @@
             <div class="synth-row"><label>Gross Income</label><input type="text" class="synth-dollar" id="person1_gross_income" placeholder="$ 0"></div>
             <div class="synth-hint">Used only for contribution math — not the same as take-home pay above.</div>
             <div class="synth-row"><label>Gross Income Increase</label><input type="number" id="person1_gross_income_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Annual growth rate for gross income used in contribution math. For example, 3 means gross income grows 3% each year.</div>
             <div class="synth-row"><label>Contribution % of Gross</label><input type="number" id="person1_retirement_contribution_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Starting share of gross income contributed to the retirement plan. For example, 10 means 10% of gross income.</div>
             <div class="synth-row"><label>Contribution % Increase</label><input type="number" id="person1_retirement_contribution_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Annual increase in the contribution rate, measured in percentage points. For example, 1 raises 10% to 11% next year, up to the cap below.</div>
             <div class="synth-row"><label>Contribution % Cap</label><input type="number" id="person1_retirement_contribution_max_percent" step="0.5" placeholder="100"></div>
             <div class="synth-hint">The escalating contribution percentage above never exceeds this cap.</div>
           </div>
@@ -953,6 +957,7 @@
           <div class="synth-row"><label>Share of Traditional Balance</label><input type="number" id="person1_rmd_trad_ira_share" step="1" placeholder="e.g. 50"></div>
           <div class="synth-hint">This person's share of the household's traditional IRA/401(k) balance, used for Required Minimum Distribution calculations. Defaults to 50/50 if left blank for both people.</div>
           <div class="synth-row"><label>Share of Roth Balance</label><input type="number" id="person1_roth_share" step="1" placeholder="e.g. 50"></div>
+          <div class="synth-hint">Used when Roth accounts have no owner assignment: splits the pooled opening Roth balance between people and attributes shared Roth flows. Account-level owner assignments override this. Defaults to 50/50 if left blank for both people.</div>
         </div>
 
         <div class="synth-section person2-toggle-section" id="income-person2-section">
@@ -983,8 +988,11 @@
             <div class="synth-row"><label>Gross Income</label><input type="text" class="synth-dollar" id="person2_gross_income" placeholder="$ 0"></div>
             <div class="synth-hint">Used only for contribution math — not the same as take-home pay above.</div>
             <div class="synth-row"><label>Gross Income Increase</label><input type="number" id="person2_gross_income_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Annual growth rate for gross income used in contribution math. For example, 3 means gross income grows 3% each year.</div>
             <div class="synth-row"><label>Contribution % of Gross</label><input type="number" id="person2_retirement_contribution_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Starting share of gross income contributed to the retirement plan. For example, 10 means 10% of gross income.</div>
             <div class="synth-row"><label>Contribution % Increase</label><input type="number" id="person2_retirement_contribution_annual_increase_percent" step="0.5" placeholder="0"></div>
+            <div class="synth-hint">Annual increase in the contribution rate, measured in percentage points. For example, 1 raises 10% to 11% next year, up to the cap below.</div>
             <div class="synth-row"><label>Contribution % Cap</label><input type="number" id="person2_retirement_contribution_max_percent" step="0.5" placeholder="100"></div>
             <div class="synth-hint">The escalating contribution percentage above never exceeds this cap.</div>
           </div>
@@ -1022,6 +1030,7 @@
           <div class="synth-row"><label>Share of Traditional Balance</label><input type="number" id="person2_rmd_trad_ira_share" step="1" placeholder="e.g. 50"></div>
           <div class="synth-hint">This person's share of the household's traditional IRA/401(k) balance, used for Required Minimum Distribution calculations. Defaults to 50/50 if left blank for both people.</div>
           <div class="synth-row"><label>Share of Roth Balance</label><input type="number" id="person2_roth_share" step="1" placeholder="e.g. 50"></div>
+          <div class="synth-hint">Used when Roth accounts have no owner assignment: splits the pooled opening Roth balance between people and attributes shared Roth flows. Account-level owner assignments override this. Defaults to 50/50 if left blank for both people.</div>
         </div>
       </div><!-- /#tab-income -->
 
@@ -2056,7 +2065,7 @@
         var cash_s = getField('cash_survivor');
         if (cash_a) body.cash_target_accumulation = parseFloat(cash_a);
         if (cash_r) body.cash_target_retirement = parseFloat(cash_r);
-        if (cash_s) body.cash_target_survivor = parseFloat(cash_s);
+        if (!isSingleHousehold && cash_s) body.cash_target_survivor = parseFloat(cash_s);
 
         var sr = getField('stock_return');
         var br = getField('bond_return');
