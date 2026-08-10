@@ -1,0 +1,94 @@
+---
+title: Migrating Scenarios from v1 to v2
+description: Convert older scenario files to the v2 event-driven timeline with the migration script
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+In v2, the important timeline decisions — retirement, Social Security claiming, and end of plan — moved from per-person settings into **events** you manage in the Setup Panel's **Events** tab. If you have scenario files created before v2, they still load and run, but a short migration step brings them fully up to date.
+
+## What changed in v2
+
+- **Retirement year**, **Social Security claiming age**, and **life expectancy** are no longer per-person fields in the configuration. They are now `Retire`, `SocialSecurity`, and `EndOfPlan` events in the **Events** tab.
+- **Social Security benefit amounts are looked up automatically** from each person's benefit-by-age table when you enter a claiming age. The old stored benefit amount on an event is no longer used.
+
+## Why migrate?
+
+An un-migrated v1 file still renders, but the v2 engine reads events as the source of truth:
+
+- **Social Security income only comes from a `SocialSecurity` event.** Without one, the projection silently shows no Social Security income.
+- The **end-of-plan boundary** (how long the projection runs) comes from the `EndOfPlan` event.
+
+The Setup Panel shows a banner on the scenario page while migration is needed: *"This scenario uses the older v1 format."*
+
+## Before you start: back up your scenarios
+
+Your scenario files contain your personal financial data and are **not tracked by Git**, so make a copy before running the migration.
+
+1. Open File Explorer (Windows) or your file manager (Linux/macOS).
+2. Go to your Net Worth Navigator project folder.
+3. Copy the entire `scenarios` folder to a safe location, such as your Documents folder or a USB drive.
+
+## Run the migration
+
+The migration is a script that updates every scenario file in the `scenarios` folder.
+
+<Tabs>
+  <TabItem label="Windows (PowerShell)">
+    1. Open **PowerShell** (press Start, type `PowerShell`, and press Enter).
+    2. Change to your project folder:
+       ```powershell
+       cd $env:USERPROFILE\Projects\Net-Worth-Navigator
+       ```
+    3. **First, preview what will change** (nothing is written yet):
+       ```powershell
+       .venv\Scripts\python.exe scripts\migrate_v2.py --dry-run
+       ```
+    4. Review the list of actions shown. Each line describes an event that will be created from an old per-person field.
+    5. Run the migration for real:
+       ```powershell
+       .venv\Scripts\python.exe scripts\migrate_v2.py
+       ```
+  </TabItem>
+  <TabItem label="Linux / macOS">
+    1. Open a terminal.
+    2. Change to your project folder:
+       ```bash
+       cd ~/Projects/Net-Worth-Navigator
+       ```
+    3. **First, preview what will change** (nothing is written yet):
+       ```bash
+       .venv/bin/python scripts/migrate_v2.py --dry-run
+       ```
+    4. Review the list of actions shown. Each line describes an event that will be created from an old per-person field.
+    5. Run the migration for real:
+       ```bash
+       .venv/bin/python scripts/migrate_v2.py
+       ```
+  </TabItem>
+</Tabs>
+
+### Optional: remove old comments from your own files
+
+If you want your own scenario files cleaned up (comments removed, neatly spaced), add the `--strip-comments` flag. Only use this for your own files — the bundled sample scenarios keep their explanatory comments:
+
+```powershell
+.venv\Scripts\python.exe scripts\migrate_v2.py --strip-comments
+```
+
+```bash
+.venv/bin/python scripts/migrate_v2.py --strip-comments
+```
+
+## What the script does
+
+- Creates `Retire`, `SocialSecurity`, and `EndOfPlan` events from the old `retirement_year`, `ss_start_age`, and `life_expectancy` fields, calculating each event's year from the person's birth date and the entered age.
+- Sorts events and normalizes spacing between sections.
+- Is safe to run more than once — after migration, a second run makes no changes.
+
+## Verify the migration
+
+1. Open the **Scenario Setup** page and switch to the scenario you migrated.
+2. The migration banner at the top should be gone.
+3. Open the **Events** tab — you should see `Retire`, `SocialSecurity`, and `EndOfPlan` cards for each person.
+4. Click **Save + Re-render** to rebuild the projection with the new events.

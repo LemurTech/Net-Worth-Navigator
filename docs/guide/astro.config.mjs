@@ -53,6 +53,7 @@ export default defineConfig({
 						{ label: 'Comparing Scenarios', slug: 'guides/comparing-scenarios' },
 						{ label: 'Understanding Monte Carlo Analysis', slug: 'guides/understanding-monte-carlo' },
 						{ label: 'Updating NWN', slug: 'guides/updating' },
+						{ label: 'Migrating to v2', slug: 'guides/migrating-to-v2' },
 						{ label: 'Running on a Home Web Server', slug: 'guides/home-server' },
 						{ label: 'Troubleshooting', slug: 'guides/troubleshooting' },
 						{ label: 'FAQ', slug: 'guides/faq' },
