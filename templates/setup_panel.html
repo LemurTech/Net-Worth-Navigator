@@ -2379,6 +2379,14 @@
         if (!btn) return;
         btn.addEventListener('click', function () {
           btn.disabled = true;
+          if (isReadOnlySampleScenario()) {
+            var sampleRender = new FormData();
+            sampleRender.set('scenario_slug', currentScenarioSlug);
+            sampleRender.set('action', 'render');
+            startAsyncRenderAction(sampleRender);
+            btn.disabled = false;
+            return;
+          }
           saveEverything(
             function () {
               var formData = new FormData();
@@ -2403,6 +2411,14 @@
         if (!btn) return;
         btn.addEventListener('click', function () {
           btn.disabled = true;
+          if (isReadOnlySampleScenario()) {
+            var sampleRenderAll = new FormData();
+            sampleRenderAll.set('scenario_slug', currentScenarioSlug);
+            sampleRenderAll.set('action', 'render_all');
+            startAsyncRenderAction(sampleRenderAll);
+            btn.disabled = false;
+            return;
+          }
           saveEverything(
             function () {
               var formData = new FormData();
@@ -4358,11 +4374,10 @@
 
         if (saveRenderBtn) {
           saveRenderBtn.addEventListener('click', function () {
-            if (isReadOnlySampleScenario()) { warnReadOnlySample(); return; }
             var payload = new FormData();
             payload.set('content', contentEl.value);
             payload.set('scenario_slug', currentScenarioSlug);
-            payload.set('action', 'save_render');
+            payload.set('action', isReadOnlySampleScenario() ? 'render' : 'save_render');
             payload.set('_response_format', 'json');
             startAsyncRenderAction(payload);
           });
@@ -4370,11 +4385,10 @@
 
         if (saveAllBtn) {
           saveAllBtn.addEventListener('click', function () {
-            if (isReadOnlySampleScenario()) { warnReadOnlySample(); return; }
             var payload = new FormData();
             payload.set('content', contentEl.value);
             payload.set('scenario_slug', currentScenarioSlug);
-            payload.set('action', 'save_render_all');
+            payload.set('action', isReadOnlySampleScenario() ? 'render_all' : 'save_render_all');
             payload.set('_response_format', 'json');
             startAsyncRenderAction(payload);
           });
@@ -4453,7 +4467,7 @@
         var currentMode = job.current_mode ? modeLabel(job.current_mode) : '';
         var completedRenderCount = Number(job.completed_render_count || 0);
 
-        var title = job.action === 'save_render_all' ? 'Rendering All Scenarios' : 'Rendering Scenario';
+        var title = (job.action === 'save_render_all' || job.action === 'render_all') ? 'Rendering All Scenarios' : 'Rendering Scenario';
         var detail = totalRenderCount > 0
           ? scenarioCount + ' scenario' + (scenarioCount === 1 ? '' : 's') + ', ' + totalRenderCount + ' mode page' + (totalRenderCount === 1 ? '' : 's')
           : (job.detail || '');

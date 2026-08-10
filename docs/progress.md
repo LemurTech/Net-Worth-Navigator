@@ -14,6 +14,7 @@ Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` patter
 - **Percent-of-gross contribution controls** — Added in-context explanations for gross-income growth, the starting rate, and annual percentage-point contribution-rate increases.
 - **Cash targets** — Added phase guidance with standard help-text spacing and made the survivor target couple-only in the Setup Panel; single-person saves now ignore the survivor target server-side as well.
 - **Social Security** — Made Survivor Claiming Age couple-only in the Setup Panel and ignored it on single-person saves.
+- **Sample rendering** — Allowed bundled sample scenarios to rebuild projection output without saving editor content or creating backups; configuration write protection remains in place.
 
 ## 2026-08-08 (Social Security live benefit derivation + dead-code cleanup)
 

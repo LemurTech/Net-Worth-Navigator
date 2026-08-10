@@ -626,7 +626,7 @@ def _start_render_job_thread(job_id: str, worker, *args) -> None:
     ).start()
 
 
-def _run_save_render_job(job_id: str, scenario_slug: str) -> None:
+def _run_render_job(job_id: str, scenario_slug: str, config_was_saved: bool) -> None:
     scenario = _current_scenario(scenario_slug)
     planned_modes = _planned_modes_for_scenario(scenario.slug)
     _update_render_job(
@@ -649,8 +649,12 @@ def _run_save_render_job(job_id: str, scenario_slug: str) -> None:
             job_id,
             state="completed",
             status_kind="success",
-            status_title="Saved and re-rendered",
-            status_message="Configuration saved and offline projection rebuilt successfully.",
+            status_title="Saved and re-rendered" if config_was_saved else "Re-rendered",
+            status_message=(
+                "Configuration saved and offline projection rebuilt successfully."
+                if config_was_saved
+                else "Offline projection rebuilt successfully."
+            ),
             details=(result.stdout or "").strip() or None,
         )
         return
@@ -659,8 +663,12 @@ def _run_save_render_job(job_id: str, scenario_slug: str) -> None:
         job_id,
         state="failed",
         status_kind="error",
-        status_title="Render failed after save",
-        status_message="The config was saved, but the offline projection rebuild failed.",
+        status_title="Render failed after save" if config_was_saved else "Render failed",
+        status_message=(
+            "The config was saved, but the offline projection rebuild failed."
+            if config_was_saved
+            else "The offline projection rebuild failed."
+        ),
         details=details or "No process output captured.",
     )
 
@@ -746,23 +754,28 @@ def _start_render_job_response(
     *,
     action: str,
     scenario_slug: str | None,
-    backup_path: Path,
+    backup_path: Path | None,
     base_url: str = "",
 ) -> JSONResponse:
     scenario = _current_scenario(scenario_slug)
-    if action == "save_render":
+    if action in {"save_render", "render"}:
         planned_modes = _planned_modes_for_scenario(scenario.slug)
         job = _create_render_job(
             action=action,
             scenario_slug=scenario.slug,
             scenario_count=1,
             total_render_count=len(planned_modes),
-            backup_path=str(backup_path),
+            backup_path=str(backup_path) if backup_path else None,
         )
-        _start_render_job_thread(job["id"], _run_save_render_job, scenario.slug)
+        _start_render_job_thread(
+            job["id"],
+            _run_render_job,
+            scenario.slug,
+            action == "save_render",
+        )
         return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job, base_url))
 
-    if action == "save_render_all":
+    if action in {"save_render_all", "render_all"}:
         scenarios = discover_scenarios()
         total_render_count = sum(len(_planned_modes_for_scenario(item.slug)) for item in scenarios)
         job = _create_render_job(
@@ -770,7 +783,7 @@ def _start_render_job_response(
             scenario_slug=scenario.slug,
             scenario_count=len(scenarios),
             total_render_count=total_render_count,
-            backup_path=str(backup_path),
+            backup_path=str(backup_path) if backup_path else None,
         )
         _start_render_job_thread(job["id"], _run_save_render_all_job, scenario.slug)
         return JSONResponse(_job_status_payload(_get_render_job(job["id"]) or job, base_url))
@@ -1274,10 +1287,28 @@ async def start_render_job(request: Request) -> JSONResponse:
     content = form.get("content", "")
     scenario_slug = form.get("scenario_slug") or None
 
-    if action not in {"save_render", "save_render_all"}:
+    if action not in {"save_render", "save_render_all", "render", "render_all"}:
         return JSONResponse({"ok": False, "error": f"Unsupported render action: {action}"}, status_code=400)
-    if response := _read_only_scenario_response(scenario_slug):
-        return response
+
+    # Bundled sample scenarios are read-only, but their committed configuration
+    # is safe to render.  Ignore the submitted editor content and rebuild from
+    # disk without taking a backup or attempting a config write.
+    if _scenario_is_read_only(scenario_slug):
+        render_action = "render_all" if action in {"save_render_all", "render_all"} else "render"
+        return _start_render_job_response(
+            action=render_action,
+            scenario_slug=scenario_slug,
+            backup_path=None,
+            base_url=str(request.base_url),
+        )
+
+    if action in {"render", "render_all"}:
+        return _start_render_job_response(
+            action=action,
+            scenario_slug=scenario_slug,
+            backup_path=None,
+            base_url=str(request.base_url),
+        )
 
     try:
         _validate_config_text(content)

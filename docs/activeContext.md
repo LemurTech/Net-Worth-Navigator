@@ -33,6 +33,10 @@
 
 - Survivor Claiming Age is now couple-only, matching survivor cash targets. Single-person saves omit the field and the server ignores a crafted value.
 
+### Sample rendering without edits (2026-08-09)
+
+- Sample scenarios remain read-only but can now render from their on-disk TOML. Setup Panel render actions bypass saving/backups for samples, while ordinary save controls remain blocked.
+
 ### Setup Panel — post-plan polish and bug fixes (2026-08-08)
 
 Follow-up pass after the staged TOML-coverage plan (below) landed, based on user review of the new Advanced sections:

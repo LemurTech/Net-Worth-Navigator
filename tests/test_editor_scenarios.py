@@ -5,7 +5,7 @@ import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import admin_app
 from src.scenarios import ScenarioRef
@@ -21,6 +21,32 @@ class _FakeJsonRequest:
 
 
 class EditorScenarioTests(unittest.TestCase):
+    def test_sample_render_job_rebuilds_without_writing_config(self):
+        sample = ScenarioRef(
+            slug="sample",
+            name="Sample",
+            description="Bundled demo",
+            config_path=Path("scenarios/sample.toml"),
+            is_default=False,
+        )
+        request = SimpleNamespace(base_url="http://testserver/")
+        response_payload = admin_app.JSONResponse({"ok": True, "job_id": "render-job"})
+
+        with patch("admin_app._parse_form", AsyncMock(return_value={
+            "action": "save_render",
+            "content": "[scenario]\nname = 'attempted edit'\n",
+            "scenario_slug": "sample",
+        })), \
+             patch("admin_app._current_scenario", return_value=sample), \
+             patch("admin_app._start_render_job_response", return_value=response_payload) as start_job, \
+             patch("admin_app._backup_and_write") as backup:
+            response = asyncio.run(admin_app.start_render_job(request))
+
+        self.assertIs(response, response_payload)
+        backup.assert_not_called()
+        self.assertEqual(start_job.call_args.kwargs["action"], "render")
+        self.assertIsNone(start_job.call_args.kwargs["backup_path"])
+
     def test_sample_scenario_writes_are_refused(self):
         sample = ScenarioRef(
             slug="sample-a",
