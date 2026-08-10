@@ -30,9 +30,28 @@ household_type = "single"
 mode = "synthetic" # synthetic | monarch
 
 [synthetic_start]
+# Investable buckets
 spending_retirement_annual = 60000.0
 person1_annual_take_home = 62000.0
 person1_gross_income = 90000.0
+
+# Optional explicit basis seeds (if omitted, defaults to 50% taxable cost basis,
+# 100% Roth contribution basis):
+# taxable_cost_basis = 84000
+# roth_contribution_basis = 70000
+# Non-investable balances
+home_value = 620000
+vehicles   = 0
+other      = 0
+
+# Named property balances for SellHome / property-tracking events
+[synthetic_start.property_values]
+"Town Home" = 620000
+
+# Named liability balances (must match [[liabilities]].name entries)
+[synthetic_start.liability_balances]
+"Town Home"   = 365000
+"RAV4 Hybrid" = 28000
 
 [simulation]
 start_year = 2026
@@ -83,9 +102,9 @@ failure_grace_period_months    = 0
 # custom_failure_column = "spending_funded_ratio"
 # custom_failure_operator = "<"
 # custom_failure_threshold = 1.0
+custom_failure_operator = "<"
 
 # ─── Household Members ────────────────────────────────────────────────────────
-custom_failure_operator = "<"
 
 [person1]
 name            = "Alex"
@@ -117,13 +136,24 @@ annual_ira_contribution                = 0                  # direct IRA contrib
 # Optional routing override for explicit contribution deposits
 # annual_401k_contribution_bucket = "trad_ira"  # valid: trad_ira | roth
 # annual_ira_contribution_bucket  = "roth"      # valid: trad_ira | roth
+annual_401k_contribution_bucket = "trad_ira"
+annual_ira_contribution_bucket = "roth"
+
 # Share of household traditional retirement balance attributed to this person for RMD math.
 # If both shares are omitted/invalid, model defaults to 50/50 while both alive.
 rmd_trad_ira_share = 1.0
 
 # Social Security benefit options (from SSA.gov estimates):
-annual_401k_contribution_bucket = "trad_ira"
-annual_ira_contribution_bucket = "roth"
+[person1.social_security_benefits]
+"62" = 1700
+"63" = 1840
+"64" = 1990
+"65" = 2160
+"66" = 2340
+"67" = 2520
+"68" = 2710
+"69" = 2910
+"70" = 3120
 
 [person1.annual_401k_contribution_split]
 trad_ira = 0.70
@@ -255,7 +285,7 @@ start_age = 73
 # type = "mortgage" means payoff is also reflected in home equity tracking.
 
 [[liabilities]]
-name           = "Home Mortgage" # must match Monarch account name exactly
+name           = "Town Home"     # must match asset account name exactly
 annual_rate    = 0.0575
 monthly_base   = 2163            # contractual P&I payment
 monthly_escrow = 494.54          # escrowed property tax + insurance
@@ -263,7 +293,7 @@ monthly_extra  = 200             # voluntary extra principal payment
 type           = "mortgage"
 
 [[liabilities]]
-name          = "RAV4 Hybrid Auto Loan"
+name          = "RAV4 Hybrid"
 annual_rate   = 0.065
 monthly_base  = 550
 monthly_extra = 0
@@ -467,7 +497,6 @@ type    = "SocialSecurity"
 label   = "SS Begins (A)"
 person  = "person1"
 year    = 2039
-monthly_benefit = 2020.0
 
 # Bounded side income during early retirement
 
