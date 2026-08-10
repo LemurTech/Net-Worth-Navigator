@@ -1,4 +1,6 @@
 import os
+import asyncio
+import json
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -9,7 +11,45 @@ import admin_app
 from src.scenarios import ScenarioRef
 
 
+class _FakeJsonRequest:
+    def __init__(self, scenario_slug: str, body: dict):
+        self.query_params = {"scenario": scenario_slug}
+        self._body = body
+
+    async def json(self):
+        return self._body
+
+
 class EditorScenarioTests(unittest.TestCase):
+    def test_sample_scenario_writes_are_refused(self):
+        sample = ScenarioRef(
+            slug="sample-a",
+            name="Sample A",
+            description="Bundled demo",
+            config_path=Path("scenarios/sample-a.toml"),
+            is_default=False,
+        )
+        request = _FakeJsonRequest("sample-a", {"scenario_name": "Changed"})
+
+        with patch("admin_app._current_scenario", return_value=sample):
+            response = asyncio.run(admin_app.api_save_quick_controls(request))
+
+        self.assertEqual(response.status_code, 403)
+        body = json.loads(response.body)
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error"], admin_app._SAMPLE_READ_ONLY_MESSAGE)
+
+    def test_sample_prefix_is_case_insensitive(self):
+        sample = ScenarioRef(
+            slug="Sample-Couples",
+            name="Sample Couples",
+            description="Bundled demo",
+            config_path=Path("scenarios/sample-couples.toml"),
+            is_default=False,
+        )
+        with patch("admin_app._current_scenario", return_value=sample):
+            self.assertTrue(admin_app._scenario_is_read_only("Sample-Couples"))
+
     def test_current_scenario_uses_requested_slug(self):
         default = ScenarioRef(
             slug="default",

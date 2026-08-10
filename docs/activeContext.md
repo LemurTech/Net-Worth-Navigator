@@ -1,6 +1,6 @@
 # Active Context — Net Worth Navigator
 
-**Last updated:** 2026-08-08
+**Last updated:** 2026-08-09
 **Status:** v2.0 — Event-driven timeline. Phase 3c complete: edit, delete, sort.
            TOML cleanup complete: comment stripping, blank-line normalization, migration script.
            Social Security benefit resolution now live/derived, not stored. Dead synthesis code removed.
@@ -8,6 +8,10 @@
 ---
 
 ## Current Work
+
+### Sample scenarios are read-only in Setup Panel (2026-08-09)
+
+- Any scenario whose slug begins with `sample` is now protected from Setup Panel writes. Save attempts show one toast directing the user to clone first; API and raw-TOML/render write paths independently return a 403, so the restriction cannot be bypassed from the browser.
 
 ### Setup Panel — post-plan polish and bug fixes (2026-08-08)
 

@@ -3,6 +3,13 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-09 (Sample scenario write protection)
+
+### Fixed
+
+- **Setup Panel sample scenarios** — Scenarios with slugs beginning `sample` are now read-only. Save attempts produce one toast explaining that the scenario must be cloned before editing; server-side guards reject every TOML write endpoint, raw-TOML save/render action, rename, delete, and default-scenario change with HTTP 403.
+- **Regression coverage** — Added editor tests for direct write attempts against `sample-a` and case-insensitive sample detection.
+
 ## 2026-08-08 (Social Security live benefit derivation + dead-code cleanup)
 
 **Branch:** `dev` (not yet merged to main)

@@ -108,6 +108,21 @@ def _config_path(scenario_slug: str | None = None) -> Path:
     return _current_scenario(scenario_slug).config_path
 
 
+_SAMPLE_READ_ONLY_MESSAGE = "Sample scenarios are read-only. Clone this scenario to make changes."
+
+
+def _scenario_is_read_only(scenario_slug: str | None = None) -> bool:
+    """Return whether a scenario is a bundled sample that the UI must not alter."""
+    return _current_scenario(scenario_slug).slug.lower().startswith("sample")
+
+
+def _read_only_scenario_response(scenario_slug: str | None = None) -> JSONResponse | None:
+    """Return the standard API refusal for bundled sample scenarios, if applicable."""
+    if _scenario_is_read_only(scenario_slug):
+        return JSONResponse({"ok": False, "error": _SAMPLE_READ_ONLY_MESSAGE}, status_code=403)
+    return None
+
+
 def _backup_dir(scenario_slug: str | None = None) -> Path:
     return OUTPUT_DIR / "config-backups" / _current_scenario(scenario_slug).slug
 
@@ -159,6 +174,8 @@ def _last_backup_content(backup_dir: Path) -> str | None:
 
 
 def _backup_and_write(content: str, scenario_slug: str | None = None) -> Path:
+    if _scenario_is_read_only(scenario_slug):
+        raise PermissionError(_SAMPLE_READ_ONLY_MESSAGE)
     OUTPUT_DIR.mkdir(exist_ok=True)
     backup_dir = _backup_dir(scenario_slug)
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -864,6 +881,19 @@ async def editor_submit(request: Request) -> HTMLResponse:
         or str(form.get("_response_format", "")).strip().lower() == "json"
     )
 
+    if action not in {"validate", "clone"} and _scenario_is_read_only(scenario_slug):
+        if wants_json:
+            return JSONResponse({"ok": False, "error": _SAMPLE_READ_ONLY_MESSAGE}, status_code=403)
+        context = _build_context(
+            request,
+            content=content,
+            status_kind="error",
+            status_title="Sample scenario is read-only",
+            status_message=_SAMPLE_READ_ONLY_MESSAGE,
+            scenario_slug=scenario_slug,
+        )
+        return templates.TemplateResponse(request, "config_editor.html", context, status_code=403)
+
     try:
         parsed = _validate_config_text(content)
         summary = (
@@ -1092,6 +1122,9 @@ async def rename_scenario(request: Request) -> JSONResponse:
     except Exception as exc:
         return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
 
+    if _scenario_is_read_only(scenario_slug):
+        return _read_only_scenario_response(scenario_slug)
+
     if scenario.is_default:
         return JSONResponse({"ok": False, "error": "The default scenario cannot be renamed."}, status_code=400)
 
@@ -1149,6 +1182,9 @@ async def delete_scenario(request: Request) -> JSONResponse:
         scenario = _current_scenario(scenario_slug)
     except Exception as exc:
         return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
+
+    if _scenario_is_read_only(scenario_slug):
+        return _read_only_scenario_response(scenario_slug)
 
     if scenario.is_default:
         return JSONResponse(
@@ -1226,6 +1262,8 @@ async def start_render_job(request: Request) -> JSONResponse:
 
     if action not in {"save_render", "save_render_all"}:
         return JSONResponse({"ok": False, "error": f"Unsupported render action: {action}"}, status_code=400)
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
 
     try:
         _validate_config_text(content)
@@ -1307,6 +1345,8 @@ def _fix_data_source_position(toml_text: str) -> str:
 
 
 def _backup_and_write_toml(doc: tomlkit.TOMLDocument, scenario_slug: str | None = None) -> Path:
+    if _scenario_is_read_only(scenario_slug):
+        raise PermissionError(_SAMPLE_READ_ONLY_MESSAGE)
     OUTPUT_DIR.mkdir(exist_ok=True)
     backup_dir = _backup_dir(scenario_slug)
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -1606,6 +1646,8 @@ async def api_accounts(request: Request) -> JSONResponse:
 @app.post("/api/save-classification")
 async def api_save_classification(request: Request) -> JSONResponse:
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -1696,6 +1738,8 @@ async def api_synthetic_start(request: Request) -> JSONResponse:
 @app.post("/api/save-synthetic-start")
 async def api_save_synthetic_start(request: Request) -> JSONResponse:
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -1801,6 +1845,8 @@ async def api_save_social_security(request: Request) -> JSONResponse:
     $ amount). The three scalar SS fields (ss_start_age, survivor_ss_start_age,
     ss_monthly_benefit) are saved separately via /api/save-quick-controls."""
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -1981,6 +2027,8 @@ def _resolve_toml_path(doc: tomlkit.TOMLDocument, dotted: str) -> tuple:
 @app.post("/api/save-quick-controls")
 async def api_save_quick_controls(request: Request) -> JSONResponse:
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2237,6 +2285,8 @@ async def api_list_events(request: Request) -> JSONResponse:
 async def api_toggle_event(request: Request) -> JSONResponse:
     """Toggle the enabled flag on an event at the given index."""
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2358,6 +2408,8 @@ async def api_list_liabilities(request: Request) -> JSONResponse:
 @app.post("/api/add-liability")
 async def api_add_liability(request: Request) -> JSONResponse:
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2385,6 +2437,8 @@ async def api_add_liability(request: Request) -> JSONResponse:
 @app.post("/api/update-liability")
 async def api_update_liability(request: Request) -> JSONResponse:
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2424,6 +2478,8 @@ async def api_update_liability(request: Request) -> JSONResponse:
 @app.post("/api/delete-liability")
 async def api_delete_liability(request: Request) -> JSONResponse:
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2550,6 +2606,8 @@ def _validate_event_fields(ev_type: str, fields: dict) -> list[str]:
 async def api_add_event(request: Request) -> JSONResponse:
     """Add a new [[events]] block to the scenario TOML."""
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2640,6 +2698,8 @@ async def api_add_event(request: Request) -> JSONResponse:
 async def api_update_event(request: Request) -> JSONResponse:
     """Update an existing [[events]] block at the given index."""
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2727,6 +2787,8 @@ async def api_update_event(request: Request) -> JSONResponse:
 async def api_delete_event(request: Request) -> JSONResponse:
     """Delete an [[events]] block at the given index."""
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:
@@ -2802,6 +2864,8 @@ async def api_set_default_scenario(request: Request) -> JSONResponse:
     is_default = body.get("is_default", True)
     if not slug:
         return JSONResponse({"ok": False, "error": "slug is required."}, status_code=400)
+    if response := _read_only_scenario_response(slug):
+        return response
 
     try:
         from src.scenarios import discover_scenarios
@@ -2811,6 +2875,8 @@ async def api_set_default_scenario(request: Request) -> JSONResponse:
             all_scenarios = discover_scenarios()
             for s in all_scenarios:
                 if s.is_default and s.slug != slug:
+                    if _scenario_is_read_only(s.slug):
+                        return _read_only_scenario_response(s.slug)
                     try:
                         other_doc, _ = _toml_open(s.slug)
                         if "scenario" in other_doc and "is_default" in other_doc.get("scenario", {}):
@@ -3010,6 +3076,8 @@ async def api_save_csv_source(request: Request) -> JSONResponse:
     and sets data_source.mode = "csv_import".
     """
     scenario_slug = request.query_params.get("scenario") or None
+    if response := _read_only_scenario_response(scenario_slug):
+        return response
     try:
         body = await request.json()
     except Exception:

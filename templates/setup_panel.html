@@ -1310,6 +1310,19 @@
 
       var currentScenarioSlug = '{{ scenario_slug }}';
       var editorBaseUrl = '{{ editor_url }}';
+      var sampleReadOnlyMessage = 'Sample scenarios are read-only. Clone this scenario to make changes.';
+
+      function isReadOnlySampleScenario() {
+        return /^sample/i.test(currentScenarioSlug || '');
+      }
+
+      function warnReadOnlySample() {
+        showToast(sampleReadOnlyMessage, 'error');
+      }
+
+      function isScenarioWriteApi(path) {
+        return /(?:save-|add-event|update-event|delete-event|toggle-event|add-liability|update-liability|delete-liability|set-default-scenario)/.test(path);
+      }
 
       /* ── Helper: fetch JSON ─────────────────────────────────────── */
       function apiUrl(path) {
@@ -1337,6 +1350,12 @@
       }
 
       function apiPost(path, body) {
+        if (isReadOnlySampleScenario() && isScenarioWriteApi(path)) {
+          warnReadOnlySample();
+          var readOnlyError = new Error(sampleReadOnlyMessage);
+          readOnlyError.toastAlreadyShown = true;
+          return Promise.reject(readOnlyError);
+        }
         return fetch(apiUrl(path), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -2312,11 +2331,11 @@
             });
           }).catch(function (err) {
             console.error('Quick-controls save error:', err);
-            if (onError) onError(err.message || 'Network error');
+            if (onError) onError(err);
           });
         } catch(e) {
           console.error('saveEverything error:', e);
-          if (onError) onError(e.message);
+          if (onError) onError(e);
         }
       }
 
@@ -2327,7 +2346,10 @@
           btn.disabled = true;
           saveEverything(
             function () { btn.disabled = false; showSuccess('Saved.'); },
-            function (err) { btn.disabled = false; showError(err); }
+            function (err) {
+              btn.disabled = false;
+              if (!err || !err.toastAlreadyShown) showError(err && err.message ? err.message : err);
+            }
           );
         });
       }
@@ -2348,7 +2370,10 @@
               startAsyncRenderAction(formData);
               btn.disabled = false;
             },
-            function (err) { btn.disabled = false; showError(err); }
+            function (err) {
+              btn.disabled = false;
+              if (!err || !err.toastAlreadyShown) showError(err && err.message ? err.message : err);
+            }
           );
         });
       }
@@ -2369,7 +2394,10 @@
               startAsyncRenderAction(formData);
               btn.disabled = false;
             },
-            function (err) { btn.disabled = false; showError(err); }
+            function (err) {
+              btn.disabled = false;
+              if (!err || !err.toastAlreadyShown) showError(err && err.message ? err.message : err);
+            }
           );
         });
       }
@@ -4311,6 +4339,7 @@
 
         if (saveRenderBtn) {
           saveRenderBtn.addEventListener('click', function () {
+            if (isReadOnlySampleScenario()) { warnReadOnlySample(); return; }
             var payload = new FormData();
             payload.set('content', contentEl.value);
             payload.set('scenario_slug', currentScenarioSlug);
@@ -4322,6 +4351,7 @@
 
         if (saveAllBtn) {
           saveAllBtn.addEventListener('click', function () {
+            if (isReadOnlySampleScenario()) { warnReadOnlySample(); return; }
             var payload = new FormData();
             payload.set('content', contentEl.value);
             payload.set('scenario_slug', currentScenarioSlug);
@@ -4333,6 +4363,7 @@
 
         if (saveBtn) {
           saveBtn.addEventListener('click', function () {
+            if (isReadOnlySampleScenario()) { warnReadOnlySample(); return; }
             var content = contentEl.value;
             var payload = new FormData();
             payload.set('content', content);
