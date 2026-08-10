@@ -95,6 +95,32 @@ class QuickControlMapTests(unittest.TestCase):
 
 
 class SaveQuickControlsIncomeFieldsTests(unittest.TestCase):
+    def test_single_household_ignores_person2_payload_without_creating_table(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "test.toml"
+            config_path.write_text(
+                SAMPLE_TOML.replace('slug = "test"', 'slug = "test"\nhousehold_type = "single"'),
+                encoding="utf-8",
+            )
+
+            body = {
+                "household_type": "single",
+                "person1_annual_take_home": 65000.0,
+                "person2_name": "Dummy Person",
+                "person2_annual_take_home": 50000.0,
+                "person2_annual_take_home_is_net_of_retirement_contributions": False,
+                "person2_contribution_method": "flat",
+                "person2_birth_year": 1980,
+            }
+            with patch("admin_app._config_path", return_value=config_path), \
+                 patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
+                response = asyncio.run(admin_app.api_save_quick_controls(_FakeRequest(json_body=body)))
+
+            self.assertTrue(json.loads(response.body)["ok"])
+            parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(parsed["person1"]["annual_take_home"], 65000.0)
+            self.assertNotIn("person2", parsed)
+
     def test_saves_dollar_percent_bool_and_select_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "test.toml"

@@ -13,6 +13,10 @@
 
 - Any scenario whose slug begins with `sample` is now protected from Setup Panel writes. Save attempts show one toast directing the user to clone first; API and raw-TOML/render write paths independently return a 403, so the restriction cannot be bypassed from the browser.
 
+### Single-household Person 2 write guard (2026-08-09)
+
+- Setup Panel save payloads now omit Person 2 fields for a single household. The quick-controls and Social Security endpoints also enforce that boundary server-side, preventing a hidden UI field or crafted request from creating a dummy `[person2]` table. Changing a household from couple to single preserves existing Person 2 data rather than deleting it implicitly.
+
 ### Setup Panel — post-plan polish and bug fixes (2026-08-08)
 
 Follow-up pass after the staged TOML-coverage plan (below) landed, based on user review of the new Advanced sections:

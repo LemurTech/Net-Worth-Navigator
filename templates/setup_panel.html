@@ -2048,6 +2048,9 @@
       /* ── Save quick controls ───────────────────────────────────── */
       function collectQuickControls() {
         var body = {};
+        var householdTypeEl = document.querySelector('input[name="household_type"]:checked');
+        var isSingleHousehold = householdTypeEl && householdTypeEl.value === 'single';
+        var personKeys = isSingleHousehold ? ['person1'] : ['person1', 'person2'];
         var cash_a = getField('cash_accumulation');
         var cash_r = getField('cash_retirement');
         var cash_s = getField('cash_survivor');
@@ -2067,18 +2070,22 @@
 
         // Person names
         var p1n = getField('person1_name');
-        var p2n = getField('person2_name');
         if (p1n) body.person1_name = p1n.trim();
-        if (p2n) body.person2_name = p2n.trim();
+        if (!isSingleHousehold) {
+          var p2n = getField('person2_name');
+          if (p2n) body.person2_name = p2n.trim();
+        }
 
         // Birth years
         var by1 = getField('person1_birth_year');
-        var by2 = getField('person2_birth_year');
         if (by1) body.person1_birth_year = parseInt(by1, 10);
-        if (by2) body.person2_birth_year = parseInt(by2, 10);
+        if (!isSingleHousehold) {
+          var by2 = getField('person2_birth_year');
+          if (by2) body.person2_birth_year = parseInt(by2, 10);
+        }
 
         // Social Security scalar fields (benefits table saved separately)
-        ['person1', 'person2'].forEach(function (personKey) {
+        personKeys.forEach(function (personKey) {
           var startAge = getField(personKey + '_ss_start_age');
           if (startAge) body[personKey + '_ss_start_age'] = parseInt(startAge, 10);
           var survivorAge = getField(personKey + '_survivor_ss_start_age');
@@ -2092,7 +2099,7 @@
           var raw = getField(id);
           return raw != null ? parseDollar(raw) : null;
         }
-        ['person1', 'person2'].forEach(function (personKey) {
+        personKeys.forEach(function (personKey) {
           var takeHome = getDollarField(personKey + '_annual_take_home');
           if (takeHome != null) body[personKey + '_annual_take_home'] = takeHome;
           var raise = getField(personKey + '_annual_take_home_real_raise');
@@ -2241,8 +2248,7 @@
         if (dsChecked) body.data_source = dsChecked.value;
 
         // Household type
-        var htChecked = document.querySelector('input[name="household_type"]:checked');
-        if (htChecked) body.household_type = htChecked.value;
+        if (householdTypeEl) body.household_type = householdTypeEl.value;
 
         // State tax table
         var stateSel = document.getElementById('tax_state');
@@ -2318,7 +2324,9 @@
             // non-blocking error handling below).
             apiPost('api/save-social-security', {
               person1: collectSsBenefits('person1'),
-              person2: collectSsBenefits('person2'),
+              ...(document.querySelector('input[name="household_type"]:checked').value !== 'single'
+                ? { person2: collectSsBenefits('person2') }
+                : {}),
             }).then(function (ssRes) {
               if (ssRes.ok && ssRes.toml_content) {
                 var ce = document.getElementById('raw-toml-content');

@@ -123,6 +123,20 @@ def _read_only_scenario_response(scenario_slug: str | None = None) -> JSONRespon
     return None
 
 
+def _is_single_person_household(
+    doc: tomlkit.TOMLDocument,
+    requested_household_type: object | None = None,
+) -> bool:
+    """Mirror the model's household inference without creating a person2 table."""
+    household_type = requested_household_type
+    if household_type is None:
+        scenario = doc.get("scenario", {})
+        household_type = scenario.get("household_type") if isinstance(scenario, dict) else None
+    if isinstance(household_type, str) and household_type.strip().lower() in {"single", "couple"}:
+        return household_type.strip().lower() == "single"
+    return "person2" not in doc
+
+
 def _backup_dir(scenario_slug: str | None = None) -> Path:
     return OUTPUT_DIR / "config-backups" / _current_scenario(scenario_slug).slug
 
@@ -1854,7 +1868,8 @@ async def api_save_social_security(request: Request) -> JSONResponse:
 
     doc, _ = _toml_open(scenario_slug)
 
-    for person_key in ("person1", "person2"):
+    person_keys = ("person1",) if _is_single_person_household(doc) else ("person1", "person2")
+    for person_key in person_keys:
         raw_benefits = body.get(person_key)
         if raw_benefits is None:
             continue
@@ -2044,6 +2059,10 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
         raw_content = body.get("_raw_toml_content")
         if raw_content and isinstance(raw_content, str) and raw_content.strip():
             doc = tomlkit.parse(raw_content)
+        is_single_household = _is_single_person_household(
+            doc,
+            requested_household_type=body.get("household_type"),
+        )
         
         changed_keys: list[str] = []
 
@@ -2062,6 +2081,8 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
 
         # Scalar fields
         for field_name, (toml_path, value_type) in _QUICK_CONTROL_MAP.items():
+            if is_single_household and toml_path.startswith("person2."):
+                continue
             raw = body.get(field_name)
             if raw is None:
                 continue
@@ -2103,6 +2124,8 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
 
         # Birth years (reconstruct dob string from year)
         for person_key, field_name in [("person1", "person1_birth_year"), ("person2", "person2_birth_year")]:
+            if is_single_household and person_key == "person2":
+                continue
             raw_by = body.get(field_name)
             if raw_by is not None:
                 try:
