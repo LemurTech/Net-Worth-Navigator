@@ -8,6 +8,17 @@ from unittest.mock import patch
 
 import admin_app
 
+from src.scenarios import ScenarioRef
+
+
+def _patch_scenario(config_path):
+    """Resolve every scenario lookup (config path, read-only guard, default
+    fallback, backup dir) to a temp scenario file - hermetic in CI."""
+    fake = ScenarioRef(
+        slug="test", name="Test", description="", config_path=config_path, is_default=False,
+    )
+    return patch("admin_app._current_scenario", return_value=fake)
+
 
 class _FakeRequest:
     """Minimal stand-in for starlette.Request -- admin_app's handlers only
@@ -74,7 +85,7 @@ class AddLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_add_liability(_FakeRequest(json_body={
                     "name": "Student Loan",
@@ -97,7 +108,7 @@ class AddLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_add_liability(_FakeRequest(json_body={
                     "name": "Home Mortgage",
@@ -114,7 +125,7 @@ class AddLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_add_liability(_FakeRequest(json_body={"name": "New Loan"})))
 
@@ -128,7 +139,7 @@ class AddLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_add_liability(_FakeRequest(json_body={
                     "name": "New Loan", "annual_rate": 0.05, "monthly_base": 500, "type": "boat",
@@ -145,7 +156,7 @@ class UpdateLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_update_liability(_FakeRequest(json_body={
                     "index": 0,
@@ -167,7 +178,7 @@ class UpdateLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_update_liability(_FakeRequest(json_body={
                     "index": 0,
@@ -185,7 +196,7 @@ class UpdateLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_update_liability(_FakeRequest(json_body={
                     "index": 0,
@@ -205,7 +216,7 @@ class DeleteLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_delete_liability(_FakeRequest(json_body={"index": 0})))
 
@@ -220,7 +231,7 @@ class DeleteLiabilityTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_delete_liability(_FakeRequest(json_body={"index": 99})))
 

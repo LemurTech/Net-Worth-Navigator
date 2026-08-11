@@ -8,6 +8,17 @@ from unittest.mock import patch
 
 import admin_app
 
+from src.scenarios import ScenarioRef
+
+
+def _patch_scenario(config_path):
+    """Resolve every scenario lookup (config path, read-only guard, default
+    fallback, backup dir) to a temp scenario file - hermetic in CI."""
+    fake = ScenarioRef(
+        slug="test", name="Test", description="", config_path=config_path, is_default=False,
+    )
+    return patch("admin_app._current_scenario", return_value=fake)
+
 
 class _FakeRequest:
     """Minimal stand-in for starlette.Request -- admin_app's handlers only
@@ -97,7 +108,7 @@ class SaveQuickControlsSimulationFieldsTests(unittest.TestCase):
                 "mc_failure_grace_period_months": 6,
             }
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_save_quick_controls(_FakeRequest(json_body=body)))
 

@@ -8,6 +8,17 @@ from unittest.mock import patch
 
 import admin_app
 
+from src.scenarios import ScenarioRef
+
+
+def _patch_scenario(config_path):
+    """Resolve every scenario lookup (config path, read-only guard, default
+    fallback, backup dir) to a temp scenario file - hermetic in CI."""
+    fake = ScenarioRef(
+        slug="test", name="Test", description="", config_path=config_path, is_default=False,
+    )
+    return patch("admin_app._current_scenario", return_value=fake)
+
 
 class _FakeRequest:
     """Minimal stand-in for starlette.Request -- admin_app's handlers only
@@ -129,7 +140,7 @@ class SaveQuickControlsIncomeFieldsTests(unittest.TestCase):
                 "person2_contribution_method": "flat",
                 "person2_birth_year": 1980,
             }
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_save_quick_controls(_FakeRequest(json_body=body)))
 
@@ -159,7 +170,7 @@ class SaveQuickControlsIncomeFieldsTests(unittest.TestCase):
                 "person1_rmd_trad_ira_share": 1.0,
             }
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_save_quick_controls(_FakeRequest(json_body=body)))
 
@@ -186,7 +197,7 @@ class SaveQuickControlsIncomeFieldsTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_save_quick_controls(
                     _FakeRequest(json_body={"person1_gross_income": 100000.0})

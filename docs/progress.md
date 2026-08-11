@@ -3,6 +3,12 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-11 (CI test-gate hermiticity fix)
+
+### Fixed
+
+- **Setup Panel UI tests now resolve every scenario lookup to a temp file.** Tests in `test_advanced_settings_ui`, `test_income_contributions_ui`, `test_liabilities_crud_ui`, `test_social_security_ui`, and `test_simulation_montecarlo_ui` patched only `_config_path`, leaving the read-only guard and backup-dir lookups to resolve the *default* scenario — which in CI (no personal scenarios in the checkout) is a bundled sample, so guarded endpoints returned 403/`ok: false` and the CI test gate failed on the v2.0.0 main push. Fixed by patching `_current_scenario` (the single resolution choke point) via a shared `_patch_scenario()` helper. Verified hermetic: full suite 238 passed, 1 skipped with personal scenarios absent (CI-like) and present (local).
+
 ## 2026-08-10 (Migrate script --strip-comments fixes)
 
 ### Fixed

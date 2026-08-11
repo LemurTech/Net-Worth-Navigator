@@ -8,6 +8,17 @@ from unittest.mock import patch
 
 import admin_app
 
+from src.scenarios import ScenarioRef
+
+
+def _patch_scenario(config_path):
+    """Resolve every scenario lookup (config path, read-only guard, default
+    fallback, backup dir) to a temp scenario file - hermetic in CI."""
+    fake = ScenarioRef(
+        slug="test", name="Test", description="", config_path=config_path, is_default=False,
+    )
+    return patch("admin_app._current_scenario", return_value=fake)
+
 
 class _FakeRequest:
     """Minimal stand-in for starlette.Request -- admin_app's handlers only
@@ -91,7 +102,7 @@ class SocialSecuritySaveEndpointTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(single_toml, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_save_quick_controls(_FakeRequest(json_body={
                     "person1_ss_start_age": 67,
@@ -112,7 +123,7 @@ class SocialSecuritySaveEndpointTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(single_toml, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 response = asyncio.run(admin_app.api_save_social_security(_FakeRequest(json_body={
                     "person1": {"67": 2200},
@@ -129,7 +140,7 @@ class SocialSecuritySaveEndpointTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 request = _FakeRequest(json_body={
                     "person1": {"70": 3000, "62": 1500},
@@ -149,7 +160,7 @@ class SocialSecuritySaveEndpointTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 request = _FakeRequest(json_body={"person1": {}})
                 response = asyncio.run(admin_app.api_save_social_security(request))
@@ -163,7 +174,7 @@ class SocialSecuritySaveEndpointTests(unittest.TestCase):
             config_path = Path(tmp) / "test.toml"
             config_path.write_text(SAMPLE_TOML, encoding="utf-8")
 
-            with patch("admin_app._config_path", return_value=config_path), \
+            with _patch_scenario(config_path), \
                  patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
                 request = _FakeRequest(json_body={
                     "person1": {"62": 1400, "63": 0, "64": -500, "not_an_age": 900},
