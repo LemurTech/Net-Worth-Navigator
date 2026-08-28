@@ -2,7 +2,6 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/releases)
 [![GitHub issues](https://img.shields.io/github/issues/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/issues)
-[![Clones](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/LemurTech/Net-Worth-Navigator/gh-pages/clones-badge.json)](https://github.com/LemurTech/Net-Worth-Navigator/graphs/traffic)
 [![GitHub last commit](https://img.shields.io/github/last-commit/LemurTech/Net-Worth-Navigator)](https://github.com/LemurTech/Net-Worth-Navigator/commits/main)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
