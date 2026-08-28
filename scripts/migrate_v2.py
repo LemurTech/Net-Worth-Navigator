@@ -113,7 +113,7 @@ def migrate_scenario(path: Path, dry_run: bool = False, strip_comments: bool = F
                         del person["ss_claim_age"]
                     actions.append(
                         f"  {slug}: {person_key} SocialSecurity -> event year={start_year} "
-                        f"age={ss_age} benefit={monthly}"
+                        f"age={ss_age} benefit=<redacted>"
                     )
                 else:
                     actions.append(
