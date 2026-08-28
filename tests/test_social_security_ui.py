@@ -77,6 +77,23 @@ class QuickControlMapTests(unittest.TestCase):
         for field, spec in expected.items():
             self.assertEqual(admin_app._QUICK_CONTROL_MAP[field], spec)
 
+    def test_ss_form_dirty_tracking_guards_raw_toml_edits(self):
+        """The Setup Panel must not submit SS form data for persons the user
+        never touched, or an empty form would delete a social_security_benefits
+        table pasted into the Raw TOML tab (whole-table-replace save)."""
+        template = (Path(__file__).resolve().parents[1] / "templates" / "setup_panel.html").read_text(encoding="utf-8")
+        # Dirty-tracking state + marker function exist...
+        self.assertIn("var ssFormDirty = { person1: false, person2: false };", template)
+        self.assertIn("function markSsFormDirty(personKey)", template)
+        # ...row edits, removals, and the add button mark the person dirty...
+        self.assertIn("ageInput.addEventListener('input', function () { markSsFormDirty(personKey); });", template)
+        self.assertIn("valueInput.addEventListener('input', function () { markSsFormDirty(personKey); });", template)
+        self.assertIn("markSsFormDirty(personKey); row.parentNode.removeChild(row);", template)
+        self.assertIn("markSsFormDirty(personKey);", template)
+        # ...and Save only submits a person's form data when dirty.
+        self.assertIn("if (ssFormDirty['person1']) ssPayload.person1 = collectSsBenefits('person1');", template)
+        self.assertIn("ssFormDirty['person2']", template)
+
 
 class SocialSecurityGetEndpointTests(unittest.TestCase):
     def test_returns_benefits_table_and_scalar_fields_per_person(self):
@@ -184,3 +201,36 @@ class SocialSecuritySaveEndpointTests(unittest.TestCase):
             self.assertTrue(json.loads(response.body)["ok"])
             parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
             self.assertEqual(parsed["person1"]["social_security_benefits"], {"62": 1400})
+
+    def test_absent_person_key_leaves_existing_table_untouched(self):
+        """Contract backing the Raw TOML fix: when the client omits a person
+        (SS form never touched), the server must not delete their table."""
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "test.toml"
+            config_path.write_text(SAMPLE_TOML, encoding="utf-8")
+
+            with _patch_scenario(config_path), \
+                 patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
+                # Empty body — same shape the client now sends when neither
+                # person's SS form was touched.
+                request = _FakeRequest(json_body={})
+                response = asyncio.run(admin_app.api_save_social_security(request))
+
+            self.assertTrue(json.loads(response.body)["ok"])
+            parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(parsed["person1"]["social_security_benefits"], {"62": 1400, "67": 2020})
+
+    def test_absent_person1_key_with_person2_payload_leaves_person1_untouched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "test.toml"
+            config_path.write_text(SAMPLE_TOML, encoding="utf-8")
+
+            with _patch_scenario(config_path), \
+                 patch("admin_app._backup_and_write_toml", side_effect=_fake_backup_and_write(config_path)):
+                request = _FakeRequest(json_body={"person2": {"65": 1800}})
+                response = asyncio.run(admin_app.api_save_social_security(request))
+
+            self.assertTrue(json.loads(response.body)["ok"])
+            parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(parsed["person1"]["social_security_benefits"], {"62": 1400, "67": 2020})
+            self.assertEqual(parsed["person2"]["social_security_benefits"], {"65": 1800})

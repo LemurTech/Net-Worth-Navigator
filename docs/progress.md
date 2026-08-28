@@ -3,6 +3,16 @@
 All notable shipped changes and decisions are logged here. Newest at top.
 Entries belong under a `## YYYY-MM-DD` date header. The `## [Unreleased]` pattern is retired.
 
+## 2026-08-27 (Raw TOML social security paste lost on Save)
+
+### Fixed
+
+- **Raw-pasted `social_security_benefits` was silently deleted on Save.** `saveEverything()` posted `api/save-social-security` on every Save with each person's SS benefit-row form data; when the rows were empty (a table pasted into Raw TOML was new, so the form had nothing to load), the server's whole-table-replace popped the `social_security_benefits` table — the quick-controls step had written the paste, then the SS step deleted it, and the textarea refresh made it look like it never saved. The Setup Panel now tracks per-person SS form dirtiness (`ssFormDirty` / `markSsFormDirty`, wired to row add/remove and age/amount edits) and submits a person's SS data only when their form was actually touched, skipping the SS request entirely when neither person was. Server untouched: an absent person key already leaves the table alone. Clearing every row in the form still removes the table.
+
+### Tests
+
+- Added 3 tests to `tests/test_social_security_ui.py`: absent person key leaves an existing table untouched; a person2-only payload leaves person1's table intact; Setup Panel template asserts the dirty-tracking wiring. Full suite 241 passed, 1 skipped.
+
 ## 2026-08-11 (CI test-gate hermiticity fix)
 
 ### Fixed

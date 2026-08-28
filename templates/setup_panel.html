@@ -2362,22 +2362,32 @@
 
             // 2. Save Social Security benefits table (best-effort; proceed to
             // accounts save regardless of outcome, matching the existing
-            // non-blocking error handling below).
-            apiPost('api/save-social-security', {
-              person1: collectSsBenefits('person1'),
-              ...(document.querySelector('input[name="household_type"]:checked').value !== 'single'
-                ? { person2: collectSsBenefits('person2') }
-                : {}),
-            }).then(function (ssRes) {
-              if (ssRes.ok && ssRes.toml_content) {
-                var ce = document.getElementById('raw-toml-content');
-                if (ce) ce.value = ssRes.toml_content;
-              }
+            // non-blocking error handling below). Only submit a person's
+            // form data when that SS form was actually touched — otherwise
+            // the empty form would whole-table-replace (delete) a
+            // social_security_benefits table the user pasted into the
+            // Raw TOML tab. When neither person was touched, skip the
+            // request entirely.
+            var ssPayload = {};
+            if (ssFormDirty['person1']) ssPayload.person1 = collectSsBenefits('person1');
+            var ssHouseholdEl = document.querySelector('input[name="household_type"]:checked');
+            if (ssHouseholdEl && ssHouseholdEl.value !== 'single' && ssFormDirty['person2']) {
+              ssPayload.person2 = collectSsBenefits('person2');
+            }
+            if (Object.keys(ssPayload).length === 0) {
               saveAccountsThenFinish();
-            }).catch(function (err) {
-              console.error('Social Security save error:', err);
-              saveAccountsThenFinish();
-            });
+            } else {
+              apiPost('api/save-social-security', ssPayload).then(function (ssRes) {
+                if (ssRes.ok && ssRes.toml_content) {
+                  var ce = document.getElementById('raw-toml-content');
+                  if (ce) ce.value = ssRes.toml_content;
+                }
+                saveAccountsThenFinish();
+              }).catch(function (err) {
+                console.error('Social Security save error:', err);
+                saveAccountsThenFinish();
+              });
+            }
           }).catch(function (err) {
             console.error('Quick-controls save error:', err);
             if (onError) onError(err);
@@ -3405,6 +3415,19 @@
       }
 
       /* ── Social Security benefits table ──────────────────────────── */
+
+      // Tracks whether the user manually edited each person's SS benefit
+      // rows. Save only submits a person's form data when it was actually
+      // touched: otherwise the whole-table-replace save would silently
+      // delete a social_security_benefits table the user pasted into the
+      // Raw TOML tab (empty form -> table popped). Programmatic loading
+      // (loadSocialSecurityBlock) never marks dirty because it sets
+      // .value directly, which does not fire 'input' events.
+      var ssFormDirty = { person1: false, person2: false };
+      function markSsFormDirty(personKey) {
+        if (personKey) ssFormDirty[personKey] = true;
+      }
+
       function addSsBenefitRow(personKey, age, amount) {
         var container = document.getElementById(personKey + '-ss-rows');
         if (!container) return;
@@ -3435,7 +3458,7 @@
         removeBtn.type = 'button';
         removeBtn.textContent = '×';
         removeBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 8px;cursor:pointer';
-        removeBtn.addEventListener('click', function () { row.parentNode.removeChild(row); });
+        removeBtn.addEventListener('click', function () { markSsFormDirty(personKey); row.parentNode.removeChild(row); });
         removeBtn.addEventListener('mouseenter', function () { removeBtn.style.color = '#fca5a5'; });
         removeBtn.addEventListener('mouseleave', function () { removeBtn.style.color = 'var(--muted)'; });
 
@@ -3452,6 +3475,8 @@
         valueInput.addEventListener('focus', function () {
           valueInput.value = parseDollar(valueInput.value).toString();
         });
+        ageInput.addEventListener('input', function () { markSsFormDirty(personKey); });
+        valueInput.addEventListener('input', function () { markSsFormDirty(personKey); });
       }
 
       function collectSsBenefits(personKey) {
@@ -3498,6 +3523,7 @@
           var btn = document.getElementById('add-ss-benefit-' + personKey + '-btn');
           if (!btn) return;
           btn.addEventListener('click', function () {
+            markSsFormDirty(personKey);
             addSsBenefitRow(personKey, '', '');
           });
         });
