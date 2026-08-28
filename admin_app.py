@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import os
 import re
 import subprocess
@@ -24,6 +25,17 @@ from src.definitions_page import build_definitions_page_html
 from src.model import resolve_social_security_monthly_benefit
 from src.scenarios import create_scenario_from_content, discover_scenarios, get_scenario, normalized_render_modes, SCENARIOS_DIR, write_scenarios_index
 from src.scenario_shell import build_scenario_shell, build_compare_page
+
+logger = logging.getLogger("nwn")
+
+
+def _error_response(status: int, message: str, exc: Exception | None = None) -> JSONResponse:
+    """Return a JSON error to the client without leaking exception details.
+    The exception (if any) is logged server-side only."""
+    if exc is not None:
+        logger.error("%s: %s", type(exc).__name__, exc)
+    return JSONResponse({"ok": False, "error": message}, status_code=status)
+
 
 APP_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_ROOT / "output"
@@ -1103,12 +1115,13 @@ async def editor_submit(request: Request) -> HTMLResponse:
         )
         return templates.TemplateResponse(request, "config_editor.html", context, status_code=400)
     except Exception as exc:
+        logger.error("Config editor operation failed: %s", exc)
         context = _build_context(
             request,
             content=content,
             status_kind="error",
             status_title="Operation failed",
-            status_message=str(exc),
+            status_message="An unexpected error occurred.",
             scenario_slug=scenario_slug,
             last_action=action,
             clone_name=clone_name,
@@ -1147,7 +1160,7 @@ async def rename_scenario(request: Request) -> JSONResponse:
     try:
         scenario = _current_scenario(scenario_slug)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
+        return _error_response(404, "Scenario not found.", exc)
 
     if _scenario_is_read_only(scenario_slug):
         return _read_only_scenario_response(scenario_slug)
@@ -1208,7 +1221,7 @@ async def delete_scenario(request: Request) -> JSONResponse:
     try:
         scenario = _current_scenario(scenario_slug)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
+        return _error_response(404, "Scenario not found.", exc)
 
     if _scenario_is_read_only(scenario_slug):
         return _read_only_scenario_response(scenario_slug)
@@ -1322,7 +1335,7 @@ async def start_render_job(request: Request) -> JSONResponse:
     except tomllib.TOMLDecodeError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── tomlkit helpers ──────────────────────────────────────────────────────────
@@ -1511,7 +1524,7 @@ async def api_new_scenario(request: Request) -> JSONResponse:
     except ValueError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=409)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": f"Failed to create scenario: {exc}"}, status_code=500)
+        return _error_response(500, "Failed to create scenario.", exc)
 
     return JSONResponse({"ok": True, "slug": ref.slug, "name": ref.name})
 
@@ -2219,11 +2232,11 @@ async def api_save_quick_controls(request: Request) -> JSONResponse:
             "toml_content": doc.as_string(),
         })
     except (FileNotFoundError, KeyError) as exc:
-        return JSONResponse({"ok": False, "error": f"Scenario not found: {exc}"}, status_code=404)
+        return _error_response(404, "Scenario not found.", exc)
     except tomllib.TOMLDecodeError as exc:
         return JSONResponse({"ok": False, "error": f"TOML parse error: {exc}"}, status_code=400)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── API: list events ────────────────────────────────────────────────────────────
@@ -2320,7 +2333,8 @@ async def api_list_events(request: Request) -> JSONResponse:
                         )
                     except ValueError as exc:
                         entry.pop("monthly_benefit", None)
-                        entry["benefit_error"] = str(exc)
+                        logger.error("Social Security benefit resolution failed for %s: %s", person_key, exc)
+                        entry["benefit_error"] = "Unable to resolve benefit."
             parsed.append(entry)
 
         migration_needed, migration_items = _migration_status(doc)
@@ -2344,7 +2358,7 @@ async def api_list_events(request: Request) -> JSONResponse:
             result["migration_items"] = migration_items
         return JSONResponse(result)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 @app.get("/api/migration-status")
@@ -2356,7 +2370,7 @@ async def api_migration_status(request: Request) -> JSONResponse:
         migration_needed, items = _migration_status(doc)
         return JSONResponse({"ok": True, "migration_needed": migration_needed, "items": items})
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── API: toggle event enabled ───────────────────────────────────────────────────
@@ -2395,7 +2409,7 @@ async def api_toggle_event(request: Request) -> JSONResponse:
         toml_text = tomlkit.dumps(doc)
         return JSONResponse({"ok": True, "enabled": new_state, "toml_content": toml_text})
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── API: Liabilities CRUD ────────────────────────────────────────────────────
@@ -2511,7 +2525,7 @@ async def api_add_liability(request: Request) -> JSONResponse:
         new_index = len(doc["liabilities"]) - 1
         return JSONResponse({"ok": True, "index": new_index, "toml_content": doc.as_string()})
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 @app.post("/api/update-liability")
@@ -2552,7 +2566,7 @@ async def api_update_liability(request: Request) -> JSONResponse:
         _backup_and_write_toml(doc, scenario_slug)
         return JSONResponse({"ok": True, "toml_content": doc.as_string()})
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 @app.post("/api/delete-liability")
@@ -2584,7 +2598,7 @@ async def api_delete_liability(request: Request) -> JSONResponse:
         _backup_and_write_toml(doc, scenario_slug)
         return JSONResponse({"ok": True, "toml_content": doc.as_string()})
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── API: add event ──────────────────────────────────────────────────────────────
@@ -2725,7 +2739,7 @@ async def api_add_event(request: Request) -> JSONResponse:
                     person, person_key, {"year": int(body["year"]), "age": body.get("age")}
                 )
             except (ValueError, TypeError) as exc:
-                return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+                return _error_response(400, "Invalid event data.", exc)
 
         errors = _validate_event_fields(ev_type, body)
         if errors:
@@ -2769,7 +2783,7 @@ async def api_add_event(request: Request) -> JSONResponse:
             response["resolved_monthly_benefit"] = resolved_monthly_benefit
         return JSONResponse(response)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── API: update event ─────────────────────────────────────────────────────────
@@ -2826,7 +2840,7 @@ async def api_update_event(request: Request) -> JSONResponse:
                     person, person_key, {"year": int(body["year"]), "age": body.get("age")}
                 )
             except (ValueError, TypeError) as exc:
-                return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+                return _error_response(400, "Invalid event data.", exc)
 
         errors = _validate_event_fields(ev_type, body)
         if errors:
@@ -2858,7 +2872,7 @@ async def api_update_event(request: Request) -> JSONResponse:
             response["resolved_monthly_benefit"] = resolved_monthly_benefit
         return JSONResponse(response)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── API: delete event ─────────────────────────────────────────────────────────
@@ -2890,7 +2904,7 @@ async def api_delete_event(request: Request) -> JSONResponse:
         toml_text = tomlkit.dumps(doc)
         return JSONResponse({"ok": True, "toml_content": toml_text})
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 @app.get("/api/validate-scenario")
@@ -2907,10 +2921,11 @@ async def api_validate_scenario(request: Request) -> JSONResponse:
             with open(config_path, "rb") as f:
                 config = tomllib.load(f)
         except Exception as exc:
+            logger.error("Failed to load scenario config: %s", exc)
             return JSONResponse({
                 "ok": False,
                 "is_valid": False,
-                "errors": [f"Failed to load config file: {exc}"]
+                "errors": ["Failed to load config file."]
             }, status_code=400)
         
         from src.model import validate_scenario
@@ -2924,11 +2939,11 @@ async def api_validate_scenario(request: Request) -> JSONResponse:
         })
     except Exception as exc:
         # Catch any unexpected errors and return JSON instead of HTML error page
-        import traceback
+        logger.error("Unexpected error validating scenario: %s", exc)
         return JSONResponse({
             "ok": False,
             "is_valid": False,
-            "errors": [f"Validation error: {str(exc)}", traceback.format_exc()]
+            "errors": ["Validation failed unexpectedly."]
         }, status_code=500)
 
 
@@ -2978,7 +2993,7 @@ async def api_set_default_scenario(request: Request) -> JSONResponse:
         _backup_and_write_toml(doc, slug)
         return JSONResponse({"ok": True, "is_default": is_default, "slug": slug})
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        return _error_response(500, "Internal error.", exc)
 
 
 # ── API: CSV source GET ─────────────────────────────────────────────────────
@@ -3125,7 +3140,7 @@ async def api_csv_upload(request: Request) -> JSONResponse:
     except ValueError as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
     except Exception as exc:
-        return JSONResponse({"ok": False, "error": f"Parse failed: {exc}"}, status_code=500)
+        return _error_response(500, "Parse failed.", exc)
     finally:
         if tmp.exists():
             tmp.unlink(missing_ok=True)
