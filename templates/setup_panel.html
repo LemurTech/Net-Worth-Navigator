@@ -3950,6 +3950,17 @@
             evData.age = ev.year - by;
           }
         }
+        // The events API returns one normalized "year" whether the TOML block
+        // stores it as "year" or "start_year". Copy it onto the key this
+        // event type's form actually uses (SpendingShift / Education /
+        // CareerBreak declare start_year) so the field is pre-populated.
+        fields.forEach(function (f) {
+          if (typeof f === 'string') return;
+          if ((f.name === 'year' || f.name === 'start_year') &&
+              evData[f.name] === undefined && evData.year != null) {
+            evData[f.name] = evData.year;
+          }
+        });
 
         var html = '';
         fields.forEach(function (f) {
@@ -4244,7 +4255,6 @@
         var formModal = document.getElementById('event-form-modal');
         var cancelTypeBtn = document.getElementById('cancel-type-btn');
         var cancelFormBtn = document.getElementById('cancel-form-btn');
-        var saveEventBtn = document.getElementById('save-event-btn');
 
         if (!addBtn) return;
 
@@ -4256,7 +4266,13 @@
         cancelFormBtn.addEventListener('click', function () { formModal.style.display = 'none'; });
         formModal.addEventListener('click', function (e) { if (e.target === formModal) formModal.style.display = 'none'; });
 
-        saveEventBtn.addEventListener('click', saveEvent);
+        // NOTE: do NOT add a permanent addEventListener('click', ...) on
+        // save-event-btn here. The modal is opened through exactly two flows —
+        // openEventForm (Add) and editEvent (Edit) — and each assigns the
+        // button's handler via saveBtn.onclick. A permanent listener here would
+        // fire in ADDITION to that onclick on every click, so an Edit save
+        // would POST to BOTH api/add-event (appending a duplicate event) and
+        // api/update-event — the "event doubled in the TOML" bug.
 
         // Render type grid once
         renderTypeGrid();
