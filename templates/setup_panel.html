@@ -3875,12 +3875,26 @@
               metaParts.push('→ ' + ev.end_year);
             }
           }
+          // Age-entry events (Retire, EndOfPlan) carry a person, so show the
+          // age that person will be at the event year (computed from DOB like
+          // the edit form does).
+          if ((ev.type === 'Retire' || ev.type === 'EndOfPlan') &&
+              ev.person && ev.year != null && _birthYears[ev.person]) {
+            metaParts.push('age ' + (ev.year - _birthYears[ev.person]));
+          }
           if (ev.amount != null) {
             var amt = ev.amount;
             metaParts.push(amt < 0 ? '-$' + Math.abs(amt).toLocaleString('en-US') : '$' + amt.toLocaleString('en-US'));
           }
           if (ev.annual_cost != null && ev.annual_cost !== '') {
             metaParts.push('$' + Number(ev.annual_cost).toLocaleString('en-US') + '/yr');
+          }
+          if (ev.type === 'SpendingShift') {
+            // Show the shift's spending amount (annual rate) on the event card.
+            var shiftAmt = ev.retirement_annual != null ? ev.retirement_annual : ev.survivor_annual;
+            if (shiftAmt != null && shiftAmt !== '') {
+              metaParts.push('$' + Number(shiftAmt).toLocaleString('en-US') + '/yr');
+            }
           }
           if (ev.recurring) {
             metaParts.push('every ' + ev.recurring.every_years + ' yr');
