@@ -686,10 +686,10 @@
 
       <div class="quick-section-title">Market Assumptions</div>
       <div class="inline-row">
-        <div class="inline-field"><label>Stock Return</label><input type="number" id="stock_return" step="0.01" min="0" max="1" style="width:100px"></div>
-        <div class="inline-field"><label>Bond Return</label><input type="number" id="bond_return" step="0.01" min="0" max="1" style="width:100px"></div>
-        <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="0.001" min="0" max="1" style="width:100px"></div>
-        <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="0.05" min="0" max="1" style="width:100px"></div>
+        <div class="inline-field"><label>Stock Return</label><input type="number" id="stock_return" step="any" min="0" max="100" style="width:100px"></div>
+        <div class="inline-field"><label>Bond Return</label><input type="number" id="bond_return" step="any" min="0" max="100" style="width:100px"></div>
+        <div class="inline-field"><label>Inflation</label><input type="number" id="inflation" step="any" min="0" max="100" style="width:100px"></div>
+        <div class="inline-field"><label>Equity Alloc</label><input type="number" id="equity_allocation" step="any" min="0" max="100" style="width:100px"></div>
         <div class="inline-field"><label>State Tax</label><select id="tax_state" style="width:180px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">Loading…</option></select></div>
       </div>
       <div class="synth-hint" style="max-width:none;margin-top:8px">Stock Return, Bond Return, and Inflation are long-run average annual assumptions used to project growth — not guarantees of any single year's result. Equity Allocation is the share of your investable portfolio (in the model, not your real accounts) assumed to be in stocks vs. bonds — e.g. 70 means 70% stocks / 30% bonds. A higher stock allocation tends to grow faster over long periods but swings more from year to year, both up and down; a higher bond allocation is steadier but usually grows more slowly.</div>
