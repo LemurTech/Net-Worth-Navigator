@@ -27,6 +27,7 @@ from src.model import (
     EVENT_ICONS,
     LIABILITY_ICONS,
     ProjectionResult,
+    _event_anchor_year,
     get_event_icon,
     load_config,
     resolve_runtime_config,
@@ -2202,11 +2203,14 @@ def _build_gantt_chart(config: dict, df: pd.DataFrame) -> str:
             else:
                 add_item(event, event["year"])
         elif etype == "SpendingShift":
+            shift_start = _event_anchor_year(event)
+            if shift_start is None:
+                continue
             end_year = int(event.get("end_year", sim_end))
-            if end_year > event["year"]:
-                add_item(event, event["year"], end_year)
+            if end_year > shift_start:
+                add_item(event, shift_start, end_year)
             else:
-                add_item(event, event["year"])
+                add_item(event, shift_start)
 
     # Add liability payoff milestones derived from the projection output
     seen_payoff_labels = set()

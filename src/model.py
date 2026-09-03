@@ -865,6 +865,17 @@ def _event_anchor_field(event: dict) -> str | None:
     return None
 
 
+def _event_anchor_year(event: dict) -> int | None:
+    """Return the event's anchor year from 'year' or 'start_year', or None."""
+    field = _event_anchor_field(event)
+    if field is None:
+        return None
+    try:
+        return int(event[field])
+    except (TypeError, ValueError):
+        return None
+
+
 def _materialize_recurring_event(
     event: dict,
     base_field: str,
@@ -1098,8 +1109,10 @@ def _spending_shift_mode(event: dict) -> str:
 
 
 def _event_active_for_year(event: dict, year: int) -> bool:
-    """Return whether an event with year/end_year is active in a given year."""
-    start = int(event.get("year", year))
+    """Return whether an event with year/start_year and end_year is active in a given year."""
+    start = _event_anchor_year(event)
+    if start is None:
+        start = year  # undated events are treated as active from the current year
     end_raw = event.get("end_year")
     if end_raw is None:
         return year >= start
@@ -3305,7 +3318,7 @@ def _run_projection_yearly(
                     active_labels.append(f"{icon} {event['label']}")
 
             elif etype == "SpendingShift":
-                if event["year"] == year and should_show_chart_label(event):
+                if _event_anchor_year(event) == year and should_show_chart_label(event):
                     icon = EVENT_ICONS["SpendingShift"]
                     active_labels.append(f"{icon} {event['label']}")
 

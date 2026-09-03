@@ -316,6 +316,70 @@ class RecurringEventsTests(unittest.TestCase):
         self.assertEqual(float(by_year[2028].annual_spend), 60.0)
         self.assertIn("🌍 Move Abroad", by_year[2027].events_active)
 
+    def test_spending_shift_with_start_year_key_applies_and_labels(self):
+        # Regression: the Setup Panel writes SpendingShift events with a
+        # start_year key (not year). The model must treat that as the anchor
+        # year for both the spending baseline and the chart label — previously
+        # it raised KeyError: 'year' during the yearly projection.
+        config = {
+            "simulation": {"start_year": 2026, "end_year": 2028},
+            "assumptions": {
+                "stock_return": 0.0,
+                "bond_return": 0.0,
+                "inflation": 0.0,
+                "equity_allocation": 0.0,
+                "effective_tax_rate_pre_retirement": 0.0,
+                "effective_tax_rate_post_retirement": 0.0,
+                "taxable_withdrawal_taxable_fraction": 0.0,
+                "trad_ira_withdrawal_taxable_fraction": 0.0,
+            },
+            "person1": {
+                "name": "Person 1",
+                "retirement_year": 2026,
+                "annual_take_home": 0,
+                "annual_401k_contribution": 0,
+                "annual_ira_contribution": 0,
+            },
+            "person2": {
+                "name": "Person 2",
+                "retirement_year": 2026,
+                "annual_take_home": 0,
+                "annual_401k_contribution": 0,
+                "annual_ira_contribution": 0,
+            },
+            "spending": {
+                "retirement_annual": 100,
+                "survivor_percent_of_retirement": 0.5,
+                "spending_basis": "nominal",
+            },
+            "events": [
+                {
+                    "enabled": True,
+                    "type": "SpendingShift",
+                    "label": "Move Abroad",
+                    "start_year": 2027,
+                    "mode": "replace",
+                    "phase": "retirement_and_survivor",
+                    "retirement_annual": 60,
+                    "survivor_percent_of_retirement": 0.4,
+                }
+            ],
+            "liabilities": [],
+        }
+
+        with patch("src.model.load_config", return_value=config):
+            df = model.run_projection(
+                balances={"taxable": 0.0, "trad_ira": 0.0, "roth": 0.0, "cash": 0.0},
+                home_value=0.0,
+                liability_balances={},
+            )
+
+        by_year = {int(row.year): row for row in df.itertuples()}
+        self.assertEqual(float(by_year[2026].annual_spend), 100.0)
+        self.assertEqual(float(by_year[2027].annual_spend), 60.0)
+        self.assertEqual(float(by_year[2028].annual_spend), 60.0)
+        self.assertIn("🌍 Move Abroad", by_year[2027].events_active)
+
     def test_spending_shift_replace_updates_survivor_baseline(self):
         config = {
             "simulation": {"start_year": 2026, "end_year": 2028},
