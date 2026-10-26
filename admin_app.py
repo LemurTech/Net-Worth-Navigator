@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import tomllib
 import tomlkit
@@ -3068,6 +3069,26 @@ async def api_csv_source(request: Request) -> JSONResponse:
     })
 
 
+def _write_csv_upload_temp(content: bytes, scenario_slug: str | None) -> Path:
+    """Write uploaded CSV bytes to a temp file and return its path.
+
+    Uses tempfile.mkstemp() rather than a hardcoded "/tmp" path: on Windows a
+    POSIX-style path is rooted but not absolute, so it resolves to
+    "<current drive>:\\tmp\\..." and raises FileNotFoundError when that
+    directory does not exist.
+    """
+    fd, name = tempfile.mkstemp(
+        prefix=f"csv_upload_{scenario_slug or 'default'}_", suffix=".csv"
+    )
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(content)
+    except Exception:
+        Path(name).unlink(missing_ok=True)
+        raise
+    return Path(name)
+
+
 # ── API: CSV upload (parse, preview, merge) ────────────────────────────────
 
 
@@ -3087,11 +3108,9 @@ async def api_csv_upload(request: Request) -> JSONResponse:
     except Exception as exc:
         return JSONResponse({"ok": False, "error": f"Failed to read upload: {exc}"}, status_code=400)
 
-    # Write to a temporary file for parsing
-    tmp = Path(f"/tmp/csv_upload_{scenario_slug or 'default'}_{os.urandom(4).hex()}.csv")
+    # Write to a temporary file for parsing (platform-neutral: never "/tmp")
+    tmp = _write_csv_upload_temp(content, scenario_slug)
     try:
-        tmp.write_bytes(content)
-
         parsed_accounts = parse_csv(str(tmp))
 
         # Load existing state for merge
